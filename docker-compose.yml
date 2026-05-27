@@ -1,0 +1,105 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: app,logto,nango
+      POSTGRES_USER: noname
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noname_dev}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noname"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - dragonfly_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    environment:
+      DFLY_requirepass: ${DRAGONFLY_PASSWORD:-dragonfly_dev}
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "http://localhost:8123/ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  logto:
+    image: ghcr.io/logto-io/logto:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3001:3001"
+    environment:
+      TRUSTED_ORIGINS: http://localhost:3000
+      ENDPOINT: http://localhost:3001
+      DB_URL: postgres://noname:${POSTGRES_PASSWORD:-noname_dev}@postgres:5432/logto
+    volumes:
+      - logto_data:/app/data
+
+  nango:
+    image: nango/nango:latest
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3003:3003"
+    environment:
+      NANGO_DB_HOST: postgres
+      NANGO_DB_NAME: nango
+      NANGO_DB_USER: noname
+      NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD:-nango_dev}
+      NANGO_SECRET_KEY: ${NANGO_SECRET_KEY:-dev_secret_key}
+    volumes:
+      - nango_data:/data
+    profiles:
+      - integrations
+
+  app:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://noname:${POSTGRES_PASSWORD:-noname_dev}@postgres:5432/app
+      REDIS_URL: redis://dragonfly:6379
+      CLICKHOUSE_URL: http://clickhouse:8123
+      LOGTO_ENDPOINT: http://logto:3001
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+volumes:
+  postgres_data:
+  dragonfly_data:
+  clickhouse_data:
+  logto_data:
+  nango_data:
