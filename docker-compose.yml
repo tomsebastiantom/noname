@@ -1,105 +1,40 @@
-version: "3.9"
+# Local S3-compatible emulator for asset storage dev.
+#
+# This stands in for Cloudflare R2 (R2 is S3-compatible, so the API's
+# R2 asset adapter works against either with zero code change — only env differs).
+# s3rver is the zero-config option: no credentials, no console.
+#
+#   docker compose up -d
+#
+# Then point the server at it via packages/server/.env (see .env.example):
+#   R2_ENDPOINT=http://localhost:9000
+#   R2_BUCKET=noname-assets
+#   R2_ACCESS_KEY_ID=dummy
+#   R2_SECRET_ACCESS_KEY=dummy
+#
+# For PRODUCTION, swap these for Cloudflare R2 values:
+#   R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+#   R2_REGION=auto
+# and real R2 API tokens.
 
 services:
-  postgres:
-    image: postgres:16
-    environment:
-      POSTGRES_MULTIPLE_DATABASES: app,logto,nango
-      POSTGRES_USER: noname
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-noname_dev}
+  s3:
+    image: s3rver/s3rver
+    command: s3rver -address :9000 --no-sign-request
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U noname"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  dragonfly:
-    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
-    ports:
-      - "6379:6379"
-    volumes:
-      - dragonfly_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-    environment:
-      DFLY_requirepass: ${DRAGONFLY_PASSWORD:-dragonfly_dev}
-
-  clickhouse:
-    image: clickhouse/clickhouse-server:24
-    ports:
-      - "8123:8123"
       - "9000:9000"
-    volumes:
-      - clickhouse_data:/var/lib/clickhouse
     healthcheck:
-      test: ["CMD", "wget", "--spider", "http://localhost:8123/ping"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000 || exit 0"]
       interval: 5s
-      timeout: 5s
-      retries: 5
+      timeout: 3s
+      retries: 10
 
-  logto:
-    image: ghcr.io/logto-io/logto:latest
+  s3-init:
+    image: amazon/aws-cli
     depends_on:
-      postgres:
+      s3:
         condition: service_healthy
-    ports:
-      - "3001:3001"
-    environment:
-      TRUSTED_ORIGINS: http://localhost:3000
-      ENDPOINT: http://localhost:3001
-      DB_URL: postgres://noname:${POSTGRES_PASSWORD:-noname_dev}@postgres:5432/logto
-    volumes:
-      - logto_data:/app/data
-
-  nango:
-    image: nango/nango:latest
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "3003:3003"
-    environment:
-      NANGO_DB_HOST: postgres
-      NANGO_DB_NAME: nango
-      NANGO_DB_USER: noname
-      NANGO_DB_PASSWORD: ${NANGO_DB_PASSWORD:-nango_dev}
-      NANGO_SECRET_KEY: ${NANGO_SECRET_KEY:-dev_secret_key}
-    volumes:
-      - nango_data:/data
-    profiles:
-      - integrations
-
-  app:
-    build: .
-    depends_on:
-      postgres:
-        condition: service_healthy
-      dragonfly:
-        condition: service_healthy
-      clickhouse:
-        condition: service_healthy
-    ports:
-      - "3000:3000"
-    environment:
-      DATABASE_URL: postgres://noname:${POSTGRES_PASSWORD:-noname_dev}@postgres:5432/app
-      REDIS_URL: redis://dragonfly:6379
-      CLICKHOUSE_URL: http://clickhouse:8123
-      LOGTO_ENDPOINT: http://logto:3001
-    volumes:
-      - .:/app
-      - /app/node_modules
-
-volumes:
-  postgres_data:
-  dragonfly_data:
-  clickhouse_data:
-  logto_data:
-  nango_data:
+    entrypoint: ["/bin/sh", "-c"]
+    # s3rver ignores auth in --no-sign-request mode; create the bucket idempotently.
+    command: "aws --endpoint-url http://s3:9000 --no-sign-request s3 mb s3://noname-assets || true"
+    restart: "no"

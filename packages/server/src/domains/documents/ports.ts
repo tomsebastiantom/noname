@@ -1,0 +1,319 @@
+// Unified documents domain ports.
+//
+// `content`, `content_type`, `tenant_settings`, `layout`, `asset`, `page`,
+// `page_tree` are separate document-TYPES. They keep SEPARATE TypeScript
+// DTOs/ports, separate versions, separate statuses, and separate event names —
+// only the storage table is shared. A generic `DocumentStorage` implements every
+// type behind one interface so the shared machinery lives once.
+
+// ---------------------------------------------------------------------------
+// Document envelope — shared by every type.
+// ---------------------------------------------------------------------------
+
+export type DocumentType =
+  | "content"
+  | "content_type"
+  | "page"
+  | "page_tree"
+  | "tenant_settings"
+  | "asset"
+  | "layout"
+  | "backend-logic";
+
+export type DocumentStatus = "draft" | "published" | "archived";
+
+export interface DocumentDTO {
+  id: string;
+  tenantId: string;
+  type: string;
+  key: string;
+  version: number;
+  segment: string;
+  status: DocumentStatus;
+  // Layout variant lineage (version of default this overrides was based on).
+  // Null for content / layout default.
+  baseVersion: number | null;
+  data: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type ContentEntryDTO = DocumentDTO;
+
+// ---------------------------------------------------------------------------
+// CONTENT TYPE SCHEMA — schema-first content modeling.
+// ---------------------------------------------------------------------------
+
+export type FieldType =
+  | "text" | "longText" | "richText"
+  | "number" | "boolean" | "date"
+  | "media" | "mediaList"
+  | "reference" | "array" | "json" | "enum";
+
+export interface FieldDefinition {
+  key: string;
+  type: FieldType;
+  required: boolean;
+  // Per-field locale flag. When true the field's value is a locale-keyed map
+  // ({ "en-US": ..., "fr": ... }); when false it is a plain shared value.
+  isLocalizable: boolean;
+  label: string;
+  constraints?: Record<string, unknown>;
+  items?: { type: FieldType };
+  options?: string[];
+  references?: string;
+  permissions?: { read: string[]; write: string[] };
+}
+
+export interface ContentTypeSchema {
+  fields: FieldDefinition[];
+}
+
+export interface ContentTypeDTO {
+  id: string;
+  tenantId: string;
+  name: string;
+  schema: ContentTypeSchema;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ---------------------------------------------------------------------------
+// TENANT SETTINGS — per-tenant locale + SEO + integrations config.
+// ---------------------------------------------------------------------------
+
+export interface TenantSeoConfig {
+  metaTitleTemplate?: string;
+  metaDescription?: string;
+  ogImage?: { assetId: string };
+  twitterCard?: string;
+  canonicalDomain?: string;
+}
+
+export interface TenantIntegrations {
+  googleAnalyticsId?: string | null;
+  facebookPixelId?: string | null;
+  hotjarId?: string | null;
+  tiktokPixelId?: string | null;
+  [key: string]: string | null | undefined;
+}
+
+export interface TenantSettingsDTO {
+  id: string;
+  tenantId: string;
+  locales: string[];
+  defaultLocale: string;
+  seo: TenantSeoConfig;
+  integrations: TenantIntegrations;
+}
+
+// ---------------------------------------------------------------------------
+// CONTENT type — authored business data.
+// ---------------------------------------------------------------------------
+
+export interface ContentValidator {
+  validate(
+    schema: ContentTypeSchema | null,
+    data: unknown,
+    tenantLocales: string[],
+    targetLocale?: string,
+  ): { valid: boolean; errors?: string[] };
+}
+
+// ---------------------------------------------------------------------------
+// LAYOUT type — json-render templates with per-segment variants.
+// ---------------------------------------------------------------------------
+
+export type LayoutStatus = "draft" | "published" | "archived";
+
+export interface LayoutFilters {
+  templateName?: string;
+  segment?: string;
+  status?: LayoutStatus;
+}
+
+export interface LayoutDTO extends DocumentDTO {
+  type: "layout";
+}
+
+export interface CreateLayoutInput {
+  templateName: string;
+  segment?: string;
+  // default segment -> full spec; non-default -> override map.
+  spec: Record<string, unknown>;
+  baseVersion?: number | null;
+}
+
+export interface ResolvedLayout {
+  templateName: string;
+  segment: string;
+  version: number;
+  spec: Record<string, unknown>;
+  conflicts: string[];
+}
+
+// ---------------------------------------------------------------------------
+// ASSET type — media metadata (binary lives in R2).
+// ---------------------------------------------------------------------------
+
+export interface AssetVariant {
+  url: string;
+  width: number | null;
+  height: number | null;
+  format?: string;
+}
+
+export interface AssetDTO extends DocumentDTO {
+  type: "asset";
+}
+
+export interface UploadAssetInput {
+  fileName: string;
+  mimeType: string;
+  fileSizeBytes: number;
+  // Binary storage key (where the bytes live, e.g. R2 object key).
+  storageKey: string;
+  width?: number | null;
+  height?: number | null;
+  altText?: string | null;
+  caption?: string | null;
+  focalPoint?: { x: number; y: number } | null;
+  variants?: Record<string, AssetVariant>;
+  hash?: string;
+}
+
+// ---------------------------------------------------------------------------
+// PAGE / PAGE_TREE types — routing layer.
+// ---------------------------------------------------------------------------
+
+export interface PageTreePageRef {
+  id: string;
+  slug: Record<string, string>;
+  pageId: string;
+}
+
+export interface PageTreeDTO extends DocumentDTO {
+  type: "page_tree";
+}
+
+export interface PageDTO extends DocumentDTO {
+  type: "page";
+}
+
+export interface ResolvedRoute {
+  pageId: string;
+  layoutRef: string;
+  contentRef: string;
+  locale: string;
+}
+
+// ---------------------------------------------------------------------------
+// Unified storage (type registry).
+// ---------------------------------------------------------------------------
+
+export interface DocumentFilters {
+  type?: string;
+  segment?: string;
+  status?: DocumentStatus;
+  key?: string;
+}
+
+export interface CreateDocumentInput {
+  tenantId: string;
+  type: string;
+  key: string;
+  data: Record<string, unknown>;
+  segment?: string;
+  status?: DocumentStatus;
+  baseVersion?: number | null;
+  meta?: Record<string, unknown>;
+}
+
+export interface DocumentStorage {
+  // content type schema registry
+  createContentType(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+  findContentTypes(tenantId: string): Promise<ContentTypeDTO[]>;
+  findContentTypeByName(tenantId: string, name: string): Promise<ContentTypeDTO | null>;
+  updateContentType(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+
+  // tenant settings
+  getTenantSettings(tenantId: string): Promise<TenantSettingsDTO | null>;
+  upsertTenantSettings(tenantId: string, data: Omit<TenantSettingsDTO, "id" | "tenantId">): Promise<TenantSettingsDTO>;
+
+  // generic document CRUD (unified table)
+  createDocument(input: CreateDocumentInput): Promise<DocumentDTO>;
+  listDocuments(tenantId: string, filters?: DocumentFilters): Promise<DocumentDTO[]>;
+  findDocument(tenantId: string, type: string, key: string, segment?: string): Promise<DocumentDTO | null>;
+  findDocumentById(id: string): Promise<DocumentDTO | null>;
+  updateDocument(id: string, data: Record<string, unknown>, meta?: Record<string, unknown>): Promise<DocumentDTO>;
+  publishDocument(id: string): Promise<DocumentDTO>;
+  archiveDocument(id: string): Promise<DocumentDTO>;
+  deleteDocument(id: string): Promise<void>;
+  findAssetByHash(tenantId: string, hash: string): Promise<DocumentDTO | null>;
+}
+
+// ---------------------------------------------------------------------------
+// Service interfaces.
+// ---------------------------------------------------------------------------
+
+export interface ContentTypeDocumentService {
+  create(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+  list(tenantId: string): Promise<ContentTypeDTO[]>;
+  get(tenantId: string, name: string): Promise<ContentTypeDTO | null>;
+  update(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+}
+
+export interface TenantSettingsService {
+  get(tenantId: string): Promise<TenantSettingsDTO>;
+  upsert(tenantId: string, data: Omit<TenantSettingsDTO, "id" | "tenantId">): Promise<TenantSettingsDTO>;
+}
+
+export interface ContentContentOpts {
+  locale?: string;
+  role?: string;
+}
+
+export interface ContentDocumentService {
+  create(tenantId: string, type: string, data: Record<string, unknown>, opts?: ContentContentOpts): Promise<ContentEntryDTO>;
+  findByType(tenantId: string, type: string): Promise<ContentEntryDTO[]>;
+  findById(tenantId: string, id: string, opts?: ContentContentOpts): Promise<ContentEntryDTO | null>;
+  updateById(tenantId: string, type: string, id: string, data: Record<string, unknown>, opts?: ContentContentOpts): Promise<ContentEntryDTO>;
+  deleteById(tenantId: string, type: string, id: string): Promise<void>;
+  publish(tenantId: string, type: string, id: string): Promise<ContentEntryDTO>;
+  resolve(tenantId: string, type: string, id: string, locale: string): Promise<Record<string, unknown> | null>;
+}
+
+export interface LayoutDocumentService {
+  create(tenantId: string, input: CreateLayoutInput): Promise<LayoutDTO>;
+  addVariant(tenantId: string, templateName: string, segment: string, overrides: Record<string, unknown>): Promise<LayoutDTO>;
+  publish(tenantId: string, id: string): Promise<LayoutDTO>;
+  archive(tenantId: string, id: string): Promise<LayoutDTO>;
+  list(tenantId: string, filters?: { templateName?: string; segment?: string; status?: LayoutStatus }): Promise<LayoutDTO[]>;
+  get(tenantId: string, id: string): Promise<LayoutDTO | null>;
+  resolve(tenantId: string, templateName: string, segment: string): Promise<ResolvedLayout | null>;
+}
+
+export interface AssetDocumentService {
+  create(tenantId: string, input: UploadAssetInput): Promise<AssetDTO>;
+  get(tenantId: string, assetId: string): Promise<AssetDTO | null>;
+  list(tenantId: string): Promise<AssetDTO[]>;
+  update(tenantId: string, assetId: string, data: Partial<UploadAssetInput>): Promise<AssetDTO>;
+  archive(tenantId: string, assetId: string): Promise<AssetDTO>;
+  delete(tenantId: string, assetId: string): Promise<void>;
+  publish(tenantId: string, assetId: string): Promise<AssetDTO>;
+  findByHash(tenantId: string, hash: string): Promise<AssetDTO | null>;
+}
+
+export interface PageTreeService {
+  resolveByUrl(tenantId: string, url: string, locale: string): Promise<ResolvedRoute | null>;
+}
+
+export interface DocumentService {
+  contentTypes: ContentTypeDocumentService;
+  tenantSettings: TenantSettingsService;
+  content: ContentDocumentService;
+  layout: LayoutDocumentService;
+  assets: AssetDocumentService;
+  pages: PageTreeService;
+}

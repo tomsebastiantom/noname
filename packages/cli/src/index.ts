@@ -18,13 +18,9 @@ program
 
 program
   .command("dev")
-  .description("Start the development server with hot reload")
-  .option("--db sqlite", "Use SQLite instead of Postgres (lightweight dev mode)")
-  .action(async (options) => {
+  .description("Start the development server with hot reload (requires Postgres via Docker)")
+  .action(async () => {
     console.log("Starting dev server...");
-    if (options.db === "sqlite") {
-      console.log("SQLite mode: ClickHouse skipped, events to console");
-    }
     // Phase 0: exec docker compose up or start server directly
   });
 
