@@ -1,14 +1,12 @@
-import { createMachine, createActor, type EventObject } from "xstate";
+import { createMachine, createActor } from "xstate";
 import type {
   MachineDefinition,
   MachineEngine,
   MachineInstanceDTO,
-  MachineState,
   MachineTransition,
   MachineStorage,
   Guard,
   GuardContext,
-  GuardResult,
   TransitionResult,
 } from "./ports";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
@@ -126,7 +124,10 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
           fromState: result.fromState,
           reason: result.error || result.guardResult?.reason,
         });
-        throw new ValidationError("transition", result.error || result.guardResult?.reason || "rejected");
+        throw new ValidationError(
+          "transition",
+          result.error || result.guardResult?.reason || "rejected",
+        );
       }
 
       const nextContext = await applyActions(definition, instance, transitionConfig, params);
@@ -161,7 +162,10 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
 
 function validateDefinition(definition: MachineDefinition): void {
   if (!definition.name || !definition.initial || !definition.states) {
-    throw new ValidationError("definition", "Machine definition must include name, initial, and states");
+    throw new ValidationError(
+      "definition",
+      "Machine definition must include name, initial, and states",
+    );
   }
   if (!definition.states[definition.initial]) {
     throw new ValidationError("initial", `Initial state ${definition.initial} not found in states`);
@@ -204,7 +208,7 @@ function mapTransitions(on: Record<string, MachineTransition>): Record<string, {
 async function applyActions(
   _definition: MachineDefinition,
   instance: MachineInstanceDTO,
-  transition: MachineTransition,
+  _transition: MachineTransition,
   params: Record<string, unknown>,
 ): Promise<Record<string, unknown>> {
   // Phase 0: only merge params into context. Later: call action registry for

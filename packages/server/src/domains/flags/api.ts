@@ -1,7 +1,9 @@
 import { Hono } from "hono";
+import { streamSSE } from "hono/streaming";
+import { created, notFound, ok } from "../../shared/respond";
+import { addClient } from "../../shared/sse-manager";
 import { getTenantId } from "../../shared/tenant";
-import { ok, created, notFound } from "../../shared/respond";
-import type { FlagService, CreateFlagInput, UpdateFlagInput, FlagEvaluationContext } from "./ports";
+import type { CreateFlagInput, FlagEvaluationContext, FlagService, UpdateFlagInput } from "./ports";
 
 export function createFlagRoutes(service: FlagService) {
   const routes = new Hono();
@@ -21,7 +23,7 @@ export function createFlagRoutes(service: FlagService) {
     const flags = await service.list(tenantId, {
       status: status as FlagFilters["status"],
       type: type as FlagFilters["type"],
-      schemaId: schemaId === "" ? null : schemaId ?? undefined,
+      schemaId: schemaId === "" ? null : (schemaId ?? undefined),
     });
     return ok(c, flags);
   });
@@ -47,14 +49,20 @@ export function createFlagRoutes(service: FlagService) {
 
   routes.post("/evaluate", async (c) => {
     const tenantId = getTenantId(c);
-    const { context, flagKeys } = await c.req.json<{ context: FlagEvaluationContext; flagKeys?: string[] }>();
+    const { context, flagKeys } = await c.req.json<{
+      context: FlagEvaluationContext;
+      flagKeys?: string[];
+    }>();
     const evaluations = await service.evaluate(tenantId, context, flagKeys);
     return ok(c, { evaluations });
   });
 
   routes.post("/evaluate-batch", async (c) => {
     const tenantId = getTenantId(c);
-    const { contexts, flagKeys } = await c.req.json<{ contexts: FlagEvaluationContext[]; flagKeys?: string[] }>();
+    const { contexts, flagKeys } = await c.req.json<{
+      contexts: FlagEvaluationContext[];
+      flagKeys?: string[];
+    }>();
     const results = await service.evaluateBatch(tenantId, contexts, flagKeys);
     return ok(c, { results });
   });
@@ -70,6 +78,30 @@ export function createFlagRoutes(service: FlagService) {
       contextHash: contextHash || undefined,
     });
     return ok(c, evaluationRecords);
+  });
+
+  routes.get("/stream", (c) => {
+    const tenantId = c.req.query("tenantId") || getTenantId(c);
+
+    return streamSSE(c, async (stream) => {
+      addClient(tenantId, stream);
+
+      stream.writeSSE({ data: JSON.stringify({ type: "connected" }) });
+
+      const heartbeat = setInterval(() => {
+        try {
+          stream.writeSSE({ data: JSON.stringify({ type: "heartbeat" }) });
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 30_000);
+
+      stream.onAbort(() => clearInterval(heartbeat));
+
+      while (true) {
+        await stream.sleep(30_000);
+      }
+    });
   });
 
   return routes;

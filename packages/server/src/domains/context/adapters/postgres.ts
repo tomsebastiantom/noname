@@ -6,7 +6,8 @@ import type { Database } from "../../../drizzle";
 export function createPostgresContextAdapter(db: Database): ContextStorage {
   return {
     async saveSegment(tenantId, hash, signals) {
-      const [row] = await db.insert(segments)
+      const [row] = await db
+        .insert(segments)
         .values({ tenantId, hash, signals })
         .onConflictDoUpdate({ target: [segments.tenantId, segments.hash], set: { signals } })
         .returning();
@@ -14,17 +15,25 @@ export function createPostgresContextAdapter(db: Database): ContextStorage {
       return mapRow(row);
     },
     async findSegmentByHash(tenantId, hash) {
-      const [row] = await db.select().from(segments)
+      const [row] = await db
+        .select()
+        .from(segments)
         .where(and(eq(segments.tenantId, tenantId), eq(segments.hash, hash)));
       return row ? mapRow(row) : null;
     },
     async cacheSegment(tenantId, visitorId, segmentHash) {
-      await db.insert(contextCache)
+      await db
+        .insert(contextCache)
         .values({ tenantId, visitorId, segmentHash })
-        .onConflictDoUpdate({ target: [contextCache.tenantId, contextCache.visitorId], set: { segmentHash } });
+        .onConflictDoUpdate({
+          target: [contextCache.tenantId, contextCache.visitorId],
+          set: { segmentHash },
+        });
     },
     async findCachedSegment(tenantId, visitorId) {
-      const [row] = await db.select().from(contextCache)
+      const [row] = await db
+        .select()
+        .from(contextCache)
         .where(and(eq(contextCache.tenantId, tenantId), eq(contextCache.visitorId, visitorId)));
       return row ? row.segmentHash : null;
     },

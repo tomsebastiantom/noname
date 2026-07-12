@@ -1,4 +1,14 @@
-import { pgTable, uuid, text, jsonb, timestamp, integer, pgEnum, uniqueIndex, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  jsonb,
+  timestamp,
+  integer,
+  pgEnum,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Unified documents domain — ONE table owns every versioned JSON document.
@@ -57,8 +67,12 @@ export const documents = pgTable(
     publishedUnique: uniqueIndex("documents_published_unique")
       .on(t.tenantId, t.type, t.key, t.segment, t.status)
       .where(sql`${t.status} = 'published' AND ${t.type} = 'layout'`),
-    tenantTypeKey: uniqueIndex("documents_tenant_type_key")
-      .on(t.tenantId, t.type, t.key, t.segment),
+    tenantTypeKey: uniqueIndex("documents_tenant_type_key").on(
+      t.tenantId,
+      t.type,
+      t.key,
+      t.segment,
+    ),
     tenantType: index("documents_tenant_type").on(t.tenantId, t.type),
   }),
 );
@@ -67,13 +81,17 @@ export const documents = pgTable(
 // schema describes the type's fields (type, isLocalizable, constraints, permissions);
 // documents of that type carry matching `data`. No ALTER TABLE to add a type or a
 // field — just insert/update a row.
-export const documentTypes = pgTable("document_types", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  tenantId: uuid("tenant_id").notNull(),
-  name: text("name").notNull(),
-  schema: jsonb("schema").notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => ({
-  uniqueTypeName: uniqueIndex("document_types_tenant_name").on(t.tenantId, t.name),
-}));
+export const documentTypes = pgTable(
+  "document_types",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    name: text("name").notNull(),
+    schema: jsonb("schema").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueTypeName: uniqueIndex("document_types_tenant_name").on(t.tenantId, t.name),
+  }),
+);

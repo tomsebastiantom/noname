@@ -1,23 +1,91 @@
-# Local S3-compatible emulator for asset storage dev.
+# ── noname local dev stack ───────────────────────────────────────────────
 #
-# This stands in for Cloudflare R2 (R2 is S3-compatible, so the API's
-# R2 asset adapter works against either with zero code change — only env differs).
-# s3rver is the zero-config option: no credentials, no console.
+#   docker compose up -d                  # start everything
+#   docker compose up -d postgres redis   # start just DB + cache
+#   docker compose logs -f postgres       # tail logs
+#   docker compose down -v                # tear down + delete volumes
 #
-#   docker compose up -d
+# ── Services ─────────────────────────────────────────────────────────────
 #
-# Then point the server at it via packages/server/.env (see .env.example):
-#   R2_ENDPOINT=http://localhost:9000
-#   R2_BUCKET=noname-assets
-#   R2_ACCESS_KEY_ID=dummy
-#   R2_SECRET_ACCESS_KEY=dummy
+#   postgres   :5432   Primary DB (JSONB + ACID)
+#   dragonfly  :6379   Redis-compatible cache + BullMQ queue backend
+#   clickhouse :8123   Columnar analytics (HTTP), :9000 (native)
+#   logto      :3001   Auth (self-hosted) — MPL-2.0
+#   s3         :9000   R2 emulator for asset storage dev
+#   jaeger     :16686  OpenTelemetry tracing UI
 #
-# For PRODUCTION, swap these for Cloudflare R2 values:
-#   R2_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
-#   R2_REGION=auto
-# and real R2 API tokens.
+# ── Production ───────────────────────────────────────────────────────────
+#   Swap local services for Cloudflare R2, managed Postgres, etc.
+#   See docs/ for infra planning.
 
 services:
+  # ── Postgres 16 — Primary relational DB ─────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: noname
+      POSTGRES_PASSWORD: noname_dev
+      POSTGRES_DB: app
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noname -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── DragonflyDB — Redis-compatible cache + queue backend ────────────
+  dragonfly:
+    image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -h localhost ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── ClickHouse — Columnar time-series analytics ─────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_DB: app
+      CLICKHOUSE_USER: noname
+      CLICKHOUSE_PASSWORD: noname_dev
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client --query 'SELECT 1'"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # ── Logto — Self-hosted auth (OIDC, MFA, SSO) ───────────────────────
+  logto:
+    image: ghcr.io/logto-io/logto:latest
+    ports:
+      - "3001:3001"
+      - "3002:3002"
+    environment:
+      DB_URL: postgres://noname:noname_dev@postgres:5432/logto
+      ENDPOINT: http://localhost:3001
+      ADMIN_ENDPOINT: http://localhost:3002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3001 || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # ── S3 emulator — R2-compatible asset storage for local dev ────────
   s3:
     image: s3rver/s3rver
     command: s3rver -address :9000 --no-sign-request
@@ -35,6 +103,18 @@ services:
       s3:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
-    # s3rver ignores auth in --no-sign-request mode; create the bucket idempotently.
     command: "aws --endpoint-url http://s3:9000 --no-sign-request s3 mb s3://noname-assets || true"
     restart: "no"
+
+  # ── Jaeger — OpenTelemetry tracing UI ────────────────────────────────
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+
+volumes:
+  postgres_data:
+  clickhouse_data:

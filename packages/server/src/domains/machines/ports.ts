@@ -51,7 +51,12 @@ export interface MachineStorage {
   saveDefinition(tenantId: string, definition: MachineDefinition): Promise<MachineDefinition>;
   listDefinitions(tenantId: string): Promise<MachineDefinition[]>;
 
-  createInstance(tenantId: string, machineName: string, initialState: string, context: Record<string, unknown>): Promise<MachineInstanceDTO>;
+  createInstance(
+    tenantId: string,
+    machineName: string,
+    initialState: string,
+    context: Record<string, unknown>,
+  ): Promise<MachineInstanceDTO>;
   findInstance(tenantId: string, id: string): Promise<MachineInstanceDTO | null>;
   updateInstance(instance: MachineInstanceDTO): Promise<MachineInstanceDTO>;
   listInstances(tenantId: string): Promise<MachineInstanceDTO[]>;
@@ -84,15 +89,22 @@ export interface GuardContext {
   definition: MachineDefinition;
 }
 
-export interface Guard {
-  (ctx: GuardContext): Promise<GuardResult> | GuardResult;
-}
+export type Guard = (ctx: GuardContext) => Promise<GuardResult> | GuardResult;
 
 export interface MachineEngine {
   load(tenantId: string, name: string): Promise<MachineDefinition>;
   define(tenantId: string, definition: MachineDefinition): Promise<MachineDefinition>;
-  start(tenantId: string, machineName: string, context: Record<string, unknown>): Promise<MachineInstanceDTO>;
-  transition(tenantId: string, instanceId: string, event: string, params?: Record<string, unknown>): Promise<MachineInstanceDTO>;
+  start(
+    tenantId: string,
+    machineName: string,
+    context: Record<string, unknown>,
+  ): Promise<MachineInstanceDTO>;
+  transition(
+    tenantId: string,
+    instanceId: string,
+    event: string,
+    params?: Record<string, unknown>,
+  ): Promise<MachineInstanceDTO>;
   listInstances(tenantId: string): Promise<MachineInstanceDTO[]>;
   getInstance(tenantId: string, id: string): Promise<MachineInstanceDTO | null>;
 }

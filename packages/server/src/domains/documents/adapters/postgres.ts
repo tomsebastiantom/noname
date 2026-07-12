@@ -1,12 +1,10 @@
-import { and, eq, desc, sql, type SQL } from "drizzle-orm";
+import { and, eq, desc, sql } from "drizzle-orm";
 import { documents, documentTypes } from "../schema";
 import type { Database } from "../../../drizzle";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
-  CreateDocumentInput,
   DocumentDTO,
-  DocumentFilters,
   DocumentStorage,
   TenantSettingsDTO,
 } from "../ports";
@@ -15,24 +13,30 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
   return {
     // ---- content type schema registry ----
     async createContentType(tenantId, name, schema) {
-      const [row] = await db.insert(documentTypes)
+      const [row] = await db
+        .insert(documentTypes)
         .values({ tenantId, name, schema: schema as unknown as Record<string, unknown> })
         .returning();
       if (!row) throw new Error("Failed to create content type");
       return mapContentType(row);
     },
     async findContentTypes(tenantId) {
-      const rows = await db.select().from(documentTypes)
+      const rows = await db
+        .select()
+        .from(documentTypes)
         .where(eq(documentTypes.tenantId, tenantId));
       return rows.map(mapContentType);
     },
     async findContentTypeByName(tenantId, name) {
-      const [row] = await db.select().from(documentTypes)
+      const [row] = await db
+        .select()
+        .from(documentTypes)
         .where(and(eq(documentTypes.tenantId, tenantId), eq(documentTypes.name, name)));
       return row ? mapContentType(row) : null;
     },
     async updateContentType(tenantId, name, schema) {
-      const [row] = await db.update(documentTypes)
+      const [row] = await db
+        .update(documentTypes)
         .set({ schema: schema as unknown as Record<string, unknown>, updated_at: new Date() })
         .where(and(eq(documentTypes.tenantId, tenantId), eq(documentTypes.name, name)))
         .returning();
@@ -54,20 +58,24 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         integrations: data.integrations,
       };
       if (existing) {
-        const [row] = await db.update(documents)
+        const [row] = await db
+          .update(documents)
           .set({ data: merged, updated_at: new Date() })
           .where(eq(documents.id, existing.id))
           .returning();
         if (!row) throw new Error("Failed to update tenant settings");
         return toTenantSettings(row);
       }
-      const [row] = await db.insert(documents).values({
-        tenantId,
-        type: "tenant_settings",
-        key: "default",
-        data: merged,
-        status: "draft",
-      }).returning();
+      const [row] = await db
+        .insert(documents)
+        .values({
+          tenantId,
+          type: "tenant_settings",
+          key: "default",
+          data: merged,
+          status: "draft",
+        })
+        .returning();
       if (!row) throw new Error("Failed to create tenant settings");
       return toTenantSettings(row);
     },
@@ -77,17 +85,20 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const segment = input.segment || "default";
       const latest = await latestVersion(db, input.tenantId, input.type, input.key, segment);
       const version = latest ? latest + 1 : 1;
-      const [row] = await db.insert(documents).values({
-        tenantId: input.tenantId,
-        type: input.type,
-        key: input.key,
-        segment,
-        version,
-        status: input.status || "draft",
-        baseVersion: input.baseVersion ?? null,
-        data: input.data,
-        meta: input.meta ?? {},
-      }).returning();
+      const [row] = await db
+        .insert(documents)
+        .values({
+          tenantId: input.tenantId,
+          type: input.type,
+          key: input.key,
+          segment,
+          version,
+          status: input.status || "draft",
+          baseVersion: input.baseVersion ?? null,
+          data: input.data,
+          meta: input.meta ?? {},
+        })
+        .returning();
       if (!row) throw new Error("Failed to create document");
       return mapDocument(row);
     },
@@ -97,7 +108,10 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (filters.segment) conditions.push(eq(documents.segment, filters.segment));
       if (filters.status) conditions.push(eq(documents.status, filters.status));
       if (filters.key) conditions.push(eq(documents.key, filters.key));
-      const rows = await db.select().from(documents).where(and(...conditions));
+      const rows = await db
+        .select()
+        .from(documents)
+        .where(and(...conditions));
       return rows.map(mapDocument);
     },
     async findDocument(tenantId, type, key, segment) {
@@ -107,7 +121,10 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         eq(documents.key, key),
       ];
       if (segment) conditions.push(eq(documents.segment, segment));
-      const [row] = await db.select().from(documents).where(and(...conditions));
+      const [row] = await db
+        .select()
+        .from(documents)
+        .where(and(...conditions));
       return row ? mapDocument(row) : null;
     },
     async findDocumentById(id) {
@@ -115,7 +132,8 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       return row ? mapDocument(row) : null;
     },
     async updateDocument(id, data, meta) {
-      const [row] = await db.update(documents)
+      const [row] = await db
+        .update(documents)
         .set({ data, meta: meta ?? undefined, updated_at: new Date() })
         .where(eq(documents.id, id))
         .returning();
@@ -127,18 +145,22 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (!existing) throw new Error("Document not found");
 
       // Archive any currently-published sibling of the same (type, key, segment).
-      await db.update(documents)
+      await db
+        .update(documents)
         .set({ status: "archived", updated_at: new Date() })
-        .where(and(
-          eq(documents.tenantId, existing.tenantId),
-          eq(documents.type, existing.type),
-          eq(documents.key, existing.key),
-          eq(documents.segment, existing.segment),
-          eq(documents.status, "published"),
-          sql`${documents.id} != ${id}`,
-        ));
+        .where(
+          and(
+            eq(documents.tenantId, existing.tenantId),
+            eq(documents.type, existing.type),
+            eq(documents.key, existing.key),
+            eq(documents.segment, existing.segment),
+            eq(documents.status, "published"),
+            sql`${documents.id} != ${id}`,
+          ),
+        );
 
-      const [row] = await db.update(documents)
+      const [row] = await db
+        .update(documents)
         .set({ status: "published", updated_at: new Date() })
         .where(eq(documents.id, id))
         .returning();
@@ -146,7 +168,8 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       return mapDocument(row);
     },
     async archiveDocument(id) {
-      const [row] = await db.update(documents)
+      const [row] = await db
+        .update(documents)
         .set({ status: "archived", updated_at: new Date() })
         .where(eq(documents.id, id))
         .returning();
@@ -158,12 +181,16 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
     },
 
     async findAssetByHash(tenantId, hash) {
-      const [row] = await db.select().from(documents)
-        .where(and(
-          eq(documents.tenantId, tenantId),
-          eq(documents.type, "asset"),
-          sql`${documents.data}->>'hash' = ${hash}`,
-        ))
+      const [row] = await db
+        .select()
+        .from(documents)
+        .where(
+          and(
+            eq(documents.tenantId, tenantId),
+            eq(documents.type, "asset"),
+            sql`${documents.data}->>'hash' = ${hash}`,
+          ),
+        )
         .orderBy(desc(documents.created_at))
         .limit(1);
       return row ? mapDocument(row) : null;
@@ -177,7 +204,9 @@ async function findRow(
   type: string,
   key: string,
 ): Promise<DocumentRow | null> {
-  const [row] = await db.select().from(documents)
+  const [row] = await db
+    .select()
+    .from(documents)
     .where(and(eq(documents.tenantId, tenantId), eq(documents.type, type), eq(documents.key, key)));
   return row ?? null;
 }
@@ -194,13 +223,17 @@ async function latestVersion(
   key: string,
   segment: string,
 ): Promise<number | null> {
-  const rows = await db.select({ version: documents.version }).from(documents)
-    .where(and(
-      eq(documents.tenantId, tenantId),
-      eq(documents.type, type),
-      eq(documents.key, key),
-      eq(documents.segment, segment),
-    ))
+  const rows = await db
+    .select({ version: documents.version })
+    .from(documents)
+    .where(
+      and(
+        eq(documents.tenantId, tenantId),
+        eq(documents.type, type),
+        eq(documents.key, key),
+        eq(documents.segment, segment),
+      ),
+    )
     .orderBy(desc(documents.version))
     .limit(1);
   return rows[0]?.version ?? null;

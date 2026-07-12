@@ -1,19 +1,24 @@
-﻿import { Hono } from "hono";
+﻿import { startTracing } from "./tracing";
+
+startTracing();
+
 import { serve } from "@hono/node-server";
-import { createDocumentsDomain } from "./domains/documents";
+import { Hono } from "hono";
+import { createAgentDomain } from "./domains/agent";
+import { createAIPipelineDomain } from "./domains/ai-pipeline";
+import { createAnalyticsDomain } from "./domains/analytics";
 import { createContextDomain } from "./domains/context";
-import { createMachineDomain } from "./domains/machines";
+import { createDocumentsDomain } from "./domains/documents";
+import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
-import { createAIPipelineRoutes } from "./domains/ai-pipeline/api";
-import { createEdgeRoutes } from "./domains/edge/api";
-import { agentRoutes } from "./domains/agent/api";
-import { registerAnalyticsListeners } from "./domains/analytics/events";
+import { createMachineDomain } from "./domains/machines";
+import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
+import { tenantMiddleware } from "./shared/tenant";
 
 const app = new Hono();
 
-registerAnalyticsListeners();
-
+app.use("*", tenantMiddleware);
 app.get("/health", (c) => c.json({ status: "ok", version: "0.0.1" }));
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -24,14 +29,71 @@ if (!databaseUrl) {
 }
 const db = createDatabase(databaseUrl);
 
-app.route("/api/documents", createDocumentsDomain({ db }).routes);
-app.route("/api/context", createContextDomain({ db }).routes);
-app.route("/api/machines", createMachineDomain({ db }).routes);
-app.route("/api/flags", createFlagDomain({ db }).routes);
+const docs = createDocumentsDomain({ db });
+app.route("/api/documents", docs.routes);
 
-app.route("/api/ai", createAIPipelineRoutes(null));
-app.route("/api/edge", createEdgeRoutes());
-app.route("/api/agents", agentRoutes);
+const ctx = createContextDomain({ db });
+app.route("/api/context", ctx.routes);
+
+app.route("/api/machines", createMachineDomain({ db }).routes);
+
+const flags = createFlagDomain({ db });
+app.route("/api/flags", flags.routes);
+
+const analytics = await createAnalyticsDomain();
+app.route("/api/analytics", analytics.routes);
+
+const aiPipeline = createAIPipelineDomain();
+app.route("/api/ai", aiPipeline.routes);
+
+const agent = createAgentDomain({
+  db,
+  executor: {
+    async execute(tenantId, type, prompt, input) {
+      switch (type) {
+        case "generate_layout": {
+          const r = await aiPipeline.pipeline.generateLayout(tenantId, prompt, input);
+          return {
+            output: r.response as Record<string, unknown>,
+            model: r.model,
+            tokens: r.tokens,
+          };
+        }
+        case "generate_content": {
+          const r = await aiPipeline.pipeline.generateContent(tenantId, "content", prompt);
+          return {
+            output: r.response as Record<string, unknown>,
+            model: r.model,
+            tokens: r.tokens,
+          };
+        }
+        case "generate_machine": {
+          const r = await aiPipeline.pipeline.generateMachine(tenantId, type, prompt);
+          return {
+            output: r.response as Record<string, unknown>,
+            model: r.model,
+            tokens: r.tokens,
+          };
+        }
+        case "analyze_analytics":
+          return { output: { insights: [] }, model: "mock", tokens: 0 };
+        default:
+          return { output: {}, model: "mock", tokens: 0 };
+      }
+    },
+  },
+});
+app.route("/api/agents", agent.routes);
+
+const edge = createEdgeDomain({
+  layout: docs.service.layout,
+  context: ctx.engine,
+  flags: flags.service,
+});
+app.route("/api/edge", edge.routes);
+
+const tenant = createTenantDomain();
+app.route("/api/tenants", tenant.routes);
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   serve({ fetch: app.fetch, port: Number(process.env.PORT) || 3000 });

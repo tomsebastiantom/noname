@@ -17,6 +17,10 @@ export function error(c: Context, message = "internal error", status: Contentful
   return c.json({ error: message }, status);
 }
 
+export function noContent(c: Context) {
+  return c.body(null, 204);
+}
+
 export function deleted(c: Context, status: ContentfulStatusCode = 200) {
   return c.json({ deleted: true }, status);
 }

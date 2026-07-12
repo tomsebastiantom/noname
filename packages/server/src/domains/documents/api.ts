@@ -1,8 +1,5 @@
 import { Hono } from "hono";
-import type {
-  DocumentService,
-  LayoutFilters,
-} from "./ports";
+import type { DocumentService, LayoutFilters } from "./ports";
 import type { CreateLayoutInput } from "./ports";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { getTenantId } from "../../shared/tenant";
@@ -10,10 +7,7 @@ import { created, deleted, notFound, ok } from "../../shared/respond";
 import { processImage, sha256, createAssetStorage } from "./assets/binary";
 import type { AssetVariant, UploadAssetInput } from "./ports";
 
-export function createDocumentsRoutes(
-  service: DocumentService,
-  binary?: AssetBinaryStorage,
-) {
+export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
   const routes = new Hono();
   const assetBinary = binary ?? createAssetStorage();
   const { contentTypes, tenantSettings, content, layout, assets, pages } = service;
@@ -195,14 +189,21 @@ export function createDocumentsRoutes(
 
   routes.put("/layout/:id/variants", async (c) => {
     const tenantId = getTenantId(c);
-    const { segment, overrides } = await c.req.json<{ segment: string; overrides: Record<string, unknown> }>();
+    const { segment, overrides } = await c.req.json<{
+      segment: string;
+      overrides: Record<string, unknown>;
+    }>();
     const variant = await layout.addVariant(tenantId, c.req.param("id"), segment, overrides);
     return created(c, variant);
   });
 
   routes.get("/layout/:templateName/resolve", async (c) => {
     const tenantId = getTenantId(c);
-    const resolved = await layout.resolve(tenantId, c.req.param("templateName"), c.req.query("segment") || "default");
+    const resolved = await layout.resolve(
+      tenantId,
+      c.req.param("templateName"),
+      c.req.query("segment") || "default",
+    );
     return resolved ? ok(c, resolved) : notFound(c);
   });
 
@@ -240,7 +241,7 @@ export function createDocumentsRoutes(
 
   routes.get("/:type/:id", async (c) => {
     const tenantId = getTenantId(c);
-    const { type, id } = c.req.param();
+    const { type: _type, id } = c.req.param();
     const found = await content.findById(tenantId, id, {
       role: c.req.query("role"),
     });

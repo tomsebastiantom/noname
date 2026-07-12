@@ -1,0 +1,28 @@
+name = "noname-edge"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+API_ORIGIN = "http://localhost:3000"
+LOGTO_ENDPOINT = "http://localhost:3001"
+
+[[kv_namespaces]]
+binding = "KV"
+id = "noname-edge-kv"
+
+[[r2_buckets]]
+binding = "R2"
+bucket_name = "noname-assets"
+
+[env.production]
+API_ORIGIN = "https://api.noname.dev"
+LOGTO_ENDPOINT = "https://auth.noname.dev"
+
+[[env.production.kv_namespaces]]
+binding = "KV"
+id = "noname-edge-kv-prod"
+
+[[env.production.r2_buckets]]
+binding = "R2"
+bucket_name = "noname-assets-prod"

@@ -5,7 +5,9 @@ const program = new Command();
 
 program
   .name("noname")
-  .description("AI-native, declarative full-stack platform. Describe -> AI generates spec -> spec executes UI, backend, integrations.")
+  .description(
+    "AI-native, declarative full-stack platform. Describe -> AI generates spec -> spec executes UI, backend, integrations.",
+  )
   .version("0.0.1");
 
 program

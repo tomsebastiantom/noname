@@ -18,10 +18,16 @@ export function createContextEngine(storage: ContextStorage): ContextEngine {
   return {
     async resolve(signals: ContextSignal[], tenantId = ""): Promise<SegmentDTO> {
       const hash = hashSignals(signals);
-      return (await storage.findSegmentByHash(tenantId, hash)) ?? storage.saveSegment(tenantId, hash, signals);
+      return (
+        (await storage.findSegmentByHash(tenantId, hash)) ??
+        storage.saveSegment(tenantId, hash, signals)
+      );
     },
 
-    async segmentForRequest(tenantId: string, headers: Record<string, string>): Promise<SegmentDTO> {
+    async segmentForRequest(
+      tenantId: string,
+      headers: Record<string, string>,
+    ): Promise<SegmentDTO> {
       const signals = extractSignals(headers);
       const hash = hashSignals(signals);
       const visitorId = headers["x-visitor-id"] || headers["visitor-id"] || "";
@@ -43,4 +49,3 @@ export function createContextEngine(storage: ContextStorage): ContextEngine {
     },
   };
 }
-

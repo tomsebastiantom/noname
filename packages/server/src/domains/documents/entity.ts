@@ -14,11 +14,7 @@ export class ContentDocument extends AggregateRoot {
     super();
   }
 
-  static create(
-    tenantId: string,
-    type: string,
-    data: Record<string, unknown>,
-  ): ContentDocument {
+  static create(tenantId: string, type: string, data: Record<string, unknown>): ContentDocument {
     const entry = new ContentDocument(crypto.randomUUID(), tenantId, type, data, "draft");
     entry.apply("content.created", { id: entry.id, type, data });
     return entry;

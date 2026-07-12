@@ -1,4 +1,13 @@
-import { pgTable, uuid, text, jsonb, timestamp, integer, pgEnum, uniqueIndex } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  jsonb,
+  timestamp,
+  integer,
+  pgEnum,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
 
 // Generic state machine engine — vertical-agnostic by design.
 //
@@ -18,16 +27,20 @@ import { pgTable, uuid, text, jsonb, timestamp, integer, pgEnum, uniqueIndex } f
 // primitive (e.g. a typed records/ledger table), never a commerce-specific
 // one.
 
-export const machineDefinitions = pgTable("machine_definitions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  tenantId: uuid("tenant_id").notNull(),
-  name: text("name").notNull(),
-  definition: jsonb("definition").notNull(),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow(),
-}, (t) => ({
-  uniqueName: uniqueIndex("machine_definitions_tenant_name").on(t.tenantId, t.name),
-}));
+export const machineDefinitions = pgTable(
+  "machine_definitions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    tenantId: uuid("tenant_id").notNull(),
+    name: text("name").notNull(),
+    definition: jsonb("definition").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueName: uniqueIndex("machine_definitions_tenant_name").on(t.tenantId, t.name),
+  }),
+);
 
 export const machineInstances = pgTable("machine_instances", {
   id: uuid("id").defaultRandom().primaryKey(),

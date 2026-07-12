@@ -1,20 +1,13 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { flags, flagEvaluations } from "../schema";
 import type { Database } from "../../../drizzle";
-import type {
-  FlagDTO,
-  FlagStorage,
-  CreateFlagInput,
-  UpdateFlagInput,
-  FlagFilters,
-  EvaluationRecord,
-  EvaluationFilters,
-} from "../ports";
+import type { FlagDTO, FlagStorage, EvaluationRecord } from "../ports";
 
 export function createPostgresFlagStorage(db: Database): FlagStorage {
   return {
     async create(tenantId, input) {
-      const [row] = await db.insert(flags)
+      const [row] = await db
+        .insert(flags)
         .values({
           tenantId,
           key: input.key,
@@ -31,13 +24,17 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
     },
 
     async findById(tenantId, id) {
-      const [row] = await db.select().from(flags)
+      const [row] = await db
+        .select()
+        .from(flags)
         .where(and(eq(flags.tenantId, tenantId), eq(flags.id, id)));
       return row ? mapFlag(row) : null;
     },
 
     async findByKey(tenantId, key) {
-      const [row] = await db.select().from(flags)
+      const [row] = await db
+        .select()
+        .from(flags)
         .where(and(eq(flags.tenantId, tenantId), eq(flags.key, key)));
       return row ? mapFlag(row) : null;
     },
@@ -48,15 +45,21 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
       if (filters.type) conditions.push(eq(flags.type, filters.type));
       if (filters.schemaId !== undefined) {
         conditions.push(
-          filters.schemaId === null ? eq(flags.schemaId, null as unknown as string) : eq(flags.schemaId, filters.schemaId),
+          filters.schemaId === null
+            ? eq(flags.schemaId, null as unknown as string)
+            : eq(flags.schemaId, filters.schemaId),
         );
       }
-      const rows = await db.select().from(flags).where(and(...conditions));
+      const rows = await db
+        .select()
+        .from(flags)
+        .where(and(...conditions));
       return rows.map(mapFlag);
     },
 
     async update(tenantId, id, input) {
-      const [row] = await db.update(flags)
+      const [row] = await db
+        .update(flags)
         .set({
           description: input.description,
           defaultValue: input.defaultValue as Record<string, unknown> | undefined,
@@ -94,8 +97,12 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
       const conditions = [eq(flagEvaluations.flagId, flagId)];
       if (filters.from) conditions.push(gte(flagEvaluations.evaluated_at, filters.from));
       if (filters.to) conditions.push(lte(flagEvaluations.evaluated_at, filters.to));
-      if (filters.contextHash) conditions.push(eq(flagEvaluations.contextHash, filters.contextHash));
-      const rows = await db.select().from(flagEvaluations).where(and(...conditions));
+      if (filters.contextHash)
+        conditions.push(eq(flagEvaluations.contextHash, filters.contextHash));
+      const rows = await db
+        .select()
+        .from(flagEvaluations)
+        .where(and(...conditions));
       return rows.map(mapEvaluation);
     },
   };

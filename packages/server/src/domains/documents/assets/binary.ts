@@ -38,7 +38,11 @@ export async function processImage(
   bytes: Buffer,
   mimeType: string,
   focalPoint?: { x: number; y: number } | null,
-): Promise<{ variants: Record<string, AssetVariant>; width: number | null; height: number | null }> {
+): Promise<{
+  variants: Record<string, AssetVariant>;
+  width: number | null;
+  height: number | null;
+}> {
   const originalUrl = await storage.put(baseKey, bytes, mimeType);
   const variants: Record<string, AssetVariant> = {
     original: { url: originalUrl, width: null, height: null },

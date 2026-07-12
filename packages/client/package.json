@@ -1,0 +1,28 @@
+{
+  "name": "@noname/client",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "rspack serve",
+    "build": "rspack build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint",
+    "format": "biome format --write"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@json-render/core": "^0.19.0",
+    "@json-render/react": "^0.19.0",
+    "@module-federation/runtime": "^2.7.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@rspack/core": "^2.1.0",
+    "@rspack/cli": "^2.1.0",
+    "typescript": "^7.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0"
+  }
+}

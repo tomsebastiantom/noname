@@ -5,8 +5,6 @@ import {
   RICH_TEXT_BLOCK_NODES,
   RICH_TEXT_INLINE_NODES,
   RICH_TEXT_MARKS,
-  richTextNodeSchema as baseNodeSchema,
-  richTextDocumentSchema,
 } from "./richtext";
 import type { RichTextNode } from "./richtext";
 
@@ -39,7 +37,9 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
               ? "rich text uses disallowed node types"
               : "rich text uses disallowed marks",
           })
-        : z.any().refine((v) => isRichTextDocument(v), { message: "value must be a RichTextDocument" });
+        : z
+            .any()
+            .refine((v) => isRichTextDocument(v), { message: "value must be a RichTextDocument" });
       break;
     }
     case "number":
@@ -61,9 +61,10 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
       base = z.union([z.string(), z.object({ entryId: z.string() }).passthrough()]);
       break;
     case "enum":
-      base = field.options && field.options.length > 0
-        ? z.enum(field.options as [string, ...string[]])
-        : z.string();
+      base =
+        field.options && field.options.length > 0
+          ? z.enum(field.options as [string, ...string[]])
+          : z.string();
       break;
     case "json":
       base = z.any();
@@ -87,7 +88,7 @@ export const contentValidator = {
     tenantLocales: string[],
   ): { valid: boolean; errors?: string[] } {
     const errors: string[] = [];
-    if (!schema || !schema.fields) {
+    if (!schema?.fields) {
       // No schema: accept arbitrary data (e.g. content_type/system types).
       return { valid: true };
     }
@@ -113,14 +114,18 @@ export const contentValidator = {
           }
           const result = fieldValueSchema(field).safeParse(localValue);
           if (!result.success) {
-            errors.push(`field '${field.key}' (${locale}) is invalid: ${result.error.issues[0]?.message ?? "invalid value"}`);
+            errors.push(
+              `field '${field.key}' (${locale}) is invalid: ${result.error.issues[0]?.message ?? "invalid value"}`,
+            );
           }
         }
       } else {
         if (value === undefined) continue;
         const result = fieldValueSchema(field).safeParse(value);
         if (!result.success) {
-          errors.push(`field '${field.key}' is invalid: ${result.error.issues[0]?.message ?? "invalid value"}`);
+          errors.push(
+            `field '${field.key}' is invalid: ${result.error.issues[0]?.message ?? "invalid value"}`,
+          );
         }
       }
     }
@@ -137,9 +142,7 @@ export const contentValidator = {
 
 function parseStringSet(value: unknown, allowed: readonly string[]): Set<string> {
   if (!Array.isArray(value)) return new Set();
-  return new Set(
-    (value as string[]).filter((v) => typeof v === "string" && allowed.includes(v)),
-  );
+  return new Set((value as string[]).filter((v) => typeof v === "string" && allowed.includes(v)));
 }
 
 function isRichTextDocumentWithRestrictions(

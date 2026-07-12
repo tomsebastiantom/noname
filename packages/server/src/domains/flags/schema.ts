@@ -1,4 +1,13 @@
-import { pgTable, uuid, text, jsonb, timestamp, pgEnum, uniqueIndex, index } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  text,
+  jsonb,
+  timestamp,
+  pgEnum,
+  uniqueIndex,
+  index,
+} from "drizzle-orm/pg-core";
 
 export const flagType = pgEnum("flag_type", ["boolean", "multivariate", "percentage"]);
 export const flagStatus = pgEnum("flag_status", ["active", "inactive", "archived"]);

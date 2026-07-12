@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { getTenantId } from "../../shared/tenant";
-import { ok, created, notFound, error } from "../../shared/respond";
+import { ok, created, notFound } from "../../shared/respond";
 import type { MachineDefinition, MachineEngine } from "./ports";
 
 export function createMachineRoutes(engine: MachineEngine) {
@@ -26,7 +26,10 @@ export function createMachineRoutes(engine: MachineEngine) {
 
   routes.post("/start", async (c) => {
     const tenantId = getTenantId(c);
-    const { machineName, context = {} } = await c.req.json<{ machineName: string; context?: Record<string, unknown> }>();
+    const { machineName, context = {} } = await c.req.json<{
+      machineName: string;
+      context?: Record<string, unknown>;
+    }>();
     const instance = await engine.start(tenantId, machineName, context);
     return created(c, instance);
   });

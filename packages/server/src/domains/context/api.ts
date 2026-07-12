@@ -16,7 +16,9 @@ export function createContextRoutes(engine: ContextEngine) {
   routes.post("/segment-from-request", async (c) => {
     const tenantId = getTenantId(c);
     const headers: Record<string, string> = {};
-    c.req.raw.headers.forEach((v, k) => { headers[k.toLowerCase()] = v; });
+    c.req.raw.headers.forEach((v, k) => {
+      headers[k.toLowerCase()] = v;
+    });
     const segment = await engine.segmentForRequest(tenantId, headers);
     return created(c, segment);
   });

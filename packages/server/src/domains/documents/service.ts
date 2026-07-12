@@ -2,21 +2,14 @@ import type {
   AssetDTO,
   AssetDocumentService,
   ContentDocumentService,
-  ContentEntryDTO,
-  ContentTypeDTO,
   ContentTypeDocumentService,
   ContentTypeSchema,
-  CreateDocumentInput,
-  CreateLayoutInput,
   DocumentDTO,
   DocumentService,
   DocumentStorage,
   LayoutDTO,
   LayoutDocumentService,
-  PageTreeDTO,
   PageTreeService,
-  ResolvedLayout,
-  ResolvedRoute,
   TenantSettingsDTO,
   TenantSettingsService,
   UploadAssetInput,
@@ -126,7 +119,8 @@ export function createDocumentsService(
       const schema = await storage.findContentTypeByName(tenantId, type);
       if (!schema) throw new NotFoundError("ContentType", type);
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type) throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      if (!existing || existing.type !== type)
+        throw new NotFoundError("ContentEntry", `${type}/${id}`);
 
       validateFieldWritePermissions(schema.schema.fields, data, role);
 
@@ -150,9 +144,7 @@ export function createDocumentsService(
       if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
 
       const updated = await storage.updateDocument(existing.id, built.data!);
-      const entity = new ContentDocument(
-        existing.id, tenantId, type, updated.data, "draft",
-      );
+      const entity = new ContentDocument(existing.id, tenantId, type, updated.data, "draft");
       entity.update(updated.data);
       flushEvents(entity);
       return updated;
@@ -160,9 +152,14 @@ export function createDocumentsService(
 
     async deleteById(tenantId, type, id) {
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type) throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      if (!existing || existing.type !== type)
+        throw new NotFoundError("ContentEntry", `${type}/${id}`);
       const entity = new ContentDocument(
-        existing.id, tenantId, type, existing.data, existing.status,
+        existing.id,
+        tenantId,
+        type,
+        existing.data,
+        existing.status,
       );
       entity.deleteEntry();
       await storage.deleteDocument(existing.id);
@@ -171,11 +168,10 @@ export function createDocumentsService(
 
     async publish(tenantId, type, id) {
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type) throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      if (!existing || existing.type !== type)
+        throw new NotFoundError("ContentEntry", `${type}/${id}`);
       const published = await storage.publishDocument(existing.id);
-      const entity = new ContentDocument(
-        existing.id, tenantId, type, existing.data, "draft",
-      );
+      const entity = new ContentDocument(existing.id, tenantId, type, existing.data, "draft");
       entity.publish();
       flushEvents(entity);
       return published;
@@ -197,8 +193,10 @@ export function createDocumentsService(
         if (field.isLocalizable && value && typeof value === "object" && !Array.isArray(value)) {
           const map = value as Record<string, unknown>;
           const picked =
-            locale in map ? map[locale]
-              : defaultLocale in map ? map[defaultLocale]
+            locale in map
+              ? map[locale]
+              : defaultLocale in map
+                ? map[defaultLocale]
                 : Object.values(map)[0];
           resolved[field.key] = picked;
         } else {
@@ -244,8 +242,13 @@ export function createDocumentsService(
         throw new ValidationError("overrides", "overrides must be an object of dot-path keys");
       }
 
-      const publishedDefault = await storage.findDocument(tenantId, "layout", templateName, "default");
-      if (!publishedDefault || publishedDefault.status !== "published") {
+      const publishedDefault = await storage.findDocument(
+        tenantId,
+        "layout",
+        templateName,
+        "default",
+      );
+      if (publishedDefault?.status !== "published") {
         throw new NotFoundError("LayoutDocument", `${templateName} (published default)`);
       }
       const baseVersion = publishedDefault.version;
@@ -263,9 +266,9 @@ export function createDocumentsService(
       return saved as unknown as LayoutDTO;
     },
 
-    async publish(tenantId, id) {
+    async publish(_tenantId, id) {
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.publish();
       const updated = await storage.publishDocument(id);
@@ -273,9 +276,9 @@ export function createDocumentsService(
       return updated as unknown as LayoutDTO;
     },
 
-    async archive(tenantId, id) {
+    async archive(_tenantId, id) {
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.archive();
       const updated = await storage.archiveDocument(id);
@@ -290,14 +293,19 @@ export function createDocumentsService(
         status: filters?.status,
       }) as unknown as Promise<LayoutDTO[]>,
 
-    get: async (tenantId, id) => {
+    get: async (_tenantId, id) => {
       const found = await storage.findDocumentById(id);
       return found && found.type === "layout" ? (found as LayoutDTO) : null;
     },
 
     async resolve(tenantId, templateName, segment) {
-      const publishedDefault = await storage.findDocument(tenantId, "layout", templateName, "default");
-      if (!publishedDefault || publishedDefault.status !== "published") return null;
+      const publishedDefault = await storage.findDocument(
+        tenantId,
+        "layout",
+        templateName,
+        "default",
+      );
+      if (publishedDefault?.status !== "published") return null;
       const defaultSpec = (publishedDefault.data.spec as Record<string, unknown>) ?? {};
 
       if (segment === "default") {
@@ -311,7 +319,7 @@ export function createDocumentsService(
       }
 
       const variant = await storage.findDocument(tenantId, "layout", templateName, segment);
-      if (!variant || variant.status !== "published") {
+      if (variant?.status !== "published") {
         // Fall back to the default spec when no published variant exists.
         return {
           templateName,
@@ -422,16 +430,21 @@ export function createDocumentsService(
     async resolveByUrl(tenantId, url, locale) {
       const tree = await storage.findDocument(tenantId, "page_tree", "main");
       if (!tree) return null;
-      const pages = (tree.data.pages as
-        | Array<{ id: string; slug: Record<string, string>; pageId: string }>
-        | undefined) ?? [];
+      const pages =
+        (tree.data.pages as
+          | Array<{ id: string; slug: Record<string, string>; pageId: string }>
+          | undefined) ?? [];
 
       const ts = await storage.getTenantSettings(tenantId);
       const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
 
       const match = pages.find((p) => {
         const slugMap = p.slug ?? {};
-        return slugMap[locale] === url || slugMap[defaultLocale] === url || Object.values(slugMap)[0] === url;
+        return (
+          slugMap[locale] === url ||
+          slugMap[defaultLocale] === url ||
+          Object.values(slugMap)[0] === url
+        );
       });
       if (!match) return null;
 
@@ -479,9 +492,10 @@ function buildContentData(
         errors.push(`field '${field.key}' is localizable — write with ?locale=`);
         continue;
       }
-      const map = (data[field.key] && typeof data[field.key] === "object" && !Array.isArray(data[field.key]))
-        ? { ...(data[field.key] as Record<string, unknown>) }
-        : {};
+      const map =
+        data[field.key] && typeof data[field.key] === "object" && !Array.isArray(data[field.key])
+          ? { ...(data[field.key] as Record<string, unknown>) }
+          : {};
       map[locale] = raw;
       data[field.key] = map;
     } else {
@@ -531,7 +545,10 @@ async function assertAssetRefs(
 
 function validateContentTypeName(name: string): void {
   if (!name || !/^[a-z0-9_]+$/.test(name)) {
-    throw new ValidationError("name", "content type name must be lowercase alphanumeric/underscore");
+    throw new ValidationError(
+      "name",
+      "content type name must be lowercase alphanumeric/underscore",
+    );
   }
 }
 
@@ -548,7 +565,10 @@ function validateSchema(schema: ContentTypeSchema): void {
 
 function validateTemplateName(name: string): void {
   if (!name || !/^[a-z0-9_-]+$/.test(name)) {
-    throw new ValidationError("templateName", "templateName must be lowercase, alphanumeric, dash, or underscore");
+    throw new ValidationError(
+      "templateName",
+      "templateName must be lowercase, alphanumeric, dash, or underscore",
+    );
   }
 }
 
@@ -570,7 +590,11 @@ function resolveAssetUrl(storageKey: string, _mimeType: string): string {
 }
 
 function enrichAssetUrls(dto: AssetDTO): AssetDTO {
-  const variants = (dto.data.variants as Record<string, { url: string; width: number | null; height: number | null; format?: string }>) ?? {};
+  const variants =
+    (dto.data.variants as Record<
+      string,
+      { url: string; width: number | null; height: number | null; format?: string }
+    >) ?? {};
   const resolved: Record<string, unknown> = {};
   for (const [name, v] of Object.entries(variants)) {
     resolved[name] = {
@@ -608,7 +632,8 @@ function filterReadFields(
 ): DocumentDTO {
   if (!role) return doc;
   const restricted = fields.filter(
-    (f) => f.permissions?.read && f.permissions.read.length > 0 && !f.permissions.read.includes(role),
+    (f) =>
+      f.permissions?.read && f.permissions.read.length > 0 && !f.permissions.read.includes(role),
   );
   if (restricted.length === 0) return doc;
   const filtered = { ...doc.data };

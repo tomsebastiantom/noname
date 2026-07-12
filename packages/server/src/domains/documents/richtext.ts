@@ -9,9 +9,16 @@ import { z } from "zod";
 
 export const RICH_TEXT_BLOCK_NODES = [
   "paragraph",
-  "heading-1", "heading-2", "heading-3", "heading-4", "heading-5", "heading-6",
+  "heading-1",
+  "heading-2",
+  "heading-3",
+  "heading-4",
+  "heading-5",
+  "heading-6",
   "blockquote",
-  "unordered-list", "ordered-list", "list-item",
+  "unordered-list",
+  "ordered-list",
+  "list-item",
   "hr",
   "embedded-asset-block",
   "embedded-entry-block",
@@ -26,16 +33,14 @@ export const RICH_TEXT_INLINE_NODES = [
   "embedded-entry-inline",
 ] as const;
 
-export const RICH_TEXT_MARKS = [
-  "bold", "italic", "underline", "code", "strikethrough",
-] as const;
+export const RICH_TEXT_MARKS = ["bold", "italic", "underline", "code", "strikethrough"] as const;
 
 // zod's enum wants a mutable string tuple; the exported `as const` arrays are
 // readonly, so cast explicitly here.
-const NODE_TYPES = [
-  ...RICH_TEXT_BLOCK_NODES,
-  ...RICH_TEXT_INLINE_NODES,
-] as unknown as [string, ...string[]];
+const NODE_TYPES = [...RICH_TEXT_BLOCK_NODES, ...RICH_TEXT_INLINE_NODES] as unknown as [
+  string,
+  ...string[],
+];
 
 const MARK_TYPES = RICH_TEXT_MARKS as unknown as [string, ...string[]];
 
@@ -48,9 +53,9 @@ export const richTextNodeSchema: z.ZodType<unknown> = z.lazy(() =>
     nodeType: z.enum(NODE_TYPES),
     value: z.string().optional(),
     marks: z.array(richTextMarkSchema).optional(),
-    data: z.record(z.unknown()).optional(),
+    data: z.record(z.string(), z.unknown()).optional(),
     content: z.array(richTextNodeSchema).optional(),
-  })
+  }),
 );
 
 export const richTextDocumentSchema = z.object({

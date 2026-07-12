@@ -1,7 +1,4 @@
-import {
-  S3Client,
-  PutObjectCommand,
-} from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import type { AssetBinaryStorage } from "./binary";
 
 // Cloudflare R2 is S3-compatible, so this adapter talks the S3 API. Point it
@@ -34,7 +31,9 @@ export function r2ConfigFromEnv(): R2Config | null {
 
   const endpoint =
     process.env.R2_ENDPOINT ||
-    (process.env.R2_ACCOUNT_ID ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com` : null);
+    (process.env.R2_ACCOUNT_ID
+      ? `https://${process.env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
+      : null);
   if (!endpoint) return null;
 
   const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -53,7 +52,10 @@ export function r2ConfigFromEnv(): R2Config | null {
 
 export function createR2AssetStorage(config?: R2Config): AssetBinaryStorage {
   const cfg = config ?? r2ConfigFromEnv();
-  if (!cfg) throw new Error("R2 asset storage requires R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY");
+  if (!cfg)
+    throw new Error(
+      "R2 asset storage requires R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY",
+    );
   const store = cfg;
 
   const isLocal = /localhost|127\.0\.0\.1/.test(store.endpoint);

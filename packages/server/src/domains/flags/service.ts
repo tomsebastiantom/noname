@@ -3,10 +3,6 @@ import type {
   FlagService,
   FlagStorage,
   FlagDTO,
-  CreateFlagInput,
-  UpdateFlagInput,
-  FlagFilters,
-  EvaluationFilters,
   FlagEvaluationContext,
   EvaluationResult,
   TargetingRule,
@@ -37,7 +33,9 @@ export function createFlagService(storage: FlagStorage): FlagService {
         input.type,
         input.description || "",
         input.defaultValue,
-        input.targeting || [{ priority: 0, condition: { type: "always" }, value: input.defaultValue }],
+        input.targeting || [
+          { priority: 0, condition: { type: "always" }, value: input.defaultValue },
+        ],
         input.schemaId ?? null,
         input.variantId ?? null,
       );
@@ -126,9 +124,7 @@ export function createFlagService(storage: FlagStorage): FlagService {
 
     async evaluate(tenantId, context, flagKeys) {
       const flags = await storage.list(tenantId, { status: "active" });
-      const toEvaluate = flagKeys
-        ? flags.filter((f) => flagKeys.includes(f.key))
-        : flags;
+      const toEvaluate = flagKeys ? flags.filter((f) => flagKeys.includes(f.key)) : flags;
 
       const results = await Promise.all(
         toEvaluate.map(async (flag) => {
@@ -230,14 +226,25 @@ function isScopedOut(flag: FlagDTO, ctx: FlagEvaluationContext): boolean {
   return false;
 }
 
-function conditionMatches(condition: Condition, ctx: FlagEvaluationContext, flag: FlagDTO, index: number): boolean {
+function conditionMatches(
+  condition: Condition,
+  ctx: FlagEvaluationContext,
+  flag: FlagDTO,
+  _index: number,
+): boolean {
   switch (condition.type) {
     case "segment":
       return ctx.contextHash === condition.hash;
     case "segment_group":
       return condition.hashes.includes(ctx.contextHash);
     case "percentage":
-      return deterministicPercentage(ctx.tenantId, flag.key, ctx.contextHash, condition.percent, condition.seed);
+      return deterministicPercentage(
+        ctx.tenantId,
+        flag.key,
+        ctx.contextHash,
+        condition.percent,
+        condition.seed,
+      );
     case "property_match":
       return propertyMatches(condition, ctx.contextProperties);
     case "always":
@@ -279,9 +286,17 @@ function propertyMatches(
     case "in":
       return Array.isArray(condition.value) && condition.value.includes(actual);
     case "gt":
-      return typeof actual === "number" && typeof condition.value === "number" && actual > condition.value;
+      return (
+        typeof actual === "number" &&
+        typeof condition.value === "number" &&
+        actual > condition.value
+      );
     case "lt":
-      return typeof actual === "number" && typeof condition.value === "number" && actual < condition.value;
+      return (
+        typeof actual === "number" &&
+        typeof condition.value === "number" &&
+        actual < condition.value
+      );
     default:
       return false;
   }

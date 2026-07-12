@@ -107,7 +107,19 @@ export interface FlagService {
   get(tenantId: string, id: string): Promise<FlagDTO | null>;
   update(tenantId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
   archive(tenantId: string, id: string): Promise<FlagDTO>;
-  evaluate(tenantId: string, context: FlagEvaluationContext, flagKeys?: string[]): Promise<EvaluationResult[]>;
-  evaluateBatch(tenantId: string, contexts: FlagEvaluationContext[], flagKeys?: string[]): Promise<{ contextHash: string; evaluations: EvaluationResult[] }[]>;
-  listEvaluations(tenantId: string, flagId: string, filters?: EvaluationFilters): Promise<EvaluationRecord[]>;
+  evaluate(
+    tenantId: string,
+    context: FlagEvaluationContext,
+    flagKeys?: string[],
+  ): Promise<EvaluationResult[]>;
+  evaluateBatch(
+    tenantId: string,
+    contexts: FlagEvaluationContext[],
+    flagKeys?: string[],
+  ): Promise<{ contextHash: string; evaluations: EvaluationResult[] }[]>;
+  listEvaluations(
+    tenantId: string,
+    flagId: string,
+    filters?: EvaluationFilters,
+  ): Promise<EvaluationRecord[]>;
 }

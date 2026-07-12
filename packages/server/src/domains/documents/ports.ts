@@ -46,10 +46,18 @@ export type ContentEntryDTO = DocumentDTO;
 // ---------------------------------------------------------------------------
 
 export type FieldType =
-  | "text" | "longText" | "richText"
-  | "number" | "boolean" | "date"
-  | "media" | "mediaList"
-  | "reference" | "array" | "json" | "enum";
+  | "text"
+  | "longText"
+  | "richText"
+  | "number"
+  | "boolean"
+  | "date"
+  | "media"
+  | "mediaList"
+  | "reference"
+  | "array"
+  | "json"
+  | "enum";
 
 export interface FieldDefinition {
   key: string;
@@ -232,21 +240,41 @@ export interface CreateDocumentInput {
 
 export interface DocumentStorage {
   // content type schema registry
-  createContentType(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+  createContentType(
+    tenantId: string,
+    name: string,
+    schema: ContentTypeSchema,
+  ): Promise<ContentTypeDTO>;
   findContentTypes(tenantId: string): Promise<ContentTypeDTO[]>;
   findContentTypeByName(tenantId: string, name: string): Promise<ContentTypeDTO | null>;
-  updateContentType(tenantId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
+  updateContentType(
+    tenantId: string,
+    name: string,
+    schema: ContentTypeSchema,
+  ): Promise<ContentTypeDTO>;
 
   // tenant settings
   getTenantSettings(tenantId: string): Promise<TenantSettingsDTO | null>;
-  upsertTenantSettings(tenantId: string, data: Omit<TenantSettingsDTO, "id" | "tenantId">): Promise<TenantSettingsDTO>;
+  upsertTenantSettings(
+    tenantId: string,
+    data: Omit<TenantSettingsDTO, "id" | "tenantId">,
+  ): Promise<TenantSettingsDTO>;
 
   // generic document CRUD (unified table)
   createDocument(input: CreateDocumentInput): Promise<DocumentDTO>;
   listDocuments(tenantId: string, filters?: DocumentFilters): Promise<DocumentDTO[]>;
-  findDocument(tenantId: string, type: string, key: string, segment?: string): Promise<DocumentDTO | null>;
+  findDocument(
+    tenantId: string,
+    type: string,
+    key: string,
+    segment?: string,
+  ): Promise<DocumentDTO | null>;
   findDocumentById(id: string): Promise<DocumentDTO | null>;
-  updateDocument(id: string, data: Record<string, unknown>, meta?: Record<string, unknown>): Promise<DocumentDTO>;
+  updateDocument(
+    id: string,
+    data: Record<string, unknown>,
+    meta?: Record<string, unknown>,
+  ): Promise<DocumentDTO>;
   publishDocument(id: string): Promise<DocumentDTO>;
   archiveDocument(id: string): Promise<DocumentDTO>;
   deleteDocument(id: string): Promise<void>;
@@ -266,7 +294,10 @@ export interface ContentTypeDocumentService {
 
 export interface TenantSettingsService {
   get(tenantId: string): Promise<TenantSettingsDTO>;
-  upsert(tenantId: string, data: Omit<TenantSettingsDTO, "id" | "tenantId">): Promise<TenantSettingsDTO>;
+  upsert(
+    tenantId: string,
+    data: Omit<TenantSettingsDTO, "id" | "tenantId">,
+  ): Promise<TenantSettingsDTO>;
 }
 
 export interface ContentContentOpts {
@@ -275,21 +306,49 @@ export interface ContentContentOpts {
 }
 
 export interface ContentDocumentService {
-  create(tenantId: string, type: string, data: Record<string, unknown>, opts?: ContentContentOpts): Promise<ContentEntryDTO>;
+  create(
+    tenantId: string,
+    type: string,
+    data: Record<string, unknown>,
+    opts?: ContentContentOpts,
+  ): Promise<ContentEntryDTO>;
   findByType(tenantId: string, type: string): Promise<ContentEntryDTO[]>;
-  findById(tenantId: string, id: string, opts?: ContentContentOpts): Promise<ContentEntryDTO | null>;
-  updateById(tenantId: string, type: string, id: string, data: Record<string, unknown>, opts?: ContentContentOpts): Promise<ContentEntryDTO>;
+  findById(
+    tenantId: string,
+    id: string,
+    opts?: ContentContentOpts,
+  ): Promise<ContentEntryDTO | null>;
+  updateById(
+    tenantId: string,
+    type: string,
+    id: string,
+    data: Record<string, unknown>,
+    opts?: ContentContentOpts,
+  ): Promise<ContentEntryDTO>;
   deleteById(tenantId: string, type: string, id: string): Promise<void>;
   publish(tenantId: string, type: string, id: string): Promise<ContentEntryDTO>;
-  resolve(tenantId: string, type: string, id: string, locale: string): Promise<Record<string, unknown> | null>;
+  resolve(
+    tenantId: string,
+    type: string,
+    id: string,
+    locale: string,
+  ): Promise<Record<string, unknown> | null>;
 }
 
 export interface LayoutDocumentService {
   create(tenantId: string, input: CreateLayoutInput): Promise<LayoutDTO>;
-  addVariant(tenantId: string, templateName: string, segment: string, overrides: Record<string, unknown>): Promise<LayoutDTO>;
+  addVariant(
+    tenantId: string,
+    templateName: string,
+    segment: string,
+    overrides: Record<string, unknown>,
+  ): Promise<LayoutDTO>;
   publish(tenantId: string, id: string): Promise<LayoutDTO>;
   archive(tenantId: string, id: string): Promise<LayoutDTO>;
-  list(tenantId: string, filters?: { templateName?: string; segment?: string; status?: LayoutStatus }): Promise<LayoutDTO[]>;
+  list(
+    tenantId: string,
+    filters?: { templateName?: string; segment?: string; status?: LayoutStatus },
+  ): Promise<LayoutDTO[]>;
   get(tenantId: string, id: string): Promise<LayoutDTO | null>;
   resolve(tenantId: string, templateName: string, segment: string): Promise<ResolvedLayout | null>;
 }

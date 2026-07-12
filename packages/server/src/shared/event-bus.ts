@@ -5,7 +5,11 @@ const handlers = new Map<string, EventHandler[]>();
 export const eventBus = {
   publish: async (event: string, payload: unknown) => {
     for (const h of handlers.get(event) || []) {
-      try { await h(payload); } catch { /* fire-and-forget */ }
+      try {
+        await h(payload);
+      } catch {
+        /* fire-and-forget */
+      }
     }
   },
 

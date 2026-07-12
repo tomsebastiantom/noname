@@ -1,12 +1,4 @@
-import type {
-  FlagDTO,
-  FlagStorage,
-  CreateFlagInput,
-  UpdateFlagInput,
-  FlagFilters,
-  EvaluationRecord,
-  EvaluationFilters,
-} from "../ports";
+import type { FlagDTO, FlagStorage, EvaluationRecord } from "../ports";
 
 export function createInMemoryFlagStorage(): FlagStorage {
   const flags = new Map<string, FlagDTO>();

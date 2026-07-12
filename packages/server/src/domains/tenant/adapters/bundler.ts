@@ -1,0 +1,186 @@
+import { rspack } from "@rspack/core";
+import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
+import { createHash } from "node:crypto";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
+
+export interface BundleInput {
+  scope: string;
+  source: string;
+}
+
+export interface BundleOutput {
+  remoteEntry: { filename: string; content: Buffer };
+  catalog: { filename: string; content: Buffer };
+  hash: string;
+}
+
+const sharedDeps = {
+  react: {
+    singleton: true,
+    requiredVersion: "^19.0.0",
+  },
+  "react-dom": {
+    singleton: true,
+    requiredVersion: "^19.0.0",
+  },
+  "@json-render/core": {
+    singleton: true,
+    requiredVersion: "^0.19.0",
+  },
+  "@json-render/react": {
+    singleton: true,
+    requiredVersion: "^0.19.0",
+  },
+};
+
+function generateVirtualEntry(source: string): string {
+  return `${source}
+
+import { defineCatalog } from "@json-render/core";
+import { schema } from "@json-render/react/schema";
+import { defineRegistry } from "@json-render/react";
+
+const catalog = defineCatalog(schema, userCatalog);
+
+export const { registry, handlers, executeAction } = defineRegistry(catalog, {
+  components: userComponents ?? {},
+  actions: userActions ?? {},
+});
+`;
+}
+
+function computeHash(input: BundleInput): string {
+  const hash = createHash("sha256");
+  hash.update(input.scope);
+  hash.update(input.source);
+  return hash.digest("hex").slice(0, 16);
+}
+
+const pendingBuilds = new Map<string, Promise<BundleOutput>>();
+
+export async function bundleCatalog(input: BundleInput): Promise<BundleOutput> {
+  const hash = computeHash(input);
+  const key = `${input.scope}:${hash}`;
+
+  const existing = pendingBuilds.get(key);
+  if (existing) return existing;
+
+  const buildPromise = runBuild(input, hash);
+  pendingBuilds.set(key, buildPromise);
+
+  try {
+    return await buildPromise;
+  } finally {
+    pendingBuilds.delete(key);
+  }
+}
+
+async function runBuild(input: BundleInput, hash: string): Promise<BundleOutput> {
+  const tmpDir = mkdtempSync(join(tmpdir(), "noname-catalog-"));
+  const virtualEntry = join(tmpDir, "entry.ts");
+
+  writeFileSync(virtualEntry, generateVirtualEntry(input.source));
+
+  const remoteName = input.scope.replace(/[^a-zA-Z0-9_-]/g, "-");
+
+  const compiler = rspack({
+    mode: "production",
+    target: "web",
+    entry: virtualEntry,
+    output: {
+      filename: "catalog.[contenthash:8].js",
+      path: tmpDir,
+    },
+    resolve: {
+      extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs"],
+    },
+    module: {
+      rules: [
+        {
+          test: /\.tsx?$/,
+          use: {
+            loader: "builtin:swc-loader",
+            options: {
+              jsc: {
+                parser: { syntax: "typescript", tsx: true },
+                transform: { react: { runtime: "automatic" } },
+              },
+            },
+          },
+          type: "javascript/auto",
+        },
+      ],
+    },
+    plugins: [
+      new ModuleFederationPlugin({
+        name: remoteName,
+        filename: "remoteEntry.js",
+        exposes: {
+          "./catalog": virtualEntry,
+        },
+        shared: sharedDeps,
+      }),
+    ],
+    optimization: {
+      minimize: true,
+    },
+    devtool: false,
+  });
+
+  return new Promise<BundleOutput>((resolve, reject) => {
+    compiler.run((err, stats) => {
+      if (err) {
+        cleanup(tmpDir);
+        reject(err);
+        return;
+      }
+
+      if (!stats || stats.hasErrors()) {
+        const errors = stats?.toString({ errors: true, warnings: false }) ?? "Unknown error";
+        cleanup(tmpDir);
+        reject(new Error(errors));
+        return;
+      }
+
+      try {
+        const { readdirSync } = compiler.outputFileSystem as unknown as {
+          readdirSync: (p: string) => string[];
+        };
+        const files = readdirSync(tmpDir);
+
+        const remoteEntryFile = files.find((f: string) => f === "remoteEntry.js");
+        const catalogFile = files.find((f: string) => f !== "remoteEntry.js" && f.endsWith(".js"));
+
+        if (!remoteEntryFile || !catalogFile) {
+          cleanup(tmpDir);
+          reject(new Error(`Missing output files. Found: ${files.join(", ")}`));
+          return;
+        }
+
+        const remoteEntryContent = readFileSync(join(tmpDir, remoteEntryFile));
+        const catalogContent = readFileSync(join(tmpDir, catalogFile));
+
+        cleanup(tmpDir);
+
+        resolve({
+          remoteEntry: { filename: remoteEntryFile, content: remoteEntryContent },
+          catalog: { filename: catalogFile, content: catalogContent },
+          hash,
+        });
+      } catch (e) {
+        cleanup(tmpDir);
+        reject(e);
+      }
+    });
+  });
+}
+
+function cleanup(dir: string): void {
+  try {
+    rmSync(dir, { recursive: true, force: true });
+  } catch {
+    // best effort
+  }
+}
