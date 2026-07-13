@@ -1,6 +1,6 @@
-import { defineConfig, HtmlRspackPlugin } from "@rspack/core";
+import { HtmlRspackPlugin } from "@rspack/core";
 
-export default defineConfig({
+export default {
   entry: { main: "./src/main.tsx" },
   output: {
     filename: "[name].[contenthash:8].js",
@@ -59,4 +59,4 @@ export default defineConfig({
       },
     },
   },
-});
+};

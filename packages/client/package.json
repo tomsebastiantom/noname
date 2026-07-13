@@ -21,6 +21,7 @@
   "devDependencies": {
     "@rspack/core": "^2.1.0",
     "@rspack/cli": "^2.1.0",
+    "@rspack/dev-server": "^2.1.0",
     "typescript": "^7.0.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0"
