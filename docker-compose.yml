@@ -1,27 +1,6 @@
-# ── noname local dev stack ───────────────────────────────────────────────
-#
-#   docker compose up -d                  # start everything
-#   docker compose up -d postgres redis   # start just DB + cache
-#   docker compose logs -f postgres       # tail logs
-#   docker compose down -v                # tear down + delete volumes
-#
-# ── Services ─────────────────────────────────────────────────────────────
-#
-#   postgres   :5432   Primary DB (JSONB + ACID)
-#   dragonfly  :6379   Redis-compatible cache + BullMQ queue backend
-#   clickhouse :8123   Columnar analytics (HTTP), :9000 (native)
-#   logto      :3001   Auth (self-hosted) — MPL-2.0
-#   s3         :9000   R2 emulator for asset storage dev
-#   jaeger     :16686  OpenTelemetry tracing UI
-#
-# ── Production ───────────────────────────────────────────────────────────
-#   Swap local services for Cloudflare R2, managed Postgres, etc.
-#   See docs/ for infra planning.
-
 services:
-  # ── Postgres 16 — Primary relational DB ─────────────────────────────
   postgres:
-    image: postgres:16-alpine
+    image: docker.io/library/postgres:16-alpine
     ports:
       - "5432:5432"
     environment:
@@ -30,14 +9,13 @@ services:
       POSTGRES_DB: app
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh
+      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U noname -d app"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  # ── DragonflyDB — Redis-compatible cache + queue backend ────────────
   dragonfly:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     ports:
@@ -48,12 +26,11 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── ClickHouse — Columnar time-series analytics ─────────────────────
   clickhouse:
-    image: clickhouse/clickhouse-server:latest
+    image: docker.io/clickhouse/clickhouse-server:latest
     ports:
       - "8123:8123"
-      - "9000:9000"
+      - "9001:9000"
     environment:
       CLICKHOUSE_DB: app
       CLICKHOUSE_USER: noname
@@ -66,7 +43,21 @@ services:
       timeout: 3s
       retries: 10
 
-  # ── Logto — Self-hosted auth (OIDC, MFA, SSO) ───────────────────────
+  logto-init:
+    image: ghcr.io/logto-io/logto:latest
+    environment:
+      DB_URL: postgres://noname:noname_dev@postgres:5432/logto
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        cd /etc/logto
+        npx logto db seed --swe
+        npx logto db alt deploy next
+
   logto:
     image: ghcr.io/logto-io/logto:latest
     ports:
@@ -79,18 +70,23 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      logto-init:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3001 || exit 0"]
       interval: 10s
       timeout: 5s
       retries: 20
 
-  # ── S3 emulator — R2-compatible asset storage for local dev ────────
   s3:
-    image: s3rver/s3rver
-    command: s3rver -address :9000 --no-sign-request
+    image: ghcr.io/clockwisesoftware/s3rver:latest
     ports:
       - "9000:9000"
+    environment:
+      BUCKETS: noname-assets
+      HOST: "0.0.0.0"
+      PORT: "9000"
+      VHOST_BUCKETS: "0"
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:9000 || exit 0"]
       interval: 5s
@@ -98,17 +94,25 @@ services:
       retries: 10
 
   s3-init:
-    image: amazon/aws-cli
+    image: docker.io/amazon/aws-cli:latest
+    environment:
+      AWS_ACCESS_KEY_ID: S3RVER
+      AWS_SECRET_ACCESS_KEY: S3RVER
+      AWS_DEFAULT_REGION: us-east-1
     depends_on:
       s3:
         condition: service_healthy
     entrypoint: ["/bin/sh", "-c"]
-    command: "aws --endpoint-url http://s3:9000 --no-sign-request s3 mb s3://noname-assets || true"
-    restart: "no"
+    command:
+      - |
+        if aws --endpoint-url http://s3:9000 s3 ls s3://noname-assets 2>/dev/null; then
+          echo "Bucket already exists"
+        else
+          aws --endpoint-url http://s3:9000 s3 mb s3://noname-assets
+        fi
 
-  # ── Jaeger — OpenTelemetry tracing UI ────────────────────────────────
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: docker.io/jaegertracing/all-in-one:latest
     ports:
       - "16686:16686"
       - "4318:4318"

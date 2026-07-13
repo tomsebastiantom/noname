@@ -68,8 +68,6 @@ pids/
 .eslintcache
 .terraform/
 
-# Docs (architecture decisions, kept locally)
-docs/
 
 
 

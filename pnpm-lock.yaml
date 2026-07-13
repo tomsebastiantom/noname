@@ -79,10 +79,13 @@ importers:
     devDependencies:
       '@rspack/cli':
         specifier: ^2.1.0
-        version: 2.1.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))
+        version: 2.1.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))(@rspack/dev-server@2.1.0(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0)))
       '@rspack/core':
         specifier: ^2.1.0
         version: 2.1.3(@module-federation/runtime-tools@2.7.0)
+      '@rspack/dev-server':
+        specifier: ^2.1.0
+        version: 2.1.0(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.15
@@ -2025,6 +2028,25 @@ packages:
       '@module-federation/runtime-tools':
         optional: true
       '@swc/helpers':
+        optional: true
+
+  '@rspack/dev-middleware@2.0.3':
+    resolution: {integrity: sha512-GxnGj9jy76G3eCPyZei81fwKLAMLZaPEEqFz1/QDYquhwi/qYZX5fekFJ1XVpuwxGEK9KSX3hxZylfwrs4cmLA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      '@rspack/core': ^2.0.0
+    peerDependenciesMeta:
+      '@rspack/core':
+        optional: true
+
+  '@rspack/dev-server@2.1.0':
+    resolution: {integrity: sha512-WkCi6bWThVX5Ziv04srPaRoCoUY5FJolO4gqzE7xPO0XbXShsGnwn0vGD0DFfnYFcw9VSsxlmeCDV799lNYclA==}
+    engines: {node: ^20.19.0 || >=22.12.0}
+    peerDependencies:
+      '@rspack/core': ^2.0.0
+      selfsigned: ^5.0.0
+    peerDependenciesMeta:
+      selfsigned:
         optional: true
 
   '@sec-ant/readable-stream@0.4.1':
@@ -5179,15 +5201,26 @@ snapshots:
       '@rspack/binding-win32-ia32-msvc': 2.1.3
       '@rspack/binding-win32-x64-msvc': 2.1.3
 
-  '@rspack/cli@2.1.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))':
+  '@rspack/cli@2.1.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))(@rspack/dev-server@2.1.0(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0)))':
     dependencies:
       '@rspack/core': 2.1.3(@module-federation/runtime-tools@2.7.0)
+    optionalDependencies:
+      '@rspack/dev-server': 2.1.0(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))
 
   '@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0)':
     dependencies:
       '@rspack/binding': 2.1.3
     optionalDependencies:
       '@module-federation/runtime-tools': 2.7.0
+
+  '@rspack/dev-middleware@2.0.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))':
+    optionalDependencies:
+      '@rspack/core': 2.1.3(@module-federation/runtime-tools@2.7.0)
+
+  '@rspack/dev-server@2.1.0(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))':
+    dependencies:
+      '@rspack/core': 2.1.3(@module-federation/runtime-tools@2.7.0)
+      '@rspack/dev-middleware': 2.0.3(@rspack/core@2.1.3(@module-federation/runtime-tools@2.7.0))
 
   '@sec-ant/readable-stream@0.4.1': {}
 
