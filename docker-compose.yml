@@ -43,40 +43,47 @@ services:
       timeout: 3s
       retries: 10
 
-  logto-init:
-    image: ghcr.io/logto-io/logto:latest
-    environment:
-      DB_URL: postgres://noname:noname_dev@postgres:5432/logto
-    depends_on:
-      postgres:
-        condition: service_healthy
-    restart: "no"
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        cd /etc/logto
-        npx logto db seed --swe
-        npx logto db alt deploy next
-
-  logto:
-    image: ghcr.io/logto-io/logto:latest
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:latest
     ports:
-      - "3001:3001"
-      - "3002:3002"
+      - "8080:8080"
     environment:
-      DB_URL: postgres://noname:noname_dev@postgres:5432/logto
-      ENDPOINT: http://localhost:3001
-      ADMIN_ENDPOINT: http://localhost:3002
+      ZITADEL_DATABASE_POSTGRES_HOST: postgres
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: noname
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: noname_dev
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: noname
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: noname_dev
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_EXTERNALPORT: "8080"
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: NonameAdmin1!
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: noname-backend
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: noname-backend
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINEKEY_TYPE: "1"
+      ZITADEL_FIRSTINSTANCE_MACHINEKEYPATH: /output/noname-backend-sa.json
+    command:
+      - start-from-init
+      - --masterkey
+      - xV9kL2mN4pQ7rS1tU8wY3aB6cD0eF5hJ
+      - --tlsMode
+      - disabled
+    volumes:
+      - zitadel_keys:/output
     depends_on:
       postgres:
         condition: service_healthy
-      logto-init:
-        condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3001 || exit 0"]
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ui/console || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 20
+      retries: 30
 
   s3:
     image: ghcr.io/clockwisesoftware/s3rver:latest
@@ -122,3 +129,4 @@ services:
 volumes:
   postgres_data:
   clickhouse_data:
+  zitadel_keys:

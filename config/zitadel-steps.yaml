@@ -1,0 +1,22 @@
+FirstInstance:
+  InstanceName: Noname Dev
+  DefaultLanguage: en
+  Org:
+    Name: Noname
+    Human:
+      UserName: admin
+      FirstName: Admin
+      LastName: User
+      NickName: admin
+      DisplayName: Admin User
+      Email:
+        Address: admin@noname.local
+        Verified: true
+      PreferredLanguage: en
+      Password: NonameAdmin1!
+    Machine:
+      Machine:
+        Username: noname-backend
+        Name: Noname Backend
+      MachineKey:
+        Type: 1
