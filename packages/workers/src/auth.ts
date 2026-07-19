@@ -1,24 +1,5 @@
+import { parseJwt, getKey } from "@cfworker/jwt";
 import type { Env, EdgeContext } from "./types";
-
-const JWKS_CACHE_KEY = "zitadel:jwks";
-const JWKS_CACHE_TTL = 3600;
-
-interface JwtPayload {
-  sub: string;
-  tenant_id?: string;
-  role?: string;
-  exp: number;
-  iss: string;
-}
-
-interface Jwk {
-  kty: string;
-  kid: string;
-  use: string;
-  alg: string;
-  n?: string;
-  e?: string;
-}
 
 export async function validateJwt(request: Request, env: Env): Promise<EdgeContext | Response> {
   const cookie = request.headers.get("Cookie") || "";
@@ -27,55 +8,37 @@ export async function validateJwt(request: Request, env: Env): Promise<EdgeConte
   const token = authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
 
   if (!token) {
-    const url = new URL(request.url);
-    const redirectUri = encodeURIComponent(url.pathname + url.search);
-    return Response.redirect(`${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${redirectUri}`, 302);
+    return redirectToLogin(request, env);
   }
 
   try {
-    const payload = decodeJwtPayload(token);
+    const result = await parseJwt({
+      jwt: token,
+      issuer: env.ZITADEL_ISSUER,
+      audience: "",
+      resolveKey: getKey,
+    });
 
-    if (payload.exp < Date.now() / 1000) {
-      const url = new URL(request.url);
-      const redirectUri = encodeURIComponent(url.pathname + url.search);
-      return Response.redirect(`${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${redirectUri}`, 302);
+    if (!result.valid) {
+      console.error("JWT validation failed:", result.reason);
+      return redirectToLogin(request, env);
     }
 
-    if (payload.iss !== env.ZITADEL_ISSUER) {
-      return new Response("Invalid token issuer", { status: 401 });
-    }
+    const payload = result.payload as unknown as Record<string, unknown>;
 
     return {
-      tenantId: payload.tenant_id || "",
-      userId: payload.sub,
-      role: payload.role || "customer",
+      tenantId: (payload.tenant_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
+      userId: (payload.sub as string) || "",
+      role: (payload.role as string) || "customer",
     };
-  } catch {
-    const url = new URL(request.url);
-    const redirectUri = encodeURIComponent(url.pathname + url.search);
-    return Response.redirect(`${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${redirectUri}`, 302);
+  } catch (err) {
+    console.error("JWT validation error:", err);
+    return redirectToLogin(request, env);
   }
 }
 
-export async function getJwks(env: Env): Promise<Jwk[]> {
-  const cached = await env.KV.get(JWKS_CACHE_KEY, "json");
-  if (cached) return cached as Jwk[];
-
-  const response = await fetch(`${env.ZITADEL_ISSUER}/oauth/v2/keys`);
-  const { keys } = (await response.json()) as { keys: Jwk[] };
-
-  await env.KV.put(JWKS_CACHE_KEY, JSON.stringify(keys), {
-    expirationTtl: JWKS_CACHE_TTL,
-  });
-
-  return keys;
-}
-
-function decodeJwtPayload(token: string): JwtPayload {
-  const parts = token.split(".");
-  if (parts.length !== 3) throw new Error("Invalid JWT format");
-
-  const payload = parts[1]!;
-  const decoded = atob(payload.replace(/-/g, "+").replace(/_/g, "/"));
-  return JSON.parse(decoded) as JwtPayload;
+function redirectToLogin(request: Request, env: Env): Response {
+  const url = new URL(request.url);
+  const authRequestId = encodeURIComponent(url.pathname + url.search);
+  return Response.redirect(`${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${authRequestId}`, 302);
 }

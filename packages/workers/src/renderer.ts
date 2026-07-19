@@ -1,19 +1,32 @@
 import type { Env } from "./types";
 import { getCached, setCache, cacheKey } from "./cache";
 
+async function hmacHeaders(tenantId: string, userId: string, role: string, env: Env): Promise<Record<string, string>> {
+  const payload = `${tenantId}:${userId}:${role}`;
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(env.WORKER_SERVER_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
+  const hmac = btoa(String.fromCharCode(...new Uint8Array(signature)));
+
+  return {
+    "x-tenant-id": tenantId,
+    "x-user-id": userId,
+    "x-role": role,
+    "x-auth-hmac": hmac,
+  };
+}
+
 export function isBot(request: Request): boolean {
   const ua = (request.headers.get("User-Agent") || "").toLowerCase();
   const botPatterns = [
-    "googlebot",
-    "bingbot",
-    "slurp",
-    "duckduckbot",
-    "baiduspider",
-    "yandexbot",
-    "facebot",
-    "twitterbot",
-    "applebot",
-    "linkedinbot",
+    "googlebot", "bingbot", "slurp", "duckduckbot",
+    "baiduspider", "yandexbot", "facebot", "twitterbot",
+    "applebot", "linkedinbot",
   ];
   return botPatterns.some((p) => ua.includes(p));
 }
@@ -31,22 +44,14 @@ export async function fetchSchema(
 
   try {
     const url = `${env.API_ORIGIN}/api/edge/schema/${tenantId}?segment=${segment}`;
-    const response = await fetch(url, {
-      headers: {
-        "x-tenant-id": tenantId,
-        "x-user-id": userId,
-        "x-role": role,
-      },
-    });
+    const headers = await hmacHeaders(tenantId, userId, role, env);
+    const response = await fetch(url, { headers });
     if (!response.ok) return null;
 
     const data = (await response.json()) as { data: Record<string, unknown> };
     const schema = data.data;
 
-    if (schema) {
-      await setCache(env, key, schema, 300);
-    }
-
+    if (schema) await setCache(env, key, schema, 300);
     return schema;
   } catch {
     return null;
@@ -60,25 +65,21 @@ export async function personalizeSchema(
   userId = "",
   role = "",
 ): Promise<Record<string, unknown> | null> {
-  const headers: Record<string, string> = {};
+  const reqHeaders: Record<string, string> = {};
   request.headers.forEach((value, key) => {
-    headers[key] = value;
+    reqHeaders[key] = value;
   });
 
   try {
     const url = `${env.API_ORIGIN}/api/edge/personalize`;
+    const headers = {
+      "Content-Type": "application/json",
+      ...(await hmacHeaders(tenantId, userId, role, env)),
+    };
     const response = await fetch(url, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-tenant-id": tenantId,
-        "x-user-id": userId,
-        "x-role": role,
-      },
-      body: JSON.stringify({
-        siteId: tenantId,
-        headers,
-      }),
+      headers,
+      body: JSON.stringify({ siteId: tenantId, headers: reqHeaders }),
     });
     if (!response.ok) return null;
 

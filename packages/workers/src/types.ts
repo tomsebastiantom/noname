@@ -10,4 +10,5 @@ export interface Env {
   R2: R2Bucket;
   API_ORIGIN: string;
   ZITADEL_ISSUER: string;
+  WORKER_SERVER_SECRET: string;
 }
