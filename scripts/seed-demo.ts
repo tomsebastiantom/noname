@@ -263,11 +263,12 @@ async function main() {
   await upsertLayout("admin_home", adminHomeSpec);
 
   await ensurePageContentType();
-  await ensureDemoPageEntry();
+  const pageContentId = await ensureDemoPageEntry();
+  await ensurePageRouting(pageContentId);
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
-    `/api/edge/schema/${DEMO_ORG_ID}?segment=default`,
+    `/api/edge/schema/${DEMO_ORG_ID}?url=${encodeURIComponent("/")}`,
   );
 
   if (!schema.layout) {
@@ -295,14 +296,15 @@ async function ensurePageContentType(): Promise<void> {
   console.log("Page content type created.");
 }
 
-async function ensureDemoPageEntry(): Promise<void> {
+async function ensureDemoPageEntry(): Promise<string> {
   const { data: existing } = await api<{ data: { id: string; status: string }[] }>(
     "GET",
     "/api/documents/page",
   );
-  if (existing.some((row) => row.status === "published")) {
+  const published = existing.find((row) => row.status === "published");
+  if (published) {
     console.log("Demo page entry already published.");
-    return;
+    return published.id;
   }
 
   const { data: created } = await api<{ data: { id: string } }>(
@@ -315,6 +317,24 @@ async function ensureDemoPageEntry(): Promise<void> {
   );
   await api("PUT", `/api/documents/page/${created.id}/publish`);
   console.log(`Demo page entry published (${created.id}).`);
+  return created.id;
+}
+
+async function ensurePageRouting(pageContentId: string): Promise<void> {
+  await api("PUT", "/api/documents/page/home", {
+    layoutRef: "home",
+    contentRef: `page:${pageContentId}`,
+  });
+  await api("PUT", "/api/documents/page_tree/main", {
+    pages: [
+      {
+        id: "home",
+        slug: { "en-US": "/" },
+        pageId: "home",
+      },
+    ],
+  });
+  console.log("Page routing seeded (page_tree → home → page content).");
 }
 
 main().catch((err: Error) => {

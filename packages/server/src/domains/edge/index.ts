@@ -2,6 +2,7 @@ import type { ContextEngine } from "../context/ports";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
+  PageTreeService,
   TenantSettingsService,
 } from "../documents/ports";
 import type { FlagService } from "../flags/ports";
@@ -12,6 +13,7 @@ export interface EdgeDomainDeps {
   layout: LayoutDocumentService;
   content: ContentDocumentService;
   tenantSettings: TenantSettingsService;
+  pages: PageTreeService;
   context: ContextEngine;
   flags: FlagService;
 }
@@ -23,6 +25,7 @@ export function createEdgeDomain(deps: EdgeDomainDeps) {
     deps.tenantSettings,
     deps.context,
     deps.flags,
+    deps.pages,
   );
   const routes = createEdgeRoutes(service);
   return { service, routes };

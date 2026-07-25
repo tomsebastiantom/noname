@@ -10,7 +10,8 @@ export function createEdgeRoutes(service: EdgeService) {
     const orgId = resolveOrgId(c, c.req.param("siteId"));
     const schema = await service.getSchema(orgId, {
       segment: c.req.query("segment") || "default",
-      template: c.req.query("template") || "home",
+      template: c.req.query("template") || undefined,
+      url: c.req.query("url") ?? undefined,
       contentRef: c.req.query("contentRef") ?? undefined,
       locale: c.req.query("locale") ?? undefined,
     });

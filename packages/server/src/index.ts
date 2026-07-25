@@ -91,6 +91,7 @@ const edge = createEdgeDomain({
   layout: docs.service.layout,
   content: docs.service.content,
   tenantSettings: docs.service.tenantSettings,
+  pages: docs.service.pages,
   context: ctx.engine,
   flags: flags.service,
 });

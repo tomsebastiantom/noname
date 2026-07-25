@@ -1,4 +1,9 @@
-import type { ContentDocumentService, LayoutDocumentService, TenantSettingsService } from "../documents/ports";
+import type {
+  ContentDocumentService,
+  LayoutDocumentService,
+  PageTreeService,
+  TenantSettingsService,
+} from "../documents/ports";
 import type { ContextEngine } from "../context/ports";
 import type { FlagService } from "../flags/ports";
 import type { EdgeService, GetSchemaOptions } from "./ports";
@@ -10,11 +15,25 @@ export function createEdgeService(
   tenantSettings: TenantSettingsService,
   contextEngine: ContextEngine,
   flagService: FlagService,
+  pages: PageTreeService,
 ): EdgeService {
   return {
     async getSchema(siteId, options: GetSchemaOptions = {}) {
       const segment = options.segment ?? "default";
-      const template = options.template ?? "home";
+      let template = options.template ?? "home";
+      let contentRef = options.contentRef ?? null;
+      let locale = options.locale;
+
+      if (options.url) {
+        const settings = await tenantSettings.get(siteId);
+        locale = locale ?? settings.defaultLocale ?? "en-US";
+        const route = await pages.resolveByUrl(siteId, options.url, locale);
+        if (route) {
+          template = route.layoutRef || template;
+          contentRef = route.contentRef || contentRef;
+        }
+      }
+
       const resolved = await layout.resolve(siteId, template, segment);
 
       const flags = await flagService.evaluate(siteId, {
@@ -33,8 +52,8 @@ export function createEdgeService(
       let layoutSpec = resolved?.spec ?? null;
       if (layoutSpec) {
         layoutSpec = await mergeContentIntoSpec(siteId, layoutSpec, {
-          contentRef: options.contentRef ?? resolved?.contentRef ?? null,
-          locale: options.locale,
+          contentRef: contentRef ?? resolved?.contentRef ?? null,
+          locale,
           tenantSettings,
           content,
         });

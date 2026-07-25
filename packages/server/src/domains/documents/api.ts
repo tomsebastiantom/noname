@@ -8,6 +8,7 @@ import type {
   CreateLayoutInput,
   DocumentService,
   LayoutFilters,
+  PageTreePageRef,
   UploadAssetInput,
 } from "./ports";
 
@@ -244,6 +245,18 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     if (!url) return c.json({ error: "missing ?url=" }, 400);
     const route = await pages.resolveByUrl(orgId, url, locale);
     return route ? ok(c, route) : notFound(c);
+  });
+
+  routes.put("/page_tree/main", async (c) => {
+    const orgId = getOrgId(c);
+    const body = await c.req.json<{ pages: PageTreePageRef[] }>();
+    return ok(c, await pages.upsertMainTree(orgId, body.pages));
+  });
+
+  routes.put("/page/:pageKey", async (c) => {
+    const orgId = getOrgId(c);
+    const body = await c.req.json<{ layoutRef: string; contentRef?: string | null }>();
+    return ok(c, await pages.upsertPage(orgId, c.req.param("pageKey"), body));
   });
 
   // -------------------------------------------------------------------------

@@ -371,8 +371,15 @@ export interface AssetDocumentService {
   findByHash(orgId: string, hash: string): Promise<AssetDTO | null>;
 }
 
+export interface UpsertPageInput {
+  layoutRef: string;
+  contentRef?: string | null;
+}
+
 export interface PageTreeService {
   resolveByUrl(orgId: string, url: string, locale: string): Promise<ResolvedRoute | null>;
+  upsertMainTree(orgId: string, pages: PageTreePageRef[]): Promise<PageTreeDTO>;
+  upsertPage(orgId: string, pageKey: string, input: UpsertPageInput): Promise<PageDTO>;
 }
 
 export interface DocumentService {

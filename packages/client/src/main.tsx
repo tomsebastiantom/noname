@@ -23,6 +23,12 @@ function orgIdFromHostname(hostname: string): string | null {
   return sub;
 }
 
+function isPlatformPath(pathname: string): boolean {
+  if (pathname === "/login" || pathname === "/auth/callback") return true;
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
+  return false;
+}
+
 function templateFromPath(pathname: string): string {
   if (pathname === "/login") return "login";
   if (pathname === "/auth/callback") return "login";
@@ -66,8 +72,10 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   const orgId = orgIdFromHostname(window.location.hostname);
-  const template = templateFromPath(window.location.pathname);
-  const adminRoute = isAdminTemplate(template);
+  const pathname = window.location.pathname;
+  const platformRoute = isPlatformPath(pathname);
+  const template = platformRoute ? templateFromPath(pathname) : "home";
+  const adminRoute = platformRoute && isAdminTemplate(template);
 
   const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();
@@ -96,13 +104,16 @@ function App() {
       .then((body) => body?.data ?? null)
       .catch(() => null);
 
-    const specPromise = fetch(
-      `/api/edge/schema/${orgId}?segment=default&template=${encodeURIComponent(template)}`,
-      { headers },
-    ).then((res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
-    });
+    const schemaQuery = platformRoute
+      ? `segment=default&template=${encodeURIComponent(template)}`
+      : `segment=default&url=${encodeURIComponent(pathname)}`;
+
+    const specPromise = fetch(`/api/edge/schema/${orgId}?${schemaQuery}`, { headers }).then(
+      (res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
+      },
+    );
 
     try {
       const [manifest, body] = await Promise.all([manifestPromise, specPromise]);
@@ -120,7 +131,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, template, adminRoute]);
+  }, [orgId, template, adminRoute, platformRoute, pathname]);
 
   useEffect(() => {
     void loadPage();

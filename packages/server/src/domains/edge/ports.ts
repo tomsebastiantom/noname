@@ -22,6 +22,7 @@ export interface PersonalizeResponse {
 export interface GetSchemaOptions {
   segment?: string;
   template?: string;
+  url?: string;
   contentRef?: string | null;
   locale?: string;
 }
