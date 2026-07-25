@@ -126,7 +126,28 @@ Resolution order: **tenant remote → marketplace remote → platform** (or plat
 
 ## Auth actions (platform-only)
 
-`login`, `logout`, `refreshToken` stay in **platform** `actions/auth.ts` + `auth/` helpers. Tenants do not override auth execution — they only style `LoginForm` via spec props. Edge still validates JWT the same way.
+`login`, `idpLogin`, `logout` stay in **platform** `core/actions/auth.ts` + `auth/` helpers. Tenants do not override auth execution — they only style `LoginForm` via spec props. Edge still validates JWT the same way.
+
+### Canonical pattern (do not duplicate)
+
+One path for every side effect — same as commerce `ProductCard` → `addToCart` action → API:
+
+```
+Layout spec (props only)
+  → catalog component (UI + user input)
+  → executeAction("name", params)
+  → core/actions/*.ts
+  → auth/*.ts or fetch("/api/...")
+```
+
+| Do | Don't |
+|----|-------|
+| `LoginForm` → `executeAction("login", …)` | Import `auth/login.ts` in components |
+| `SocialLoginButtons` → `executeAction("idpLogin", …)` | Call `startIdpLogin` from components |
+| Put HTTP/token logic in `auth/*.ts` once | Copy login fetch into each component |
+| Change behavior in **one** action handler | Add a second shortcut path “for now” |
+
+When auth behavior changes (new provider, MFA step, token storage), edit **`actions/auth.ts`** and **`auth/*.ts`** only — components and layout specs stay stable.
 
 ---
 
@@ -138,9 +159,9 @@ If a single tenant has hundreds of actions, split tenant remote into multiple MF
 
 ## Checklist
 
-- [ ] Split platform handlers → `actions/{auth,navigation}.ts` (+ extension actions stay in `@noname/extensions`)
-- [ ] Keep `registry.ts` thin
-- [ ] Add `login` / `logout` to catalog schemas + auth handlers
+- [x] Split platform handlers → `actions/{auth,navigation}.ts` (+ extension actions stay in `@noname/extensions`)
+- [x] Keep `registry.ts` thin
+- [x] Add `login` / `logout` / `idpLogin` to catalog schemas + auth handlers
 - [ ] Extend `catalog-loader` to merge remote `executeAction`
 - [ ] Tenant bundler exposes actions in MF catalog export
 - [ ] Document allowed action names per layout template (optional guard)
@@ -152,4 +173,4 @@ If a single tenant has hundreds of actions, split tenant remote into multiple MF
 - `packages/client/src/catalog.ts` — action schemas today
 - `packages/client/src/registry.ts` — handlers today (to split)
 - `packages/client/src/catalog-loader.ts` — remote registry merge
-- [`docs/2026-07-25/LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md) — login via `actions.login`
+- [`LOGIN-UI.md`](./LOGIN-UI.md) — login UI + social scaffold

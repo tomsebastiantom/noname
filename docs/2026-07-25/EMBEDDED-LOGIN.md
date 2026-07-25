@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Implemented  
-> **Related:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md)
+> **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)
 
 ---
 
@@ -31,7 +31,8 @@ ZITADEL still owns users, passwords, and tokens. We never store passwords in Pos
 
 ```
 Browser ({orgId}.localhost:5173/login)
-  LoginForm → POST /api/tenants/{orgId}/auth/login
+  LoginForm → executeAction("login", { email, password, redirectPath })
+  → actions.login → auth/login.ts → POST /api/tenants/{orgId}/auth/login
       { email, password, codeVerifier, clientId, redirectUri }
            │
            ▼
@@ -57,12 +58,18 @@ Everything after login is unchanged: edge JWT validation, HMAC to server, `org_i
 
 | Layer | Path | Role |
 |-------|------|------|
-| UI | `packages/client/src/core/components/LoginForm.tsx` | Email/password form (core catalog) |
-| Client auth | `packages/client/src/auth/login.ts` | POST to our API, store token |
+| Layout spec | login layout document | Props only (`title`, `redirectPath`, `providers`) — no credentials |
+| UI | `core/components/LoginForm.tsx` | Form UI; calls `executeAction("login", …)` — **not** `auth/login.ts` |
+| Action | `core/actions/auth.ts` | `login`, `idpLogin`, `logout` — single place to change auth behavior |
+| Client auth | `packages/client/src/auth/login.ts` | POST to our API, store token (used by actions only) |
 | Client session | `packages/client/src/auth/session.ts` | Token storage, `apiHeaders()` |
 | **Server auth** | `packages/server/src/domains/auth/` | ZITADEL Session + OIDC finalize |
+| **Auth config (target)** | `tenant_settings.auth` + `GET .../auth/config` | Per-org providers from Postgres — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
+| **Auth config (scaffold)** | `listEnabledProviders()` env lookup | Dev only — **not** production; replace in Phase A2 |
 | Edge | `packages/workers/src/routes/proxy.ts` | Public `POST .../auth/login` |
 | Secrets | `zitadel_keys/login-client.pat` | Server-only; created by `pnpm init:zitadel` |
+
+See [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — one canonical path; do not import `auth/login.ts` from catalog components.
 
 ---
 

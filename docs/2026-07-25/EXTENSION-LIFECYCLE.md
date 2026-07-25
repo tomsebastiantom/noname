@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Adopted — documents what each profession/vision needs beyond layout JSON  
-> **Related:** [`EXTENSIONS.md`](./EXTENSIONS.md), [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)
+> **Related:** [`EXTENSIONS.md`](./EXTENSIONS.md), [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)
 
 ---
 
@@ -19,7 +19,7 @@ An **extension** is a **bundle** of platform-shipped assets. Enabling `"commerce
 | 3 | **Components + actions** | React UI + side effects | `extensions/src/{name}/components.tsx`, `actions.ts` |
 | 4 | **Registry** | Wires schemas → handlers for json-render | `extensions/src/{name}/registry.ts` |
 | 5 | **Machine definitions** | Server workflows (cart, booking, …) | `extensions/src/{name}/machines/*.json` |
-| 6 | **Layout spec** | Which components appear on a page + prop values | Postgres document (`layout` type) |
+| 6 | **Layout spec** | Which components appear on a page + prop values / `$state` slots | Postgres document (`layout` type) |
 | 7 | **CSS / design** | How components look | Host Tailwind + shadcn (not in spec JSON) |
 
 **JSON alone (step 6)** cannot add `ProductCard` if steps 1–5 were never shipped and enabled.

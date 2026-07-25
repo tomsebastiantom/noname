@@ -106,4 +106,4 @@ packages/extensions/src/      ← @noname/extensions
 - [`EXTENSIONS.md`](./EXTENSIONS.md) — naming decision
 - [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — action handler split
 - [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) — tenant remotes
-- [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md) — login in core catalog
+- [`LOGIN-UI.md`](./LOGIN-UI.md) — login in core catalog

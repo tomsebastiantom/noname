@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Planned — **after login UI**  
-> **Start with:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md)  
+> **Start with:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · Login: [`LOGIN-UI.md`](./LOGIN-UI.md)  
 > **Related:** [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md), [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md)
 
 ---
