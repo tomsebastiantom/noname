@@ -48,7 +48,7 @@ Edit mode (merchant):
   → ADMIN? → Serve client bundle + lazy-load editor chunk
   → json-render <EditRenderer spec={...} catalog={...} />
   → Every component wrapped with click-to-edit overlay
-  → NOT ADMIN? → Redirect to Logto login
+  → NOT ADMIN? → Redirect to ZITADEL login
 ```
 
 ### Per-Component Editing
@@ -290,11 +290,11 @@ Visitor → https://store.com/products/blue-sneakers?edit=true
   ▼
 Cloudflare Edge Worker:
   1. Read JWT from cookie or Authorization header
-  2. Validate against Logto JWKS
+  2. Validate against ZITADEL JWKS (@cfworker/jwt)
   3. Extract: role
   4. role === "admin" ?
      YES → Serve client bundle + allow editor chunk to load
-     NO  → 302 redirect to Logto admin login
+     NO  → 302 redirect to ZITADEL login
           redirect_uri = https://store.com/products/blue-sneakers?edit=true
 ```
 

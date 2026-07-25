@@ -1509,13 +1509,14 @@ to domain events from all other domains for full attribution.
 
 ## Comparison with other open-source projects
 
-| Project | Content Modeling | Rich Text | Assets | Schema-First |
-|---------|-----------------|-----------|--------|-------------|
-| **Contentful** (proprietary) | Content types + field definitions. Push schema → new type. Separate content, assets, and locales. | Rich Text (structured JSON, similar node/mark model). Embedded entries + assets. | Images API (auto-resize, WebP/AVIF). Asset model with lifecycle. | Yes — define content type schema first, then create entries. |
-| **Payload CMS** (MIT) | Collection config in code (not DB). Fields + blocks. | Lexical rich text editor. Blocks for embedded references. | Upload collection with S3 adapter. Auto-resize via sharp. | Yes — collection config is the schema, defined in TypeScript. |
-| **Strapi** (MIT) | Content-Type Builder (UI or JSON). Dynamic Zones for layout blocks. | Blocks rich text (Markdown or custom). | Media Library with S3/R2 provider plugin. Responsive images via sharp. | Yes — define in admin UI, stored in DB. |
-| **Sanity** (MIT) | Schema defined in JS/TS code. Field types + validation. | Portable Text (structured JSON, predecessor to Contentful Rich Text). | Asset pipeline with transformations (hotspot, crop). CDN via Sanity's asset CDN. | Yes — schema in code. |
-| **WordPress + Gutenberg** (GPL) | Custom post types in PHP. Taxonomies + meta fields. | Gutenberg blocks (React components). Serialized HTML comments. | Media Library. Auto-resize to registered image sizes. | Sort of — custom post types are the schema, but no field-level validation. |
+| Project | Content Modeling | Rich Text | Assets | Schema-First | Locale |
+|---------|-----------------|-----------|--------|-------------|--------|
+| **Contentful** (proprietary) | Content types + field definitions. Push schema → new type. Separate content, assets, and locales. | Rich Text (structured JSON, similar node/mark model). Embedded entries + assets. | Images API (auto-resize, WebP/AVIF). Asset model with lifecycle. | Yes — define content type schema first, then create entries. | Per-locale field values. Locale list per space. |
+| **Payload CMS** (MIT) | Collection config in code (not DB). Fields + blocks. | Lexical rich text editor. Blocks for embedded references. | Upload collection with S3 adapter. Auto-resize via sharp. | Yes — collection config is the schema, defined in TypeScript. | Localization plugin. Per-field locale config. |
+| **Strapi** (MIT) | Content-Type Builder (UI or JSON). Dynamic Zones for layout blocks. | Blocks rich text (Markdown or custom). | Media Library with S3/R2 provider plugin. Responsive images via sharp. | Yes — define in admin UI, stored in DB. | i18n plugin. Per-entry locale duplication. |
+| **Sanity** (MIT) | Schema defined in JS/TS code. Field types + validation. | Portable Text (structured JSON, predecessor to Contentful Rich Text). | Asset pipeline with transformations (hotspot, crop). CDN via Sanity's asset CDN. | Yes — schema in code. | Document-level locale. Field-level localization optional. |
+| **WordPress + Gutenberg** (GPL) | Custom post types in PHP. Taxonomies + meta fields. | Gutenberg blocks (React components). Serialized HTML comments. | Media Library. Auto-resize to registered image sizes. | Sort of — custom post types are the schema, but no field-level validation. | WPML/Polylang plugins. Per-post locale copies. |
+| **noname** (this repo) | `documentTypes` schema registry + unified `documents` table. | Structured JSON node/mark tree (Contentful-style). | Cloudflare R2 + sharp variants. Hash dedup. | Yes — define content type, then create entries. | Tenant-level locale list (`tenant_settings`). Per-field `isLocalizable`. One entry, all locales in one row. |
 
 Our `documents` domain follows the **Contentful pattern**:
 - Schema-first content types stored in `documentTypes` (DB, not code)

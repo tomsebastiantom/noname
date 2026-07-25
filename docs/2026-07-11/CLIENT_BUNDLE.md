@@ -1,20 +1,30 @@
 # Client Bundle — Frontend Setup & Local Dev Plan
 
-## What Exists (Backend + Edge)
+> **Updated 2026-07-25.** Auth provider is ZITADEL (see `docs/2026-07-13/AUTH.md`).
+
+## What Exists (Backend + Edge + Client)
 
 ### API Server (`packages/server`)
-- Hono + Node.js HTTP server
+- Hono + Node.js HTTP server — **9 DDD domains**
 - Produces all JSON specs: layouts, content, flags, segments
-- Routes: `/api/edge/schema/:siteId`, `/api/edge/personalize`, etc.
-- Runs locally via `pnpm dev` (tsx watch on port from env)
+- Routes: `/api/edge/schema/:siteId`, `/api/edge/personalize`, `/api/tenants/:id/catalog`, etc.
+- Runs locally via `pnpm dev` (tsx watch on port 3000)
 
 ### Edge Worker (`packages/workers`)
 - Cloudflare Workers (Hono router)
-- Validates JWT (placeholder — real `jose` validation TODO)
+- **JWT validation** via `@cfworker/jwt` + ZITADEL JWKS OIDC discovery
+- **HMAC signing** to API server (`WORKER_SERVER_SECRET`)
 - KV cache for JSON specs (per tenant:segment:path)
 - Serves R2 objects at `/_assets/*` (immutable cache, 1 year)
-- Bot detection → placeholder HTML (real React 19 SSR TODO)
-- Runs locally via `wrangler dev`
+- Bot detection → placeholder HTML (**React 19 SSR still TODO**)
+- Runs locally via `wrangler dev` (port 8787)
+
+### Client Bundle (`packages/client`) — scaffold exists
+- React 19 + json-render `<Renderer>` in `main.tsx`
+- Platform component catalog (Hero, ProductCard, Grid, Stack, Text, Button, Image)
+- Module Federation runtime for tenant/marketplace catalogs (`catalog-loader.ts`, `mf-init.ts`)
+- rspack dev server on port 5173, proxies `/api` → `:3000`
+- **Not yet verified:** production rspack build, seed data, end-to-end render in browser
 
 ### CLI (`packages/cli`)
 - `noname dev` — stub
@@ -22,30 +32,30 @@
 
 ---
 
-## What Is Missing — The Client Bundle
+## What Is Still Missing
 
-There is **no frontend package**. A visitor hitting the site today gets:
+A visitor hitting the site via the **edge worker alone** still gets:
 - **Bot**: A `<pre>` dump of the raw JSON spec (placeholder in `api.ts:37`)
 - **Human**: Raw JSON response from `c.json(schema)` (`api.ts:40`)
 
-The browser has no JS to render that JSON into a UI. The client bundle is what makes that happen.
+The **client dev server** can render JSON into UI once seed data exists, but there is no deployed R2 bundle yet and no browser login flow wired.
 
-### What the Client Bundle Needs
+### Client package structure (implemented)
 
 ```
 packages/client/
 ├── package.json
 ├── rspack.config.mjs
 ├── tsconfig.json
-├── index.html              (entry point for local dev)
+├── index.html
 └── src/
-    ├── main.tsx            (React root, json-render <Renderer>)
-    ├── catalog.ts          (Component catalog — maps json-render types → React components)
+    ├── main.tsx            ← React root, json-render <Renderer>
+    ├── catalog.ts          ← Zod-validated component catalog
+    ├── registry.ts         ← Platform component registry
+    ├── catalog-loader.ts   ← Module Federation remote loading
+    ├── mf-init.ts          ← MF runtime init
     └── components/
-        ├── Hero.tsx
-        ├── ProductCard.tsx
-        ├── AddToCart.tsx
-        └── ...             (commerce component catalog)
+        └── index.tsx       ← Hero, ProductCard, Grid, Stack, Text, Button, Image
 ```
 
 ### How It Works
@@ -58,9 +68,9 @@ Browser requests https://yogastore.com/products/yoga-mat
              │
              ├── GET /_assets/*  ──→ R2 (static JS/CSS, immutable)
              │
-             └── GET /:siteId/*  ──→ JWT check → KV cache?
+             └── GET /:siteId/*  ──→ ZITADEL JWT check → KV cache?
                     │                    │ Hit → return JSON
-                    │                    │ Miss → fetch from API server
+                    │                    │ Miss → fetch from API server (HMAC headers)
                     │
                     ▼
              API Server (packages/server)
@@ -94,46 +104,54 @@ Browser renders:
 
 ---
 
-## How Local Dev Works Right Now
+## How Local Dev Works
 
 ### Running the backend
 ```bash
 # Terminal 1: API server
-pnpm dev                              # starts @noname/server on port from env
+pnpm dev                              # starts @noname/server on port 3000
 ```
 
-### Running the edge worker
+### Running the client (recommended for UI dev)
 ```bash
-# Terminal 2: Edge worker (if wrangler configured)
-cd packages/workers
-wrangler dev                          # local CF Workers runtime
+# Terminal 2: Client dev server (proxies /api → server)
+pnpm --filter @noname/client dev      # rspack HMR on port 5173
 ```
 
-### What you can test
-- `GET http://localhost:3000/health` → server health
-- `GET http://localhost:3000/api/edge/schema/test-site?segment=default` → JSON spec
-- `GET http://localhost:8787/test-site` (wrangler port) → worker proxies to server → returns JSON
+### Running the edge worker (optional — full auth path)
+```bash
+# Terminal 3: Edge worker
+cd packages/workers && wrangler dev   # port 8787
+```
 
-### What you CANNOT test
-- No browser renders the JSON into a UI
-- No `/_assets/*` serves anything (R2 is empty)
-- No JWT validation works (placeholder decode only)
+### What you can test today
+- `GET http://localhost:3000/health` → server health
+- `GET http://localhost:3000/api/edge/schema/test-site?segment=default` → JSON spec (with `x-tenant-id` header in dev)
+- `http://localhost:5173` → client bundle loads, fetches spec + catalog manifest
+- `GET http://localhost:8787/test-site` (wrangler) → worker validates JWT, proxies to server
+
+### What you CANNOT test yet
+- No seed/demo layout + content data for a first render
+- No `/_assets/*` in production (R2 empty until build + upload)
+- No browser OIDC login (ZITADEL OIDC app must be created manually)
+- No bot SSR (placeholder JSON dump only)
 
 ---
 
-## What Needs To Be Built
+## What Needs To Be Built Next
 
-| Step | Package | What |
-|------|---------|------|
-| 1 | `packages/client` | Scaffold React + rspack project with json-render runtime |
-| 2 | `packages/client` | Build component catalog (Hero, ProductCard, AddToCart, etc.) |
-| 3 | `packages/client` | Wire `main.tsx` to fetch JSON from edge worker, render via `<Renderer>` |
-| 4 | Root `package.json` | Add `build` script: server tsc + client rspack build |
-| 5 | Deployment script | Upload client `dist/` to R2 after build |
-| 6 | `packages/workers` | Wire real JWT validation (jose library) |
-| 7 | `packages/workers` | Wire real React 19 SSR for bots (renderer.ts) |
+| Step | Package | What | Status |
+|------|---------|------|--------|
+| 1 | `packages/client` | Scaffold React + rspack + json-render | ✅ Done |
+| 2 | `packages/client` | Platform component catalog | ✅ Done |
+| 3 | `packages/client` | Wire `main.tsx` to fetch spec + render | ✅ Done |
+| 4 | Seed data | Demo layout + product content in documents domain | ❌ TODO |
+| 5 | Root `package.json` | Verify `pnpm build` across packages | ⚠️ Unverified |
+| 6 | Deployment script | Upload client `dist/` to R2 after build | ❌ TODO |
+| 7 | `packages/workers` | React 19 SSR for bots | ❌ TODO |
+| 8 | Auth | ZITADEL OIDC client app + SPA login flow | ⚠️ Manual setup |
 
-### Local dev after client exists
+### Local dev (full stack)
 ```bash
 # Terminal 1: API server
 pnpm --filter @noname/server dev       # port 3000
@@ -141,19 +159,19 @@ pnpm --filter @noname/server dev       # port 3000
 # Terminal 2: Client dev server
 pnpm --filter @noname/client dev       # rspack HMR on port 5173
 
-# Terminal 3: Edge worker
+# Terminal 3: Edge worker (optional)
 cd packages/workers && wrangler dev    # port 8787, proxies to server
 ```
 
-Browser at `http://localhost:5173` loads the client bundle, which fetches JSON from the worker (`http://localhost:8787/site-id`), which fetches from the server (`http://localhost:3000/api/edge/schema/site-id`).
+Browser at `http://localhost:5173` loads the client bundle, which fetches JSON from the server (via rspack proxy) or from the worker at `http://localhost:8787/site-id`.
 
 ---
 
 ## Current Status
 
 ```
-Server (packages/server)   ████████████████████ ✅ Full DDD, 8 domains
-Edge Worker (workers)       ████████████████░░░░ ✅ Routes + cache + auth stub, SSR TODO
-Client Bundle (packages/client) ░░░░░░░░░░░░░░░░░░░░ ❌ Not started
-CLI (packages/cli)          ████░░░░░░░░░░░░░░░░ 🟡 Stubs only
+Server (packages/server)      ████████████████████ ✅ Full DDD, 9 domains
+Edge Worker (workers)         ██████████████████░░ ✅ JWT + HMAC + cache. SSR TODO
+Client Bundle (packages/client) ████████████░░░░░░░░ 🟡 Scaffold + MF loader. Build unverified
+CLI (packages/cli)            ████░░░░░░░░░░░░░░░░ 🟡 Stubs only
 ```

@@ -1,5 +1,8 @@
 # Plan: Finalize documents-domain.md Design Document
 
+**Status: COMPLETE (2026-07-25)** — All edits below were applied to `docs/2026-07-10/documents-domain.md`.
+The comparison table Locale column was added in the final pass.
+
 ## Goal
 
 Update `docs/2026-07-10/documents-domain.md` to reflect all finalized design decisions. The doc is the single source of truth for content modeling, rich text, assets, variants, segments, locales, and page routing.
@@ -127,13 +130,13 @@ Add a "Locale" column to the comparison table.
 ## Validation Checklist
 
 After edits, verify:
-- [ ] No `localized: true` or `localized: false` anywhere in the doc
-- [ ] No `slug` as a field type in the catalog table or schema examples
-- [ ] No `parentVersion` or `parent_version` anywhere
-- [ ] No "(Phase 2)" on variant inheritance
-- [ ] `isLocalizable` used consistently in all field definitions
-- [ ] `baseVersion` in schema section and conflict detection section
-- [ ] Tenant-level locale model explained with Option A/B table
-- [ ] Page tree section exists with three-layer concrete example
-- [ ] Summary table has locale, isLocalizable, page tree, and variant inheritance rows
-- [ ] Comparison table includes locale column
+- [x] No `localized: true` or `localized: false` anywhere in the doc
+- [x] No `slug` as a field type in the catalog table or schema examples
+- [x] No `parentVersion` or `parent_version` anywhere (only historical mention in baseVersion section)
+- [x] No "(Phase 2)" on variant inheritance
+- [x] `isLocalizable` used consistently in all field definitions
+- [x] `baseVersion` in schema section and conflict detection section
+- [x] Tenant-level locale model explained with Option A/B table
+- [x] Page tree section exists with three-layer concrete example
+- [x] Summary table has locale, isLocalizable, page tree, and variant inheritance rows
+- [x] Comparison table includes locale column

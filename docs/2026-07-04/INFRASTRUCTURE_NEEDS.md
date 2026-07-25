@@ -1,5 +1,7 @@
 # Core Infrastructure Services — What We Need To Run This Platform
 
+> **Updated 2026-07-25.** Auth provider: **ZITADEL** (migrated from Logto, 2026-07-13). See `docs/2026-07-13/AUTH.md`.
+
 **Date:** 2026-07-04
 **Scope:** Production-grade infrastructure for the noname platform (Phase 0 → Phase 4).
 **Context:** The platform runs as a self-hosted monorepo (Docker Compose for local dev, K8s for production). Every service must be scalable, observable, and runnable on our own infrastructure.
@@ -13,10 +15,10 @@
 | Service | Purpose | Phase | Why We Need It | What Happens If Missing |
 |---------|---------|-------|----------------|------------------------|
 | **Postgres 16** | Primary relational DB — JSONB for content, relational for ACID (orders/payments/inventory) | 0 | Stores everything: content entries (JSONB), machine definitions (JSONB), orders, payments, bookings, user metadata, store settings. One DB with multiple schemas per tenant. | Platform cannot function. Every domain (content, spec, machines, analytics, agent) relies on Postgres. |
-| **Logto** | Auth (self-hosted, MPL-2.0) | 0 | Multi-tenant auth. One Logto instance serves two flows: platform admins (store owners) + store customers (buyers). JWT validation at Cloudflare edge. Pre-built sign-in UIs, MFA, SSO, passwordless. | No user login. No tenant isolation. No admin dashboard access. Must build auth UI from scratch. |
+| **ZITADEL** | Auth (self-hosted) | 0 | Multi-tenant auth. One ZITADEL instance serves platform admins + store customers. JWT validation at Cloudflare edge via `@cfworker/jwt`. Console at `:8080`. | No user login. No tenant isolation. Must build auth UI from scratch. |
 | **DragonflyDB / Redis** | In-memory cache + job queue backend | 0 → Phase 1+ for queues | Cart sessions (TTL), rate limiting counters, state machine locks. BullMQ queue backend when async scale demanded (Phase 1+). | Cart data lost between requests. No rate limiting. No async job processing (emails, agent tasks, Nango side effects block the request path). |
 | **ClickHouse** | Columnar analytics/time-series DB | 0 | Schema-level event attribution (schemaId + variantId + contextHash). 100x faster than Postgres for aggregation queries. 5-10x compression. ML training data, dashboard aggregations, conversion funnels. | Analytics queries crush Postgres at scale. No ML feedback loop. No per-variant conversion tracking. Attribution blind. |
-| **Cloudflare Workers** | Edge layer — JWT validation, SEO prerender, per-segment JSON caching | 0 | Stops invalid requests before they hit origin (JWT validation <5ms). Caches JSON specs per segment hash (sub-50ms delivery). Renders SEO pages to HTML via React 19 stream. Auth redirect to Logto login on invalid token. | All requests hit origin server. No edge caching. 200ms+ latency globally. No SEO prerendering. JWT validation happens server-side, costing CPU per rejected request. |
+| **Cloudflare Workers** | Edge layer — JWT validation, SEO prerender, per-segment JSON caching | 0 | Stops invalid requests before they hit origin (JWT validation <5ms). Caches JSON specs per segment hash (sub-50ms delivery). Renders SEO pages to HTML via React 19 stream. Auth redirect to ZITADEL login on invalid token. | All requests hit origin server. No edge caching. 200ms+ latency globally. No SEO prerendering. JWT validation happens server-side, costing CPU per rejected request. |
 | **Cloudflare R2** | Media/file storage + client bundle hosting | 0 | Zero egress fees. Global CDN. Images auto-format/resize. Immutable JS client bundle (json-render runtime + commerce catalog) versioned and cached worldwide. | Pay egress fees elsewhere (S3). Slower global delivery. No CDN image optimization. |
 | **Cloudflare Stream** | Video hosting + transcoding | 0 (optional) / 1+ | Auto-transcodes to HLS. Adaptive bitrate. Built-in player. Thumbnails, captions. Zero egress. | Must handle video transcoding ourselves or pay per-stream fees elsewhere. |
 | **BullMQ** | Async job queue (Redis-backed) | Phase 1+ | AI agent tasks, analytics event ingestion (event → ClickHouse), email sending, Nango side effects, video transcoding. Durable, retries, delays, dead-letter queue. | Blocking request path for heavy work. No retry/durability for AI agent tasks. Lost analytics events on spike. |
@@ -44,7 +46,7 @@
 | Database | Used By | Stores |
 |----------|---------|--------|
 | `app` | Platform server (packages/server) | Content entries (products, pages, blog — JSONB), machine definitions (JSONB), layout templates/variants (JSONB), orders/payments/inventory (relational tables for ACID), user metadata, store settings, agent tasks, segments, context cache |
-| `logto` | Logto auth service | User identities, passwords (hashed), OAuth tokens, organizations, roles, MFA configs, sessions, audit logs |
+| `zitadel` | ZITADEL auth service | User identities, passwords (hashed), OAuth tokens, organizations, roles, MFA configs, sessions, audit logs |
 | `nango` | Nango (Phase 2+) | Integration configs, OAuth connections/tokens, sync records, action execution logs |
 
 **Scaling path:**
@@ -54,7 +56,7 @@
 
 **Vela adds:** Git-like branching for DBs (clone prod → test migrations safely), RBAC/IAM, auto-generated REST/GraphQL APIs, edge functions, file storage, AI vector embeddings toolkit. It wraps Postgres with a full platform layer — but the core is still vanilla Postgres underneath.
 
-**Vela is the foundational infrastructure layer.** The entire stack runs on Vela-managed K8s Postgres with tenant isolation via database-level cloning (not just column-level `storeId` filtering). Each store gets its own isolated Postgres branch if needed, with independent compute scaling. Vela's built-in Keycloak-based auth is available but we intentionally use Logto instead (see auth decision below).
+**Vela is the foundational infrastructure layer.** The entire stack runs on Vela-managed K8s Postgres with tenant isolation via database-level cloning (not just column-level `storeId` filtering). Each store gets its own isolated Postgres branch if needed, with independent compute scaling. Vela's built-in Keycloak-based auth is available but we intentionally use ZITADEL instead (see auth decision below).
 
 ### 2. DragonflyDB → Redis
 
@@ -103,7 +105,7 @@ events (
 - Phase 1+: ClickHouse cluster with sharding per tenant group
 - Phase 3+: Tiered storage (hot data in memory, cold data on object storage)
 
-### 4. Logto — Auth Service
+### 4. ZITADEL — Auth Service
 
 **Role:** Identity provider for platform + store customers. Self-hosted Docker. MPL-2.0 license.
 
@@ -111,17 +113,17 @@ events (
 
 | Feature | Provided By | We Build |
 |---------|-------------|----------|
-| Login/register pages | Logto pre-built UI | Nothing — embed via iframe/redirect |
-| Password reset | Logto email templates | Nothing |
-| Social login (Google, Apple, GitHub) | Logto connectors | Nothing |
-| Magic link passwordless | Logto built-in | Nothing |
-| MFA (TOTP, SMS, authenticator) | Logto built-in | Configurable per org |
-| Multi-tenancy (each store = org) | Logto organizations | Store creation creates Logto org via API |
-| Admin console (user management) | Logto admin UI | Nothing — use Logto's console |
-| JWT issuance/validation | Logto | Cloudflare Worker validates JWT at edge (calls Logto JWKS endpoint) |
+| Login/register pages | ZITADEL pre-built UI | Nothing — embed via iframe/redirect |
+| Password reset | ZITADEL email templates | Nothing |
+| Social login (Google, Apple, GitHub) | ZITADEL connectors | Nothing |
+| Magic link passwordless | ZITADEL built-in | Nothing |
+| MFA (TOTP, SMS, authenticator) | ZITADEL built-in | Configurable per org |
+| Multi-tenancy (each store = org) | ZITADEL organizations | Store creation creates ZITADEL org via API |
+| Admin console (user management) | ZITADEL admin UI | Nothing — use ZITADEL's console |
+| JWT issuance/validation | ZITADEL | Cloudflare Worker validates JWT at edge (calls ZITADEL JWKS endpoint) |
 
 **Infrastructure needs:**
-- Postgres database `logto` (separate from `app` DB — PII isolation)
+- Postgres database `zitadel` (separate from `app` DB — PII isolation)
 - Docker container with persistent volume for `/app/data`
 - Accessible from Cloudflare Workers (JWT validation fetches JWKS)
 - Accessible from platform server (admin API calls)
@@ -133,7 +135,7 @@ events (
 **Worker 1 — Auth Gateway:**
 ```
 Request → Read JWT from cookie/Authorization header
-  → Validate signature against Logto JWKS
+  → Validate signature against ZITADEL JWKS
   → Check expiry
   → Valid? → Extract tenantId, userId, role → Forward to API server
   → Invalid? → HTTP 302 → https://auth.{store}.com/sign-in?redirect_uri={original_url}
@@ -157,7 +159,7 @@ Request for SEO-critical page (product, collection, blog)
          → Stream HTML → Cache in KV → Return
 ```
 
-**Dependencies:** Workers KV (cache), R2 (media), Logto JWKS endpoint
+**Dependencies:** Workers KV (cache), R2 (media), ZITADEL JWKS endpoint
 
 ### 6. Cloudflare R2 — Media + Bundle Hosting
 
@@ -228,12 +230,12 @@ Request for SEO-critical page (product, collection, blog)
 │  │ POSTGRES (Vela or        │   │ DRAGONFLYDB (Redis compat)  │  │
 │  │ StatefulSet)             │   │ StatefulSet, 3 replicas     │  │
 │  │  ├─ DB: app              │   │  ├─ Cart sessions           │  │
-│  │  ├─ DB: logto            │   │  ├─ Rate limit counters     │  │
+│  │  ├─ DB: zitadel            │   │  ├─ Rate limit counters     │  │
 │  │  └─ DB: nango            │   │  ├─ State machine locks     │  │
 │  └─────────────────────────┘   │  └─ BullMQ queues (Phase 1+) │  │
 │                                 └─────────────────────────────┘  │
 │  ┌─────────────────────────┐   ┌─────────────────────────────┐  │
-│  │ CLICKHOUSE               │   │ LOGTO (Deployment)          │  │
+│  │ CLICKHOUSE               │   │ ZITADEL (Deployment)          │  │
 │  │ StatefulSet, 2 replicas  │   │  ├─ Auth UI                 │  │
 │  │  ├─ Event ingestion      │   │  ├─ JWKS endpoint           │  │
 │  │  ├─ ML training queries  │   │  └─ Admin console           │  │
@@ -243,7 +245,7 @@ Request for SEO-critical page (product, collection, blog)
 │  ┌─────────────────────────┐   ┌─────────────────────────────┐  │
 │  │ PLATFORM SERVER          │   │ NANGO (Phase 2+)            │  │
 │  │ Deployment, 3 replicas   │   │ Deployment, 2 replicas      │  │
-│  │  ├─ 8 DDD domains        │   │  ├─ OAuth token mgmt       │  │
+│  │  ├─ 9 DDD domains        │   │  ├─ OAuth token mgmt       │  │
 │  │  ├─ Hono API routes      │   │  ├─ Sync/action workers    │  │
 │  │  └─ In-memory event bus  │   │  └─ Connect UI              │  │
 │  └─────────────────────────┘   └─────────────────────────────┘  │
@@ -265,7 +267,7 @@ Request for SEO-critical page (product, collection, blog)
 │  ┌───────────────────────────┐   ┌───────────────────────────┐  │
 │  │ WORKER: Auth Gateway      │   │ WORKER: Schema Delivery    │  │
 │  │  ├─ JWT validation (<5ms) │   │  ├─ KV: JSON specs cache   │  │
-│  │  ├─ Redirect to Logto     │   │  ├─ KV: Prerendered HTML   │  │
+│  │  ├─ Redirect to ZITADEL     │   │  ├─ KV: Prerendered HTML   │  │
 │  │  └─ Attach tenantId/userId│   │  └─ SEO renderer (React 19)│  │
 │  └───────────────────────────┘   └───────────────────────────┘  │
 │                                                                   │
@@ -281,10 +283,10 @@ Request for SEO-critical page (product, collection, blog)
 
 | Service | Prod Equivalent | Local Dev | Notes |
 |---------|----------------|-----------|-------|
-| Postgres | Vela on K8s / K8s StatefulSet | Docker container (port 5432) | 3 DBs: app, logto, nango. Script at `scripts/init-dbs.sh` |
+| Postgres | Vela on K8s / K8s StatefulSet | Docker container (port 5432) | 3 DBs: app, zitadel, nango. Script at `scripts/init-dbs.sh` |
 | DragonflyDB | K8s StatefulSet (3 replicas) | Docker container (port 6379) | Redis-compatible. No password for local dev. |
 | ClickHouse | K8s StatefulSet (2 replicas) | Docker container (port 8123/9000) | Analytics queries work locally. |
-| Logto | K8s Deployment | Docker container (port 3001) | Self-hosted. Pre-built UI included. |
+| ZITADEL | K8s Deployment | Docker container (port 8080) | Self-hosted. Console + OIDC. |
 | Nango | K8s Deployment (Phase 2+) | Docker container (port 3003, profile: integrations) | Optional. Separate DB `nango`. |
 | Platform Server | K8s Deployment (3 replicas) | Docker container (`app`, port 3000) | `build: .` from Dockerfile. |
 | Cloudflare Workers | Global edge workers | `wrangler dev` | Local dev via wrangler CLI. |
@@ -299,7 +301,7 @@ Request for SEO-critical page (product, collection, blog)
 | Postgres | Docker, single instance | >50 stores → K8s StatefulSet + read replica. >500 stores → Vela | Phase 1-2: K8s StatefulSet + PgBouncer. Phase 3-4: Vela (compute/storage separation, instant branching per tenant, per-store DB isolation) | Phase 1 → Phase 3 |
 | DragonflyDB | Docker, single instance | >1000 concurrent cart sessions, >100 agent tasks/min | K8s StatefulSet, 3 replicas, sentinel for HA | Phase 1 |
 | ClickHouse | Docker, single instance | >100M analytics events/day | ClickHouse cluster with sharding per tenant group, tiered storage | Phase 2 |
-| Logto | Docker, single instance | >10k concurrent users, global latency >100ms | Multi-region Logto deployment, regional Postgres replicas for JWKS | Phase 3 |
+| ZITADEL | Docker, single instance | >10k concurrent users, global latency >100ms | Multi-region ZITADEL deployment, regional Postgres replicas for JWKS | Phase 3 |
 | BullMQ | Not used (Phase 0) | >10 async jobs/min, >100 events/sec | BullMQ with Redis cluster, dedicated worker pods per queue type | Phase 1 |
 | Nango | Profile: integrations (Phase 0) | >10 active integrations/store, >100 sync jobs/day | K8s deployment, 2 replicas, dedicated Redis instance (separate from platform Redis) | Phase 2 |
 | Cloudflare Workers | 3 workers (auth, schema, SEO) | Global traffic >1M req/day, >50ms p95 in any region | Additional worker routes per region, Workers for Platforms (multi-tenant isolation) | Phase 2 |
@@ -308,7 +310,7 @@ Request for SEO-critical page (product, collection, blog)
 
 | Phase | Stores | Setup | Why |
 |-------|--------|-------|-----|
-| **Phase 0** | 0 (internal) | Docker container | Single instance, 3 DBs (app, logto, nango). Zero ops overhead. |
+| **Phase 0** | 0 (internal) | Docker container | Single instance, 3 DBs (app, zitadel, nango). Zero ops overhead. |
 | **Phase 1** | 50 | K8s StatefulSet + 1 read replica | Read replica offloads analytics queries from primary. PgBouncer for connection pooling. Standard Helm chart. |
 | **Phase 2** | 200 | K8s StatefulSet + 2 read replicas + PgBouncer + Patroni (HA) | Patroni handles automatic failover. Multiple read replicas distribute query load across domains. Still column-level tenant isolation (`storeId`). |
 | **Phase 3** | 500 | Consider Vela | At 500 stores, tenant isolation via `storeId` columns becomes cumbersome. Some high-value tenants want dedicated staging/QA environments. Vela's instant cloning + compute/storage separation becomes valuable. But K8s StatefulSet still works if tenant diversity is low. |
@@ -345,7 +347,7 @@ Nango's self-hosted docker-compose requires 3 services we already provide:
 | Postgres | $0 (Docker) | $50-100 (managed K8s PV) | $300-500 (Vela or managed Postgres cluster) |
 | DragonflyDB | $0 (Docker) | $20-50 (K8s pod) | $100-200 (3-node Redis cluster) |
 | ClickHouse | $0 (Docker) | $50-100 (K8s pod + PV) | $200-500 (ClickHouse cluster + tiered storage) |
-| Logto | $0 (Docker, MPL-2.0) | $0-30 (K8s pod + PV) | $50-100 (multi-region deployment) |
+| ZITADEL | $0 (Docker, self-hosted) | $0-30 (K8s pod + PV) | $50-100 (multi-region deployment) |
 | Cloudflare Workers | $0 (free tier) | $5-30 (1M+ req) | $50-100 (10M+ req) |
 | Cloudflare R2 | $0 (free tier) | $5-20 (100GB) | $50-100 (1TB, zero egress) |
 | Cloudflare Stream | $0 (not used) | $10-50 (100 min stored) | $50-200 (1000 min stored) |
@@ -386,14 +388,14 @@ With Vela as the K8s Postgres platform, the entire infrastructure reduces to 4 l
 │   ├─ DB cloning: instant tenant isolation, staging/QA branches    │
 │   ├─ Compute/storage separation: scale CPU/IOPS independently     │
 │   ├─ Auto APIs: REST/GraphQL generated from schema                │
-│   ├─ Auth (built-in Keycloak): available but we use Logto instead │
+│   ├─ Auth (built-in Keycloak): available but we use ZITADEL instead │
 │   ├─ File storage: S3-compatible, zero egress                     │
 │   └─ AI vector toolkit: pgvector embeddings                       │
 │                                                                   │
 │   Extensions (runs inside Vela K8s or alongside):                 │
-│   ├─ LOGTO (auth service): multi-tenant, pre-built UIs, MFA       │
-│   │   Uses Vela Postgres (DB: logto)                              │
-│   ├─ PLATFORM SERVER (Hono + Node.js): 8 DDD domains              │
+│   ├─ ZITADEL (auth service): multi-tenant, pre-built UIs, MFA       │
+│   │   Uses Vela Postgres (DB: zitadel)                              │
+│   ├─ PLATFORM SERVER (Hono + Node.js): 9 DDD domains              │
 │   │   Uses Vela Postgres (DB: app), DragonflyDB, ClickHouse       │
 │   ├─ NANGO (Phase 2+, integrations): 800+ APIs                    │
 │   │   Uses Vela Postgres (DB: nango), DragonflyDB for queues      │
@@ -402,33 +404,33 @@ With Vela as the K8s Postgres platform, the entire infrastructure reduces to 4 l
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Key insight:** Vela replaces managing raw Postgres containers/StatefulSets. Everything else (DragonflyDB, ClickHouse, Logto, Nango, server, workers) runs as services on top of Vela's K8s platform — they consume Vela-managed Postgres via connection strings, DragonflyDB for caching/queues, ClickHouse for analytics. The entire infrastructure becomes: **Vela (foundation) + 3 supporting services (DragonflyDB, ClickHouse, Cloudflare Edge) + application services (Logto, Nango, platform server, workers).**
+**Key insight:** Vela replaces managing raw Postgres containers/StatefulSets. Everything else (DragonflyDB, ClickHouse, ZITADEL, Nango, server, workers) runs as services on top of Vela's K8s platform — they consume Vela-managed Postgres via connection strings, DragonflyDB for caching/queues, ClickHouse for analytics. The entire infrastructure becomes: **Vela (foundation) + 3 supporting services (DragonflyDB, ClickHouse, Cloudflare Edge) + application services (ZITADEL, Nango, platform server, workers).**
 
-**Why Logto over Vela's built-in Keycloak:**
+**Why ZITADEL over Vela's built-in Keycloak:**
 - **Vela uses Keycloak because Vela is a platform for platforms** — it manages multiple organizations, projects, and database branches across different teams. Keycloak's enterprise IAM model (realms, federated SSO, fine-grained RBAC across organizations) maps naturally to a "database platform for developers." Vela's README describes it as "centralized authentication and identity provider, shared globally across all organizations and projects" — this is platform-level auth for managing the Vela instance itself and its tenants.
-- **We use Logto because we're a SaaS application, not a database platform** — our auth is B2C (store customers) + B2B (store owners). Logto is purpose-built for multi-tenant SaaS: pre-built sign-in/admin UIs per tenant organization, magic link passwordless, MFA, social login connectors (Google/Apple/GitHub), and org-per-store isolation that maps 1:1 to our "each store = a Logto organization" model.
+- **We use ZITADEL because we're a SaaS application, not a database platform** — our auth is B2C (store customers) + B2B (store owners). ZITADEL is purpose-built for multi-tenant SaaS: pre-built sign-in/admin UIs per tenant organization, magic link passwordless, MFA, social login connectors (Google/Apple/GitHub), and org-per-store isolation that maps 1:1 to our "each store = a ZITADEL organization" model.
 - Keycloak is enterprise IAM (Apache 2.0, Java-based, 21k stars) — designed for corporate SSO, complex realm hierarchies, federation protocols (SAML, OIDC). Weighs hundreds of MB, needs Java runtime, configuration is XML-heavy. Overkill for "store owner logs in, store customer logs in."
-- Logto is lightweight (MPL-2.0, TypeScript, 12k stars) — Docker image ~200MB, Node.js runtime, configuration via API/admin UI. Designed exactly for "one SaaS platform with many tenant orgs, each with their own branded sign-in."
-- We already committed to Logto in ARCHITECTURE_DECISIONS.md and docker-compose.yml.
-- **If we moved to Vela, we'd still run Logto alongside it** — Vela's Keycloak handles platform-level auth (who can create DB branches, manage projects). Our Logto handles application-level auth (store owners, store customers). Different concerns, different identity providers. Vela's Keycloak becomes available as a bonus, not a replacement.
+- ZITADEL is lightweight (MPL-2.0, TypeScript, 12k stars) — Docker image ~200MB, Node.js runtime, configuration via API/admin UI. Designed exactly for "one SaaS platform with many tenant orgs, each with their own branded sign-in."
+- We already committed to ZITADEL in ARCHITECTURE_DECISIONS.md and docker-compose.yml.
+- **If we moved to Vela, we'd still run ZITADEL alongside it** — Vela's Keycloak handles platform-level auth (who can create DB branches, manage projects). Our ZITADEL handles application-level auth (store owners, store customers). Different concerns, different identity providers. Vela's Keycloak becomes available as a bonus, not a replacement.
 
-### Strategic Option: Fork Vela to Replace Keycloak with Logto
+### Strategic Option: Fork Vela to Replace Keycloak with ZITADEL
 
-**Vela is Apache 2.0 licensed.** We can modify it to use Logto as the auth provider instead of Keycloak. This unifies the entire stack under one auth system — no dual identity providers, no Keycloak Java runtime, no XML realm configuration.
+**Vela is Apache 2.0 licensed.** We can modify it to use ZITADEL as the auth provider instead of Keycloak. This unifies the entire stack under one auth system — no dual identity providers, no Keycloak Java runtime, no XML realm configuration.
 
 **What this gives us:**
-- **One auth provider for everything** — platform-level (who manages Vela DB branches) and application-level (store owners + customers) both use Logto. Single user directory, single admin console, single JWKS endpoint for edge validation.
+- **One auth provider for everything** — platform-level (who manages Vela DB branches) and application-level (store owners + customers) both use ZITADEL. Single user directory, single admin console, single JWKS endpoint for edge validation.
 - **No Keycloak operational burden** — eliminates Java runtime, XML realm configs, Keycloak-specific upgrade/migration headaches. Our entire infra auth stack is Node.js/TypeScript.
-- **Reuse our Logto expertise** — we already know Logto's API, org model, JWT structure. Vela's auth integration points (API gateway Kong, Studio UI, Controller) are known interfaces we can redirect to Logto.
+- **Reuse our ZITADEL expertise** — we already know ZITADEL's API, org model, JWT structure. Vela's auth integration points (API gateway Kong, Studio UI, Controller) are known interfaces we can redirect to ZITADEL.
 
 **What this costs:**
-- **Engineering effort to fork and modify Vela** — Vela's auth integration touches Kong API gateway (JWT validation middleware), Vela Studio (admin UI auth), and Vela Controller (API auth). Each integration point needs Logto equivalents. Estimate 2-4 weeks of Rust/TypeScript work.
-- **Ongoing fork maintenance** — every Vela upstream release needs merge/rebase. Keycloak-specific changes won't apply; we maintain our Logto auth layer.
-- **Risk if Vela auth model diverges** — if Vela adds Keycloak-specific features (custom SPI extensions, realm-based tenant isolation), our Logto fork needs equivalent implementations.
+- **Engineering effort to fork and modify Vela** — Vela's auth integration touches Kong API gateway (JWT validation middleware), Vela Studio (admin UI auth), and Vela Controller (API auth). Each integration point needs ZITADEL equivalents. Estimate 2-4 weeks of Rust/TypeScript work.
+- **Ongoing fork maintenance** — every Vela upstream release needs merge/rebase. Keycloak-specific changes won't apply; we maintain our ZITADEL auth layer.
+- **Risk if Vela auth model diverges** — if Vela adds Keycloak-specific features (custom SPI extensions, realm-based tenant isolation), our ZITADEL fork needs equivalent implementations.
 
-**Verdict:** Valuable at Phase 3+ if we commit to Vela as the foundation. Not worth it in Phase 0-2 when Vela isn't in use yet. At Phase 3, the fork cost (2-4 weeks) is justified by the operational simplification (no Keycloak, unified auth). Before Phase 3, maintain Logto separately — no Keycloak exists in our stack yet anyway.
+**Verdict:** Valuable at Phase 3+ if we commit to Vela as the foundation. Not worth it in Phase 0-2 when Vela isn't in use yet. At Phase 3, the fork cost (2-4 weeks) is justified by the operational simplification (no Keycloak, unified auth). Before Phase 3, maintain ZITADEL separately — no Keycloak exists in our stack yet anyway.
 
-**Alternative: Run Vela's Keycloak + our Logto side-by-side.** Less engineering, two auth providers. Keycloak only handles Vela platform auth (small user set: our team + store owners who need DB branching access). Logto handles all application auth (store customers + store admin dashboard). The operational overhead of Keycloak is low because its user base is tiny — just platform operators.
+**Alternative: Run Vela's Keycloak + our ZITADEL side-by-side.** Less engineering, two auth providers. Keycloak only handles Vela platform auth (small user set: our team + store owners who need DB branching access). ZITADEL handles all application auth (store customers + store admin dashboard). The operational overhead of Keycloak is low because its user base is tiny — just platform operators.
 
 **Tenant isolation via Vela DB cloning:**
 - Phase 0-2: column-level isolation (`storeId` on every record)
@@ -470,7 +472,7 @@ With Vela as the K8s Postgres platform, the entire infrastructure reduces to 4 l
    - Phase 1 launch: ClickHouse is critical for attribution analytics. Must be production-grade before first paying store.
 
 5. **Multi-tenancy at K8s level?**
-   - Current plan: one Postgres instance, tenant isolation via `storeId` column + separate Logto organizations.
+   - Current plan: one Postgres instance, tenant isolation via `storeId` column + separate ZITADEL organizations.
    - Vela alternative: instant DB clone per tenant → full isolation at DB level, not column-level. More secure, more resource intensive.
 
 ---
@@ -481,7 +483,7 @@ With Vela as the K8s Postgres platform, the entire infrastructure reduces to 4 l
 - `docs/2026-05-23/TECH.md` — Technical architecture, data layer, auth architecture
 - `docs/2026-05-23/BUILD_PLAN.md` — Domain map, event-driven patterns, scaling thresholds
 - `docs/2026-07-04/ARCHITECTURE_DECISIONS.md` — Monorepo structure, domain map, key decisions
-- `docker-compose.yml` — Current local dev setup (Postgres, DragonflyDB, ClickHouse, Logto, Nango)
-- `scripts/init-dbs.sh` — Postgres database initialization (app, logto, nango)
+- `docker-compose.yml` — Current local dev setup (Postgres, DragonflyDB, ClickHouse, ZITADEL, Nango)
+- `scripts/init-dbs.sh` — Postgres database initialization (app, zitadel, nango)
 - Nango official `docker-compose.yaml` — Self-hosting requirements (Postgres + Redis + optional Elasticsearch)
 - Vela: https://github.com/simplyblock/vela — Serverless Postgres on K8s with Git-like branching

@@ -8,9 +8,9 @@ If our platform can build auth (the most complex backend in any application), it
 
 ---
 
-## The Test: Build Auth Entirely On Our Platform (No Logto)
+## The Test: Build Auth Entirely On Our Platform (No External Auth Provider)
 
-If a third-party developer wants to build auth using only our stack — no external auth provider — here's how every auth feature maps to our architecture:
+If a third-party developer wants to build auth using only our stack — no ZITADEL or other OIDC provider — here's how every auth feature maps to our architecture:
 
 | Auth feature | Our component | How |
 |-------------|---------------|-----|

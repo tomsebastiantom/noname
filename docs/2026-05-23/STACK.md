@@ -1,5 +1,7 @@
 ﻿# Stack: Everything We Use In Our System
 
+> **Updated 2026-07-25.** Auth: **ZITADEL** (see `docs/2026-07-13/AUTH.md`).
+
 ## Platform Identity: Agnostic
 
 **The platform is identity-agnostic — it can power ANY use case.** Commerce is the first vertical, not the only vertical.
@@ -11,7 +13,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 
 | Use case | What changes | What stays the same |
 |----------|-------------|---------------------|
-| **Commerce** (first) | Component catalog: ProductCard, AddToCart, Checkout. Machines: booking, checkout, refund. Content types: product, variant, order. | Everything else — UI engine, state machine engine, Nango integrations, ClickHouse analytics, Logto auth, Redis queues. |
+| **Commerce** (first) | Component catalog: ProductCard, AddToCart, Checkout. Machines: booking, checkout, refund. Content types: product, variant, order. | Everything else — UI engine, state machine engine, Nango integrations, ClickHouse analytics, ZITADEL auth, Redis queues. |
 | **Booking** | Component catalog: Calendar, TimeSlotPicker, ConfirmationCard. Machines: booking, reschedule, cancel. Content types: coach, availability, appointment. | Same engine. Different catalog + machines. |
 | **Membership** | Component catalog: PricingTable, ContentGate, SubscriptionCard. Machines: signup, upgrade, cancel. Content types: tier, subscriber, access. | Same engine. Different catalog + machines. |
 | **Content platform** | Component catalog: ArticleCard, RichText, VideoPlayer. Content types: post, category, author. | Same engine. Different catalog + content types. |
@@ -27,7 +29,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 | **Postgres** | Content storage (JSONB) + Commerce storage (relational ACID) | One DB for both flexible content AND strict relational transactions. JSONB for products/pages/machines. Relational for orders/payments/inventory. | Open source | ✅ Docker | 0 |
 | **ClickHouse** | Analytics events storage (columnar time-series) | 100x faster than Postgres for event aggregation queries. 5-10x compression vs Postgres. Built from day one - not migrated later. | Apache 2.0 | ✅ Docker | 0 |
 | **Redis** | BullMQ job queues + cart + sessions + rate limiting | BullMQ requires Redis. Once running, we also use it for cart (TTL), session cache, and rate limiting counters. | Open source | ✅ Docker | 0 |
-| **Logto** | Auth system - platform admins + store customers | Self-hosted. Pre-built sign-in UIs, admin console, MFA, multi-tenancy, OAuth connectors (800+). PII stays on our infra. | MPL-2.0 | ✅ Docker | 0 |
+| **ZITADEL** | Auth system - platform admins + store customers | Self-hosted. Pre-built sign-in UIs, admin console, MFA, multi-tenancy, OAuth connectors (800+). PII stays on our infra. | MPL-2.0 | ✅ Docker | 0 |
 | **json-render core** | UI rendering engine - resolves dollar-state bindings, manages StateStore, SpecStream, Zod catalogs | Framework-agnostic. Works without Next.js. Use only core + react packages. | Apache 2.0 | npm package | 0 |
 | **json-render react** | React components for json-render: Renderer, StateProvider, Registry | SSR via React 19 renderToPipeableStream() on any Node.js runtime. | Apache 2.0 | npm package | 0 |
 | **Hono** | HTTP server framework for our API + edge workers | Edge-native. Runs on Cloudflare Workers, Deno, Bun, Node.js. Ultra-fast (13KB, 9x faster than Express). TypeScript-first. | MIT | npm package | 0 |
@@ -44,7 +46,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 | **Stripe** | Payment processing - checkout, subscriptions, invoicing, tax, fraud | PCI compliant. 40+ payment methods. Stripe Elements embeds in our json-render checkout UI. | - | ✅ Cloud API | 0 |
 | **Typesense** | Product search - full-text, typo-tolerant, faceted filtering | Self-hosted or managed. Fast, typo-tolerant. Replaces Postgres full-text search when content exceeds 100k products. | Apache 2.0 | ✅ Docker | 2+ |
 | **Stately Studio** | Visual state machine editor - design machines visually, export to JSON | AI can use Stately AI too. Machines designed visually, exported to XState JSON format. | - | ✅ Cloud (state.new) | 1 |
-| **Logto Admin Console** | Auth management UI - users, roles, organizations, MFA, audit logs | Pre-built. No auth UI to build. Customizable for our platform branding. | - | ✅ Built into Logto | 0 |
+| **ZITADEL Admin Console** | Auth management UI - users, roles, organizations, MFA, audit logs | Pre-built. No auth UI to build. Customizable for our platform branding. | - | ✅ Built into ZITADEL | 0 |
 | **Drizzle Studio** | Visual DB browser - browse tables, run queries, export data | Ships with Drizzle. Open in dev mode. Useful for debugging and ad-hoc queries. | Apache 2.0 | Built into Drizzle | 0 |
 | **Expo** | Mobile app rendering - same json-render catalog renders on iOS + Android | json-render/react-native works with Expo. Same components, same JSON, same API. | MIT | npm package | 2+ |
 
@@ -63,7 +65,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 | Postgres | Required | ? Docker | ? Replaced by SQLite |
 | ClickHouse | Required | ? Docker | ? Skipped (events to console) |
 | Redis | Required | ? Docker | ? In-memory (ioredis mock) |
-| Logto | Required | ? Docker | ? Docker (needs Postgres) |
+| ZITADEL | Required | ? Docker | ? Docker (needs Postgres) |
 | Nango | Phase 2+ | Optional Docker | Skipped |
 | Workers KV | Required | ? Wrangler dev | ? Wrangler dev |
 | R2 | Required | ? Wrangler dev | ? Wrangler dev |
@@ -74,7 +76,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 |-------------------|---------------------------------|
 | AI generation pipeline (prompt -> JSON) | Stripe (payments, tax, fraud) |
 | Context engine (signals -> segment) 
-| XState wrapper (retries, persistence, compensations) | Logto (auth, MFA, OAuth, tenants) |
+| XState wrapper (retries, persistence, compensations) | ZITADEL (auth, MFA, OAuth, tenants) |
 | Analytics pipeline (event -> ClickHouse + dashboard) | Nango (external API integrations) |
 | AI agent manager (Mastra + our tools) | Cloudflare (Workers, KV, R2, Stream) |
 | Feature flags (native flag domain) |

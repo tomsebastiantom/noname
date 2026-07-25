@@ -1,6 +1,8 @@
 ﻿# Technical Architecture
 ## How The Open Source AI Platform Actually Works
 
+> **Updated 2026-07-25.** Auth: **ZITADEL** + `@cfworker/jwt` at edge + HMAC to server. See `docs/2026-07-13/AUTH.md`.
+
 ---
 
 > **Framing — "commerce" is an example vertical, not the product.** Throughout this document, "commerce" (storefronts, carts, checkout, orders, products) is used as a concrete illustration of what the platform powers. The platform is **identity-agnostic**: its engines, domains, and data model are general-purpose and apply equally to booking, membership, SaaS, content, and any other use case. Commerce is the first vertical we validate against — not the platform's identity.
@@ -787,7 +789,7 @@ ML Feature Store → Model Retrain → Better schemas next time
 | **AI Agents** | Mastra | Agent orchestration. Tool-based with guardrails (auto/approval/denied). Memory window. |
 | **Analytics** | ClickHouse | Columnar time-series. 100x faster than Postgres for event queries. Schema-level attribution. |
 | **Integrations** | Nango (Phase 2+) | 800+ external APIs. OAuth, rate limiting, retries. |
-| **Auth** | Logto (self-hosted Docker) | Dual flow: platform admins + store customers. Multi-tenancy. Pre-built UIs. |
+| **Auth** | ZITADEL (self-hosted Docker) | Dual flow: platform admins + store customers. Multi-tenancy. Pre-built UIs. |
 | **Payments** | Stripe Connect + Elements | Standalone mode. Shopify Payments in Shopify mode. Never touch PCI data. |
 
 ### Edge & Client Stack
@@ -807,12 +809,12 @@ ML Feature Store → Model Retrain → Better schemas next time
 
 ## Auth Architecture: Edge Validation + Separate Auth Service
 
-Logto is the auth service (self-hosted Docker). The Hono API server never handles passwords, OAuth flows, session management, or MFA. It only validates JWTs that Logto already issued.
+ZITADEL is the auth service (self-hosted Docker). The Hono API server never handles passwords, OAuth flows, session management, or MFA. It only validates JWTs that ZITADEL already issued.
 
 ### Two-Tenant Model
 
 ```
-LOGTO (one Docker service)
+ZITADEL (one Docker service)
   │
   ├── Org: "store-123" (platform tenant — our customer)
   │     ├── Role: admin → Store owner (login to admin dashboard)
@@ -823,7 +825,7 @@ LOGTO (one Docker service)
         └── Login: email/password, Google/Apple OAuth, magic link
 ```
 
-Each influencer/store gets one Logto organization. Their followers authenticate against it. Platform admins authenticate against their own org.
+Each influencer/store gets one ZITADEL organization. Their followers authenticate against it. Platform admins authenticate against their own org.
 
 ### Edge JWT Validation (Cloudflare Worker)
 
@@ -837,7 +839,7 @@ Visitor requests /checkout (protected page)
 │  CLOUDFLARE WORKER (edge middleware)        │
 │                                             │
 │  1. Read JWT from cookie/Authorization      │
-│  2. Validate signature against Logto JWKS   │
+│  2. Validate signature against ZITADEL JWKS   │
 │  3. Check expiry                             │
 │                                             │
 │  VALID?                                     │
@@ -849,7 +851,7 @@ Visitor requests /checkout (protected page)
 │    → HTTP 302 Redirect to:                  │
 │      https://auth.store.com/sign-in        │
 │      ?redirect_uri=/checkout               │
-│      (Logto's pre-built branded login page) │
+│      (ZITADEL's pre-built branded login page) │
 └────────────────────────────────────────────┘
          │ (if valid)
          ▼
@@ -864,49 +866,41 @@ Visitor requests /checkout (protected page)
 
 ### Login Flow
 
-1. Visitor hits protected page → Edge Worker sees no JWT → 302 redirect to Logto login
-2. Logto shows branded login screen (email/password, Google OAuth, magic link)
-3. Visitor authenticates → Logto issues JWT + sets session cookie
-4. Logto redirects back to `?redirect_uri` (original page)
+1. Visitor hits protected page → Edge Worker sees no JWT → 302 redirect to ZITADEL login
+2. ZITADEL shows branded login screen (email/password, Google OAuth, magic link)
+3. Visitor authenticates → ZITADEL issues JWT + sets session cookie
+4. ZITADEL redirects back to `?redirect_uri` (original page)
 5. Now JWT valid → Edge Worker passes request through → visitor sees content
 
 ### Why Edge Validation (Not Server-Side)
 
 | Approach | Latency (invalid request) | Server CPU cost | Failure mode |
 |----------|--------------------------|-----------------|--------------|
-| **Edge Worker validates** | <5ms (redirect to Logto) | Zero (rejected at edge) | Edge-only failure → fallback to Hono middleware |
+| **Edge Worker validates** | <5ms (redirect to ZITADEL) | Zero (rejected at edge) | Edge-only failure → fallback to Hono middleware |
 | **Hono server validates** | 100-200ms (round-trip to origin) | CPU spent on every rejected request | Server crash affects auth too |
 
 Edge validation stops invalid requests before they travel to the origin server. The API server only sees requests with valid JWTs — it can focus on business logic.
 
-### Hono Fallback Middleware
+### Server Trust: HMAC (Not JWT Re-validation)
 
-For internal API calls (webhooks, service-to-service), Hono has a JWT validation middleware as fallback:
+The API server does **not** re-validate JWTs. The edge worker validates against ZITADEL JWKS, then signs trusted headers with HMAC:
 
 ```typescript
-// Lightweight — validates JWT, doesn't manage auth
-import { jwtVerify } from "jose";
+// packages/server/src/shared/tenant.ts — current implementation
+// Worker forwards: x-tenant-id, x-user-id, x-role, x-auth-hmac
+// Server verifies HMAC with WORKER_SERVER_SECRET via timingSafeEqual
 
-async function authMiddleware(c, next) {
-  const token = c.req.header("Authorization")?.replace("Bearer ", "");
-  if (!token) return c.json({ error: "unauthorized" }, 401);
-  try {
-    const { payload } = await jwtVerify(token, getLogtoJWKS());
-    c.set("tenantId", payload.organization_id);
-    c.set("userId", payload.sub);
-    c.set("role", payload.role);
-    await next();
-  } catch {
-    return c.json({ error: "invalid token" }, 401);
-  }
-}
+// Dev mode: missing HMAC logs a warning but request proceeds
+// See docs/2026-07-13/AUTH.md
 ```
+
+Edge worker uses `@cfworker/jwt` with `parseJwt` + `getKey` (not `jose` — Workers-native).
 
 ### PII Isolation
 
 | Data | Where it lives | Who can access |
 |------|---------------|----------------|
-| User emails, passwords, OAuth tokens | Logto's Postgres (separate DB) | Only Logto. Never our API server. |
+| User emails, passwords, OAuth tokens | ZITADEL's Postgres (separate DB) | Only ZITADEL. Never our API server. |
 | Store names, product data, order history | Our Postgres (app database) | Our API server. Referenced by tenantId, not user email. |
 | Customer addresses, payment methods | Our Postgres OR Stripe (PCI) | Referenced by userId (UUID), not by email. |
 

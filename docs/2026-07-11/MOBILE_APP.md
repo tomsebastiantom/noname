@@ -32,7 +32,7 @@ Role dispatch happens at the app root — check JWT `role` claim, mount either `
 | Analytics queries | `GET /api/analytics/aggregations` + `/conversions` | ✅ |
 | Feature flags | `GET/PUT /api/flags` | ✅ |
 | Error logging | `POST /api/analytics/error` | ✅ |
-| Auth (Logto) | JWT validation | Planned |
+| Auth (ZITADEL) | JWT validation at edge | ✅ Server-side done; mobile OIDC flow planned |
 | Catalog manifest | `GET /api/tenants/:id/catalog` | ✅ (just built) |
 
 ---
@@ -214,7 +214,7 @@ No need to fork `browser-sdk` — the adapter is ~60 lines and covers the 3 thin
 App launch
   → expo-secure-store: getItem("jwt")
   → No token?
-    → Logto sign-in (WebBrowser.openAuthSessionAsync)
+    → ZITADEL sign-in (WebBrowser.openAuthSessionAsync, authorization code + PKCE)
     → Exchange code for token
     → Store JWT in expo-secure-store
   → Token exists?
@@ -225,7 +225,9 @@ App launch
       → role=customer → StoreStack (browse → product → cart → checkout)
 ```
 
-Logto provides OAuth/OIDC — Expo's `AuthSession` handles the redirect flow. The mobile app uses a custom URL scheme (`noname://`) for the redirect.
+ZITADEL provides OAuth/OIDC — Expo's `AuthSession` handles the redirect flow. The mobile app uses a custom URL scheme (`noname://`) for the redirect. Same issuer as web: `ZITADEL_ISSUER` (default `http://localhost:8080` in dev).
+
+See `docs/2026-07-13/AUTH.md` for the full auth architecture (edge JWT validation + HMAC to server).
 
 ---
 

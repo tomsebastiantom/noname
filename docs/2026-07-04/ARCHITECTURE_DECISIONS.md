@@ -1,6 +1,8 @@
 # Architecture Decisions & Package Map
 ## What lives where, what every package does, and what it's intended to become.
 
+> **Updated 2026-07-25.** Auth provider migrated from Logto to **ZITADEL** (2026-07-13). See `docs/2026-07-13/AUTH.md`.
+
 ---
 
 > **Framing — "commerce" is an example vertical, not the product.** This document uses commerce (checkout, carts, orders, products) as a concrete illustration. The platform is **identity-agnostic**: its engines, domains, and data model are general-purpose and apply equally to booking, membership, SaaS, content, and any other use case. Commerce is the first vertical we validate against, not the platform's identity.
@@ -16,7 +18,7 @@ noname/
 │   ├── cli/             ← Developer tool. init, dev, status, logs, errors.
 │   └── browser-sdk/     ← Frontend analytics tracking SDK.
 ├── docs/2026-05-23/     ← Architecture, build plan, findings, roadmap.
-├── docker-compose.yml   ← Postgres + Dragonfly(Redis) + ClickHouse + Logto + Nango(optional)
+├── docker-compose.yml   ← Postgres + Dragonfly(Redis) + ClickHouse + ZITADEL + S3 + Jaeger
 ├── pnpm-workspace.yaml
 └── package.json         ← Root scripts: dev, build, lint, typecheck
 ```
@@ -51,7 +53,7 @@ server/src/
 │   ├── domain-error.ts   ← Typed domain errors: NotFoundError, ValidationError.
 │   ├── event-bus.ts      ← In-memory event bus. Publish→notify all subscribers synchronously.
 │   └── slugify.ts        ← URL slug generation utility.
-└── domains/              ← 8 DDD domains. Each has its own ports, schema, API routes.
+└── domains/              ← 9 DDD domains. Each has its own ports, schema, API routes.
 ```
 
 ---
@@ -73,7 +75,7 @@ server/src/
 
 ---
 
-## Domain Map (8 Domains Inside `server/src/domains/`)
+## Domain Map (9 Domains Inside `server/src/domains/`)
 
 ### `documents` — Unified JSON Document Domain (content + layout + backend-logic)
 
@@ -141,7 +143,14 @@ Each type keeps **separate TypeScript ports, separate tables, separate `version`
 **Files:** `api.ts`, `ports.ts`, `service.ts`, `index.ts`
 **What it does:** Bridge between Cloudflare Edge Worker and platform domains. `GET /api/edge/schema/:siteId?segment=` returns layout spec + flag values for a given segment. `POST /api/edge/personalize` resolves visitor context (headers → segment), evaluates flags, returns personalized layout. Injects layout service, context engine, and flag service via dependency injection.
 **API routes:** `GET /api/edge/schema/:siteId`, `POST /api/edge/personalize`
-**Future:** Cloudflare Worker code (separate runtime) for SEO prerender — worker fetches spec + data → renders HTML via React 19 stream → caches in Workers KV. Client bundle (json-render runtime + commerce catalog) shipped as immutable JS from R2.
+**Future:** Bot SSR in worker (React 19 stream). Client bundle deployed to R2.
+
+### `tenant` — Tenant Catalog & Module Federation
+
+**Status:** 🟢 Implemented. Catalog manifests, component publishing, R2 bundle storage, MF build worker.
+**Files:** `api.ts`, `ports.ts`, `service.ts`, `worker.ts`, `queue.ts`, `adapters/r2.ts`, `adapters/manifest-store.ts`, `index.ts`
+**What it does:** Manages per-tenant component catalogs for Module Federation. Merchants publish custom components; manifests describe platform + private + marketplace remotes. Build worker bundles tenant components to R2.
+**API routes:** `GET /api/tenants/:id/catalog`, `POST /api/tenants/:id/components`, `GET /api/tenants/:id/builds/:buildId`, `DELETE /api/tenants/:id/components/:name`
 
 ### `flags` — Feature Flags & Progressive Delivery (NEW — added 2026-07-04)
 
@@ -157,13 +166,14 @@ Each type keeps **separate TypeScript ports, separate tables, separate `version`
 
 ```
 Layer 1: API SERVER (packages/server)
-  Hono + Node.js + Postgres + Dragonfly(Redis) + ClickHouse + Logto
-  Pure API. No React. No SSR. No JSX. 8 DDD domains.
+  Hono + Node.js + Postgres + Dragonfly(Redis) + ClickHouse + ZITADEL
+  Pure API. No React. No SSR. No JSX. 9 DDD domains.
   Deployed as Docker container.
 
 Layer 2: EDGE WORKER (Cloudflare Workers, packages/workers)
-  JWT validation: check admin/customer JWT → 302 redirect to Logto if invalid.
-  SEO prerender: JSON spec + data → React 19 stream → HTML → KV cache.
+  JWT validation: ZITADEL JWKS via @cfworker/jwt → 302 redirect if invalid.
+  HMAC signing: worker signs tenantId:userId:role for server trust.
+  SEO prerender: JSON spec + data → React 19 stream → HTML → KV cache (SSR TODO).
   Editor gating: ?edit=true → verify admin JWT → serve client + editor chunks.
   JSON delivery: cached specs per segment → client bundle for interactivity.
   Deployed on Cloudflare Workers (300+ global locations).
@@ -190,7 +200,7 @@ See [`VISUAL_EDITOR.md`](../docs/2026-07-11/VISUAL_EDITOR.md) for the full desig
 |----------|--------------|-----|
 | **Server role** | Pure API server. Hono + Node.js. No React, no SSR, no JSX. | React is only for rendering — that happens at edge (SEO prerender) and client (interactivity). API server focuses on business logic. Modeled after Shopify (Core API vs Oxygen storefront). |
 | **Rendering** | Split: Edge SEO prerender + Client interactive bundle. | SEO pages rendered once at edge, cached. Interactive pages rendered in browser from JSON specs. No server-side rendering overhead. |
-| **Auth** | Logto (separate Docker service) for all auth. JWT validated at Cloudflare edge. Invalid → redirect to Logto login. | PII isolation (passwords never touch API server). Edge validation stops bad requests before origin. Multi-tenancy built into Logto organizations. |
+| **Auth** | ZITADEL (self-hosted Docker, port 8080). JWT validated at Cloudflare edge via `@cfworker/jwt`. HMAC trust between worker and API server. Invalid → redirect to ZITADEL login. | PII isolation (passwords never touch API server). Edge validation stops bad requests before origin. Multi-tenancy via ZITADEL organizations. See `docs/2026-07-13/AUTH.md`. |
 | **Workflow logic** | All workflows are XState machines in the machines domain — commerce is just the first example. No separate commerce ports/adapters/service. | Cart, checkout, refund, subscription (commerce example) — every flow is an XState machine definition (JSONB) executed by the generic machine engine. One `POST /api/machines/:machine/:transition` endpoint serves all flows. Adding a new flow = adding a new JSON definition, not new code. |
 | **Event bus** | In-memory for Phase 0. BullMQ queues for async task execution (agent domain). | BullMQ re-added (2026-07-11) for agent task queue. Redis (DragonflyDB) backing. In-memory event bus still used for synchronous cross-domain events. |
 | **Monorepo** | Two packages: server + cli. | Admin, catalog, types packages were empty and deleted. Server is the monolith (WordPress model). CLI is the developer tool. |

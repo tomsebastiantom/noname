@@ -1,5 +1,7 @@
 ﻿# Findings & Key Insights
 
+> **Updated 2026-07-25.** Auth provider is **ZITADEL** (migrated from Logto, 2026-07-13). See `docs/2026-07-13/AUTH.md`.
+
 ## Everything We Learned, Decided, and Corrected
 
 ---
@@ -47,13 +49,13 @@ json-render (UI) â†’ State Machine Engine (logic) â†’ Nango (integrati
 | Capability | What we use | Reality check |
 |-----------|------------|---------------|
 | **Payments** | Stripe (Elements + Tax + Radar) | PCI, 40+ payment methods, fraud, tax. We load Stripe Elements inside json-render checkout. Start with Stripe Checkout, upgrade to Elements. |
-| **Auth** | **Logto** (self-hosted Docker, MPL-2.0) | One Logto instance, two auth flows: platform users (store owners) and store customers (buyers). Multi-tenancy (each store = org). Pre-built sign-in UIs. MFA, SSO, passwordless. No auth UI to build. |
+| **Auth** | **ZITADEL** (self-hosted Docker, MPL-2.0) | One ZITADEL instance, two auth flows: platform users (store owners) and store customers (buyers). Multi-tenancy (each store = org). Pre-built sign-in UIs. MFA, SSO, passwordless. No auth UI to build. |
 | **Renderer** | json-render core + react (Apache 2.0) | NOT `@json-render/next` (no Next.js lock-in). SSR via `resolveElementProps()` + React 19 `renderToPipeableStream()` in any Node/Hono runtime. |
 | **State machine** | **XState** (MIT, 28k stars) | States, guards, transitions, actors, async. Runs server-side. Machine definitions stored as JSONB in DB. |
 | **Integrations** | **Nango** (MIT, self-hosted Docker) | 800+ external APIs. OAuth, sync, actions, webhooks, MCP for agents. User writes one TypeScript file, Nango handles infrastructure. |
 | **Visual editor** | **GrapesJS** (MIT, 21k stars) | Drag-drop â†’ JSON. Custom components per catalog entry. Commerce component traits defined alongside Zod schemas. |
 | **Hosting/edge** | Cloudflare Workers + R2 + KV | 300+ locations, zero egress, sub-50ms. KV for segment-cached layouts. R2 for media. Stream for video. |
-| **Auth** | Logto (MPL-2.0, Docker) | Self-hosted. Pre-built admin console + sign-in UIs. Multi-tenancy per store. PII in our infra. |
+| **Auth** | ZITADEL (MPL-2.0, Docker) | Self-hosted. Pre-built admin console + sign-in UIs. Multi-tenancy per store. PII in our infra. |
 | **AI models** | OpenAI + Claude + fine-tuned | Multi-provider. No single-vendor dependency. Different models for layout vs. content vs. analysis. |
 | **Shipping** | Shippo / EasyPost | Carrier integrations done. Don't maintain. Can also use Nango if store uses a niche carrier. |
 | **Async workflows** | BullMQ + Redis | Side effects after state transitions (email, calendar, webhook). Retry, delay, dead-letter. |
@@ -68,7 +70,7 @@ json-render (UI) â†’ State Machine Engine (logic) â†’ Nango (integrati
 
 3. **Content system**: Content types have Zod schemas (like json-render catalog but for data). JSONB for most content. Relational for transactional data (orders, payments, bookings) that need ACID.
 
-4. **Auth**: Self-hosting auth (Lucia) we have to build login/register/password-reset/admin UI ourselves. **Logto** (open source, Docker) provides all of this plus multi-tenancy, MFA, SSO. Extra Docker service but we don't build auth UI.
+4. **Auth**: Self-hosting auth (Lucia) we have to build login/register/password-reset/admin UI ourselves. **ZITADEL** (open source, Docker) provides all of this plus multi-tenancy, MFA, SSO. Extra Docker service but we don't build auth UI.
 
 ### What We BUILD (Differentiation)
 
@@ -156,12 +158,12 @@ AI generates:      JSON only     Both compile to the same JSON engine.
 
 ---
 
-## Auth: Dual Flow (One Logto Instance)
+## Auth: Dual Flow (One ZITADEL Instance)
 
-**One Logto Docker service. Two distinct auth flows.** Logto handles multi-tenancy natively (each store = an organization).
+**One ZITADEL Docker service. Two distinct auth flows.** ZITADEL handles multi-tenancy natively (each store = an organization).
 
 ```
-LOGTO
+ZITADEL
   â”œâ”€â”€ Org: "store-123" (platform â€” our customer)
   â”‚     â”œâ”€â”€ Role: admin â†’ Store owner (login to admin dashboard)
   â”‚     â””â”€â”€ Role: support â†’ Our team
@@ -176,7 +178,7 @@ LOGTO
 | MFA | âœ… Available | âœ… Available (store owner decides) |
 | SSO | âœ… Google/GitHub | âœ… Google/Apple |
 | Passwordless | âŒ | âœ… Magic link |
-| Pre-built UI | Logto admin console | Logto sign-in (customized per store) |
+| Pre-built UI | ZITADEL admin console | ZITADEL sign-in (customized per store) |
 
 ---
 
@@ -234,7 +236,7 @@ Not built into json-render. Available at the platform level (Hono + Cloudflare W
 | **UI** | json-render + GrapesJS | Visual editor + live preview |
 | **Workflow logic** | State machine engine (XState) | Automations for booking, checkout, refund |
 | **Integrations** | Nango (800+ APIs) | Connect tools via admin UI |
-| **Auth** | Logto (self-hosted, multi-tenant) | Pre-built sign-in for platform + store |
+| **Auth** | ZITADEL (self-hosted, multi-tenant) | Pre-built sign-in for platform + store |
 | **Storage** | Postgres JSONB + relational | Transparent â€” same API for both |
 | **Edge** | Cloudflare Workers + KV + R2 | Sub-50ms delivery globally |
 | **Extensibility** | Plugin system + user functions | Build custom components, machines, integrations |
@@ -270,8 +272,8 @@ General automation. Blank canvas â€” build every workflow from scratch. We 
 | Decision | Choice | Why |
 |----------|--------|-----|
 | **First entry point** | Shopify app (JS injection, one product) | Lowest friction, proves value fast |
-| **Auth provider** | Logto (self-hosted Docker, MPL-2.0) | Pre-built auth UI + admin console + multi-tenancy. PII on our infra. Logto handles passwords, OAuth, MFA, sessions. API server never touches raw PII. |
-| **Auth validation** | Edge Worker (Cloudflare) validates JWT → redirects to Logto login on failure | Stops unauthenticated requests BEFORE they reach the API server. Invalid/missing JWT → HTTP 302 redirect to `auth.store.com/sign-in?redirect_uri=/original-page`. Valid JWT → pass through with tenantId/userId extracted. Modeled after Shopify/Amazon pattern: auth is infrastructure-level, not application-level. Hono middleware as fallback for internal API calls. |
+| **Auth provider** | ZITADEL (self-hosted Docker, MPL-2.0) | Pre-built auth UI + admin console + multi-tenancy. PII on our infra. ZITADEL handles passwords, OAuth, MFA, sessions. API server never touches raw PII. |
+| **Auth validation** | Edge Worker (Cloudflare) validates JWT → redirects to ZITADEL login on failure | Stops unauthenticated requests BEFORE they reach the API server. Invalid/missing JWT → HTTP 302 redirect to `auth.store.com/sign-in?redirect_uri=/original-page`. Valid JWT → pass through with tenantId/userId extracted. Modeled after Shopify/Amazon pattern: auth is infrastructure-level, not application-level. Hono middleware as fallback for internal API calls. |
 | **State machine** | XState + our engine (definitions in DB) | XState handles transitions/guards/actors. Definitions stored as JSONB. AI generates them. |
 | **Integrations** | Nango (self-hosted Docker, MIT) | 800+ APIs. User writes one TypeScript file. Auth, retries, sync handled. |
 | **Rendering architecture** | Split: edge worker (SEO prerender) + client bundle (interactivity). API server never runs React. | Hono is pure API. Edge Worker renders SEO pages (product, collection, blog) to HTML via React 19 stream. Browser renders interactive pages from JSON spec via json-render runtime. No React on API server — modeled after Shopify (Oxygen storefront vs Core API) and real big-commerce separation patterns. |

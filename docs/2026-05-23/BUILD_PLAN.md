@@ -1,6 +1,8 @@
 # Build Plan: Phase 0 Implementation
 ## System Architecture & Build Strategy
 
+> **Updated 2026-07-25.** Auth provider is **ZITADEL** (migrated from Logto, 2026-07-13). See `docs/2026-07-13/AUTH.md`.
+
 ---
 
 ## Core Principles
@@ -234,12 +236,12 @@ No Next.js. No Vercel. The API server stays pure Hono + business logic. React on
 
 ## Auth Strategy: Dual Flow (Platform + Store Customers)
 
-**One Logto instance. Two distinct auth flows.** Logto handles both platform users (store owners logging into our admin) and store customers (buyers logging into stores). Pre-built sign-in UIs for both â€” we embed, we don't build.
+**One ZITADEL instance. Two distinct auth flows.** ZITADEL handles both platform users (store owners logging into our admin) and store customers (buyers logging into stores). Pre-built sign-in UIs for both â€” we embed, we don't build.
 
 ### Two User Types
 
 ```
-LOGTO (self-hosted Docker, one service)
+ZITADEL (self-hosted Docker, one service)
          â”‚
          â”œâ”€â”€ PLATFORM AUTH (Admin dashboard) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
          â”‚     Users: Store owners + our team
@@ -247,7 +249,7 @@ LOGTO (self-hosted Docker, one service)
          â”‚     Sign-in: email/password + SSO (Google/GitHub)
          â”‚     MFA: Available (store owner can require it)
          â”‚     Session: Long-lived (admin sessions)
-         â”‚     Logto role: "admin" within their org
+         â”‚     ZITADEL role: "admin" within their org
          â”‚     PII: email, name, billing info (our platform)
          â”‚
          â””â”€â”€ STORE AUTH (Storefront) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -256,16 +258,16 @@ LOGTO (self-hosted Docker, one service)
                Sign-in: email/password + social + magic link
                MFA: Available (store owner decides per store)
                Session: Short-lived (browser session)
-               Logto role: "customer" within the store org
+               ZITADEL role: "customer" within the store org
                PII: email, name, address, order history (store's data)
 ```
 
-### Logto Organizations = Each Store
+### ZITADEL Organizations = Each Store
 
-Every store in our platform is a Logto organization:
+Every store in our platform is a ZITADEL organization:
 
 ```
-Logto organization: "yogastore"
+ZITADEL organization: "yogastore"
   â”œâ”€â”€ Admin role â†’ Store owner (can manage store, view analytics, hire agents)
   â”œâ”€â”€ Support role â†’ Our team (help desk, optional)
   â””â”€â”€ Customer role â†’ Buyers (view orders, save addresses, manage subscriptions)
@@ -273,20 +275,20 @@ Logto organization: "yogastore"
 
 Each organization has its own sign-in experience (branded per store for customers), separate user directory, and independent MFA/SSO configuration. Store owners configure their store's auth settings from the admin dashboard â€” no code changes.
 
-### What We Build vs. What Logto Provides
+### What We Build vs. What ZITADEL Provides
 
 | Feature | Built by | Why |
 |---------|----------|-----|
-| Login pages (admin + store) | Logto provides | Pre-built, customizable, embed in our UI |
-| Register pages | Logto provides | Type selection: admin vs customer |
-| Password reset | Logto provides | Email templates included |
-| Social login (Google, Apple, GitHub) | Logto provides | One-click connectors |
-| Magic link passwordless | Logto provides | For store customers |
-| MFA (TOTP, SMS, authenticator) | Logto provides | Configurable per org, per user type |
-| Multi-tenancy (each store = org) | Logto provides | Built-in organization model |
-| Admin console (user management) | Logto provides | Manage users, roles, audit logs |
-| **Embed in our admin dashboard** | **We build** | json-render admin component wrapping Logto's UI |
-| **Embed in storefront** | **We build** | json-render login component wrapping Logto's API |
+| Login pages (admin + store) | ZITADEL provides | Pre-built, customizable, embed in our UI |
+| Register pages | ZITADEL provides | Type selection: admin vs customer |
+| Password reset | ZITADEL provides | Email templates included |
+| Social login (Google, Apple, GitHub) | ZITADEL provides | One-click connectors |
+| Magic link passwordless | ZITADEL provides | For store customers |
+| MFA (TOTP, SMS, authenticator) | ZITADEL provides | Configurable per org, per user type |
+| Multi-tenancy (each store = org) | ZITADEL provides | Built-in organization model |
+| Admin console (user management) | ZITADEL provides | Manage users, roles, audit logs |
+| **Embed in our admin dashboard** | **We build** | json-render admin component wrapping ZITADEL's UI |
+| **Embed in storefront** | **We build** | json-render login component wrapping ZITADEL's API |
 | **Guest checkout** | **We build** | No auth needed â€” create account after purchase |
 
 ### MFA â€” Available for Everyone
@@ -298,7 +300,7 @@ No reason to limit MFA to admins. Store customers with subscriptions, stored pay
 
 ### PII and Tenant Isolation
 
-Logto's organization model keeps PII isolated per store:
+ZITADEL's organization model keeps PII isolated per store:
 - Store owner's email/name â†’ in the platform organization (accessible to us)
 - Store customer's email/name â†’ in the store's own organization (NOT accessible to us â€” we see only order data)
 - Customer PII is the store's responsibility, not ours
@@ -798,7 +800,7 @@ Not choosing tools yet. Just documenting what we must be able to observe.
 | **Hono** | Edge-compatible HTTP server. Runs on Cloudflare Workers, Deno, Bun, Node. | 18k+ | MIT |
 | **Zod** | Schema validation. TypeScript-first. json-render uses it for catalog validation. | 35k+ | MIT |
 | **Stripe SDK** | Payments, tax, fraud, receipts, webhooks. | â€” | MIT |
-| **Logto Auth** | Auth, sessions, SSO, MFA, multi-tenancy. Self-hosted via Docker (same compose file). Pre-built sign-in UIs and admin console. MPL-2.0. Free, PII stays on our infra. | 12k+ | MPL-2.0 |
+| **ZITADEL Auth** | Auth, sessions, SSO, MFA, multi-tenancy. Self-hosted via Docker (same compose file). Pre-built sign-in UIs and admin console. MPL-2.0. Free, PII stays on our infra. | 12k+ | MPL-2.0 |
 | **Cloudflare SDK** | Workers, R2, KV, D1, Queues. | â€” | MIT |
 | **Drizzle / Prisma** | Type-safe database access. Migrations. | â€” | Apache 2.0 |
 | **Bull / BullMQ** | Job queues for async tasks (AI generation, analytics, emails). | â€” | MIT |
@@ -815,7 +817,7 @@ Not choosing tools yet. Just documenting what we must be able to observe.
 | **Rendering** | BUY (json-render core + react) | 15k stars, Apache 2.0, multi-platform. No Next.js lock-in. |
 | **Visual editor** | BUY (GrapesJS) | 21k stars, MIT, JSON output. |
 | **Payments** | BUY (Stripe) | PCI, fraud, 40+ methods, tax. |
-| **Auth** | BUY (Logto, open source) | Self-hosted via Docker (same compose). Pre-built sign-in UIs and admin console. Multi-tenancy, SSO, MFA built-in. PII stays on our infra. MPL-2.0. Free.
+| **Auth** | BUY (ZITADEL, open source) | Self-hosted via Docker (same compose). Pre-built sign-in UIs and admin console. Multi-tenancy, SSO, MFA built-in. PII stays on our infra. MPL-2.0. Free.
 | **Hosting/CDN** | BUY (Cloudflare) | 300+ edge locations, zero egress. |
 | **Shipping** | BUY (Shippo/EasyPost) | Carrier integrations done. |
 | **AI models** | BUY (OpenAI/Claude) | Multi-provider. No training from scratch. |
@@ -838,7 +840,7 @@ Not choosing tools yet. Just documenting what we must be able to observe.
 | Task | Layer | What | Reuse |
 |------|-------|------|-------|
 | **API server scaffold** | API | Hono + Postgres + Redis. Pure API server. No React. No SSR. Clear routes per DDD domain (content, spec, commerce, agent, analytics, context, ai-pipeline, machines, edge, admin). | Hono, Postgres, Redis |
-| **Auth setup** | API | Logto via Docker Compose. Multi-tenancy, pre-built sign-in UIs, admin console. PII on our infra. | Logto Docker image |
+| **Auth setup** | API | ZITADEL via Docker Compose. Multi-tenancy, pre-built sign-in UIs, admin console. PII on our infra. | ZITADEL Docker image |
 | **json-render core (API server)** | API | Import `@json-render/core` for spec validation (`defineCatalog()` with Zod), `diffToPatches()` for variant management. NOT `@json-render/react` — no rendering on API server. | @json-render/core |
 | **Component catalog** | Client | Define commerce components (ProductCard, AddToCart, CartDrawer, CheckoutButton) as Zod-validated json-render catalog. Consumed by both edge worker and client bundle. | @json-render/core |
 | **Cloudflare setup** | Edge + Client | Workers for SEO prerender. R2 for client bundle hosting + media storage. KV for prerendered HTML cache + JSON spec cache + content data cache. | Cloudflare SDK |
@@ -852,12 +854,13 @@ Not choosing tools yet. Just documenting what we must be able to observe.
 
 ```
 Docker Compose services:
-  app:       Our Hono server
-  postgres:  Main DB (shared for content, commerce, analytics)
-  redis:     BullMQ queues + KV caching
-  logto:     Auth (ghcr.io/logto-io/logto:latest)
-  logto-db:  Logto's Postgres (same backup strategy as main DB)
-  clickhouse: Columnar time-series DB for analytics events (100x faster than Postgres for event queries)
+  app:         Our Hono server
+  postgres:    Main DB + ZITADEL DB (`app`, `zitadel`, `nango` via init-dbs.sh)
+  dragonfly:   BullMQ queues + Redis-compatible cache
+  zitadel:     Auth (ghcr.io/zitadel/zitadel:latest, port 8080)
+  clickhouse:  Columnar time-series DB for analytics events
+  s3:          R2-compatible asset storage (local dev)
+  jaeger:      OpenTelemetry tracing UI
 ```
 
 **Decision**: One repo. One server. Clear domain boundaries in the code. NOT microservices.
@@ -1039,7 +1042,7 @@ A single CLI command handles everything. Modeled after Supabase, Vercel, and Rai
 | 
 oname init | Scaffold a new project. Creates directory, config, Docker Compose files. | Phase 0 |
 | 
-oname dev | Start local dev server + DB + Logto + Redis. Hot reload. | Phase 0 |
+oname dev | Start local dev server + DB + ZITADEL + Redis. Hot reload. | Phase 0 |
 | 
 oname deploy | Deploy functions to edge/server/client. | Phase 1 |
 | 
@@ -1051,7 +1054,7 @@ oname db:migrate | Run Drizzle migrations. Both JSONB and relational schemas. | 
 | 
 oname db:studio | Open Drizzle Studio (visual DB browser + SQL editor). | Phase 0 |
 | 
-oname status | Check all service health (DB, Redis, Logto, Edge). | Phase 0 |
+oname status | Check all service health (DB, Redis, ZITADEL, Edge). | Phase 0 |
 | 
 oname machine:simulate | Test a state machine locally. Step through transitions with mock data. | Phase 2 |
 
@@ -1112,10 +1115,12 @@ oname db:check** | Validate SQL for common errors (missing WHERE, injection, uni
 # docker-compose.yml — single command to start everything
 services:
   app:         # Our Hono server (hot reload)
-  postgres:    # Main DB + Logto DB
-  redis:       # BullMQ + KV cache
-  logto:       # Auth (self-hosted, pre-built UIs)
-  logto-db:    # Logto's Postgres
+  postgres:    # Main DB + ZITADEL DB (database `zitadel` on shared Postgres)
+  dragonfly:   # BullMQ + Redis-compatible cache
+  zitadel:     # Auth (self-hosted, console at :8080)
+  clickhouse:  # Analytics
+  s3:          # Asset storage emulator
+  jaeger:      # Tracing
   nango:       # 800+ API integrations (optional, start on demand)
 
 # Or for lightweight local dev:
@@ -1132,7 +1137,7 @@ The SQLite mode uses the same content API abstraction layer (Zod schemas, CRUD, 
 
 ### Self-Host Experience (Day 1)
 
-**One command to start full stack: docker compose up** (Postgres, Redis, Logto, Nango, our server).  
+**One command to start full stack: docker compose up** (Postgres, Redis, ZITADEL, Nango, our server).  
 **One command for lightweight dev: 
 oname dev** (SQLite, in-memory, no Docker).  
 **Errors logged with full context — AI can read them.**  
