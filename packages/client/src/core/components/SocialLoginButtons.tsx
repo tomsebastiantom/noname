@@ -37,8 +37,7 @@ export function SocialLoginButtons({
         const label =
           loadingProvider === provider
             ? "Redirecting…"
-            : (providerLabels[provider] ??
-              `Continue with ${provider.replace(/^custom:/, "")}`);
+            : (providerLabels[provider] ?? `Continue with ${provider.replace(/^custom:/, "")}`);
         const iconUrl = providerIcons[provider];
 
         return (
@@ -51,9 +50,7 @@ export function SocialLoginButtons({
             onClick={() => void onProviderClick(provider)}
           >
             <span className="flex items-center justify-center gap-2">
-              {iconUrl && (
-                <img src={iconUrl} alt="" className="h-4 w-4 shrink-0 object-contain" />
-              )}
+              {iconUrl && <img src={iconUrl} alt="" className="h-4 w-4 shrink-0 object-contain" />}
               {label}
             </span>
           </Button>

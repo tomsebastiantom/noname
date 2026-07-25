@@ -6,7 +6,7 @@ describe("resolveProviderIconUrls", () => {
     const icons = await resolveProviderIconUrls(
       "org-1",
       ["google"],
-      { google: { assetId: "asset-1" } },
+      { google: { documentId: "asset-1" } },
       {
         get: async () => ({
           id: "asset-1",
@@ -44,24 +44,29 @@ describe("resolveProviderIconUrls", () => {
   });
 
   it("skips providers without an asset ref", async () => {
-    const icons = await resolveProviderIconUrls("org-1", ["github"], {}, {
-      get: async () => null,
-      create: async () => {
-        throw new Error("not used");
+    const icons = await resolveProviderIconUrls(
+      "org-1",
+      ["github"],
+      {},
+      {
+        get: async () => null,
+        create: async () => {
+          throw new Error("not used");
+        },
+        findByHash: async () => null,
+        list: async () => [],
+        update: async () => {
+          throw new Error("not used");
+        },
+        archive: async () => {
+          throw new Error("not used");
+        },
+        delete: async () => {},
+        publish: async () => {
+          throw new Error("not used");
+        },
       },
-      findByHash: async () => null,
-      list: async () => [],
-      update: async () => {
-        throw new Error("not used");
-      },
-      archive: async () => {
-        throw new Error("not used");
-      },
-      delete: async () => {},
-      publish: async () => {
-        throw new Error("not used");
-      },
-    });
+    );
 
     expect(icons).toEqual({});
   });

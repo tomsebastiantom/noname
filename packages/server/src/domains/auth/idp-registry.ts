@@ -100,9 +100,7 @@ export function publicProviderLabels(
   for (const providerId of providers) {
     const stored = storedLabels[providerId]?.trim();
     if (stored) {
-      labels[providerId] = stored.startsWith("Continue with ")
-        ? stored
-        : `Continue with ${stored}`;
+      labels[providerId] = stored.startsWith("Continue with ") ? stored : `Continue with ${stored}`;
       continue;
     }
 

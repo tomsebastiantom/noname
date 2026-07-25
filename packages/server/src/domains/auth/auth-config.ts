@@ -1,4 +1,5 @@
 import type { TenantAuthConfig } from "../documents/ports";
+import { parseDocumentRef } from "../documents/refs";
 import { isSupportedLoginProvider } from "./auth-provider-content";
 
 export type { TenantAuthConfig };
@@ -11,11 +12,8 @@ export const DEFAULT_TENANT_AUTH: TenantAuthConfig = {
   providerIconAssets: {},
 };
 
-function parseIconAssetRef(value: unknown): { assetId: string } | null {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-  const assetId = (value as { assetId?: unknown }).assetId;
-  if (typeof assetId !== "string" || assetId.trim() === "") return null;
-  return { assetId: assetId.trim() };
+function parseIconAssetRef(value: unknown): { documentId: string } | null {
+  return parseDocumentRef(value);
 }
 
 export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
@@ -48,13 +46,15 @@ export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
       }
     }
   }
-  const providerIconAssets: Record<string, { assetId: string }> = {};
+  const providerIconAssets: Record<string, { documentId: string }> = {};
   if (
     record.providerIconAssets &&
     typeof record.providerIconAssets === "object" &&
     !Array.isArray(record.providerIconAssets)
   ) {
-    for (const [key, value] of Object.entries(record.providerIconAssets as Record<string, unknown>)) {
+    for (const [key, value] of Object.entries(
+      record.providerIconAssets as Record<string, unknown>,
+    )) {
       const ref = parseIconAssetRef(value);
       if (ref) providerIconAssets[key] = ref;
     }

@@ -6,6 +6,8 @@ export interface ContentFieldSchema {
   required: boolean;
   isLocalizable: boolean;
   label: string;
+  /** Target content type for FieldType "reference". */
+  references?: string;
 }
 
 export interface ContentTypeSchema {
@@ -96,7 +98,14 @@ export function splitSavePayload(
       try {
         parsed = JSON.parse(raw) as unknown;
       } catch {
-        parsed = { assetId: raw };
+        parsed = { documentId: raw };
+      }
+    } else if (field.type === "reference") {
+      if (raw === "") continue;
+      try {
+        parsed = JSON.parse(raw) as unknown;
+      } catch {
+        parsed = { documentId: raw };
       }
     }
 
@@ -116,7 +125,8 @@ export function isEditableField(type: string): boolean {
     type === "longText" ||
     type === "number" ||
     type === "boolean" ||
-    type === "media"
+    type === "media" ||
+    type === "reference"
   );
 }
 
@@ -239,11 +249,14 @@ export interface AssetSummary {
   url: string | null;
 }
 
-function assetFromRow(row: { id: string; key: string; data?: Record<string, unknown> }): AssetSummary {
+function assetFromRow(row: {
+  id: string;
+  key: string;
+  data?: Record<string, unknown>;
+}): AssetSummary {
   const data = row.data ?? {};
   return {
-    // Media refs use document key (assets.get lookup), not row id.
-    id: row.key,
+    id: row.id,
     fileName: String(data.fileName ?? row.key),
     mimeType: String(data.mimeType ?? ""),
     url: assetUrlFromData(data),
@@ -279,7 +292,9 @@ export async function uploadAsset(file: File): Promise<AssetSummary> {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Upload failed (${res.status})`);
   }
-  const body = (await res.json()) as { data?: { id: string; key: string; data?: Record<string, unknown> } };
+  const body = (await res.json()) as {
+    data?: { id: string; key: string; data?: Record<string, unknown> };
+  };
   if (!body.data) throw new Error("Upload succeeded but no asset returned");
   return assetFromRow(body.data);
 }
@@ -290,7 +305,9 @@ export async function getAsset(assetId: string): Promise<AssetSummary | null> {
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
-  const body = (await res.json()) as { data?: { id: string; key: string; data?: Record<string, unknown> } };
+  const body = (await res.json()) as {
+    data?: { id: string; key: string; data?: Record<string, unknown> };
+  };
   if (!body.data) return null;
   return assetFromRow(body.data);
 }

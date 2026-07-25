@@ -23,6 +23,7 @@ import type {
   TenantSettingsService,
   UploadAssetInput,
 } from "./ports";
+import { documentIdFromRef } from "./refs";
 import { contentValidator } from "./validator";
 
 const DEFAULT_LOCALES = ["en-US"];
@@ -112,7 +113,7 @@ export function createDocumentsService(
       const built = buildContentData(schema.schema, data, undefined, locale, true, defaultLocale);
       if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
 
-      await assertAssetRefs(storage, schema.schema, built.data!, orgId);
+      await assertDocumentRefs(storage, schema.schema, built.data!, orgId);
 
       const v = validator.validate(schema.schema, built.data!, locales);
       if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
@@ -167,7 +168,7 @@ export function createDocumentsService(
       );
       if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
 
-      await assertAssetRefs(storage, schema.schema, built.data!, orgId);
+      await assertDocumentRefs(storage, schema.schema, built.data!, orgId);
 
       const v = validator.validate(schema.schema, built.data!, locales);
       if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
@@ -421,9 +422,9 @@ export function createDocumentsService(
       return found ? (found as unknown as AssetDTO) : null;
     },
 
-    get: async (orgId, assetId) => {
-      const found = await storage.findDocument(orgId, "asset", assetId);
-      if (!found) return null;
+    get: async (orgId, documentId) => {
+      const found = await storage.findDocumentById(documentId);
+      if (!found || found.orgId !== orgId || found.type !== "asset") return null;
       return enrichAssetUrls(found as unknown as AssetDTO);
     },
 
@@ -432,9 +433,11 @@ export function createDocumentsService(
       return rows.map((r) => enrichAssetUrls(r as unknown as AssetDTO)) as AssetDTO[];
     },
 
-    async update(orgId, assetId, input) {
-      const existing = await storage.findDocument(orgId, "asset", assetId);
-      if (!existing) throw new NotFoundError("Asset", assetId);
+    async update(orgId, documentId, input) {
+      const existing = await storage.findDocumentById(documentId);
+      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
+        throw new NotFoundError("Asset", documentId);
+      }
       const data = { ...existing.data };
       if (input.altText !== undefined) data.altText = input.altText;
       if (input.caption !== undefined) data.caption = input.caption;
@@ -444,21 +447,27 @@ export function createDocumentsService(
       return enrichAssetUrls(updated as unknown as AssetDTO);
     },
 
-    async archive(orgId, assetId) {
-      const existing = await storage.findDocument(orgId, "asset", assetId);
-      if (!existing) throw new NotFoundError("Asset", assetId);
+    async archive(orgId, documentId) {
+      const existing = await storage.findDocumentById(documentId);
+      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
+        throw new NotFoundError("Asset", documentId);
+      }
       return (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
     },
 
-    async delete(orgId, assetId) {
-      const existing = await storage.findDocument(orgId, "asset", assetId);
-      if (!existing) throw new NotFoundError("Asset", assetId);
+    async delete(orgId, documentId) {
+      const existing = await storage.findDocumentById(documentId);
+      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
+        throw new NotFoundError("Asset", documentId);
+      }
       await storage.deleteDocument(existing.id);
     },
 
-    async publish(orgId, assetId) {
-      const existing = await storage.findDocument(orgId, "asset", assetId);
-      if (!existing) throw new NotFoundError("Asset", assetId);
+    async publish(orgId, documentId) {
+      const existing = await storage.findDocumentById(documentId);
+      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
+        throw new NotFoundError("Asset", documentId);
+      }
       return (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
     },
   };
@@ -644,28 +653,58 @@ function buildContentData(
   return { data, errors };
 }
 
-async function assertAssetRefs(
+async function assertDocumentRefs(
   storage: DocumentStorage,
   schema: ContentTypeSchema,
   data: Record<string, unknown>,
   orgId: string,
 ): Promise<void> {
   for (const field of schema.fields) {
-    if (field.type !== "media" && field.type !== "mediaList") continue;
-    const value = data[field.key];
-    if (value === undefined) continue;
-    const check = async (assetId: string) => {
-      if (!assetId) return;
-      const found = await storage.findDocument(orgId, "asset", assetId);
-      if (!found) throw new ValidationError(field.key, `asset '${assetId}' does not exist`);
-    };
     if (field.type === "media") {
-      await check((value as { assetId?: string })?.assetId ?? "");
-    } else if (Array.isArray(value)) {
-      for (const item of value) {
-        await check((item as { assetId?: string })?.assetId ?? "");
-      }
+      await checkDocumentRef(storage, orgId, field.key, data[field.key], "asset");
+      continue;
     }
+    if (field.type === "mediaList") {
+      const value = data[field.key];
+      if (!Array.isArray(value)) continue;
+      for (const item of value) {
+        await checkDocumentRef(storage, orgId, field.key, item, "asset");
+      }
+      continue;
+    }
+    if (field.type === "reference") {
+      const targetType = field.references?.trim();
+      if (!targetType) {
+        throw new ValidationError(
+          field.key,
+          `reference field '${field.key}' must declare references (target content type)`,
+        );
+      }
+      await checkDocumentRef(storage, orgId, field.key, data[field.key], targetType);
+    }
+  }
+}
+
+async function checkDocumentRef(
+  storage: DocumentStorage,
+  orgId: string,
+  fieldKey: string,
+  value: unknown,
+  expectedType: string,
+): Promise<void> {
+  if (value === undefined) return;
+  const documentId = documentIdFromRef(value);
+  if (!documentId) return;
+
+  const found = await storage.findDocumentById(documentId);
+  if (!found || found.orgId !== orgId) {
+    throw new ValidationError(fieldKey, `referenced document '${documentId}' does not exist`);
+  }
+  if (found.type !== expectedType) {
+    throw new ValidationError(
+      fieldKey,
+      `referenced document '${documentId}' is type '${found.type}', expected '${expectedType}'`,
+    );
   }
 }
 
@@ -685,6 +724,12 @@ function validateSchema(schema: ContentTypeSchema): void {
   for (const f of schema.fields) {
     if (!f.key || !f.type) {
       throw new ValidationError("schema", "each field needs a key and a type");
+    }
+    if (f.type === "reference" && !f.references?.trim()) {
+      throw new ValidationError(
+        "schema",
+        `reference field '${f.key}' must declare references (target content type)`,
+      );
     }
   }
 }
@@ -721,6 +766,13 @@ function resolveAssetUrl(storageKey: string, _mimeType: string): string {
 }
 
 function enrichAssetUrls(dto: AssetDTO): AssetDTO {
+  const storageKey = typeof dto.data.storageKey === "string" ? dto.data.storageKey : null;
+  const mimeType = typeof dto.data.mimeType === "string" ? dto.data.mimeType : "";
+  const original = dto.data.original as
+    | { url?: string; width?: number | null; height?: number | null }
+    | undefined;
+  const originalUrl = storageKey ? resolveAssetUrl(storageKey, mimeType) : original?.url;
+
   const variants =
     (dto.data.variants as Record<
       string,
@@ -737,7 +789,15 @@ function enrichAssetUrls(dto: AssetDTO): AssetDTO {
   }
   return {
     ...dto,
-    data: { ...dto.data, _resolved: resolved },
+    data: {
+      ...dto.data,
+      original: original
+        ? { ...original, url: originalUrl ?? original.url }
+        : originalUrl
+          ? { url: originalUrl, width: null, height: null }
+          : undefined,
+      _resolved: resolved,
+    },
   };
 }
 

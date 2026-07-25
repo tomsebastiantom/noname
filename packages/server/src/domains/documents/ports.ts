@@ -91,10 +91,14 @@ export interface ContentTypeDTO {
 // TENANT SETTINGS — per-tenant locale + SEO + integrations config.
 // ---------------------------------------------------------------------------
 
+import type { ContentEntryRef, MediaRef } from "./refs";
+
+export type { ContentEntryRef, MediaRef };
+
 export interface TenantSeoConfig {
   metaTitleTemplate?: string;
   metaDescription?: string;
-  ogImage?: { assetId: string };
+  ogImage?: MediaRef;
   twitterCard?: string;
   canonicalDomain?: string;
 }
@@ -113,7 +117,7 @@ export interface TenantAuthConfig {
   allowPassword: boolean;
   providerLabels?: Record<string, string>;
   /** Media refs — same shape as content `icon` / SEO `ogImage` fields. URLs resolved at read time. */
-  providerIconAssets?: Record<string, { assetId: string }>;
+  providerIconAssets?: Record<string, MediaRef>;
 }
 
 export interface TenantSettingsDTO {

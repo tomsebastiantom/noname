@@ -26,6 +26,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
 import { MediaFieldInput } from "./MediaFieldInput";
+import { ReferenceFieldInput } from "./ReferenceFieldInput";
 import type { ComponentCtx } from "./types";
 
 function emptyValuesForSchema(typeSchema: ContentTypeSchema): Record<string, string> {
@@ -41,10 +42,12 @@ function FieldInput({
   field,
   value,
   onChange,
+  locale,
 }: {
   field: ContentFieldSchema;
   value: string;
   onChange: (value: string) => void;
+  locale: string;
 }) {
   if (field.type === "boolean") {
     return (
@@ -65,6 +68,19 @@ function FieldInput({
       <MediaFieldInput
         label={field.label}
         required={field.required}
+        value={value}
+        onChange={onChange}
+      />
+    );
+  }
+
+  if (field.type === "reference") {
+    return (
+      <ReferenceFieldInput
+        label={field.label}
+        required={field.required}
+        targetContentType={field.references ?? ""}
+        locale={locale}
         value={value}
         onChange={onChange}
       />
@@ -350,6 +366,7 @@ export function ContentEntryAdmin({
                 <FieldInput
                   key={field.key}
                   field={field}
+                  locale={locale}
                   value={values[field.key] ?? ""}
                   onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
                 />
@@ -435,6 +452,7 @@ export function ContentEntryAdmin({
                 <FieldInput
                   key={field.key}
                   field={field}
+                  locale={locale}
                   value={values[field.key] ?? ""}
                   onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
                 />

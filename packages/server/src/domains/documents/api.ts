@@ -66,7 +66,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
         idpIds?: Record<string, string>;
         allowPassword?: boolean;
         providerLabels?: Record<string, string>;
-        providerIconAssets?: Record<string, { assetId: string }>;
+        providerIconAssets?: Record<string, { documentId: string }>;
       };
     }>();
     const current = await tenantSettings.get(orgId);

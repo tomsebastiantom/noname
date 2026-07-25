@@ -7,6 +7,7 @@ import type {
   DocumentStorage,
   TenantSettingsDTO,
 } from "../ports";
+import { parseDocumentRef } from "../refs";
 import { documents, documentTypes } from "../schema";
 
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
@@ -307,7 +308,7 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
     seo: {
       metaTitleTemplate: seo.metaTitleTemplate as string | undefined,
       metaDescription: seo.metaDescription as string | undefined,
-      ogImage: seo.ogImage as { assetId: string } | undefined,
+      ogImage: parseDocumentRef(seo.ogImage) ?? undefined,
       twitterCard: seo.twitterCard as string | undefined,
       canonicalDomain: seo.canonicalDomain as string | undefined,
     },
@@ -332,18 +333,10 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
           ? Object.fromEntries(
               Object.entries(authRaw.providerIconAssets as Record<string, unknown>)
                 .map(([key, value]) => {
-                  if (
-                    !value ||
-                    typeof value !== "object" ||
-                    Array.isArray(value) ||
-                    typeof (value as { assetId?: unknown }).assetId !== "string"
-                  ) {
-                    return null;
-                  }
-                  const assetId = (value as { assetId: string }).assetId.trim();
-                  return assetId ? ([key, { assetId }] as const) : null;
+                  const ref = parseDocumentRef(value);
+                  return ref ? ([key, ref] as const) : null;
                 })
-                .filter((entry): entry is [string, { assetId: string }] => entry !== null),
+                .filter((entry): entry is [string, { documentId: string }] => entry !== null),
             )
           : {},
     },

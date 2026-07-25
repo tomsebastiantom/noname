@@ -1,22 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  type AssetSummary,
-  getAsset,
-  listAssets,
-  uploadAsset,
-} from "../../admin/content-entries";
+import { type AssetSummary, getAsset, listAssets, uploadAsset } from "../../admin/content-entries";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
 
-function parseMediaValue(value: string): { assetId: string } | null {
+function documentIdFromFieldValue(value: string): string | null {
   if (!value.trim()) return null;
   try {
-    const parsed = JSON.parse(value) as { assetId?: unknown };
-    if (typeof parsed.assetId === "string" && parsed.assetId.trim() !== "") {
-      return { assetId: parsed.assetId.trim() };
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    for (const key of ["documentId", "assetId", "entryId"]) {
+      const raw = parsed[key];
+      if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
     }
   } catch {
-    if (value.trim()) return { assetId: value.trim() };
+    if (value.trim()) return value.trim();
   }
   return null;
 }
@@ -39,17 +35,16 @@ export function MediaFieldInput({
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const selected = parseMediaValue(value);
+  const selectedDocumentId = documentIdFromFieldValue(value);
 
   useEffect(() => {
     let cancelled = false;
-    const assetId = selected?.assetId;
-    if (!assetId) {
+    if (!selectedDocumentId) {
       setPreview(null);
       return;
     }
 
-    void getAsset(assetId)
+    void getAsset(selectedDocumentId)
       .then((asset) => {
         if (!cancelled) setPreview(asset);
       })
@@ -60,14 +55,14 @@ export function MediaFieldInput({
     return () => {
       cancelled = true;
     };
-  }, [selected?.assetId]);
+  }, [selectedDocumentId]);
 
   async function onUpload(file: File) {
     setUploading(true);
     setError(null);
     try {
       const asset = await uploadAsset(file);
-      onChange(JSON.stringify({ assetId: asset.id }));
+      onChange(JSON.stringify({ documentId: asset.id }));
       setPreview(asset);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -118,7 +113,7 @@ export function MediaFieldInput({
         >
           {loadingAssets ? "Loading…" : "Pick existing"}
         </Button>
-        {selected && (
+        {selectedDocumentId && (
           <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
             Clear
           </Button>
@@ -144,9 +139,9 @@ export function MediaFieldInput({
               key={asset.id}
               type="button"
               title={asset.fileName}
-              onClick={() => onChange(JSON.stringify({ assetId: asset.id }))}
+              onClick={() => onChange(JSON.stringify({ documentId: asset.id }))}
               className={
-                selected?.assetId === asset.id
+                selectedDocumentId === asset.id
                   ? "rounded border-2 border-primary p-1"
                   : "rounded border p-1 hover:bg-muted/60"
               }

@@ -1,3 +1,5 @@
+import { documentIdFromRef } from "../documents/refs";
+
 export const AUTH_PROVIDER_CONTENT_TYPE = "auth_provider";
 
 export interface AuthProviderEntryData {
@@ -71,10 +73,7 @@ export function parseAuthProviderEntryData(data: Record<string, unknown>): AuthP
 }
 
 export function parseIconAssetId(data: Record<string, unknown>): string | null {
-  const icon = data.icon;
-  if (!icon || typeof icon !== "object" || Array.isArray(icon)) return null;
-  const assetId = (icon as { assetId?: unknown }).assetId;
-  return typeof assetId === "string" && assetId.trim() !== "" ? assetId.trim() : null;
+  return documentIdFromRef(data.icon);
 }
 
 export function buildGenericOAuthPayload(entry: AuthProviderEntryData): Record<string, unknown> {

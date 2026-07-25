@@ -24,4 +24,17 @@ describe("normalizeAuthConfig", () => {
     });
     expect(auth.providers).toEqual(["google", "custom:okta"]);
   });
+
+  it("normalizes providerIconAssets to documentId refs", () => {
+    const auth = normalizeAuthConfig({
+      providerIconAssets: {
+        google: { documentId: "icon-1" },
+        github: { assetId: "icon-2" },
+      },
+    });
+    expect(auth.providerIconAssets).toEqual({
+      google: { documentId: "icon-1" },
+      github: { documentId: "icon-2" },
+    });
+  });
 });

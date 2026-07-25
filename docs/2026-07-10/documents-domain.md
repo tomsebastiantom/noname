@@ -3,6 +3,7 @@
 ## Date: 2026-07-10
 ## Updated: 2026-07-11 (content modeling, rich text, assets, R2, permissions, webp/avif, hash dedup, id-based routing)
 ## Updated: 2026-07-25 (`tenant_id` → `org_id` — ZITADEL org id as TEXT; see [`AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md))
+## Updated: 2026-07-25 (unified document refs — `{ documentId }`; see [`DOCUMENT-REFS.md`](../2026-07-25/DOCUMENT-REFS.md))
 
 > **Column naming:** Postgres uses `org_id` (TEXT, ZITADEL organization id). Product language still says “tenant” / “store” (`tenant_settings`, per-tenant config). Drizzle field: `orgId`.
 

@@ -30,7 +30,9 @@ export async function startIdpLogin(
     codeChallenge,
   });
 
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/idp/${provider}/start?${params.toString()}`);
+  const res = await fetch(
+    `/api/tenants/${storeSlug}/auth/idp/${provider}/start?${params.toString()}`,
+  );
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Could not start ${provider} sign-in (${res.status})`);

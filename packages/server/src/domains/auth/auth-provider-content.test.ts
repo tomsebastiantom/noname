@@ -43,6 +43,7 @@ describe("auth-provider-content", () => {
   });
 
   it("parses optional icon asset reference", () => {
+    expect(parseIconAssetId({ icon: { documentId: "asset-1" } })).toBe("asset-1");
     expect(parseIconAssetId({ icon: { assetId: "asset-1" } })).toBe("asset-1");
     expect(parseIconAssetId({})).toBeNull();
   });

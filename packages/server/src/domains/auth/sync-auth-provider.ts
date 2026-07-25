@@ -1,4 +1,8 @@
-import type { AssetDocumentService, DocumentStorage, TenantSettingsService } from "../documents/ports";
+import type {
+  AssetDocumentService,
+  DocumentStorage,
+  TenantSettingsService,
+} from "../documents/ports";
 import { mergeAuthConfig, normalizeAuthConfig } from "./auth-config";
 import {
   AUTH_PROVIDER_CONTENT_TYPE,
@@ -38,7 +42,7 @@ async function rebuildCustomProviders(
   const customProviders: string[] = [];
   const customIdpIds: Record<string, string> = { ...idpIdsFromSync };
   const providerLabels: Record<string, string> = {};
-  const providerIconAssets: Record<string, { assetId: string }> = {};
+  const providerIconAssets: Record<string, { documentId: string }> = {};
 
   for (const row of rows) {
     try {
@@ -56,7 +60,7 @@ async function rebuildCustomProviders(
 
       const iconAssetId = parseIconAssetId(row.data);
       if (iconAssetId) {
-        providerIconAssets[providerId] = { assetId: iconAssetId };
+        providerIconAssets[providerId] = { documentId: iconAssetId };
       }
     } catch {
       // Skip invalid published rows until merchant fixes them.

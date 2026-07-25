@@ -439,10 +439,10 @@ async function ensureBuiltinProviderIcons(): Promise<void> {
     apple: "apple.svg",
   } as const;
 
-  const providerIconAssets: Record<string, { assetId: string }> = {};
+  const providerIconAssets: Record<string, { documentId: string }> = {};
   for (const [provider, fileName] of Object.entries(iconFiles)) {
     const asset = await uploadIdpIcon(fileName);
-    if (asset.key) providerIconAssets[provider] = { assetId: asset.key };
+    if (asset.id) providerIconAssets[provider] = { documentId: asset.id };
   }
 
   const { data: settings } = await api<{ data: { auth?: Record<string, unknown> } }>(
@@ -454,8 +454,9 @@ async function ensureBuiltinProviderIcons(): Promise<void> {
     auth: {
       ...(settings.auth ?? {}),
       providerIconAssets: {
-        ...((settings.auth?.providerIconAssets as Record<string, { assetId: string }> | undefined) ??
-          {}),
+        ...((settings.auth?.providerIconAssets as
+          | Record<string, { documentId: string }>
+          | undefined) ?? {}),
         ...providerIconAssets,
       },
     },

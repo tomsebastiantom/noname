@@ -21,15 +21,15 @@ export function iconUrlFromAsset(asset: AssetDTO | null): string | null {
 export async function resolveProviderIconUrls(
   orgId: string,
   providers: string[],
-  iconAssets: Record<string, { assetId: string }>,
+  iconAssets: Record<string, { documentId: string }>,
   assets: AssetDocumentService,
 ): Promise<Record<string, string>> {
   const icons: Record<string, string> = {};
 
   for (const providerId of providers) {
-    const assetId = iconAssets[providerId]?.assetId?.trim();
-    if (!assetId) continue;
-    const asset = await assets.get(orgId, assetId);
+    const documentId = iconAssets[providerId]?.documentId?.trim();
+    if (!documentId) continue;
+    const asset = await assets.get(orgId, documentId);
     const url = iconUrlFromAsset(asset);
     if (url) icons[providerId] = url;
   }

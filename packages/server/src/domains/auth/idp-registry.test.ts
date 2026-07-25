@@ -44,11 +44,11 @@ describe("idp-registry", () => {
   });
 
   it("builds public login labels from registry and stored names", () => {
-    expect(publicProviderLabels(["google", "custom:okta"], { "custom:okta": "Okta Workforce" })).toEqual(
-      {
-        google: "Continue with Google",
-        "custom:okta": "Continue with Okta Workforce",
-      },
-    );
+    expect(
+      publicProviderLabels(["google", "custom:okta"], { "custom:okta": "Okta Workforce" }),
+    ).toEqual({
+      google: "Continue with Google",
+      "custom:okta": "Continue with Okta Workforce",
+    });
   });
 });
