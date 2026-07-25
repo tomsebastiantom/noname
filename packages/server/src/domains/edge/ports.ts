@@ -20,6 +20,6 @@ export interface PersonalizeResponse {
 }
 
 export interface EdgeService {
-  getSchema(siteId: string, segment?: string): Promise<EdgeSchemaResponse>;
+  getSchema(siteId: string, segment?: string, template?: string): Promise<EdgeSchemaResponse>;
   personalize(orgId: string, input: PersonalizeRequest): Promise<PersonalizeResponse>;
 }

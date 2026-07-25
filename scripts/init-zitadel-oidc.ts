@@ -14,7 +14,7 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PROJECT_NAME = "noname-dev";
 const APP_NAME = "noname-client";
-const REDIRECT_URI = "http://localhost:5173/callback";
+const REDIRECT_URI = "http://localhost:5173/auth/callback";
 const POST_LOGOUT_URI = "http://localhost:5173";
 
 const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
@@ -37,6 +37,7 @@ interface ZitadelProject {
 }
 
 interface ZitadelAppSummary {
+  id?: string;
   name: string;
   oidcConfig?: { clientId?: string };
 }
@@ -186,7 +187,10 @@ async function ensureProject(token: string, organizationId: string): Promise<str
   return created.projectId;
 }
 
-async function findAppClientId(token: string, projectId: string): Promise<string | null> {
+async function findApp(
+  token: string,
+  projectId: string,
+): Promise<{ appId: string; clientId: string } | null> {
   const data = await zitadelPost<{ result?: ZitadelAppSummary[] }>(
     token,
     `/management/v1/projects/${projectId}/apps/_search`,
@@ -194,7 +198,28 @@ async function findAppClientId(token: string, projectId: string): Promise<string
   );
 
   const app = data.result?.find((a) => a.name === APP_NAME);
-  return app?.oidcConfig?.clientId ?? null;
+  if (!app?.id || !app.oidcConfig?.clientId) return null;
+  return { appId: app.id, clientId: app.oidcConfig.clientId };
+}
+
+async function ensureOidcRedirectUri(
+  token: string,
+  projectId: string,
+  appId: string,
+): Promise<void> {
+  await zitadelPost(
+    token,
+    "/zitadel.application.v2.ApplicationService/UpdateApplication",
+    {
+      applicationId: appId,
+      projectId,
+      oidcConfiguration: {
+        redirectUris: [REDIRECT_URI],
+        postLogoutRedirectUris: [POST_LOGOUT_URI],
+      },
+    },
+  );
+  console.log(`OIDC redirect URI → ${REDIRECT_URI}`);
 }
 
 async function createOidcApp(token: string, projectId: string): Promise<string> {
@@ -225,6 +250,40 @@ async function createOidcApp(token: string, projectId: string): Promise<string> 
   return clientId;
 }
 
+async function ensureLoginClient(token: string, sa: ServiceAccountKey): Promise<void> {
+  await fetch(`${ZITADEL_ISSUER}/admin/v1/members/${sa.userId}`, {
+    method: "PUT",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ roles: ["IAM_OWNER", "IAM_LOGIN_CLIENT"] }),
+  });
+
+  const patPath = join(ROOT, "zitadel_keys/login-client.pat");
+  if (existsSync(patPath)) {
+    console.log("Login client PAT already exists.");
+    return;
+  }
+
+  const res = await fetch(`${ZITADEL_ISSUER}/management/v1/users/${sa.userId}/pats`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ expirationDate: "2029-01-01T00:00:00Z" }),
+  });
+  const body = (await res.json()) as { token?: string };
+  if (!body.token) {
+    throw new Error("Failed to create login client PAT");
+  }
+
+  mkdirSync(join(ROOT, "zitadel_keys"), { recursive: true });
+  writeFileSync(patPath, body.token);
+  console.log(`Login client PAT → ${patPath}`);
+}
+
 function upsertEnvVar(filePath: string, key: string, value: string): void {
   const line = `${key}=${value}`;
   if (!existsSync(filePath)) {
@@ -251,10 +310,12 @@ async function main(): Promise<void> {
   }
 
   const projectId = await ensureProject(token, organizationId);
-  let clientId = await findAppClientId(token, projectId);
+  const existingApp = await findApp(token, projectId);
+  let clientId = existingApp?.clientId ?? null;
 
-  if (clientId) {
+  if (clientId && existingApp) {
     console.log(`OIDC app "${APP_NAME}" already exists — reusing client.`);
+    await ensureOidcRedirectUri(token, projectId, existingApp.appId);
   } else {
     clientId = await createOidcApp(token, projectId);
     console.log(`Created OIDC app "${APP_NAME}".`);
@@ -271,6 +332,8 @@ async function main(): Promise<void> {
     `${JSON.stringify({ issuer: ZITADEL_ISSUER, clientId, redirectUri: REDIRECT_URI }, null, 2)}\n`,
   );
 
+  await ensureLoginClient(token, sa);
+
   console.log("ZITADEL OIDC init complete.");
   console.log(`  Org ID:    ${organizationId}  (ZITADEL_DEMO_ORG_ID in .env)`);
   console.log(`  Project:   ${PROJECT_NAME} (${projectId})`);
@@ -279,6 +342,7 @@ async function main(): Promise<void> {
   console.log(`  Redirect:  ${REDIRECT_URI}`);
   console.log(`  Updated:   ${ENV_FILE}`);
   console.log(`  OIDC JSON: ${oidcJsonPath}`);
+  console.log(`  Login:     admin@zitadel.localhost / NonameAdmin1! (default instance admin)`);
 }
 
 main().catch((err: Error) => {

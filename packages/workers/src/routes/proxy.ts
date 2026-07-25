@@ -9,8 +9,14 @@ const PUBLIC_GET = [
   /^\/health$/,
 ];
 
+const PUBLIC_POST = [/^\/api\/tenants\/[^/]+\/auth\/login$/];
+
 function isPublicGet(method: string, pathname: string): boolean {
   return method === "GET" && PUBLIC_GET.some((re) => re.test(pathname));
+}
+
+function isPublicPost(method: string, pathname: string): boolean {
+  return method === "POST" && PUBLIC_POST.some((re) => re.test(pathname));
 }
 
 /** /api/edge/schema/:orgId or /api/tenants/:orgId/... */
@@ -41,7 +47,7 @@ export function createApiProxyRoutes() {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 
-    if (!isPublicGet(c.req.method, pathname) && !jwt) {
+    if (!isPublicGet(c.req.method, pathname) && !isPublicPost(c.req.method, pathname) && !jwt) {
       const auth = await validateJwt(c.req.raw, c.env);
       if (auth instanceof Response) return auth;
     }

@@ -1,10 +1,8 @@
-import type { ReactNode } from "react";
+import { LoginForm } from "./components/LoginForm";
+import type { ComponentCtx } from "./components/types";
 
-export interface ComponentCtx<P = Record<string, unknown>> {
-  props: P;
-  children?: ReactNode;
-  emit: (event: string) => void;
-}
+export type { ComponentCtx } from "./components/types";
+export { LoginForm } from "./components/LoginForm";
 
 export function Grid({
   props,
@@ -139,4 +137,5 @@ export const coreComponents = {
   Text,
   Button,
   Image,
+  LoginForm,
 };

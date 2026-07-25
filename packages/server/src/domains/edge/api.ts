@@ -9,7 +9,8 @@ export function createEdgeRoutes(service: EdgeService) {
   routes.get("/schema/:siteId", async (c) => {
     const orgId = resolveOrgId(c, c.req.param("siteId"));
     const segment = c.req.query("segment") || "default";
-    const schema = await service.getSchema(orgId, segment);
+    const template = c.req.query("template") || "home";
+    const schema = await service.getSchema(orgId, segment, template);
     return ok(c, schema);
   });
 

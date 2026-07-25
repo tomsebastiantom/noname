@@ -9,6 +9,25 @@ const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
+const loginSpec = {
+  root: "page",
+  elements: {
+    page: {
+      type: "Stack",
+      props: { direction: "column", gap: 24, align: "center" },
+      children: ["form"],
+    },
+    form: {
+      type: "LoginForm",
+      props: {
+        title: "Sign in",
+        subtitle: "Use your ZITADEL account for this organization",
+        redirectPath: "/",
+      },
+    },
+  },
+};
+
 const demoSpec = {
   root: "main",
   elements: {
@@ -88,7 +107,7 @@ async function main() {
     { headers: orgHeaders() },
   );
   if (existing.ok) {
-    console.log("Demo layout already published — skipping create.");
+    console.log("Demo home layout already published — skipping create.");
   } else {
     const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
       templateName: "home",
@@ -96,6 +115,25 @@ async function main() {
       spec: demoSpec,
     });
     await api("PUT", `/api/documents/layout/${created.id}/publish`);
+  }
+
+  const loginExisting = await fetch(
+    `${API_BASE}/api/documents/layout/login/resolve?segment=default`,
+    { headers: orgHeaders() },
+  );
+  if (loginExisting.ok) {
+    console.log("Login layout already published — skipping create.");
+  } else {
+    const { data: loginCreated } = await api<{ data: { id: string } }>(
+      "POST",
+      "/api/documents/layout",
+      {
+        templateName: "login",
+        segment: "default",
+        spec: loginSpec,
+      },
+    );
+    await api("PUT", `/api/documents/layout/${loginCreated.id}/publish`);
   }
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
@@ -109,8 +147,9 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home (published, core components)`);
+  console.log(`  Layout:  home + login (published, core components)`);
   console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
+  console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
   console.log(`  Commerce demo: pnpm seed:demo:commerce`);
 }
 

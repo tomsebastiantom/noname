@@ -114,17 +114,23 @@ Seed a simple layout spec (documents domain, type `layout`, key `login`):
 | `store` | `{orgId}.localhost:5173` | public ✅ today |
 | `login` | `{orgId}.localhost:5173/login` | public → returns JWT |
 
-### 3. Token flow (replace redirect PKCE)
+### 3. Token flow (embedded login — no redirect to ZITADEL hosted UI)
+
+ZITADEL does **not** support password grant (ROPC). Embedded login uses the **Session API** on the server:
 
 ```
 LoginForm submit
-  → ZITADEL OIDC (PKCE or resource-owner for dev)
-  → access_token in sessionStorage
-  → redirect to / (storefront) or /admin (later)
+  → POST /api/tenants/{orgId}/auth/login  (PKCE verifier + email/password)
+  → Server: ZITADEL Session API + OIDC finalize → access_token
+  → sessionStorage + cookie
+  → redirect to /
 ```
 
-- Remove storefront **Sign in** → ZITADEL redirect (or hide behind `?dev_auth=1`)
-- ZITADEL console (`:8080/ui/console`) stays for **platform ops / dev only**
+`pnpm init:zitadel` grants `IAM_LOGIN_CLIENT` to the machine user and writes `zitadel_keys/login-client.pat`.
+
+**Dev credentials:** `admin@zitadel.localhost` / `NonameAdmin1!` (from `docker-compose.yml` first-instance admin).
+
+`redirectUri` in `oidc.json` is an OIDC protocol identifier (registered in ZITADEL, e.g. `http://localhost:5173/auth/callback`). The browser never opens it during embedded login — the server parses the auth code from that URL string.
 
 ---
 
@@ -157,13 +163,14 @@ No extra page-specific JS needed for login — platform catalog only. Module Fed
 
 ## Implementation checklist (login only)
 
+- [x] `LoginForm` in catalog + registry (styled form; shadcn later)
+- [x] Client route `/login` → fetch login layout spec
+- [x] Wire form → server `POST .../auth/login` → ZITADEL Session API (`auth/login.ts`)
+- [x] Replace storefront ZITADEL redirect Sign in → link to `/login`
+- [x] Seed demo `login` layout document
+- [x] Server/edge: `?template=login` on schema route
+- [x] Server auth domain + `IAM_LOGIN_CLIENT` PAT (`pnpm init:zitadel`)
 - [ ] Tailwind + shadcn in `packages/client`
-- [ ] `LoginForm` + optional `AuthLayout` in catalog + registry
-- [ ] Client route `/login` → fetch login layout spec
-- [ ] Wire form → ZITADEL token (no hosted UI redirect)
-- [ ] Remove or gate storefront ZITADEL redirect Sign in
-- [ ] Seed demo `login` layout document
-- [ ] Server/edge: support `template=login` on schema route (if not already)
 
 ---
 

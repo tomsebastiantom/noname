@@ -6,6 +6,7 @@ startTracing();
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
+import { createAuthDomain } from "./domains/auth";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createContextDomain } from "./domains/context";
@@ -95,6 +96,9 @@ app.route("/api/edge", edge.routes);
 
 const tenant = createTenantDomain();
 app.route("/api/tenants", tenant.routes);
+
+const auth = createAuthDomain();
+app.route("/api/tenants", auth.routes);
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });

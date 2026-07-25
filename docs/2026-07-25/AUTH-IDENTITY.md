@@ -54,7 +54,7 @@ HMAC payload: `orgId:userId:role`
 | DB column | Drizzle `orgId: text("org_id")` | ✅ |
 | Client → edge | rspack proxy → `localhost:8787`; **no `x-org-id`** from browser | ✅ |
 | Client OIDC config | `pnpm init:zitadel` → `packages/client/public/oidc.json` | ✅ runtime fetch, not bundler |
-| Client PKCE login | `packages/client/src/auth/pkce.ts`, `/callback` | ✅ |
+| Embedded login | `LoginForm`, `POST .../auth/login`, server ZITADEL Session API | ✅ see [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
 
 ---
 
@@ -64,8 +64,8 @@ HMAC payload: `orgId:userId:role`
 |-------|--------|--------|
 | **0** | Infra, `org_id` in DB, seed | ✅ |
 | **1** | Edge proxy, JWT + HMAC, public GET | ✅ |
-| **2** | Client PKCE, Bearer to edge | ✅ |
-| **Login UI** | shadcn `LoginForm`, embedded ZITADEL (no redirect) | 📋 [Next — start here](./LOGIN-UI-PLAN.md) |
+| **2** | Client Bearer to edge | ✅ |
+| **Login UI** | shadcn `LoginForm`, server-brokered ZITADEL Session API | ✅ [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
 | **3** | Store slug + edge Host → `org_id` | 📋 [Planned](./PHASE-3-STORE-SLUG.md) |
 | **Admin UI** | Shell, load/manage layouts, editor | 📋 [Later](./ADMIN-UI-LATER.md) |
 | **4** | Custom domains, wrangler in compose | Later |
@@ -90,7 +90,11 @@ pnpm --filter @noname/client dev     # :5173 → proxies /api to edge
 
 Open the client at **`http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`** — org id comes from the subdomain, same as production hostname routing. No demo org baked into rspack.
 
-**Sign in:** click **Sign in** → ZITADEL login → redirect to `http://localhost:5173/callback` → token stored → back to the org subdomain. API calls send `Authorization: Bearer` only (no client `x-org-id`); edge resolves org from JWT or URL path and forwards HMAC to the API.
+**Sign in:** open **`/login`** (or click **Sign in**) → enter email/password on our `LoginForm` → client POSTs to `POST /api/tenants/{orgId}/auth/login` → server calls ZITADEL Session API (PAT stays on server) → JWT returned → stored in sessionStorage + cookie → redirected to storefront.
+
+Why the server is in the path: ZITADEL does not support password grant in the browser, and the Session API requires a secret. See [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md).
+
+API calls after login send `Authorization: Bearer` only (no client `x-org-id`); edge resolves org from JWT or URL path and forwards HMAC to the API.
 
 **Fresh DB:** `podman compose down -v && podman compose up -d` then `db:push`, `init:zitadel`, `seed:demo`.
 
@@ -99,4 +103,5 @@ Open the client at **`http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`** — org id 
 ## References
 
 - [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md)
+- [`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md) — why login goes through the API server
 - [`docs/2026-05-23/BUILD_PLAN.md`](../2026-05-23/BUILD_PLAN.md)

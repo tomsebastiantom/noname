@@ -63,7 +63,7 @@ Optional commerce extension demo: `pnpm seed:demo:commerce` (after `pnpm seed:de
 
 **Request path:** browser → client `:5173` → proxies `/api` → edge `:8787` → JWT + HMAC → API `:3000`.
 
-**Sign-in:** Sign in on the site → ZITADEL → `/callback` → Bearer token on API calls. See [`docs/2026-07-25/AUTH-IDENTITY.md`](./docs/2026-07-25/AUTH-IDENTITY.md).
+**Sign in:** open `/login` on the org subdomain → email/password → server brokers ZITADEL Session API → token stored → Bearer on API calls. See [`EMBEDDED-LOGIN.md`](./docs/2026-07-25/EMBEDDED-LOGIN.md).
 
 **Fresh database:** `podman compose down -v && podman compose up -d` then repeat one-time setup (steps 4–6).
 

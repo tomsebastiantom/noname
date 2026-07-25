@@ -9,8 +9,8 @@ export function createEdgeService(
   flagService: FlagService,
 ): EdgeService {
   return {
-    async getSchema(siteId, segment = "default") {
-      const resolved = await layout.resolve(siteId, "home", segment);
+    async getSchema(siteId, segment = "default", template = "home") {
+      const resolved = await layout.resolve(siteId, template, segment);
       const flags = await flagService.evaluate(siteId, {
         orgId: siteId,
         contextHash: segment,

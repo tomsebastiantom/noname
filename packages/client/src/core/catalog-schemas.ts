@@ -45,6 +45,14 @@ export const coreComponentSchemas = {
     }),
     description: "Responsive image with object-fit",
   },
+  LoginForm: {
+    props: z.object({
+      title: z.string(),
+      subtitle: z.string().nullable(),
+      redirectPath: z.string().nullable(),
+    }),
+    description: "Email/password sign-in form (ZITADEL behind the scenes)",
+  },
 };
 
 export const coreActionSchemas = {
@@ -53,5 +61,16 @@ export const coreActionSchemas = {
       path: z.string(),
     }),
     description: "Navigate to a page",
+  },
+  login: {
+    params: z.object({
+      email: z.string().email(),
+      password: z.string().min(1),
+      redirectPath: z.string().optional(),
+    }),
+    description: "Sign in with email and password",
+  },
+  logout: {
+    description: "Sign out and redirect to login",
   },
 };

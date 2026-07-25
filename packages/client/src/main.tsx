@@ -4,14 +4,7 @@ import { JSONUIProvider, Renderer } from "@json-render/react";
 import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { loadOidcConfig } from "./auth/config";
-import {
-  apiHeaders,
-  clearSession,
-  handleCallback,
-  hydrateTokenFromCookie,
-  isLoggedIn,
-  startLogin,
-} from "./auth/pkce";
+import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { registry as platformRegistry } from "./registry";
 
@@ -29,12 +22,15 @@ function orgIdFromHostname(hostname: string): string | null {
   return sub;
 }
 
-function AuthBar({
-  orgId,
-  onAuthChange,
-}: Readonly<{ orgId: string; onAuthChange: () => void }>) {
+function templateFromPath(pathname: string): string {
+  if (pathname === "/login") return "login";
+  return "home";
+}
+
+function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [oidcReady, setOidcReady] = useState<boolean | null>(null);
+  const onLoginPage = window.location.pathname === "/login";
 
   useEffect(() => {
     hydrateTokenFromCookie();
@@ -42,12 +38,8 @@ function AuthBar({
     void loadOidcConfig().then((cfg) => setOidcReady(cfg !== null));
   }, []);
 
-  if (oidcReady === false) {
-    return (
-      <div style={{ padding: "8px 16px", background: "#fef3c7", fontSize: 14 }}>
-        Run <code>pnpm init:zitadel</code> to enable sign-in.
-      </div>
-    );
+  if (onLoginPage || oidcReady === false) {
+    return null;
   }
 
   return (
@@ -70,20 +62,16 @@ function AuthBar({
               clearSession();
               setLoggedIn(false);
               onAuthChange();
+              window.location.href = "/login";
             }}
           >
             Sign out
           </button>
         </>
       ) : (
-        <button
-          type="button"
-          onClick={() => {
-            void startLogin(orgId);
-          }}
-        >
+        <a href="/login" style={{ color: "#111827" }}>
           Sign in
-        </button>
+        </a>
       )}
     </div>
   );
@@ -96,8 +84,9 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   const orgId = orgIdFromHostname(window.location.hostname);
+  const template = templateFromPath(window.location.pathname);
 
-  const loadStore = useCallback(async () => {
+  const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();
 
     if (!orgId) {
@@ -118,12 +107,13 @@ function App() {
       .then((body) => body?.data ?? null)
       .catch(() => null);
 
-    const specPromise = fetch(`/api/edge/schema/${orgId}?segment=default`, { headers }).then(
-      (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
-      },
-    );
+    const specPromise = fetch(
+      `/api/edge/schema/${orgId}?segment=default&template=${encodeURIComponent(template)}`,
+      { headers },
+    ).then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
+    });
 
     try {
       const [manifest, body] = await Promise.all([manifestPromise, specPromise]);
@@ -141,11 +131,11 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [orgId]);
+  }, [orgId, template]);
 
   useEffect(() => {
-    void loadStore();
-  }, [loadStore]);
+    void loadPage();
+  }, [loadPage]);
 
   if (loading) {
     return <div style={{ padding: 48, textAlign: "center" }}>Loading...</div>;
@@ -159,36 +149,22 @@ function App() {
     return <div style={{ padding: 48, textAlign: "center" }}>No spec found</div>;
   }
 
+  const pageStyle =
+    template === "login"
+      ? { minHeight: "100vh", display: "flex", flexDirection: "column" as const, background: "#f9fafb" }
+      : undefined;
+
   return (
-    <>
-      <AuthBar orgId={orgId} onAuthChange={() => void loadStore()} />
+    <div style={pageStyle}>
+      <AuthBar onAuthChange={() => void loadPage()} />
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />
       </JSONUIProvider>
-    </>
-  );
-}
-
-function CallbackError({ message }: Readonly<{ message: string }>) {
-  return (
-    <div style={{ padding: 48, textAlign: "center", color: "red" }}>
-      Sign-in failed: {message}
     </div>
   );
 }
 
 const root = document.getElementById("root");
 if (root) {
-  if (window.location.pathname === "/callback") {
-    try {
-      const returnUrl = await handleCallback();
-      window.location.replace(returnUrl);
-    } catch (err) {
-      createRoot(root).render(
-        <CallbackError message={err instanceof Error ? err.message : String(err)} />,
-      );
-    }
-  } else {
-    createRoot(root).render(<App />);
-  }
+  createRoot(root).render(<App />);
 }
