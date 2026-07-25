@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Active  
-> **Related:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSIONS.md`](./EXTENSIONS.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md)
+> **Related:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md), [`LOGIN-UI-MODERN-PLAN.md`](./LOGIN-UI-MODERN-PLAN.md), [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSIONS.md`](./EXTENSIONS.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md)
 
 ---
 
@@ -31,7 +31,7 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 | Edge `?template=login` on schema route | ✅ |
 | Seed `login` layout document | ✅ |
 | Replace AuthBar redirect with link to `/login` | ✅ |
-| Tailwind + shadcn polish | ✅ |
+| Tailwind + shadcn polish | ✅ basic — see [`LOGIN-UI-MODERN-PLAN.md`](./LOGIN-UI-MODERN-PLAN.md) for Clerk/Google phases |
 | ZITADEL password grant enabled on SPA app | N/A — ZITADEL does not support ROPC; uses Session API via `/api/tenants/:orgId/auth/login` |
 | `pnpm init:zitadel` creates login client PAT + `IAM_LOGIN_CLIENT` | ✅ |
 
@@ -42,7 +42,7 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 3. Redirect to `/` → API calls include `Authorization: Bearer`
 4. Edge accepts JWT → HMAC → API
 
-**Doc:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md)
+**Doc:** [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md) · Modern polish + Google: [`LOGIN-UI-MODERN-PLAN.md`](./LOGIN-UI-MODERN-PLAN.md)
 
 ---
 
@@ -129,5 +129,6 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 ## References
 
 - [`LOGIN-UI-PLAN.md`](./LOGIN-UI-PLAN.md) — Phase A detail
+- [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) — per-org auth settings (Clerk-like), ZITADEL + spec + admin
 - [`EXTENSIONS.md`](./EXTENSIONS.md) — naming + extension architecture
 - [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) — core vs extension vs remote

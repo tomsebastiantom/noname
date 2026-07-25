@@ -51,6 +51,8 @@ One extension = one use-case bundle, enabled per org via manifest:
 
 No commerce-specific API routes. Cart/checkout = **state machines** + JSONB context, not `domains/commerce/`.
 
+**Important:** A layout spec (JSON document) alone is **not** an extension. See [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) for the full bundle (manifest, schemas, components, actions, machines, spec, CSS) with commerce and booking examples.
+
 ---
 
 ## Code layout
@@ -75,11 +77,14 @@ packages/client/src/
 
 ## Adding an extension
 
-1. Create `packages/extensions/src/{name}/` (schemas, components, actions, registry)
+Full checklist (manifest, schemas, components, actions, machines, layout spec, CSS): **[`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md)**
+
+Minimal steps:
+
+1. Create `packages/extensions/src/{name}/` (schemas, components, actions, registry, `machines/*.json`)
 2. Register in `extensionLoaders` in `packages/extensions/src/index.ts`
 3. Enable per org: `PUT /api/tenants/:id/catalog` with `extensions: ["{name}"]`
-
-Future: same extension folder adds `machines/*.json` for server-side workflow defs.
+4. Register machine defs + publish a layout spec that uses the extension's component types
 
 ---
 
@@ -94,6 +99,7 @@ Future: same extension folder adds `machines/*.json` for server-side workflow de
 
 ## References
 
-- Shopify **theme app extensions** — optional storefront UI add-ons
+- [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) — full bundle per extension (not JSON alone), schema variables, examples
+- [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) — core vs extension vs remote
 - Saleor **extensions** — umbrella for optional platform capabilities
 - Medusa **plugins** — rejected name; we use generic machines instead of commerce modules

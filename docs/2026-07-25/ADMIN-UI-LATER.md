@@ -57,8 +57,9 @@ GET /admin  (or admin.{slug}.localhost)
 
 1. shadcn `AdminShell` + seed `admin_dashboard` layout
 2. Protected `/admin` route + edge role gate
-3. Visual editor lazy chunk (`editor/`)
-4. Tenant catalog bundler + MF remotes
+3. **Auth settings** — per-org social login, MFA, login branding ([`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md))
+4. Visual editor lazy chunk (`editor/`)
+5. Tenant catalog bundler + MF remotes
 
 ---
 
