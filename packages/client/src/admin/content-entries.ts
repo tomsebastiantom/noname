@@ -188,4 +188,28 @@ export async function publishContentEntry(contentType: string, id: string): Prom
   }
 }
 
+export async function createContentEntry(input: {
+  contentType: string;
+  schema: ContentTypeSchema;
+  values: Record<string, string>;
+  locale?: string;
+}): Promise<string> {
+  const locale = input.locale ?? DEFAULT_LOCALE;
+  const headers = { ...apiHeaders(), "Content-Type": "application/json" };
+  const { localizable, global } = splitSavePayload(input.values, input.schema);
+  const body = { ...global, ...localizable };
+
+  const res = await fetch(
+    `/api/documents/${encodeURIComponent(input.contentType)}?locale=${encodeURIComponent(locale)}`,
+    { method: "POST", headers, body: JSON.stringify(body) },
+  );
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `Create failed (${res.status})`);
+  }
+  const created = (await res.json()) as { data?: { id: string } };
+  if (!created.data?.id) throw new Error("Create succeeded but no entry id returned");
+  return created.data.id;
+}
+
 export { DEFAULT_LOCALE as CONTENT_DEFAULT_LOCALE };

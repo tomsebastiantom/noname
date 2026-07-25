@@ -11,8 +11,11 @@
 **Every page the merchant sees is loaded from a layout spec + catalog — not a hand-written React route.**
 
 ```
-URL path  →  template name  →  layout document  →  json-render <Renderer>
+URL path  →  page_tree (storefront) OR platform template (admin/login)
+         →  layout document  →  json-render <Renderer>
 ```
+
+Storefront routing plan: [`PAGE-ROUTING.md`](./PAGE-ROUTING.md). Today storefront still uses `templateFromPath("home")` — temporary.
 
 If you add a new `/admin/foo` page as a standalone React component with its own form, it will **drift** from the platform: no edge cache, no visual editor, no seed/publish flow, no action schema validation.
 
@@ -210,4 +213,4 @@ Both render with `<Renderer spec={…} />`. Admin is not a separate SPA.
 - [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md) — storefront CMS → `$state`
 - [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) — admin routes and shipped components
 - [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) — extension checklist
-- Code: `packages/client/src/main.tsx`, `scripts/seed-demo.ts`
+- [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) — move storefront URLs out of React into page_tree

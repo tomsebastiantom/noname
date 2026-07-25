@@ -113,6 +113,50 @@ const adminContentSpec = {
   },
 };
 
+const adminLayoutSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Layouts",
+        activeNav: "layout",
+      },
+      children: ["layoutAdmin"],
+    },
+    layoutAdmin: {
+      type: "LayoutEntryAdmin",
+      props: {
+        title: "Layout templates",
+        description:
+          "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
+        segment: "default",
+      },
+    },
+  },
+};
+
+const adminHomeSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Dashboard",
+        activeNav: "home",
+      },
+      children: ["home"],
+    },
+    home: {
+      type: "AdminHome",
+      props: {
+        title: "Dashboard",
+        description: "Manage content, layouts, and auth without re-seeding.",
+      },
+    },
+  },
+};
+
 const pageContentType = {
   fields: [
     { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
@@ -215,6 +259,8 @@ async function main() {
   await upsertLayout("login", loginSpec);
   await upsertLayout("admin_dashboard", adminDashboardSpec);
   await upsertLayout("admin_content", adminContentSpec);
+  await upsertLayout("admin_layout", adminLayoutSpec);
+  await upsertLayout("admin_home", adminHomeSpec);
 
   await ensurePageContentType();
   await ensureDemoPageEntry();
@@ -230,10 +276,12 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home + login + admin_dashboard + admin_content`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_dashboard`);
   console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
   console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
-  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin/content`);
+  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin`);
+  console.log(`  Content: http://${DEMO_ORG_ID}.localhost:5173/admin/content`);
+  console.log(`  Layouts: http://${DEMO_ORG_ID}.localhost:5173/admin/layout`);
   console.log(`  Auth:    http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
 }
 

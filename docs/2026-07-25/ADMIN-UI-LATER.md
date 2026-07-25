@@ -41,6 +41,8 @@ Merchant dashboard inside `packages/client` (no separate package):
 | `AdminShell` | Sidebar + main slot | ✅ |
 | `AuthSettingsForm` | Per-org auth toggles + Google OAuth → ZITADEL | ✅ |
 | `ContentEntryAdmin` | List/edit/publish CMS entries by content type | ✅ |
+| `LayoutEntryAdmin` | Edit/publish json-render layout templates | ✅ |
+| `AdminHome` | Dashboard overview links | ✅ |
 | `AdminNav` / `AdminPageHeader` | Optional polish | 📋 |
 | `DataTable` | CRUD lists | 📋 |
 | `PropsPanel` | Visual editor side panel | 📋 |
@@ -55,9 +57,12 @@ Same json-render pipeline as storefront — path maps to a **layout template nam
 
 | Path | Edge template | Main component |
 |------|---------------|----------------|
+| `/admin` | `admin_home` | `AdminHome` (overview) |
 | `/admin/settings/auth` | `admin_dashboard` | `AuthSettingsForm` |
 | `/admin/content` | `admin_content` | `ContentEntryAdmin` (pick content type) |
 | `/admin/content/:type` | `admin_content` | `ContentEntryAdmin` (edit entries) |
+| `/admin/layout` | `admin_layout` | `LayoutEntryAdmin` (pick template) |
+| `/admin/layout/:template` | `admin_layout` | `LayoutEntryAdmin` (edit JSON spec) |
 
 ```
 GET /admin/content/page

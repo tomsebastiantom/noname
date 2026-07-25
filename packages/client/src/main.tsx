@@ -27,12 +27,20 @@ function templateFromPath(pathname: string): string {
   if (pathname === "/login") return "login";
   if (pathname === "/auth/callback") return "login";
   if (pathname.startsWith("/admin/content")) return "admin_content";
-  if (pathname.startsWith("/admin")) return "admin_dashboard";
+  if (pathname.startsWith("/admin/layout")) return "admin_layout";
+  if (pathname === "/admin/settings/auth") return "admin_dashboard";
+  if (pathname === "/admin" || pathname === "/admin/") return "admin_home";
+  if (pathname.startsWith("/admin")) return "admin_home";
   return "home";
 }
 
 function isAdminTemplate(template: string): boolean {
-  return template === "admin_dashboard" || template === "admin_content";
+  return (
+    template === "admin_dashboard" ||
+    template === "admin_content" ||
+    template === "admin_layout" ||
+    template === "admin_home"
+  );
 }
 
 function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {

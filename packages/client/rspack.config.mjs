@@ -11,6 +11,7 @@ export default {
   output: {
     filename: "[name].[contenthash:8].js",
     chunkFilename: "[name].[contenthash:8].js",
+    publicPath: "/",
     clean: true,
   },
   target: "web",

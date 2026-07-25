@@ -96,7 +96,7 @@ Merchant manages content, layouts, auth settings without re-seeding.
 | `ContentEntryAdmin` → generic CMS (any content type) | ✅ |
 | Seed `admin_dashboard` + `admin_content` layouts | ✅ |
 | Core demo: `page` content type (no commerce required) | ✅ |
-| Layout editor (publish specs from UI) | 📋 |
+| Layout editor (publish specs from UI) | ✅ basic JSON editor |
 | GitHub / Apple IdP in auth admin | 📋 |
 | Visual editor `?edit=true` | 📋 Phase D |
 
@@ -113,6 +113,7 @@ Merchant manages content, layouts, auth settings without re-seeding.
 
 | Item | Doc |
 |------|-----|
+| **Page routing (URL → spec)** | [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) |
 | Store slug | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
 | Custom domains | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) |
 | Tenant MF remotes | [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) |

@@ -1,4 +1,5 @@
 import {
+  createContentEntry,
   loadEntryFields,
   publishContentEntry,
   saveContentEntry,
@@ -20,5 +21,15 @@ export const contentActions = {
   publishContentEntry: async (params: unknown) => {
     const { contentType, id } = params as { contentType: string; id: string };
     await publishContentEntry(contentType, id);
+  },
+
+  createContentEntry: async (params: unknown) => {
+    const { contentType, schema, values, locale } = params as {
+      contentType: string;
+      schema: ContentTypeSchema;
+      values: Record<string, string>;
+      locale?: string;
+    };
+    await createContentEntry({ contentType, schema, values, locale });
   },
 };

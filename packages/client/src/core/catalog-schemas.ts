@@ -97,6 +97,27 @@ export const coreComponentSchemas = {
     }),
     description: "Generic CMS entry list and form driven by content type schema",
   },
+  LayoutEntryAdmin: {
+    props: z.object({
+      title: z.string().default("Layouts"),
+      description: z
+        .string()
+        .nullable()
+        .default("Edit json-render layout templates — home, login, and other page specs."),
+      segment: z.string().default("default"),
+    }),
+    description: "Layout template list and JSON spec editor with publish",
+  },
+  AdminHome: {
+    props: z.object({
+      title: z.string().default("Dashboard"),
+      description: z
+        .string()
+        .nullable()
+        .default("Manage content, layouts, and auth without re-seeding."),
+    }),
+    description: "Admin overview with links to platform settings",
+  },
 };
 
 export const coreActionSchemas = {
@@ -163,5 +184,38 @@ export const coreActionSchemas = {
       id: z.string().min(1),
     }),
     description: "Publish a CMS content entry",
+  },
+  createContentEntry: {
+    params: z.object({
+      contentType: z.string().min(1),
+      schema: z.object({
+        fields: z.array(
+          z.object({
+            key: z.string(),
+            type: z.string(),
+            required: z.boolean(),
+            isLocalizable: z.boolean(),
+            label: z.string(),
+          }),
+        ),
+      }),
+      values: z.record(z.string(), z.string()),
+      locale: z.string().optional(),
+    }),
+    description: "Create a new CMS content entry",
+  },
+  saveLayoutEntry: {
+    params: z.object({
+      id: z.string().min(1),
+      specJson: z.string().min(2),
+      contentRef: z.string().nullable().optional(),
+    }),
+    description: "Save a layout template draft (json-render spec JSON)",
+  },
+  publishLayoutEntry: {
+    params: z.object({
+      id: z.string().min(1),
+    }),
+    description: "Publish a layout template",
   },
 };

@@ -2,6 +2,7 @@ import { type FormEvent, useEffect, useState } from "react";
 import {
   CONTENT_DEFAULT_LOCALE,
   contentTypeFromPath,
+  createContentEntry,
   entryLabel,
   getContentType,
   isEditableField,
@@ -26,6 +27,15 @@ import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
 import type { ComponentCtx } from "./types";
 
+function emptyValuesForSchema(typeSchema: ContentTypeSchema): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const field of typeSchema.fields) {
+    if (!isEditableField(field.type)) continue;
+    out[field.key] = field.type === "boolean" ? "false" : "";
+  }
+  return out;
+}
+
 function FieldInput({
   field,
   value,
@@ -46,6 +56,26 @@ function FieldInput({
         />
         <span className="text-sm">{field.label}</span>
       </label>
+    );
+  }
+
+  if (field.type === "longText") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={field.key}>
+          {field.label}
+          {field.required ? " *" : ""}
+          {field.isLocalizable ? " (localized)" : ""}
+        </Label>
+        <textarea
+          id={field.key}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={5}
+          required={field.required}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+        />
+      </div>
     );
   }
 
@@ -80,6 +110,7 @@ export function ContentEntryAdmin({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [types, setTypes] = useState<{ name: string; fieldCount: number }[]>([]);
@@ -118,8 +149,11 @@ export function ContentEntryAdmin({
         if (first) {
           setSelectedId(first.id);
           setStatus(first.status);
-          const fields = await loadEntryFields(contentType, first.id, locale);
-          if (!cancelled) setValues(fields);
+          setValues(await loadEntryFields(contentType, first.id, locale));
+        } else {
+          setSelectedId(null);
+          setValues(emptyValuesForSchema(typeDef.schema));
+          setStatus("draft");
         }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : String(err));
@@ -145,6 +179,36 @@ export function ContentEntryAdmin({
       setValues(await loadEntryFields(contentType, id, locale));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function startNewEntry() {
+    if (!schema) return;
+    setSelectedId(null);
+    setValues(emptyValuesForSchema(schema));
+    setStatus("draft");
+    setError(null);
+    setSuccess(null);
+  }
+
+  async function onCreate(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!schema || !contentType) return;
+
+    setCreating(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const id = await createContentEntry({ contentType, schema, values, locale });
+      const rows = await listEntries(contentType);
+      setEntries(rows);
+      setSelectedId(id);
+      setStatus("draft");
+      setSuccess("Entry created as draft.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -228,16 +292,13 @@ export function ContentEntryAdmin({
     );
   }
 
-  const editableFields = schema?.fields.filter((f) => isEditableField(f.type)) ?? [];
-  const skippedFields = schema?.fields.filter((f) => !isEditableField(f.type)) ?? [];
-
-  if (!schema || entries.length === 0) {
+  if (!schema) {
     return (
       <Card className="max-w-xl">
         <CardHeader>
           <CardTitle>{props.title}</CardTitle>
           <CardDescription>
-            Content type <strong>{contentType}</strong> — no entries yet.
+            Content type <strong>{contentType}</strong> not found.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -249,6 +310,65 @@ export function ContentEntryAdmin({
     );
   }
 
+  const editableFields = schema.fields.filter((f) => isEditableField(f.type));
+  const skippedFields = schema.fields.filter((f) => !isEditableField(f.type));
+  const isNewEntry = selectedId === null;
+
+  if (entries.length === 0 || isNewEntry) {
+    return (
+      <div className="flex max-w-2xl flex-col gap-4">
+        <a href="/admin/content" className="text-sm text-muted-foreground hover:text-foreground">
+          ← All content types
+        </a>
+        <Card>
+          <CardHeader>
+            <CardTitle>{isNewEntry && entries.length > 0 ? "New entry" : props.title}</CardTitle>
+            <CardDescription>
+              {isNewEntry && entries.length > 0
+                ? `Create a ${contentType} entry`
+                : `Content type ${contentType} — ${entries.length === 0 ? "no entries yet" : "new entry"}.`}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={(e) => void onCreate(e)} className="flex flex-col gap-4">
+              {editableFields.map((field) => (
+                <FieldInput
+                  key={field.key}
+                  field={field}
+                  value={values[field.key] ?? ""}
+                  onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
+                />
+              ))}
+
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+
+              {success && (
+                <Alert>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={creating}>
+                  {creating ? "Creating…" : "Create draft"}
+                </Button>
+                {isNewEntry && entries.length > 0 && (
+                  <Button type="button" variant="outline" onClick={() => void selectEntry(entries[0]!.id)}>
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="flex max-w-4xl flex-col gap-4">
       <a href="/admin/content" className="text-sm text-muted-foreground hover:text-foreground">
@@ -257,8 +377,11 @@ export function ContentEntryAdmin({
 
       <div className="flex flex-col gap-6 lg:flex-row">
         <Card className="shrink-0 lg:w-64">
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-base">{contentType}</CardTitle>
+            <Button type="button" variant="ghost" size="sm" onClick={startNewEntry}>
+              + New
+            </Button>
           </CardHeader>
           <CardContent className="flex flex-col gap-1 p-2 pt-0">
             {entries.map((entry) => (

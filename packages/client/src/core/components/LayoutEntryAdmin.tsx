@@ -1,0 +1,252 @@
+import { type FormEvent, useEffect, useState } from "react";
+import {
+  getLayoutForTemplate,
+  layoutTemplateFromPath,
+  listLayouts,
+  parseSpecJson,
+  specToJson,
+  type LayoutSummary,
+} from "../../admin/layout-entries";
+import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Button } from "../../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../../components/ui/card";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { executeAction } from "../../platform/registry";
+import type { ComponentCtx } from "./types";
+
+export function LayoutEntryAdmin({
+  props,
+}: ComponentCtx<{
+  title: string;
+  description: string | null;
+  segment: string;
+}>) {
+  const segment = props.segment || "default";
+  const templateName = layoutTemplateFromPath(window.location.pathname);
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+  const [layouts, setLayouts] = useState<LayoutSummary[]>([]);
+  const [layoutId, setLayoutId] = useState<string | null>(null);
+  const [status, setStatus] = useState("draft");
+  const [specJson, setSpecJson] = useState("");
+  const [contentRef, setContentRef] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function load() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        if (!templateName) {
+          const rows = await listLayouts(segment);
+          if (!cancelled) setLayouts(rows);
+          return;
+        }
+
+        const row = await getLayoutForTemplate(templateName, segment);
+        if (!row) throw new Error(`Layout "${templateName}" not found`);
+
+        if (!cancelled) {
+          setLayoutId(row.id);
+          setStatus(row.status);
+          setSpecJson(specToJson(row.data.spec));
+          setContentRef(row.data.contentRef ?? "");
+        }
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, [templateName, segment]);
+
+  async function onSave(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!layoutId) return;
+
+    setSaving(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      parseSpecJson(specJson);
+      await executeAction(
+        "saveLayoutEntry",
+        { id: layoutId, specJson, contentRef: contentRef || null },
+        () => {},
+      );
+      setStatus("draft");
+      setSuccess("Layout saved as draft.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function onPublish() {
+    if (!layoutId) return;
+
+    setPublishing(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      parseSpecJson(specJson);
+      await executeAction(
+        "saveLayoutEntry",
+        { id: layoutId, specJson, contentRef: contentRef || null },
+        () => {},
+      );
+      await executeAction("publishLayoutEntry", { id: layoutId }, () => {});
+      setStatus("published");
+      setSuccess("Layout published. Storefront/login will use the new spec on next load.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  if (loading) {
+    return <p className="text-muted-foreground">Loading layouts…</p>;
+  }
+
+  if (!templateName) {
+    return (
+      <Card className="max-w-2xl">
+        <CardHeader>
+          <CardTitle>{props.title}</CardTitle>
+          {props.description && <CardDescription>{props.description}</CardDescription>}
+        </CardHeader>
+        <CardContent className="flex flex-col gap-2">
+          {layouts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No layout templates yet. Seed with <code className="rounded bg-muted px-1">pnpm seed:demo</code>.
+            </p>
+          ) : (
+            layouts.map((layout) => (
+              <a
+                key={layout.id}
+                href={`/admin/layout/${layout.templateName}`}
+                className="rounded-md border px-4 py-3 text-sm font-medium hover:bg-muted/60"
+              >
+                {layout.templateName}
+                <span className="ml-2 text-xs uppercase text-muted-foreground">{layout.status}</span>
+                {layout.hasContentRef && (
+                  <span className="ml-2 text-xs text-muted-foreground">· contentRef</span>
+                )}
+              </a>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!layoutId) {
+    return (
+      <Card className="max-w-xl">
+        <CardHeader>
+          <CardTitle>{props.title}</CardTitle>
+          <CardDescription>
+            Template <strong>{templateName}</strong> not found.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <a href="/admin/layout" className="text-sm text-primary underline-offset-4 hover:underline">
+            ← All layouts
+          </a>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <div className="flex max-w-4xl flex-col gap-4">
+      <a href="/admin/layout" className="text-sm text-muted-foreground hover:text-foreground">
+        ← All layouts
+      </a>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{props.title}</CardTitle>
+          {props.description && <CardDescription>{props.description}</CardDescription>}
+          <p className="text-xs text-muted-foreground">
+            Template: {templateName} · Segment: {segment} · Status: {status}
+          </p>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={(e) => void onSave(e)} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="contentRef">contentRef (optional)</Label>
+              <Input
+                id="contentRef"
+                value={contentRef}
+                onChange={(e) => setContentRef(e.target.value)}
+                placeholder="product:uuid or page:uuid — CMS merge on storefront"
+              />
+              <p className="text-xs text-muted-foreground">
+                Storefront templates only. Login/admin specs usually leave this empty.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="specJson">json-render spec (JSON)</Label>
+              <textarea
+                id="specJson"
+                value={specJson}
+                onChange={(e) => setSpecJson(e.target.value)}
+                rows={24}
+                spellCheck={false}
+                className="min-h-[320px] w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs leading-relaxed"
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            {success && (
+              <Alert>
+                <AlertDescription>{success}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={saving || publishing}>
+                {saving ? "Saving…" : "Save draft"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={saving || publishing}
+                onClick={() => void onPublish()}
+              >
+                {publishing ? "Publishing…" : "Save & publish"}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

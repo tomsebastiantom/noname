@@ -149,6 +149,7 @@ Manual: load `{orgId}.localhost:5173/{path}` — page must render from edge sche
 ## Docs (repo)
 
 - Full guide: `docs/2026-07-25/SPEC-DRIVEN-UI.md`
+- Routing: `docs/2026-07-25/PAGE-ROUTING.md`
 - Admin routes: `docs/2026-07-25/ADMIN-UI-LATER.md`
 - Actions: `docs/2026-07-25/CLIENT-ACTIONS.md`
 - Layers: `docs/2026-07-25/CLIENT-CATALOG-LAYERS.md`

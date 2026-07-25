@@ -14,7 +14,7 @@
 ✅ 1    Content render pipeline     → CMS content → $state → resolved spec on edge
 ✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
 📋 C    Admin UI (C)                → edit content/layouts/auth without seeds (in progress)
-📋 4    Scale (D)                   → slug, domains, editor, 2nd extension
+📋 4    Scale (D)                   → slug, domains, page_tree routing, editor
 ```
 
 | Step | Doc | Validates when |
@@ -22,6 +22,7 @@
 | **1 Content pipeline** | [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md) | Product text from CMS entry, not baked into layout JSON |
 | **2 Per-org auth** | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Org A has Google, Org B does not — no `.env` IdP id |
 | **3 Admin** | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) + [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) | Merchant UI from layout specs — no ad-hoc React pages |
+| **4 Page routing** | [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) | `/about` works via page_tree — no `templateFromPath` change |
 
 Full phase checklist: [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)
 
@@ -43,15 +44,18 @@ Login copy is **not** a CMS content entry. Product/page copy **is**.
 ```
 Postgres                    Edge                         Client
 ────────                    ────                         ──────
-content entry    ──┐
-layout template  ──┼──► layout.resolve + content.resolve
-page (optional)  ──┘         │
+page_tree (URL)  ──┐
+page document    ──┼──► resolve url → layoutRef + contentRef
+content entry    ──┼──► layout.resolve + content.resolve
+layout template  ──┘         │
                              ▼
                       $state + resolveElementProps
                              │
                              ▼
                       resolved layout JSON ──► Renderer + catalog
 ```
+
+Today: client passes `?template=home` (shortcut). Target: `?url=/path` — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
 
 Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
@@ -64,7 +68,8 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | **[`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)** | Phases A → D, validate criteria |
-| **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec (**build next**) |
+| **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec |
+| **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema (next for storefront) |
 | [`documents-domain.md`](../2026-07-10/documents-domain.md) | Full CMS data model (content types, locales, assets, pages) |
 
 ### Client
@@ -92,6 +97,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, auth + generic content CMS |
+| [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) | URL → page_tree → layout + content |
 | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` hostname routing |
 
 ---
