@@ -661,6 +661,11 @@ function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "orgId"> {
     defaultLocale: DEFAULT_DEFAULT_LOCALE,
     seo: {},
     integrations: {},
+    auth: {
+      providers: [],
+      idpIds: {},
+      allowPassword: true,
+    },
   };
 }
 

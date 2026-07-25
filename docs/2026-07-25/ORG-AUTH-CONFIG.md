@@ -1,41 +1,37 @@
 # Per-Org Auth Configuration — Clerk-Style Vision
 
 > **Date:** 2026-07-25  
-> **Status:** Master map — **target architecture is per-org Postgres + ZITADEL; no env-var shortcuts**  
+> **Status:** ✅ A2 complete — per-org Postgres config; ZITADEL Management API + admin UI in Phase C  
 > **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
 
-## Target vs scaffold (read this first)
+## Target vs current
 
-**There is no temporary production architecture.** Social login is **not done** until per-org config is built. What exists today is UI + OAuth routes **wired to a dev-only env shortcut** — that shortcut is **not** the design and **must be replaced** before we treat auth as production-ready.
-
-| Piece | Target (per org) | Today (scaffold only) | Production-ready? |
-|-------|------------------|------------------------|-------------------|
+| Piece | Target (per org) | Today | Production-ready? |
+|-------|------------------|-------|-------------------|
 | Email/password login | Server broker → ZITADEL Session API | Same | ✅ Yes |
 | JWT session | `session.ts` + edge | Same | ✅ Yes |
 | Login copy / logo | Login **layout spec** props | Seeded spec | ✅ Yes (merchant edit via admin later) |
-| Which social buttons show | **`tenant_settings.auth`** + ZITADEL IdP on **that org** | `ZITADEL_GOOGLE_IDP_ID` in `.env` (global, one org) | ❌ No — remove before prod |
-| `GET .../auth/config` | Read **Postgres** for `:orgId` | `listEnabledProviders()` from env | ❌ No — replace |
-| IdP credentials | ZITADEL Management API per org (secrets server-only) | Manual console + env | ❌ No |
-| Merchant toggles | Admin **Auth settings** UI | None | ❌ Not built |
+| Which social buttons show | **`tenant_settings.auth`** + ZITADEL IdP on **that org** | Postgres `auth.providers` + `idpIds` per org | ✅ Yes |
+| `GET .../auth/config` | Read **Postgres** for `:orgId` | Same | ✅ Yes |
+| IdP credentials | ZITADEL Management API per org (secrets server-only) | Manual console + seed `PUT auth/config` | 📋 Phase C |
+| Merchant toggles | Admin **Auth settings** UI | Seed / API only | 📋 Phase C |
 | Button labels (`Continue with Google`) | Platform defaults in `SocialLoginButtons` | Hardcoded | ✅ Yes (optional overrides in `tenant_settings.auth` later) |
 
-**Rule:** Do not ship multi-tenant social login on env vars. Do not document `ZITADEL_GOOGLE_IDP_ID` as the long-term setup — it exists only so devs can click through OAuth once while the real backend is built.
-
----
+**Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.
 
 ## Build order (must complete in this order)
 
 Do **not** move to Phase C admin or “production auth” until steps 1–4 exist. Step 5 (admin UI) can follow immediately after.
 
 ```
-1. tenant_settings.auth schema     Postgres document shape (providers, allowPassword, branding flags)
-2. Persist + read per orgId        GET /auth/config from documents, not process.env
-3. ZITADEL IdP per org             Server API: register/list IdPs for org (Google first); store idp id in settings or resolve from ZITADEL
-4. Merge runtime                   LoginForm: spec.providers ∩ auth/config (from step 2) ∩ IdP actually linked in ZITADEL (step 3)
-5. Admin Auth settings (Phase C)   UI toggles → writes steps 1–3; publish login layout spec for copy/logo
-6. Remove env shortcut             Delete ZITADEL_GOOGLE_IDP_ID path from listEnabledProviders / resolveIdpId
+✅ 1. tenant_settings.auth schema     Postgres document shape (providers, idpIds, allowPassword)
+✅ 2. Persist + read per orgId        GET /auth/config from documents, not process.env
+📋 3. ZITADEL IdP per org             Server API: register/list IdPs for org (Google first)
+✅ 4. Merge runtime                   LoginForm: spec.providers ∩ auth/config (from step 2)
+📋 5. Admin Auth settings (Phase C)   UI toggles → writes steps 1–3; publish login layout spec for copy/logo
+✅ 6. Remove env shortcut             No listEnabledProviders / resolveIdpId in runtime
 ```
 
 **What can ship before step 6:** Email login, layout spec branding, commerce validation (Phase B).  
@@ -157,27 +153,23 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 | `POST/PUT /api/documents/layout` | Login layout spec publish |
 | Edge JWT + HMAC | Post-login API access |
 
-### Scaffold only (replace before prod)
+### Per-org auth (A2 ✅)
 
-| API / code | What it does today | Must become |
-|------------|-------------------|-------------|
-| `GET /api/tenants/:orgId/auth/config` | Returns providers from **`ZITADEL_GOOGLE_IDP_ID` env** | Read `tenant_settings.auth` + ZITADEL IdP state **for `:orgId`** |
-| `listEnabledProviders()` / `resolveIdpId()` in `zitadel-client.ts` | Env lookup | Per-org IdP id from Postgres or ZITADEL list API |
+| API | Purpose |
+|-----|---------|
+| `GET /api/tenants/:orgId/auth/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
+| `PUT /api/tenants/:orgId/auth/config` | Seed/admin: save providers + `idpIds` per org |
+| `GET/PUT /api/documents/tenant_settings/default` | Full settings including `auth` block |
 
-OAuth **routes** (`idp/start`, callback) are fine to keep; the **config source** is what is wrong.
+OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
 
-### Must build (target — in build order § above)
+### Still to build (Phase C)
 
-| API / service | Purpose | Blocker for |
-|---------------|---------|-------------|
-| `tenant_settings.auth` on documents API | Persist per-org provider flags + public branding | Real multi-tenant social login |
-| `GET .../auth/config` (rewrite) | Public-safe config from Postgres for `:orgId` | Social buttons per store |
-| `PUT .../auth/config` | Admin: save auth display settings | Phase C |
-| `POST .../auth/idp` (admin) | Register IdP credentials in ZITADEL for this org | Google per merchant |
-| `GET .../auth/idp/:provider/start` | Start OAuth (already scaffolded) | — |
-| Client `/auth/callback` | OAuth return → JWT (already scaffolded) | — |
-| `GET/PUT .../auth/policies` | MFA, signup (proxy ZITADEL) | Later |
-| Remove env IdP keys | No global shortcut | Production |
+| API / service | Purpose |
+|---------------|---------|
+| `POST .../auth/idp` (admin) | Register IdP credentials in ZITADEL for this org |
+| `GET/PUT .../auth/policies` | MFA, signup (proxy ZITADEL) |
+| Admin UI toggles | Merchant self-service without seeds |
 
 ### `tenant_settings` extension (planned shape)
 
@@ -267,7 +259,7 @@ Cross-doc consolidated backlog:
 | Item | Doc | Phase |
 |------|-----|-------|
 | Visual polish (AuthLayout, Alert, password toggle) | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ |
-| Google / social buttons + callback | [`LOGIN-UI.md`](./LOGIN-UI.md) | scaffold |
+| Google / social buttons + callback | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ |
 | MFA / forgot password / sign-up UI | [`LOGIN-UI.md`](./LOGIN-UI.md) | Later |
 | Per-org theme from settings | This doc § tenant_settings.auth | With admin |
 
@@ -275,9 +267,9 @@ Cross-doc consolidated backlog:
 
 | Item | Doc | Phase |
 |------|-----|-------|
-| `tenant_settings.auth` schema + read in GET auth/config | This doc § Build order | **A2 — next** |
-| Per-org IdP CRUD (Management API) | This doc | **A2** |
-| Remove env IdP shortcut | This doc | **A2** |
+| `tenant_settings.auth` schema + read in GET auth/config | This doc § Build order | ✅ A2 |
+| Per-org IdP CRUD (Management API) | This doc | Phase C |
+| Remove env IdP shortcut | This doc | ✅ A2 |
 | IdP start + OAuth callback routes | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ scaffold |
 | Persist catalog manifest in Postgres | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Platform |
 | Auto-register extension machines on enable | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Phase B+ |
@@ -315,12 +307,11 @@ Cross-doc consolidated backlog:
 ```
 ✅ 1. Login UI Phase 1        — email login + layout spec props
 ✅ 2. Phase B                   — commerce validation
-📋 3. Content render pipeline  — CMS → $state → edge resolve  ← BUILD NEXT (see CONTENT-RENDER-PIPELINE.md)
-⚠️ 4. Login social scaffold    — UI + OAuth routes (env-backed — NOT DONE)
-📋 5. tenant_settings.auth      — Postgres + GET auth/config per orgId
-📋 6. Per-org ZITADEL IdP API    — register Google for org; no env vars
+✅ 3. Content render pipeline  — CMS → $state → edge resolve
+✅ 4. Login social + OAuth      — UI + routes; config from Postgres
+✅ 5. tenant_settings.auth      — Postgres + GET/PUT auth/config per orgId
+📋 6. Per-org ZITADEL IdP API    — register Google for org via Management API
 📋 7. Phase C Admin             — Auth settings UI writes 5–6
-📋 8. Remove env IdP shortcut
 ```
 
 ---

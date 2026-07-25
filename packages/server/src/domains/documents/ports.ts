@@ -107,6 +107,12 @@ export interface TenantIntegrations {
   [key: string]: string | null | undefined;
 }
 
+export interface TenantAuthConfig {
+  providers: string[];
+  idpIds: Record<string, string>;
+  allowPassword: boolean;
+}
+
 export interface TenantSettingsDTO {
   id: string;
   orgId: string;
@@ -114,6 +120,7 @@ export interface TenantSettingsDTO {
   defaultLocale: string;
   seo: TenantSeoConfig;
   integrations: TenantIntegrations;
+  auth: TenantAuthConfig;
 }
 
 // ---------------------------------------------------------------------------

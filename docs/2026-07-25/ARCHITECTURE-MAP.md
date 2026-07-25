@@ -12,8 +12,8 @@
 ✅ A    Login (email) + JWT
 ✅ B    Commerce extension + cart machine
 ✅ 1    Content render pipeline     → CMS content → $state → resolved spec on edge
-📋 2    Per-org auth config (A2)    → tenant_settings.auth, no env IdP shortcuts  BUILD NEXT
-📋 3    Admin UI (C)                → edit content/layouts/auth without seeds
+✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
+📋 C    Admin UI (C)                → edit content/layouts/auth without seeds
 📋 4    Scale (D)                   → slug, domains, editor, 2nd extension
 ```
 

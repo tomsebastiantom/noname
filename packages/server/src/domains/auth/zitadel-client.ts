@@ -179,22 +179,6 @@ export async function loginWithCredentials(input: {
   return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
 }
 
-const IDP_ENV_KEYS: Record<string, string> = {
-  google: "ZITADEL_GOOGLE_IDP_ID",
-};
-
-/** Dev scaffold only — replace with per-org IdP from tenant_settings.auth + ZITADEL. See docs/2026-07-25/ORG-AUTH-CONFIG.md */
-export function resolveIdpId(provider: string): string | null {
-  const envKey = IDP_ENV_KEYS[provider];
-  if (!envKey) return null;
-  const value = process.env[envKey]?.trim();
-  return value || null;
-}
-
-export function listEnabledProviders(): string[] {
-  return Object.keys(IDP_ENV_KEYS).filter((provider) => resolveIdpId(provider) !== null);
-}
-
 export async function buildOAuthAuthorizeUrl(input: {
   orgId: string;
   clientId: string;

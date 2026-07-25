@@ -32,9 +32,16 @@ export interface AuthConfig {
   allowPassword: boolean;
 }
 
+export interface AuthConfigUpdate {
+  providers?: string[];
+  idpIds?: Record<string, string>;
+  allowPassword?: boolean;
+}
+
 export interface AuthService {
   login(input: LoginCredentials): Promise<LoginResult>;
   getConfig(orgId: string): Promise<AuthConfig>;
+  updateConfig(orgId: string, patch: AuthConfigUpdate): Promise<AuthConfig>;
   startIdpLogin(input: OAuthStartInput): Promise<{ authorizeUrl: string }>;
   exchangeOAuthCallback(input: OAuthCallbackInput): Promise<LoginResult>;
 }

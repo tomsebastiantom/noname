@@ -144,6 +144,16 @@ async function main() {
     defaultLocale: "en-US",
   });
 
+  const googleIdpId = process.env.ZITADEL_GOOGLE_IDP_ID?.trim();
+  if (googleIdpId) {
+    await api("PUT", `/api/tenants/${DEMO_ORG_ID}/auth/config`, {
+      providers: ["google"],
+      idpIds: { google: googleIdpId },
+      allowPassword: true,
+    });
+    console.log("Auth config: Google IdP stored in tenant_settings for demo org.");
+  }
+
   await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
     platform: { version: "1", hash: "demo" },
     extensions: [],

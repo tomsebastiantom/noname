@@ -59,12 +59,25 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
       defaultLocale?: string;
       seo?: Record<string, unknown>;
       integrations?: Record<string, string | null>;
+      auth?: {
+        providers?: string[];
+        idpIds?: Record<string, string>;
+        allowPassword?: boolean;
+      };
     }>();
+    const current = await tenantSettings.get(orgId);
     const upserted = await tenantSettings.upsert(orgId, {
-      locales: body.locales ?? ["en-US"],
-      defaultLocale: body.defaultLocale ?? "en-US",
-      seo: (body.seo ?? {}) as never,
-      integrations: (body.integrations ?? {}) as never,
+      locales: body.locales ?? current.locales,
+      defaultLocale: body.defaultLocale ?? current.defaultLocale,
+      seo: (body.seo ?? current.seo) as never,
+      integrations: (body.integrations ?? current.integrations) as never,
+      auth: body.auth
+        ? {
+            providers: body.auth.providers ?? current.auth.providers,
+            idpIds: { ...current.auth.idpIds, ...(body.auth.idpIds ?? {}) },
+            allowPassword: body.auth.allowPassword ?? current.auth.allowPassword,
+          }
+        : current.auth,
     });
     return ok(c, upserted);
   });

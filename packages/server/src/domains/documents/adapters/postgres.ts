@@ -53,6 +53,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         defaultLocale: data.defaultLocale,
         seo: data.seo,
         integrations: data.integrations,
+        auth: data.auth,
       };
       if (existing) {
         const [row] = await db
@@ -271,6 +272,17 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
   const data = (row.data ?? {}) as Record<string, unknown>;
   const seo = (data.seo ?? {}) as Record<string, unknown>;
   const integrations = (data.integrations ?? {}) as Record<string, unknown>;
+  const authRaw = (data.auth ?? {}) as Record<string, unknown>;
+  const idpIdsRaw = (authRaw.idpIds ?? {}) as Record<string, unknown>;
+  const idpIds: Record<string, string> = {};
+  for (const [key, value] of Object.entries(idpIdsRaw)) {
+    if (typeof value === "string" && value.trim() !== "") {
+      idpIds[key] = value.trim();
+    }
+  }
+  const providers = Array.isArray(authRaw.providers)
+    ? authRaw.providers.filter((p): p is string => typeof p === "string")
+    : [];
   return {
     id: row.id,
     orgId: row.orgId,
@@ -284,5 +296,10 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
       canonicalDomain: seo.canonicalDomain as string | undefined,
     },
     integrations: integrations as TenantSettingsDTO["integrations"],
+    auth: {
+      providers,
+      idpIds,
+      allowPassword: authRaw.allowPassword !== false,
+    },
   };
 }

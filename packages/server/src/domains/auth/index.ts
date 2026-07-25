@@ -1,8 +1,9 @@
 import { createAuthRoutes } from "./api";
 import { createAuthService } from "./service";
+import type { TenantSettingsService } from "../documents/ports";
 
-export function createAuthDomain() {
-  const service = createAuthService();
+export function createAuthDomain(deps: { tenantSettings: TenantSettingsService }) {
+  const service = createAuthService(deps);
   const routes = createAuthRoutes(service);
   return { service, routes };
 }

@@ -99,7 +99,7 @@ app.route("/api/edge", edge.routes);
 const tenant = createTenantDomain();
 app.route("/api/tenants", tenant.routes);
 
-const auth = createAuthDomain();
+const auth = createAuthDomain({ tenantSettings: docs.service.tenantSettings });
 app.route("/api/tenants", auth.routes);
 
 const port = Number(process.env.PORT) || 3000;

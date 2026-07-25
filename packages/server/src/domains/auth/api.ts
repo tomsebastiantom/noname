@@ -25,12 +25,28 @@ const oauthCallbackBodySchema = z.object({
 
 const SUPPORTED_PROVIDERS = new Set(["google", "github", "apple"]);
 
+const authConfigUpdateSchema = z.object({
+  providers: z.array(z.enum(["google", "github", "apple"])).optional(),
+  idpIds: z.record(z.string(), z.string()).optional(),
+  allowPassword: z.boolean().optional(),
+});
+
 export function createAuthRoutes(service: AuthService) {
   const routes = new Hono();
 
   routes.get("/:orgId/auth/config", async (c) => {
     const orgId = c.req.param("orgId");
     const config = await service.getConfig(orgId);
+    return c.json({ data: config });
+  });
+
+  routes.put("/:orgId/auth/config", async (c) => {
+    const orgId = c.req.param("orgId");
+    const parsed = authConfigUpdateSchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      return c.json({ error: "Invalid auth config payload" }, 400);
+    }
+    const config = await service.updateConfig(orgId, parsed.data);
     return c.json({ data: config });
   });
 

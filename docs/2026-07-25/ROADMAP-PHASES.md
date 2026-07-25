@@ -14,7 +14,7 @@
 ✅ A     Login (email) + JWT
 ✅ B     Commerce extension + cart machine
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
-📋 A2    Per-org auth config       → tenant_settings.auth, no env IdP  BUILD NEXT
+✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
 📋 C     Admin UI                  → edit without seeds
 📋 D     Scale                     → slug, domains, editor
 ```
@@ -51,15 +51,21 @@
 
 ---
 
-## Phase A2 — Per-org auth config 📋 BUILD NEXT
+## Phase A2 — Per-org auth config ✅
 
-**Goal:** Social providers per org in Postgres + ZITADEL — **no `ZITADEL_GOOGLE_IDP_ID` env shortcut**.
+**Goal:** Social providers per org in Postgres — runtime reads `tenant_settings.auth`, not `.env`.
 
 | Task | Status |
 |------|--------|
-| `tenant_settings.auth` | 📋 |
-| `GET auth/config` from Postgres per `:orgId` | 📋 |
-| ZITADEL IdP registration API per org | 📋 |
+| `tenant_settings.auth` schema | ✅ |
+| `GET /api/tenants/:orgId/auth/config` from Postgres | ✅ |
+| `PUT /api/tenants/:orgId/auth/config` (admin/seed) | ✅ |
+| `startIdpLogin` uses per-org `idpIds` | ✅ |
+| Removed env `listEnabledProviders` / `resolveIdpId` | ✅ |
+| ZITADEL IdP registration API (Management API) | 📋 Phase C |
+| Admin UI toggles | 📋 Phase C |
+
+**Validate:** `PUT auth/config` with `idpIds.google` → `GET auth/config` returns `providers: ["google"]` (no secrets in response).
 
 **Doc:** [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)
 
@@ -103,7 +109,7 @@ Merchant manages content, layouts, auth settings without seeds.
 | **A** | Login | Email + JWT | ✅ |
 | **B** | Commerce | Extension + cart | ✅ |
 | **1** | Content pipeline | Edge `$state` resolve | ✅ |
-| **A2** | Auth config | Per-org Postgres + ZITADEL | Social per org |
+| **A2** | Auth config | Per-org Postgres + ZITADEL | ✅ |
 | **C** | Admin | Shell + settings UI | No seeds |
 | **D** | Polish | Slug, editor | Multi-use-case |
 
