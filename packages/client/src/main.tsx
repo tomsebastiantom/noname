@@ -1,8 +1,17 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { loadOidcConfig } from "./auth/config";
+import {
+  apiHeaders,
+  clearSession,
+  handleCallback,
+  hydrateTokenFromCookie,
+  isLoggedIn,
+  startLogin,
+} from "./auth/pkce";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { registry as platformRegistry } from "./registry";
 
@@ -20,14 +29,77 @@ function orgIdFromHostname(hostname: string): string | null {
   return sub;
 }
 
+function AuthBar({
+  orgId,
+  onAuthChange,
+}: Readonly<{ orgId: string; onAuthChange: () => void }>) {
+  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
+  const [oidcReady, setOidcReady] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    hydrateTokenFromCookie();
+    setLoggedIn(isLoggedIn());
+    void loadOidcConfig().then((cfg) => setOidcReady(cfg !== null));
+  }, []);
+
+  if (oidcReady === false) {
+    return (
+      <div style={{ padding: "8px 16px", background: "#fef3c7", fontSize: 14 }}>
+        Run <code>pnpm init:zitadel</code> to enable sign-in.
+      </div>
+    );
+  }
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "flex-end",
+        gap: 12,
+        padding: "8px 16px",
+        background: "#f3f4f6",
+        fontSize: 14,
+      }}
+    >
+      {loggedIn ? (
+        <>
+          <span>Signed in</span>
+          <button
+            type="button"
+            onClick={() => {
+              clearSession();
+              setLoggedIn(false);
+              onAuthChange();
+            }}
+          >
+            Sign out
+          </button>
+        </>
+      ) : (
+        <button
+          type="button"
+          onClick={() => {
+            void startLogin(orgId);
+          }}
+        >
+          Sign in
+        </button>
+      )}
+    </div>
+  );
+}
+
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const orgId = orgIdFromHostname(window.location.hostname);
+  const orgId = orgIdFromHostname(window.location.hostname);
+
+  const loadStore = useCallback(async () => {
+    hydrateTokenFromCookie();
+
     if (!orgId) {
       setError(
         "Use {orgId}.localhost:5173 — org id is the ZITADEL org (see ZITADEL_DEMO_ORG_ID in .env after pnpm init:zitadel)",
@@ -36,7 +108,10 @@ function App() {
       return;
     }
 
-    const headers: HeadersInit = { "x-org-id": orgId };
+    setLoading(true);
+    setError(null);
+
+    const headers = apiHeaders();
 
     const manifestPromise = fetch(`/api/tenants/${orgId}/catalog`, { headers })
       .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
@@ -50,24 +125,27 @@ function App() {
       },
     );
 
-    Promise.all([manifestPromise, specPromise])
-      .then(async ([manifest, body]) => {
-        const tree = body?.data?.layout as Spec | undefined;
-        if (!tree) throw new Error("No layout spec returned");
+    try {
+      const [manifest, body] = await Promise.all([manifestPromise, specPromise]);
+      const tree = body?.data?.layout as Spec | undefined;
+      if (!tree) throw new Error("No layout spec returned");
 
-        if (manifest) {
-          const loaded = await loadCatalogs(manifest);
-          setRegistry(loaded.registry);
-        }
+      if (manifest) {
+        const loaded = await loadCatalogs(manifest);
+        setRegistry(loaded.registry);
+      }
 
-        setSpec(tree);
-        setLoading(false);
-      })
-      .catch((err: Error) => {
-        setError(err.message);
-        setLoading(false);
-      });
-  }, []);
+      setSpec(tree);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [orgId]);
+
+  useEffect(() => {
+    void loadStore();
+  }, [loadStore]);
 
   if (loading) {
     return <div style={{ padding: 48, textAlign: "center" }}>Loading...</div>;
@@ -77,18 +155,40 @@ function App() {
     return <div style={{ padding: 48, textAlign: "center", color: "red" }}>Error: {error}</div>;
   }
 
-  if (!spec) {
+  if (!spec || !orgId) {
     return <div style={{ padding: 48, textAlign: "center" }}>No spec found</div>;
   }
 
   return (
-    <JSONUIProvider registry={registry}>
-      <Renderer spec={spec} registry={registry} />
-    </JSONUIProvider>
+    <>
+      <AuthBar orgId={orgId} onAuthChange={() => void loadStore()} />
+      <JSONUIProvider registry={registry}>
+        <Renderer spec={spec} registry={registry} />
+      </JSONUIProvider>
+    </>
+  );
+}
+
+function CallbackError({ message }: Readonly<{ message: string }>) {
+  return (
+    <div style={{ padding: 48, textAlign: "center", color: "red" }}>
+      Sign-in failed: {message}
+    </div>
   );
 }
 
 const root = document.getElementById("root");
 if (root) {
-  createRoot(root).render(<App />);
+  if (window.location.pathname === "/callback") {
+    try {
+      const returnUrl = await handleCallback();
+      window.location.replace(returnUrl);
+    } catch (err) {
+      createRoot(root).render(
+        <CallbackError message={err instanceof Error ? err.message : String(err)} />,
+      );
+    }
+  } else {
+    createRoot(root).render(<App />);
+  }
 }

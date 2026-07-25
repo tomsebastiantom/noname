@@ -35,10 +35,10 @@ export function createApiProxyRoutes() {
 
     const jwt = await tryParseJwt(c.req.raw, c.env);
     const orgId =
-      jwt?.orgId || c.req.header("x-org-id") || orgIdFromPath(pathname) || "";
+      jwt?.orgId || orgIdFromPath(pathname) || c.req.header("x-org-id") || "";
 
     if (!orgId) {
-      return c.json({ error: "org id required (header, JWT, or URL)" }, 400);
+      return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 
     if (!isPublicGet(c.req.method, pathname) && !jwt) {

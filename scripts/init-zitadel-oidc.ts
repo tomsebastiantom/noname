@@ -264,6 +264,13 @@ async function main(): Promise<void> {
   upsertEnvVar(ENV_FILE, "ZITADEL_CLIENT_ID", clientId);
   upsertEnvVar(ENV_FILE, "ZITADEL_DEMO_ORG_ID", organizationId);
 
+  const oidcJsonPath = join(ROOT, "packages/client/public/oidc.json");
+  mkdirSync(dirname(oidcJsonPath), { recursive: true });
+  writeFileSync(
+    oidcJsonPath,
+    `${JSON.stringify({ issuer: ZITADEL_ISSUER, clientId, redirectUri: REDIRECT_URI }, null, 2)}\n`,
+  );
+
   console.log("ZITADEL OIDC init complete.");
   console.log(`  Org ID:    ${organizationId}  (ZITADEL_DEMO_ORG_ID in .env)`);
   console.log(`  Project:   ${PROJECT_NAME} (${projectId})`);
@@ -271,6 +278,7 @@ async function main(): Promise<void> {
   console.log(`  Client ID: ${clientId}`);
   console.log(`  Redirect:  ${REDIRECT_URI}`);
   console.log(`  Updated:   ${ENV_FILE}`);
+  console.log(`  OIDC JSON: ${oidcJsonPath}`);
 }
 
 main().catch((err: Error) => {

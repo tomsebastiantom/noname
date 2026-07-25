@@ -1,0 +1,5 @@
+{
+  "issuer": "http://localhost:8080",
+  "clientId": "",
+  "redirectUri": "http://localhost:5173/callback"
+}

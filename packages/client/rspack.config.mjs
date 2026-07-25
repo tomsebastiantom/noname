@@ -1,5 +1,8 @@
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import { HtmlRspackPlugin } from "@rspack/core";
 
+const dir = dirname(fileURLToPath(import.meta.url));
 const isDev = process.env.NODE_ENV !== "production";
 
 export default {
@@ -16,6 +19,7 @@ export default {
     port: 5173,
     hot: true,
     historyApiFallback: true,
+    static: { directory: join(dir, "public") },
     // Edge worker (wrangler dev :8787) — start with: pnpm --filter @noname/workers dev
     proxy: [{ context: ["/api"], target: "http://localhost:8787" }],
   },
