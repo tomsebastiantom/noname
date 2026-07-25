@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { created, ok } from "../../shared/respond";
 import { getOrgId } from "../../shared/org";
+import { created, ok } from "../../shared/respond";
 import type { AnalyticsService } from "./ports";
 
 export function createAnalyticsRoutes(service: AnalyticsService) {

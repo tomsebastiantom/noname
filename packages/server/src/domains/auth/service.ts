@@ -1,5 +1,5 @@
-import { loginWithCredentials } from "./zitadel-client";
 import type { AuthService } from "./ports";
+import { loginWithCredentials } from "./zitadel-client";
 
 export function createAuthService(): AuthService {
   return {

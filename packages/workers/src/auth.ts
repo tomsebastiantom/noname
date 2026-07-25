@@ -14,8 +14,7 @@ function orgIdFromPayload(payload: Record<string, unknown>): string {
 export async function tryParseJwt(request: Request, env: Env): Promise<EdgeContext | null> {
   const cookie = request.headers.get("Cookie") || "";
   const authHeader = request.headers.get("Authorization") || "";
-  const token =
-    authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
+  const token = authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
 
   if (!token) return null;
 

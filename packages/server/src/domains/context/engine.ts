@@ -19,15 +19,11 @@ export function createContextEngine(storage: ContextStorage): ContextEngine {
     async resolve(signals: ContextSignal[], orgId = ""): Promise<SegmentDTO> {
       const hash = hashSignals(signals);
       return (
-        (await storage.findSegmentByHash(orgId, hash)) ??
-        storage.saveSegment(orgId, hash, signals)
+        (await storage.findSegmentByHash(orgId, hash)) ?? storage.saveSegment(orgId, hash, signals)
       );
     },
 
-    async segmentForRequest(
-      orgId: string,
-      headers: Record<string, string>,
-    ): Promise<SegmentDTO> {
+    async segmentForRequest(orgId: string, headers: Record<string, string>): Promise<SegmentDTO> {
       const signals = extractSignals(headers);
       const hash = hashSignals(signals);
       const visitorId = headers["x-visitor-id"] || headers["visitor-id"] || "";

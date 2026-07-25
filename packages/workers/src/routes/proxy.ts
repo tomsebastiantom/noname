@@ -40,8 +40,7 @@ export function createApiProxyRoutes() {
     const target = `${c.env.API_ORIGIN}${pathname}${incoming.search}`;
 
     const jwt = await tryParseJwt(c.req.raw, c.env);
-    const orgId =
-      jwt?.orgId || orgIdFromPath(pathname) || c.req.header("x-org-id") || "";
+    const orgId = jwt?.orgId || orgIdFromPath(pathname) || c.req.header("x-org-id") || "";
 
     if (!orgId) {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);

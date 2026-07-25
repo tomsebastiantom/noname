@@ -7,5 +7,5 @@ export function createAuthDomain() {
   return { service, routes };
 }
 
-export { loginWithCredentials } from "./zitadel-client";
 export type { AuthService, LoginCredentials, LoginResult } from "./ports";
+export { loginWithCredentials } from "./zitadel-client";

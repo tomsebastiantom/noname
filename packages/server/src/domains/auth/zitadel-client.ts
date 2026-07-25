@@ -41,10 +41,7 @@ async function startAuthRequest(input: {
   authUrl.searchParams.set("client_id", input.clientId);
   authUrl.searchParams.set("redirect_uri", input.redirectUri);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set(
-    "scope",
-    `openid profile email urn:zitadel:iam:org:id:${input.orgId}`,
-  );
+  authUrl.searchParams.set("scope", `openid profile email urn:zitadel:iam:org:id:${input.orgId}`);
   authUrl.searchParams.set("code_challenge", input.codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
 
@@ -74,7 +71,12 @@ async function createSession(loginName: string, pat: string) {
   return { sessionId: body.sessionId, sessionToken: body.sessionToken };
 }
 
-async function verifyPassword(sessionId: string, sessionToken: string, password: string, pat: string) {
+async function verifyPassword(
+  sessionId: string,
+  sessionToken: string,
+  password: string,
+  pat: string,
+) {
   const res = await fetch(`${ISSUER}/v2/sessions/${sessionId}`, {
     method: "PATCH",
     headers: {
@@ -160,7 +162,12 @@ export async function loginWithCredentials(input: {
   });
 
   const session = await createSession(input.email, pat);
-  const verified = await verifyPassword(session.sessionId, session.sessionToken, input.password, pat);
+  const verified = await verifyPassword(
+    session.sessionId,
+    session.sessionToken,
+    input.password,
+    pat,
+  );
   const code = await finalizeAuthRequest(authRequestId, verified, pat);
   const tokens = await exchangeCode({
     clientId: input.clientId,

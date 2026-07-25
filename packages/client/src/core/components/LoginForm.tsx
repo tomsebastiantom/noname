@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { type FormEvent, useState } from "react";
+import { loginWithPassword } from "../../auth/login";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -11,7 +12,6 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Separator } from "../../components/ui/separator";
-import { loginWithPassword } from "../../auth/login";
 import type { ComponentCtx } from "./types";
 
 function orgIdFromHostname(hostname: string): string | null {
@@ -67,11 +67,7 @@ export function LoginForm({
     <Card className="w-full border shadow-sm">
       <CardHeader className="space-y-3 text-center">
         {props.logoUrl && (
-          <img
-            src={props.logoUrl}
-            alt=""
-            className="mx-auto h-10 w-auto object-contain"
-          />
+          <img src={props.logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />
         )}
         <div className="space-y-1">
           <CardTitle className="text-2xl">{props.title}</CardTitle>

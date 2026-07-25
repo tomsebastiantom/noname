@@ -68,10 +68,7 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
           updated_at: new Date(),
         })
         .where(
-          and(
-            eq(machineInstances.orgId, instance.orgId),
-            eq(machineInstances.id, instance.id),
-          ),
+          and(eq(machineInstances.orgId, instance.orgId), eq(machineInstances.id, instance.id)),
         )
         .returning();
       if (!row) throw new Error("Failed to update machine instance");

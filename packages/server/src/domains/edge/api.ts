@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { ok } from "../../shared/respond";
 import { getOrgId, resolveOrgId } from "../../shared/org";
+import { ok } from "../../shared/respond";
 import type { EdgeService } from "./ports";
 
 export function createEdgeRoutes(service: EdgeService) {

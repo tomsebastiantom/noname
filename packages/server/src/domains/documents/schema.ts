@@ -67,12 +67,7 @@ export const documents = pgTable(
     publishedUnique: uniqueIndex("documents_published_unique")
       .on(t.orgId, t.type, t.key, t.segment, t.status)
       .where(sql`${t.status} = 'published' AND ${t.type} = 'layout'`),
-    tenantTypeKey: uniqueIndex("documents_tenant_type_key").on(
-      t.orgId,
-      t.type,
-      t.key,
-      t.segment,
-    ),
+    tenantTypeKey: uniqueIndex("documents_tenant_type_key").on(t.orgId, t.type, t.key, t.segment),
     tenantType: index("documents_tenant_type").on(t.orgId, t.type),
   }),
 );

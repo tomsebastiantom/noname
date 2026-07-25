@@ -21,10 +21,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       return mapContentType(row);
     },
     async findContentTypes(orgId) {
-      const rows = await db
-        .select()
-        .from(documentTypes)
-        .where(eq(documentTypes.orgId, orgId));
+      const rows = await db.select().from(documentTypes).where(eq(documentTypes.orgId, orgId));
       return rows.map(mapContentType);
     },
     async findContentTypeByName(orgId, name) {

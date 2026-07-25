@@ -2,10 +2,12 @@ const STORAGE_TOKEN = "noname:access_token";
 const COOKIE_NAME = "access_token";
 
 function setTokenCookie(token: string, maxAgeSec: number): void {
+  // biome-ignore lint/suspicious/noDocumentCookie: sync JWT across *.localhost subdomains in dev
   document.cookie = `${COOKIE_NAME}=${encodeURIComponent(token)}; path=/; domain=.localhost; SameSite=Lax; max-age=${maxAgeSec}`;
 }
 
 function clearTokenCookie(): void {
+  // biome-ignore lint/suspicious/noDocumentCookie: sync JWT across *.localhost subdomains in dev
   document.cookie = `${COOKIE_NAME}=; path=/; domain=.localhost; SameSite=Lax; max-age=0`;
 }
 

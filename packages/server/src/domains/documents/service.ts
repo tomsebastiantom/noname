@@ -153,13 +153,7 @@ export function createDocumentsService(
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type)
         throw new NotFoundError("ContentEntry", `${type}/${id}`);
-      const entity = new ContentDocument(
-        existing.id,
-        orgId,
-        type,
-        existing.data,
-        existing.status,
-      );
+      const entity = new ContentDocument(existing.id, orgId, type, existing.data, existing.status);
       entity.deleteEntry();
       await storage.deleteDocument(existing.id);
       flushEvents(entity);
@@ -257,12 +251,7 @@ export function createDocumentsService(
         throw new ValidationError("overrides", "overrides must be an object of dot-path keys");
       }
 
-      const publishedDefault = await storage.findDocument(
-        orgId,
-        "layout",
-        templateName,
-        "default",
-      );
+      const publishedDefault = await storage.findDocument(orgId, "layout", templateName, "default");
       if (publishedDefault?.status !== "published") {
         throw new NotFoundError("LayoutDocument", `${templateName} (published default)`);
       }
@@ -315,12 +304,7 @@ export function createDocumentsService(
     },
 
     async resolve(orgId, templateName, segment) {
-      const publishedDefault = await storage.findDocument(
-        orgId,
-        "layout",
-        templateName,
-        "default",
-      );
+      const publishedDefault = await storage.findDocument(orgId, "layout", templateName, "default");
       if (publishedDefault?.status !== "published") return null;
       const defaultSpec = (publishedDefault.data.spec as Record<string, unknown>) ?? {};
 

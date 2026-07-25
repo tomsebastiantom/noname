@@ -298,10 +298,7 @@ export interface ContentTypeDocumentService {
 
 export interface TenantSettingsService {
   get(orgId: string): Promise<TenantSettingsDTO>;
-  upsert(
-    orgId: string,
-    data: Omit<TenantSettingsDTO, "id" | "orgId">,
-  ): Promise<TenantSettingsDTO>;
+  upsert(orgId: string, data: Omit<TenantSettingsDTO, "id" | "orgId">): Promise<TenantSettingsDTO>;
 }
 
 export interface ContentContentOpts {
@@ -317,11 +314,7 @@ export interface ContentDocumentService {
     opts?: ContentContentOpts,
   ): Promise<ContentEntryDTO>;
   findByType(orgId: string, type: string): Promise<ContentEntryDTO[]>;
-  findById(
-    orgId: string,
-    id: string,
-    opts?: ContentContentOpts,
-  ): Promise<ContentEntryDTO | null>;
+  findById(orgId: string, id: string, opts?: ContentContentOpts): Promise<ContentEntryDTO | null>;
   updateById(
     orgId: string,
     type: string,

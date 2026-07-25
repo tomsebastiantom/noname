@@ -264,10 +264,8 @@ function deterministicPercentage(
   percent: number,
   seed = "",
 ): boolean {
-  const hash = createHash("sha256")
-    .update(`${orgId}:${key}:${contextHash}:${seed}`)
-    .digest("hex");
-  const bucket = parseInt(hash.slice(0, 8), 16) / 0xffffffff;
+  const hash = createHash("sha256").update(`${orgId}:${key}:${contextHash}:${seed}`).digest("hex");
+  const bucket = Number.parseInt(hash.slice(0, 8), 16) / 0xffffffff;
   return bucket < percent / 100;
 }
 

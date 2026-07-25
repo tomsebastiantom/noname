@@ -1,1 +1,1 @@
-export { registry, handlers, executeAction } from "./platform/registry";
+export { executeAction, handlers, registry } from "./platform/registry";
