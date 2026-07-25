@@ -1,10 +1,12 @@
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
+import { resolveOrgIdFromHost, resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
 
 const PUBLIC_GET = [
   /^\/api\/edge\/schema\/[^/]+$/,
+  /^\/api\/tenants\/resolve\/[^/]+$/,
   /^\/api\/tenants\/[^/]+\/catalog$/,
   /^\/api\/tenants\/[^/]+\/auth\/config$/,
   /^\/health$/,
@@ -20,16 +22,20 @@ function isPublicPost(method: string, pathname: string): boolean {
   return method === "POST" && PUBLIC_POST.some((re) => re.test(pathname));
 }
 
-/** /api/edge/schema/:orgId or /api/tenants/:orgId/... */
-function orgIdFromPath(pathname: string): string {
+/** /api/edge/schema/:siteId or /api/tenants/:siteId/... */
+function siteIdFromPath(pathname: string): string {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "api" && parts[1] === "edge" && parts[2] === "schema" && parts[3]) {
     return parts[3];
   }
-  if (parts[0] === "api" && parts[1] === "tenants" && parts[2]) {
+  if (parts[0] === "api" && parts[1] === "tenants" && parts[2] && parts[2] !== "resolve") {
     return parts[2];
   }
   return "";
+}
+
+function isResolveSlugPath(pathname: string): boolean {
+  return /^\/api\/tenants\/resolve\/[^/]+$/.test(pathname);
 }
 
 export function createApiProxyRoutes() {
@@ -41,9 +47,24 @@ export function createApiProxyRoutes() {
     const target = `${c.env.API_ORIGIN}${pathname}${incoming.search}`;
 
     const jwt = await tryParseJwt(c.req.raw, c.env);
-    const orgId = jwt?.orgId || orgIdFromPath(pathname) || c.req.header("x-org-id") || "";
+    let orgId = jwt?.orgId || "";
 
     if (!orgId) {
+      const fromPath = siteIdFromPath(pathname);
+      if (fromPath) {
+        orgId = (await resolveSiteId(c.env, fromPath)) ?? "";
+      }
+    }
+
+    if (!orgId) {
+      orgId = (await resolveOrgIdFromHost(c.env, c.req.header("host") ?? "")) ?? "";
+    }
+
+    if (!orgId) {
+      orgId = c.req.header("x-org-id") || "";
+    }
+
+    if (!orgId && !isResolveSlugPath(pathname)) {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 

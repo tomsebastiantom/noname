@@ -1,10 +1,22 @@
 import type { ComponentCtx } from "./types";
 
 const LINKS = [
-  { href: "/admin/pages", label: "Pages", description: "Storefront URL tree and routing page documents" },
+  {
+    href: "/admin/pages",
+    label: "Pages",
+    description: "Storefront URL tree and routing page documents",
+  },
   { href: "/admin/content", label: "Content", description: "Edit CMS entries by content type" },
-  { href: "/admin/layout", label: "Layouts", description: "Edit json-render templates (home, login, …)" },
-  { href: "/admin/settings/auth", label: "Auth settings", description: "Social login and sign-in methods" },
+  {
+    href: "/admin/layout",
+    label: "Layouts",
+    description: "Edit json-render templates (home, login, …)",
+  },
+  {
+    href: "/admin/settings/auth",
+    label: "Auth settings",
+    description: "Social login and sign-in methods",
+  },
 ] as const;
 
 export function AdminHome({

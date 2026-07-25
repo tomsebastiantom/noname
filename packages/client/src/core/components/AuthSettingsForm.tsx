@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { loadAuthSettings, type AuthProvider } from "../../auth/auth-settings";
+import { type AuthProvider, loadAuthSettings } from "../../auth/auth-settings";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -85,11 +85,7 @@ export function AuthSettingsForm({
           ? { clientId: googleClientId.trim(), clientSecret: googleClientSecret.trim() }
           : undefined;
 
-      await executeAction(
-        "saveAuthConfig",
-        { providers, allowPassword, googleOAuth },
-        () => {},
-      );
+      await executeAction("saveAuthConfig", { providers, allowPassword, googleOAuth }, () => {});
 
       const data = await loadAuthSettings();
       setProviders(data.providers);

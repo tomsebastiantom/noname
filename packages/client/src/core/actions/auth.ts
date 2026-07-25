@@ -1,7 +1,7 @@
-import { loadAuthSettings, saveAuthConfig, type AuthProvider } from "../../auth/auth-settings";
+import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { loginWithPassword } from "../../auth/login";
-import { requireOrgId } from "../../auth/org";
+import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
 
 export const authActions = {
@@ -22,8 +22,8 @@ export const authActions = {
       redirectPath?: string;
     };
 
-    const orgId = requireOrgId();
-    await loginWithPassword(orgId, email, password);
+    const storeSlug = requireStoreSlug();
+    await loginWithPassword(storeSlug, email, password);
     window.location.href = redirectPath ?? "/";
   },
 
@@ -33,8 +33,8 @@ export const authActions = {
       redirectPath?: string;
     };
 
-    const orgId = requireOrgId();
-    await startIdpLogin(orgId, provider, redirectPath ?? "/");
+    const storeSlug = requireStoreSlug();
+    await startIdpLogin(storeSlug, provider, redirectPath ?? "/");
   },
 
   logout: async () => {

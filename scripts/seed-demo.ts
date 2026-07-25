@@ -6,6 +6,7 @@
 import "dotenv/config";
 
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
+const DEMO_STORE_SLUG = "yogastore";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
@@ -259,13 +260,14 @@ async function main() {
   }
 
   await api("PUT", "/api/documents/tenant_settings/default", {
+    slug: "yogastore",
     locales: ["en-US"],
     defaultLocale: "en-US",
   });
 
   const googleIdpId = process.env.ZITADEL_GOOGLE_IDP_ID?.trim();
   if (googleIdpId) {
-    await api("PUT", `/api/tenants/${DEMO_ORG_ID}/auth/config`, {
+    await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/auth/config`, {
       providers: ["google"],
       idpIds: { google: googleIdpId },
       allowPassword: true,
@@ -273,7 +275,7 @@ async function main() {
     console.log("Auth config: Google IdP stored in tenant_settings for demo org.");
   }
 
-  await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
+  await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/catalog`, {
     platform: { version: "1", hash: "demo" },
     extensions: [],
   });
@@ -292,7 +294,7 @@ async function main() {
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
-    `/api/edge/schema/${DEMO_ORG_ID}?url=${encodeURIComponent("/")}`,
+    `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/")}`,
   );
 
   if (!schema.layout) {
@@ -301,14 +303,15 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
+  console.log(`  Slug:    yogastore`);
   console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_dashboard`);
-  console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
-  console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
-  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin`);
-  console.log(`  Content: http://${DEMO_ORG_ID}.localhost:5173/admin/content`);
-  console.log(`  Pages:   http://${DEMO_ORG_ID}.localhost:5173/admin/pages`);
-  console.log(`  Layouts: http://${DEMO_ORG_ID}.localhost:5173/admin/layout`);
-  console.log(`  Auth:    http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
+  console.log(`  Client:  http://yogastore.localhost:5173`);
+  console.log(`  Login:   http://yogastore.localhost:5173/login`);
+  console.log(`  Admin:   http://yogastore.localhost:5173/admin`);
+  console.log(`  Content: http://yogastore.localhost:5173/admin/content`);
+  console.log(`  Pages:   http://yogastore.localhost:5173/admin/pages`);
+  console.log(`  Layouts: http://yogastore.localhost:5173/admin/layout`);
+  console.log(`  Auth:    http://yogastore.localhost:5173/admin/settings/auth`);
 }
 
 async function ensurePageContentType(): Promise<void> {

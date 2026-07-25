@@ -1,6 +1,7 @@
 import { flushEvents } from "../../shared/aggregate-root";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
+import { assertValidStoreSlug, normalizeStoreSlug } from "../../shared/store-slug";
 import { ContentDocument, LayoutDocument } from "./entity";
 import { LayoutEvents } from "./events";
 import { applyOverrides, deepClone } from "./merge";
@@ -18,8 +19,6 @@ import type {
   PageDTO,
   PageTreeDTO,
   PageTreeService,
-  RoutingPageView,
-  MainTreeView,
   TenantSettingsDTO,
   TenantSettingsService,
   UploadAssetInput,
@@ -71,7 +70,22 @@ export function createDocumentsService(
       if (existing) return existing;
       return storage.upsertTenantSettings(orgId, defaultTenantSettings());
     },
-    upsert: (orgId, data) => storage.upsertTenantSettings(orgId, data),
+    async upsert(orgId, data) {
+      const nextSlug =
+        data.slug === null || data.slug === undefined ? null : normalizeStoreSlug(data.slug);
+      if (nextSlug) {
+        assertValidStoreSlug(nextSlug);
+        const owner = await storage.findOrgIdByStoreSlug(nextSlug);
+        if (owner && owner !== orgId) {
+          throw new ValidationError(
+            "tenant_settings",
+            `Store slug "${nextSlug}" is already in use`,
+          );
+        }
+      }
+      return storage.upsertTenantSettings(orgId, { ...data, slug: nextSlug });
+    },
+    resolveStoreSlug: (slug) => storage.findOrgIdByStoreSlug(normalizeStoreSlug(slug)),
   };
 
   // -------------------------------------------------------------------------
@@ -754,6 +768,7 @@ function filterReadFields(
 
 function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "orgId"> {
   return {
+    slug: null,
     locales: [...DEFAULT_LOCALES],
     defaultLocale: DEFAULT_DEFAULT_LOCALE,
     seo: {},

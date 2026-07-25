@@ -1,19 +1,44 @@
 import { Hono } from "hono";
-import { resolveOrgId } from "../../shared/org";
-import { noContent, ok } from "../../shared/respond";
+import { noContent, notFound, ok } from "../../shared/respond";
+import { resolveSiteIdToOrgId } from "../../shared/site-id";
+import type { TenantSettingsService } from "../documents/ports";
 import type { CatalogManifest, TenantCatalogService } from "./ports";
 
-export function createTenantRoutes(service: TenantCatalogService) {
+async function resolveTenantOrgId(
+  tenantSettings: TenantSettingsService | undefined,
+  siteId: string,
+): Promise<string | null> {
+  if (!tenantSettings) return siteId.trim() || null;
+  return resolveSiteIdToOrgId(tenantSettings, siteId);
+}
+
+export function createTenantRoutes(
+  service: TenantCatalogService,
+  tenantSettings?: TenantSettingsService,
+) {
   const routes = new Hono();
 
+  routes.get("/resolve/:slug", async (c) => {
+    if (!tenantSettings) {
+      return c.json({ error: "Store slug resolution unavailable" }, 503);
+    }
+    const slug = c.req.param("slug");
+    const orgId = await tenantSettings.resolveStoreSlug(slug);
+    if (!orgId) return notFound(c);
+    const settings = await tenantSettings.get(orgId);
+    return ok(c, { orgId, slug: settings.slug ?? slug });
+  });
+
   routes.get("/:id/catalog", async (c) => {
-    const orgId = resolveOrgId(c, c.req.param("id"));
+    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    if (!orgId) return notFound(c);
     const manifest = await service.getManifest(orgId);
     return ok(c, manifest);
   });
 
   routes.put("/:id/catalog", async (c) => {
-    const orgId = resolveOrgId(c, c.req.param("id"));
+    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    if (!orgId) return notFound(c);
     const body = await c.req.json<CatalogManifest>();
 
     if (!body?.platform?.version || !body?.platform?.hash) {
@@ -25,7 +50,8 @@ export function createTenantRoutes(service: TenantCatalogService) {
   });
 
   routes.post("/:id/components", async (c) => {
-    const orgId = c.req.param("id");
+    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    if (!orgId) return notFound(c);
     const body = await c.req.json<{ name: string; source: string }>();
 
     if (!body?.name || !body?.source) {
@@ -37,7 +63,8 @@ export function createTenantRoutes(service: TenantCatalogService) {
   });
 
   routes.get("/:id/builds/:buildId", async (c) => {
-    const orgId = c.req.param("id");
+    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    if (!orgId) return notFound(c);
     const buildId = c.req.param("buildId");
 
     const status = await service.getBuildStatus(orgId, buildId);
@@ -49,7 +76,8 @@ export function createTenantRoutes(service: TenantCatalogService) {
   });
 
   routes.delete("/:id/components/:name", async (c) => {
-    const orgId = c.req.param("id");
+    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    if (!orgId) return notFound(c);
     const name = c.req.param("name");
 
     await service.removeComponent(orgId, name);

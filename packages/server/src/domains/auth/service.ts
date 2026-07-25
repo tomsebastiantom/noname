@@ -69,6 +69,7 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
       });
 
       await tenantSettings.upsert(orgId, {
+        slug: settings.slug,
         locales: settings.locales,
         defaultLocale: settings.defaultLocale,
         seo: settings.seo,

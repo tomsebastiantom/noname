@@ -1,11 +1,11 @@
 import { type FormEvent, useEffect, useState } from "react";
 import {
   getLayoutForTemplate,
+  type LayoutSummary,
   layoutTemplateFromPath,
   listLayouts,
   parseSpecJson,
   specToJson,
-  type LayoutSummary,
 } from "../../admin/layout-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -138,7 +138,8 @@ export function LayoutEntryAdmin({
         <CardContent className="flex flex-col gap-2">
           {layouts.length === 0 ? (
             <p className="text-sm text-muted-foreground">
-              No layout templates yet. Seed with <code className="rounded bg-muted px-1">pnpm seed:demo</code>.
+              No layout templates yet. Seed with{" "}
+              <code className="rounded bg-muted px-1">pnpm seed:demo</code>.
             </p>
           ) : (
             layouts.map((layout) => (
@@ -148,7 +149,9 @@ export function LayoutEntryAdmin({
                 className="rounded-md border px-4 py-3 text-sm font-medium hover:bg-muted/60"
               >
                 {layout.templateName}
-                <span className="ml-2 text-xs uppercase text-muted-foreground">{layout.status}</span>
+                <span className="ml-2 text-xs uppercase text-muted-foreground">
+                  {layout.status}
+                </span>
                 {layout.hasContentRef && (
                   <span className="ml-2 text-xs text-muted-foreground">· contentRef</span>
                 )}
@@ -170,7 +173,10 @@ export function LayoutEntryAdmin({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <a href="/admin/layout" className="text-sm text-primary underline-offset-4 hover:underline">
+          <a
+            href="/admin/layout"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
             ← All layouts
           </a>
         </CardContent>

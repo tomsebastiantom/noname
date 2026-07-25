@@ -1,5 +1,8 @@
 import { Hono } from "hono";
 import { z } from "zod";
+import { notFound } from "../../shared/respond";
+import { resolveSiteIdToOrgId } from "../../shared/site-id";
+import type { TenantSettingsService } from "../documents/ports";
 import type { AuthService } from "./ports";
 
 const loginBodySchema = z.object({
@@ -37,17 +40,24 @@ const authConfigUpdateSchema = z.object({
     .optional(),
 });
 
-export function createAuthRoutes(service: AuthService) {
+export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSettingsService) {
   const routes = new Hono();
 
+  async function orgFromParam(siteId: string): Promise<string | null> {
+    if (!tenantSettings) return siteId;
+    return resolveSiteIdToOrgId(tenantSettings, siteId);
+  }
+
   routes.get("/:orgId/auth/config", async (c) => {
-    const orgId = c.req.param("orgId");
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
     const config = await service.getConfig(orgId);
     return c.json({ data: config });
   });
 
   routes.put("/:orgId/auth/config", async (c) => {
-    const orgId = c.req.param("orgId");
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
     const parsed = authConfigUpdateSchema.safeParse(await c.req.json());
     if (!parsed.success) {
       return c.json({ error: "Invalid auth config payload" }, 400);
@@ -62,7 +72,8 @@ export function createAuthRoutes(service: AuthService) {
   });
 
   routes.get("/:orgId/auth/idp/:provider/start", async (c) => {
-    const orgId = c.req.param("orgId");
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
     const provider = c.req.param("provider");
     if (!SUPPORTED_PROVIDERS.has(provider)) {
       return c.json({ error: "Unsupported identity provider" }, 400);
@@ -113,7 +124,8 @@ export function createAuthRoutes(service: AuthService) {
   });
 
   routes.post("/:orgId/auth/login", async (c) => {
-    const orgId = c.req.param("orgId");
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
     const parsed = loginBodySchema.safeParse(await c.req.json());
     if (!parsed.success) {
       return c.json({ error: "Invalid login payload" }, 400);

@@ -27,6 +27,6 @@ export function createEdgeDomain(deps: EdgeDomainDeps) {
     deps.flags,
     deps.pages,
   );
-  const routes = createEdgeRoutes(service);
+  const routes = createEdgeRoutes(service, deps.tenantSettings);
   return { service, routes };
 }

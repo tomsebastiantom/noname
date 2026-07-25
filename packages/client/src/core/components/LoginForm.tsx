@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from "react";
-import { orgIdFromHostname } from "../../auth/org";
+import { storeSlugFromHostname } from "../../auth/org";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -19,7 +19,7 @@ import type { ComponentCtx } from "./types";
 type AuthProvider = "google" | "github" | "apple";
 
 function safeRedirect(path: string | null | undefined): string | null {
-  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  if (!path?.startsWith("/") || path.startsWith("//")) return null;
   return path;
 }
 
@@ -40,14 +40,16 @@ export function LoginForm({
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [enabledProviders, setEnabledProviders] = useState<AuthProvider[]>([]);
+  const storeSlug = storeSlugFromHostname(window.location.hostname);
 
-  const orgId = orgIdFromHostname(window.location.hostname);
-  const redirectFromQuery = safeRedirect(new URLSearchParams(window.location.search).get("redirect"));
+  const redirectFromQuery = safeRedirect(
+    new URLSearchParams(window.location.search).get("redirect"),
+  );
   const redirectPath = redirectFromQuery ?? props.redirectPath ?? "/";
 
   useEffect(() => {
-    if (!orgId) return;
-    void fetch(`/api/tenants/${orgId}/auth/config`)
+    if (!storeSlug) return;
+    void fetch(`/api/tenants/${storeSlug}/auth/config`)
       .then((res) => (res.ok ? (res.json() as Promise<{ data?: { providers?: string[] } }>) : null))
       .then((body) => {
         const serverProviders = (body?.data?.providers ?? []) as AuthProvider[];
@@ -59,13 +61,13 @@ export function LoginForm({
         setEnabledProviders(merged);
       })
       .catch(() => setEnabledProviders([]));
-  }, [orgId, props.providers]);
+  }, [storeSlug, props.providers]);
 
   const showSocial = enabledProviders.length > 0;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!orgId) return;
+    if (!storeSlug) return;
 
     setError(null);
     setLoading(true);
@@ -78,10 +80,10 @@ export function LoginForm({
     }
   }
 
-  if (!orgId) {
+  if (!storeSlug) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Use {"{orgId}"}.localhost:5173/login</AlertDescription>
+        <AlertDescription>Use {"{slug}"}.localhost:5173/login — e.g. yogastore.localhost:5173/login</AlertDescription>
       </Alert>
     );
   }

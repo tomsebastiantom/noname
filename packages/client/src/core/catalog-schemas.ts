@@ -132,10 +132,7 @@ export const coreComponentSchemas = {
   PageTreeAdmin: {
     props: z.object({
       title: z.string().default("URL tree"),
-      description: z
-        .string()
-        .nullable()
-        .default("Map storefront paths to page document keys."),
+      description: z.string().nullable().default("Map storefront paths to page document keys."),
       locale: z.string().default("en-US"),
     }),
     description: "Edit page_tree slug → pageId mappings",
@@ -188,7 +185,8 @@ export const coreActionSchemas = {
         })
         .optional(),
     }),
-    description: "Save per-org auth settings and register Google IdP in ZITADEL when credentials provided",
+    description:
+      "Save per-org auth settings and register Google IdP in ZITADEL when credentials provided",
   },
   saveContentEntry: {
     params: z.object({

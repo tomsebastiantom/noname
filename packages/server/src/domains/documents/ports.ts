@@ -116,6 +116,7 @@ export interface TenantAuthConfig {
 export interface TenantSettingsDTO {
   id: string;
   orgId: string;
+  slug: string | null;
   locales: string[];
   defaultLocale: string;
   seo: TenantSeoConfig;
@@ -268,6 +269,7 @@ export interface DocumentStorage {
 
   // tenant settings
   getTenantSettings(orgId: string): Promise<TenantSettingsDTO | null>;
+  findOrgIdByStoreSlug(slug: string): Promise<string | null>;
   upsertTenantSettings(
     orgId: string,
     data: Omit<TenantSettingsDTO, "id" | "orgId">,
@@ -308,6 +310,7 @@ export interface ContentTypeDocumentService {
 export interface TenantSettingsService {
   get(orgId: string): Promise<TenantSettingsDTO>;
   upsert(orgId: string, data: Omit<TenantSettingsDTO, "id" | "orgId">): Promise<TenantSettingsDTO>;
+  resolveStoreSlug(slug: string): Promise<string | null>;
 }
 
 export interface ContentContentOpts {

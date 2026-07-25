@@ -25,9 +25,7 @@ export function AdminShell({
     <div className="flex min-h-screen bg-background">
       <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
         <div className="px-4 py-5">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Admin
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Admin</p>
           <h1 className="mt-1 text-lg font-semibold">Noname</h1>
         </div>
         <Separator />

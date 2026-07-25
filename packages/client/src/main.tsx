@@ -4,6 +4,7 @@ import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
+import { storeSlugFromHostname } from "./auth/org";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
@@ -15,13 +16,6 @@ interface EdgeSchemaResponse {
   layout?: Spec;
   flags?: Record<string, unknown>;
   segment?: string;
-}
-
-/** ZITADEL org id from subdomain, e.g. 383371762538184712.localhost → that org */
-function orgIdFromHostname(hostname: string): string | null {
-  const sub = hostname.split(".")[0];
-  if (!sub || sub === "localhost" || sub === "127") return null;
-  return sub;
 }
 
 function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
@@ -43,8 +37,8 @@ function App() {
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const storeSlug = storeSlugFromHostname(window.location.hostname);
 
-  const orgId = orgIdFromHostname(window.location.hostname);
   const pathname = window.location.pathname;
   const route = resolveRoute(pathname);
   const platformRoute = route.kind === "platform";
@@ -54,10 +48,8 @@ function App() {
   const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();
 
-    if (!orgId) {
-      setError(
-        "Use {orgId}.localhost:5173 — org id is the ZITADEL org (see ZITADEL_DEMO_ORG_ID in .env after pnpm init:zitadel)",
-      );
+    if (!storeSlug) {
+      setError("Use {slug}.localhost:5173 — e.g. yogastore.localhost:5173 (run pnpm seed:demo)");
       setLoading(false);
       return;
     }
@@ -73,7 +65,7 @@ function App() {
 
     const headers = apiHeaders();
 
-    const manifestPromise = fetch(`/api/tenants/${orgId}/catalog`, { headers })
+    const manifestPromise = fetch(`/api/tenants/${storeSlug}/catalog`, { headers })
       .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
       .then((body) => body?.data ?? null)
       .catch(() => null);
@@ -82,7 +74,7 @@ function App() {
       ? `segment=default&template=${encodeURIComponent(template)}`
       : `segment=default&url=${encodeURIComponent(pathname)}`;
 
-    const specPromise = fetch(`/api/edge/schema/${orgId}?${schemaQuery}`, { headers }).then(
+    const specPromise = fetch(`/api/edge/schema/${storeSlug}?${schemaQuery}`, { headers }).then(
       (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
@@ -105,7 +97,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, template, adminRoute, platformRoute, pathname]);
+  }, [storeSlug, template, adminRoute, platformRoute, pathname]);
 
   useEffect(() => {
     void loadPage();
@@ -131,7 +123,7 @@ function App() {
     );
   }
 
-  if (!spec || !orgId) {
+  if (!spec || !storeSlug) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">

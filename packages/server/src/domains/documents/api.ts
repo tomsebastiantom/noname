@@ -56,6 +56,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   routes.put("/tenant_settings/default", async (c) => {
     const orgId = getOrgId(c);
     const body = await c.req.json<{
+      slug?: string | null;
       locales?: string[];
       defaultLocale?: string;
       seo?: Record<string, unknown>;
@@ -68,6 +69,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     }>();
     const current = await tenantSettings.get(orgId);
     const upserted = await tenantSettings.upsert(orgId, {
+      slug: body.slug !== undefined ? body.slug : current.slug,
       locales: body.locales ?? current.locales,
       defaultLocale: body.defaultLocale ?? current.defaultLocale,
       seo: (body.seo ?? current.seo) as never,

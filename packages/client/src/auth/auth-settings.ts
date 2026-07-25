@@ -1,4 +1,4 @@
-import { requireOrgId } from "./org";
+import { requireStoreSlug } from "./org";
 import { apiHeaders } from "./session";
 
 export type AuthProvider = "google" | "github" | "apple";
@@ -12,11 +12,11 @@ export interface AuthSettingsState {
 }
 
 export async function loadAuthSettings(): Promise<AuthSettingsState> {
-  const orgId = requireOrgId();
+  const storeSlug = requireStoreSlug();
   const headers = apiHeaders();
 
   const [configRes, settingsRes] = await Promise.all([
-    fetch(`/api/tenants/${orgId}/auth/config`, { headers }),
+    fetch(`/api/tenants/${storeSlug}/auth/config`, { headers }),
     fetch("/api/documents/tenant_settings/default", { headers }),
   ]);
 
@@ -58,9 +58,9 @@ export async function saveAuthConfig(input: {
   allowPassword: boolean;
   googleOAuth?: { clientId: string; clientSecret: string };
 }): Promise<AuthProvider[]> {
-  const orgId = requireOrgId();
+  const storeSlug = requireStoreSlug();
 
-  const res = await fetch(`/api/tenants/${orgId}/auth/config`, {
+  const res = await fetch(`/api/tenants/${storeSlug}/auth/config`, {
     method: "PUT",
     headers: { ...apiHeaders(), "Content-Type": "application/json" },
     body: JSON.stringify(input),

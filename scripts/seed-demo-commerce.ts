@@ -10,6 +10,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
+const DEMO_STORE_SLUG = "yogastore";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
@@ -208,7 +209,7 @@ async function main() {
     throw new Error("API server not reachable — start with: pnpm dev");
   }
 
-  await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
+  await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/catalog`, {
     platform: { version: "1", hash: "commerce-demo" },
     extensions: ["commerce"],
   });
@@ -228,7 +229,7 @@ async function main() {
 
   const { data: schema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
     "GET",
-    `/api/edge/schema/${DEMO_ORG_ID}?url=${encodeURIComponent("/products/demo-sneakers")}`,
+    `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
 
   const productProps = schema.layout?.elements?.product1?.props;
@@ -244,7 +245,7 @@ async function main() {
   console.log(`  Content:     ${contentRef}`);
   console.log(`  Layout:      home (Hero + ProductCard with $state)`);
   console.log(`  URL:         /products/demo-sneakers (via page_tree)`);
-  console.log(`  Client:      http://${DEMO_ORG_ID}.localhost:5173/products/demo-sneakers`);
+  console.log(`  Client:      http://yogastore.localhost:5173/products/demo-sneakers`);
 }
 
 main().catch((err: Error) => {

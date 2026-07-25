@@ -25,10 +25,9 @@ export function layoutTemplateFromPath(pathname: string): string {
 }
 
 export async function listLayouts(segment = "default"): Promise<LayoutSummary[]> {
-  const res = await fetch(
-    `/api/documents/layout?segment=${encodeURIComponent(segment)}`,
-    { headers: apiHeaders() },
-  );
+  const res = await fetch(`/api/documents/layout?segment=${encodeURIComponent(segment)}`, {
+    headers: apiHeaders(),
+  });
   if (!res.ok) throw new Error(`Failed to load layouts (${res.status})`);
   const body = (await res.json()) as { data?: LayoutRow[] };
   const rows = body.data ?? [];

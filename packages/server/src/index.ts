@@ -97,7 +97,7 @@ const edge = createEdgeDomain({
 });
 app.route("/api/edge", edge.routes);
 
-const tenant = createTenantDomain();
+const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
 app.route("/api/tenants", tenant.routes);
 
 const auth = createAuthDomain({ tenantSettings: docs.service.tenantSettings });

@@ -2,9 +2,9 @@ import { type FormEvent, useEffect, useState } from "react";
 import {
   listRoutingPages,
   loadRoutingPage,
+  type RoutingPageView,
   routingPageKeyFromPath,
   saveRoutingPage,
-  type RoutingPageView,
 } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -133,7 +133,9 @@ export function PageEntryAdmin({
         <Card className="mb-6">
           <CardHeader>
             <CardTitle className="text-base">New page document</CardTitle>
-            <CardDescription>Key used by page_tree entries (e.g. home, product-demo)</CardDescription>
+            <CardDescription>
+              Key used by page_tree entries (e.g. home, product-demo)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={(e) => void handleCreate(e)} className="flex flex-wrap items-end gap-3">
@@ -228,7 +230,10 @@ export function PageEntryAdmin({
           <Button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Save"}
           </Button>
-          <a href="/admin/pages" className="inline-flex items-center text-sm text-primary hover:underline">
+          <a
+            href="/admin/pages"
+            className="inline-flex items-center text-sm text-primary hover:underline"
+          >
             ← All pages
           </a>
           <a

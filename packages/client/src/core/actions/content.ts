@@ -1,9 +1,8 @@
 import {
+  type ContentTypeSchema,
   createContentEntry,
-  loadEntryFields,
   publishContentEntry,
   saveContentEntry,
-  type ContentTypeSchema,
 } from "../../admin/content-entries";
 
 export const contentActions = {

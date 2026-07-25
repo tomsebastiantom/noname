@@ -1,8 +1,4 @@
-import {
-  parseSpecJson,
-  publishLayout,
-  saveLayout,
-} from "../../admin/layout-entries";
+import { parseSpecJson, publishLayout, saveLayout } from "../../admin/layout-entries";
 
 export const layoutActions = {
   saveLayoutEntry: async (params: unknown) => {

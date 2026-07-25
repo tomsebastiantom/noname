@@ -43,7 +43,11 @@ function pickLocalized(value: unknown, locale: string): string {
   return value !== undefined && value !== null ? String(value) : "";
 }
 
-export function entryLabel(entry: ContentEntryRow, schema: ContentTypeSchema, locale: string): string {
+export function entryLabel(
+  entry: ContentEntryRow,
+  schema: ContentTypeSchema,
+  locale: string,
+): string {
   const titleField = schema.fields.find((f) => f.key === "title") ?? schema.fields[0];
   if (!titleField) return entry.key;
   const raw = entry.data[titleField.key];
@@ -166,10 +170,11 @@ export async function saveContentEntry(input: {
   }
 
   if (Object.keys(global).length > 0) {
-    const res = await fetch(
-      `/api/documents/${encodeURIComponent(input.contentType)}/${input.id}`,
-      { method: "PUT", headers, body: JSON.stringify(global) },
-    );
+    const res = await fetch(`/api/documents/${encodeURIComponent(input.contentType)}/${input.id}`, {
+      method: "PUT",
+      headers,
+      body: JSON.stringify(global),
+    });
     if (!res.ok) {
       const body = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(body.error ?? `Save failed (${res.status})`);
@@ -178,10 +183,10 @@ export async function saveContentEntry(input: {
 }
 
 export async function publishContentEntry(contentType: string, id: string): Promise<void> {
-  const res = await fetch(
-    `/api/documents/${encodeURIComponent(contentType)}/${id}/publish`,
-    { method: "PUT", headers: apiHeaders() },
-  );
+  const res = await fetch(`/api/documents/${encodeURIComponent(contentType)}/${id}/publish`, {
+    method: "PUT",
+    headers: apiHeaders(),
+  });
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Publish failed (${res.status})`);

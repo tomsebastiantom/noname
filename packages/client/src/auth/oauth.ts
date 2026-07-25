@@ -19,7 +19,7 @@ export async function createCodeChallenge(verifier: string): Promise<string> {
 }
 
 export interface OAuthState {
-  orgId: string;
+  storeSlug: string;
   returnUrl: string;
 }
 
@@ -40,7 +40,7 @@ export function readOAuthState(): { state: OAuthState; codeVerifier: string } | 
     const padded = encoded.replace(/-/g, "+").replace(/_/g, "/");
     const json = atob(padded);
     const state = JSON.parse(json) as OAuthState;
-    if (!state.orgId || typeof state.returnUrl !== "string") return null;
+    if (!state.storeSlug || typeof state.returnUrl !== "string") return null;
     return { state, codeVerifier };
   } catch {
     return null;

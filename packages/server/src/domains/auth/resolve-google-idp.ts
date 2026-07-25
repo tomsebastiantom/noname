@@ -7,7 +7,11 @@ export function resolveGoogleIdpId(
     idpIds?: Record<string, string>;
     googleOAuth?: { clientId: string; clientSecret: string };
   },
-): { required: boolean; existingIdpId?: string; googleOAuth?: { clientId: string; clientSecret: string } } {
+): {
+  required: boolean;
+  existingIdpId?: string;
+  googleOAuth?: { clientId: string; clientSecret: string };
+} {
   const providers = patch.providers ?? current.providers;
   if (!providers.includes("google")) {
     return { required: false };

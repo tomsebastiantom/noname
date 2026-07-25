@@ -1,14 +1,9 @@
-import { type StateModel, resolveElementProps } from "@json-render/core";
+import { resolveElementProps, type StateModel } from "@json-render/core";
 
 interface SpecElement {
   type: string;
   props?: Record<string, unknown>;
   children?: string[];
-}
-
-interface JsonRenderSpec {
-  root: string;
-  elements: Record<string, SpecElement>;
 }
 
 /** Walk a json-render spec and resolve `{ "$state": "..." }` props using the content model. */
@@ -18,7 +13,12 @@ export function resolveSpecWithState(
 ): Record<string, unknown> {
   const root = spec.root;
   const elements = spec.elements;
-  if (typeof root !== "string" || !elements || typeof elements !== "object" || Array.isArray(elements)) {
+  if (
+    typeof root !== "string" ||
+    !elements ||
+    typeof elements !== "object" ||
+    Array.isArray(elements)
+  ) {
     return spec;
   }
 

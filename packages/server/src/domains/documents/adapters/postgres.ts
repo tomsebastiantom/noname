@@ -46,9 +46,24 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const row = await findRow(db, orgId, "tenant_settings", "default");
       return row ? toTenantSettings(row) : null;
     },
+    async findOrgIdByStoreSlug(slug) {
+      const [row] = await db
+        .select({ orgId: documents.orgId })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.type, "tenant_settings"),
+            eq(documents.key, "default"),
+            sql`${documents.data}->>'slug' = ${slug}`,
+          ),
+        )
+        .limit(1);
+      return row?.orgId ?? null;
+    },
     async upsertTenantSettings(orgId, data) {
       const existing = await findRow(db, orgId, "tenant_settings", "default");
       const merged = {
+        slug: data.slug ?? null,
         locales: data.locales,
         defaultLocale: data.defaultLocale,
         seo: data.seo,
@@ -286,6 +301,7 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
   return {
     id: row.id,
     orgId: row.orgId,
+    slug: typeof data.slug === "string" && data.slug.trim() !== "" ? data.slug.trim() : null,
     locales: (data.locales as string[]) ?? ["en-US"],
     defaultLocale: (data.defaultLocale as string) ?? "en-US",
     seo: {

@@ -10,7 +10,7 @@ import {
 import { setSessionToken } from "./session";
 
 export async function startIdpLogin(
-  orgId: string,
+  storeSlug: string,
   provider: string,
   redirectPath: string,
 ): Promise<void> {
@@ -22,7 +22,7 @@ export async function startIdpLogin(
   const codeVerifier = await createCodeVerifier();
   const codeChallenge = await createCodeChallenge(codeVerifier);
   const returnUrl = new URL(redirectPath, window.location.origin).toString();
-  saveOAuthState({ orgId, returnUrl }, codeVerifier);
+  saveOAuthState({ storeSlug, returnUrl }, codeVerifier);
 
   const params = new URLSearchParams({
     clientId: oidc.clientId,
@@ -30,7 +30,7 @@ export async function startIdpLogin(
     codeChallenge,
   });
 
-  const res = await fetch(`/api/tenants/${orgId}/auth/idp/${provider}/start?${params.toString()}`);
+  const res = await fetch(`/api/tenants/${storeSlug}/auth/idp/${provider}/start?${params.toString()}`);
   if (!res.ok) {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error ?? `Could not start ${provider} sign-in (${res.status})`);
@@ -55,7 +55,7 @@ export async function completeOAuthCallback(code: string): Promise<string> {
     throw new Error("Missing oidc.json — run pnpm init:zitadel");
   }
 
-  const res = await fetch(`/api/tenants/${saved.state.orgId}/auth/callback`, {
+  const res = await fetch(`/api/tenants/${saved.state.storeSlug}/auth/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

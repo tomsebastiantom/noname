@@ -1,10 +1,10 @@
+import type { ContextEngine } from "../context/ports";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
   PageTreeService,
   TenantSettingsService,
 } from "../documents/ports";
-import type { ContextEngine } from "../context/ports";
 import type { FlagService } from "../flags/ports";
 import type { EdgeService, GetSchemaOptions } from "./ports";
 import { parseContentRef, resolveSpecWithState } from "./resolve-spec";

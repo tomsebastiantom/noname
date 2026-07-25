@@ -18,6 +18,10 @@ export async function setCache(
   await env.KV.put(key, JSON.stringify(value), { expirationTtl: ttl });
 }
 
+export function slugCacheKey(slug: string): string {
+  return `slug:${slug.toLowerCase()}`;
+}
+
 export function cacheKey(orgId: string, segment: string, path: string): string {
   return `${orgId}:${segment}:${path}`;
 }

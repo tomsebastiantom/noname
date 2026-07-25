@@ -1,6 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import {
   CONTENT_DEFAULT_LOCALE,
+  type ContentEntryRow,
+  type ContentFieldSchema,
+  type ContentTypeSchema,
   contentTypeFromPath,
   createContentEntry,
   entryLabel,
@@ -9,9 +12,6 @@ import {
   listContentTypes,
   listEntries,
   loadEntryFields,
-  type ContentEntryRow,
-  type ContentFieldSchema,
-  type ContentTypeSchema,
 } from "../../admin/content-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -302,7 +302,10 @@ export function ContentEntryAdmin({
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <a href="/admin/content" className="text-sm text-primary underline-offset-4 hover:underline">
+          <a
+            href="/admin/content"
+            className="text-sm text-primary underline-offset-4 hover:underline"
+          >
             ← All content types
           </a>
         </CardContent>
@@ -357,7 +360,11 @@ export function ContentEntryAdmin({
                   {creating ? "Creating…" : "Create draft"}
                 </Button>
                 {isNewEntry && entries.length > 0 && (
-                  <Button type="button" variant="outline" onClick={() => void selectEntry(entries[0]!.id)}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => void selectEntry(entries[0]!.id)}
+                  >
                     Cancel
                   </Button>
                 )}

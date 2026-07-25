@@ -70,7 +70,11 @@ async function getManagementToken(): Promise<string> {
     }),
   });
 
-  const body = (await res.json()) as { access_token?: string; expires_in?: number; error_description?: string };
+  const body = (await res.json()) as {
+    access_token?: string;
+    expires_in?: number;
+    error_description?: string;
+  };
   if (!res.ok || !body.access_token) {
     throw new Error(`ZITADEL management token failed: ${body.error_description ?? res.status}`);
   }
@@ -130,11 +134,9 @@ async function ensureOrgLoginPolicy(orgId: string): Promise<void> {
   let policy: { allowExternalIdp?: boolean; allowUsernamePassword?: boolean } | undefined;
 
   try {
-    const current = await managementRequest<{ policy?: { allowExternalIdp?: boolean; allowUsernamePassword?: boolean } }>(
-      orgId,
-      "GET",
-      "/policies/login",
-    );
+    const current = await managementRequest<{
+      policy?: { allowExternalIdp?: boolean; allowUsernamePassword?: boolean };
+    }>(orgId, "GET", "/policies/login");
     policy = current.policy;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

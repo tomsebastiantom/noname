@@ -15,7 +15,7 @@ async function createCodeVerifier(): Promise<string> {
 
 /** Embedded login via API → ZITADEL Session API (password grant is not supported by ZITADEL). */
 export async function loginWithPassword(
-  orgId: string,
+  storeSlug: string,
   email: string,
   password: string,
 ): Promise<void> {
@@ -26,7 +26,7 @@ export async function loginWithPassword(
 
   const codeVerifier = await createCodeVerifier();
 
-  const res = await fetch(`/api/tenants/${orgId}/auth/login`, {
+  const res = await fetch(`/api/tenants/${storeSlug}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

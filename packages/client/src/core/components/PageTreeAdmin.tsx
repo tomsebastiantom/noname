@@ -1,9 +1,9 @@
 import { type FormEvent, useEffect, useState } from "react";
 import {
   loadMainTree,
+  type PageTreeEntry,
   ROUTING_DEFAULT_LOCALE,
   saveMainTree,
-  type PageTreeEntry,
 } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -89,9 +89,7 @@ export function PageTreeAdmin({
 
   function updateSlug(index: number, slug: string) {
     setEntries((rows) =>
-      rows.map((row, i) =>
-        i === index ? { ...row, slug: { ...row.slug, [locale]: slug } } : row,
-      ),
+      rows.map((row, i) => (i === index ? { ...row, slug: { ...row.slug, [locale]: slug } } : row)),
     );
   }
 
@@ -156,9 +154,7 @@ export function PageTreeAdmin({
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 sm:col-span-2">
-                  <Label htmlFor={`slug-${index}`}>
-                    URL slug ({locale})
-                  </Label>
+                  <Label htmlFor={`slug-${index}`}>URL slug ({locale})</Label>
                   <Input
                     id={`slug-${index}`}
                     value={entry.slug[locale] ?? ""}
@@ -183,13 +179,20 @@ export function PageTreeAdmin({
         )}
 
         <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={() => setEntries((rows) => [...rows, emptyEntry()])}>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setEntries((rows) => [...rows, emptyEntry()])}
+          >
             Add entry
           </Button>
           <Button type="submit" disabled={saving}>
             {saving ? "Saving…" : "Save page tree"}
           </Button>
-          <a href="/admin/pages" className="inline-flex items-center text-sm text-primary hover:underline">
+          <a
+            href="/admin/pages"
+            className="inline-flex items-center text-sm text-primary hover:underline"
+          >
             ← Page documents
           </a>
         </div>
