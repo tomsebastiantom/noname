@@ -13,10 +13,10 @@
 ```
 ✅ A     Login (email) + JWT
 ✅ B     Commerce extension + cart machine
-📋 1    Content render pipeline   → CMS → $state → resolved spec on edge  BUILD NEXT
-📋 A2   Per-org auth config       → tenant_settings.auth, no env IdP
-📋 C    Admin UI                  → edit without seeds
-📋 D    Scale                     → slug, domains, editor
+✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
+📋 A2    Per-org auth config       → tenant_settings.auth, no env IdP  BUILD NEXT
+📋 C     Admin UI                  → edit without seeds
+📋 D     Scale                     → slug, domains, editor
 ```
 
 ---
@@ -35,27 +35,23 @@
 
 ---
 
-## Step 1 — Content render pipeline 📋 BUILD NEXT
+## Step 1 — Content render pipeline ✅
 
 **Goal:** Storefront text from CMS content entries, merged on edge — not baked into layout JSON.
 
 | Task | Status |
 |------|--------|
-| Edge: `content.resolve` + `$state` + `resolveElementProps` | 📋 |
-| Commerce seed: product content type + entry + `$state` layout | 📋 |
-| Page routing via `contentRef` (optional follow-up) | 📋 |
+| Edge: `content.resolve` + `$state` + `resolveElementProps` | ✅ |
+| Layout `data.contentRef` + query override | ✅ |
+| Commerce seed: product content type + entry + `$state` layout | ✅ |
 
-**Validate:**
-
-1. Edit product title in CMS entry → storefront shows new title without layout republish
-2. Layout spec keeps `{ "$state": "title" }` slots
-3. Login page unchanged (layout props only)
+**Validate:** `pnpm seed:demo:commerce` — edge returns `title: "Blue Sneakers"` on ProductCard.
 
 **Doc:** [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
 
-## Phase A2 — Per-org auth config 📋
+## Phase A2 — Per-org auth config 📋 BUILD NEXT
 
 **Goal:** Social providers per org in Postgres + ZITADEL — **no `ZITADEL_GOOGLE_IDP_ID` env shortcut**.
 
@@ -106,7 +102,7 @@ Merchant manages content, layouts, auth settings without seeds.
 |---|-------|-------|----------|
 | **A** | Login | Email + JWT | ✅ |
 | **B** | Commerce | Extension + cart | ✅ |
-| **1** | Content pipeline | Edge `$state` resolve | CMS text on storefront |
+| **1** | Content pipeline | Edge `$state` resolve | ✅ |
 | **A2** | Auth config | Per-org Postgres + ZITADEL | Social per org |
 | **C** | Admin | Shell + settings UI | No seeds |
 | **D** | Polish | Slug, editor | Multi-use-case |

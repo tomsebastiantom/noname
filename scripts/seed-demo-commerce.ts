@@ -13,6 +13,28 @@ const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
+const productContentType = {
+  fields: [
+    {
+      key: "productId",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Product ID",
+    },
+    { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
+    { key: "price", type: "number", required: true, isLocalizable: false, label: "Price" },
+    {
+      key: "description",
+      type: "longText",
+      required: false,
+      isLocalizable: true,
+      label: "Description",
+    },
+    { key: "image", type: "text", required: false, isLocalizable: false, label: "Image URL" },
+  ],
+};
+
 const commerceSpec = {
   root: "main",
   elements: {
@@ -39,11 +61,11 @@ const commerceSpec = {
     product1: {
       type: "ProductCard",
       props: {
-        productId: "demo-sneakers",
-        title: "Blue Sneakers",
-        price: 99.99,
-        image: null,
-        description: "Comfortable running shoes for everyday wear.",
+        productId: { $state: "productId" },
+        title: { $state: "title" },
+        price: { $state: "price" },
+        image: { $state: "image" },
+        description: { $state: "description" },
       },
     },
   },
@@ -52,6 +74,12 @@ const commerceSpec = {
 interface LayoutRow {
   id: string;
   key: string;
+  status: string;
+}
+
+interface ContentEntryRow {
+  id: string;
+  type: string;
   status: string;
 }
 
@@ -75,7 +103,43 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json() as Promise<T>;
 }
 
-async function publishHomeLayout(spec: Record<string, unknown>): Promise<void> {
+async function ensureProductContentType(): Promise<void> {
+  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  if (types.some((t) => t.name === "product")) {
+    console.log("Product content type already exists.");
+    return;
+  }
+  await api("POST", "/api/documents/content-types", {
+    name: "product",
+    schema: productContentType,
+  });
+  console.log("Product content type created.");
+}
+
+async function seedDemoProduct(): Promise<string> {
+  const { data: existing } = await api<{ data: ContentEntryRow[] }>("GET", "/api/documents/product");
+  const published = existing.find((row) => row.status === "published");
+  if (published) {
+    console.log(`Demo product already published (${published.id}).`);
+    return published.id;
+  }
+
+  const { data: created } = await api<{ data: { id: string } }>(
+    "POST",
+    "/api/documents/product?locale=en-US",
+    {
+      productId: "demo-sneakers",
+      title: "Blue Sneakers",
+      price: 99.99,
+      description: "Comfortable running shoes for everyday wear.",
+    },
+  );
+  await api("PUT", `/api/documents/product/${created.id}/publish`);
+  console.log(`Demo product published (${created.id}).`);
+  return created.id;
+}
+
+async function publishHomeLayout(spec: Record<string, unknown>, contentRef: string): Promise<void> {
   const { data: layouts } = await api<{ data: LayoutRow[] }>(
     "GET",
     "/api/documents/layout?segment=default&templateName=home",
@@ -83,11 +147,11 @@ async function publishHomeLayout(spec: Record<string, unknown>): Promise<void> {
   const existing = layouts.find((row) => row.key === "home");
 
   if (existing) {
-    await api("PUT", `/api/documents/layout/${existing.id}`, { spec });
+    await api("PUT", `/api/documents/layout/${existing.id}`, { spec, contentRef });
     if (existing.status !== "published") {
       await api("PUT", `/api/documents/layout/${existing.id}/publish`);
     }
-    console.log("Home layout updated with commerce spec.");
+    console.log("Home layout updated with commerce spec + contentRef.");
     return;
   }
 
@@ -96,8 +160,9 @@ async function publishHomeLayout(spec: Record<string, unknown>): Promise<void> {
     segment: "default",
     spec,
   });
+  await api("PUT", `/api/documents/layout/${created.id}`, { spec, contentRef });
   await api("PUT", `/api/documents/layout/${created.id}/publish`);
-  console.log("Home layout created and published.");
+  console.log("Home layout created and published with contentRef.");
 }
 
 async function main() {
@@ -123,21 +188,29 @@ async function main() {
   await api("POST", "/api/machines/definitions", cartDefinition);
   console.log(`Cart machine definition seeded (${cartDefinition.name}).`);
 
-  await publishHomeLayout(commerceSpec);
+  await ensureProductContentType();
+  const productId = await seedDemoProduct();
+  const contentRef = `product:${productId}`;
 
-  const { data: schema } = await api<{ data: { layout: unknown } }>(
+  await publishHomeLayout(commerceSpec, contentRef);
+
+  const { data: schema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
     "GET",
     `/api/edge/schema/${DEMO_ORG_ID}?segment=default&template=home`,
   );
 
-  if (!schema.layout) {
-    throw new Error("Seed succeeded but edge schema returned no layout");
+  const productProps = schema.layout?.elements?.product1?.props;
+  if (!productProps || productProps.title !== "Blue Sneakers") {
+    throw new Error(
+      `Edge did not resolve product content — got title: ${String(productProps?.title ?? "missing")}`,
+    );
   }
 
   console.log("Commerce extension demo seed complete.");
   console.log(`  Org:         ${DEMO_ORG_ID}`);
   console.log(`  Extensions:  commerce`);
-  console.log(`  Layout:      home (Hero + ProductCard)`);
+  console.log(`  Content:     ${contentRef}`);
+  console.log(`  Layout:      home (Hero + ProductCard with $state)`);
   console.log(`  Client:      http://${DEMO_ORG_ID}.localhost:5173`);
 }
 

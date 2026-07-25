@@ -1,7 +1,7 @@
 # Content Render Pipeline — CMS to Resolved Spec
 
 > **Date:** 2026-07-25  
-> **Status:** **Build next** (Step 1 in [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md))  
+> **Status:** ✅ Implemented (2026-07-25) — edge merges content into `$state` on `GET /api/edge/schema`  
 > **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md)
 
 ---
@@ -115,17 +115,17 @@ Full model: [`documents-domain.md`](../2026-07-10/documents-domain.md) § “How
 
 ### Backend (to build — Step 1)
 
-- [ ] Edge: accept `contentRef=type:id` and `locale` query params
-- [ ] Edge: load content via `content.resolve`, build `$state` object
-- [ ] Edge: walk spec tree, `resolveElementProps` per element (`@json-render/core`)
+- [x] Edge: accept `contentRef=type:id` and `locale` query params
+- [x] Edge: load content via `content.resolve`, build `$state` object
+- [x] Edge: walk spec tree, `resolveElementProps` per element (`@json-render/core`)
+- [x] Layout document `data.contentRef` default for template-level binding
 - [ ] Optional: read `contentRef` from page document when URL routing wired
-- [ ] Optional: layout `data.contentRef` default for template-level binding
 
 ### Seeds / demo
 
-- [ ] `seed-demo-commerce`: create `product` content type + published entry
-- [ ] Layout uses `$state` bindings, not inline `"Blue Sneakers"`
-- [ ] Seed validates edge returns resolved product title
+- [x] `seed-demo-commerce`: create `product` content type + published entry
+- [x] Layout uses `$state` bindings + `contentRef` on layout document
+- [x] Seed validates edge returns resolved product title
 
 ### Client
 

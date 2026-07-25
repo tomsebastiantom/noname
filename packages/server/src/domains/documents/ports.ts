@@ -155,6 +155,7 @@ export interface CreateLayoutInput {
 
 export interface UpdateLayoutInput {
   spec: Record<string, unknown>;
+  contentRef?: string | null;
 }
 
 export interface ResolvedLayout {
@@ -162,6 +163,7 @@ export interface ResolvedLayout {
   segment: string;
   version: number;
   spec: Record<string, unknown>;
+  contentRef: string | null;
   conflicts: string[];
 }
 

@@ -19,7 +19,14 @@ export interface PersonalizeResponse {
   flags: Record<string, unknown>;
 }
 
+export interface GetSchemaOptions {
+  segment?: string;
+  template?: string;
+  contentRef?: string | null;
+  locale?: string;
+}
+
 export interface EdgeService {
-  getSchema(siteId: string, segment?: string, template?: string): Promise<EdgeSchemaResponse>;
+  getSchema(siteId: string, options?: GetSchemaOptions): Promise<EdgeSchemaResponse>;
   personalize(orgId: string, input: PersonalizeRequest): Promise<PersonalizeResponse>;
 }

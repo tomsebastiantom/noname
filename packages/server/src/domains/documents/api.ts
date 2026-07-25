@@ -181,8 +181,11 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
 
   routes.put("/layout/:id", async (c) => {
     const orgId = getOrgId(c);
-    const { spec } = await c.req.json<{ spec: Record<string, unknown> }>();
-    const updated = await layout.update(orgId, c.req.param("id"), { spec });
+    const body = await c.req.json<{ spec: Record<string, unknown>; contentRef?: string | null }>();
+    const updated = await layout.update(orgId, c.req.param("id"), {
+      spec: body.spec,
+      contentRef: body.contentRef,
+    });
     return ok(c, updated);
   });
 

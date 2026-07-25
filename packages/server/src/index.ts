@@ -89,6 +89,8 @@ app.route("/api/agents", agent.routes);
 
 const edge = createEdgeDomain({
   layout: docs.service.layout,
+  content: docs.service.content,
+  tenantSettings: docs.service.tenantSettings,
   context: ctx.engine,
   flags: flags.service,
 });

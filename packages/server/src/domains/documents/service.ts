@@ -236,11 +236,15 @@ export function createDocumentsService(
 
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.update(input.spec);
-      const updated = await storage.updateDocument(
-        id,
-        { ...existing.data, spec: input.spec },
-        existing.meta,
-      );
+      const nextData: Record<string, unknown> = { ...existing.data, spec: input.spec };
+      if (input.contentRef !== undefined) {
+        if (input.contentRef === null) {
+          delete nextData.contentRef;
+        } else {
+          nextData.contentRef = input.contentRef;
+        }
+      }
+      const updated = await storage.updateDocument(id, nextData, existing.meta);
       flushEvents(entity);
       return updated as unknown as LayoutDTO;
     },
@@ -314,6 +318,7 @@ export function createDocumentsService(
           segment: "default",
           version: publishedDefault.version,
           spec: deepClone(defaultSpec),
+          contentRef: readContentRef(publishedDefault.data),
           conflicts: [],
         };
       }
@@ -326,6 +331,7 @@ export function createDocumentsService(
           segment: "default",
           version: publishedDefault.version,
           spec: deepClone(defaultSpec),
+          contentRef: readContentRef(publishedDefault.data),
           conflicts: [],
         };
       }
@@ -337,6 +343,7 @@ export function createDocumentsService(
         segment,
         version: publishedDefault.version,
         spec,
+        contentRef: readContentRef(publishedDefault.data),
         conflicts,
       };
     },
@@ -499,7 +506,7 @@ function buildContentData(
       map[locale] = raw;
       data[field.key] = map;
     } else {
-      if (locale) {
+      if (locale && !isCreate) {
         errors.push(`field '${field.key}' is not localizable — write without ?locale`);
         continue;
       }
@@ -576,6 +583,11 @@ function validateSpec(spec: Record<string, unknown>): void {
   if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
     throw new ValidationError("spec", "spec must be an object");
   }
+}
+
+function readContentRef(data: Record<string, unknown>): string | null {
+  const ref = data.contentRef;
+  return typeof ref === "string" && ref.trim() !== "" ? ref : null;
 }
 
 function validateAssetMime(mimeType: string): void {

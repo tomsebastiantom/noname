@@ -6,7 +6,7 @@
 
 > **Column naming:** Postgres uses `org_id` (TEXT, ZITADEL organization id). Product language still says “tenant” / “store” (`tenant_settings`, per-tenant config). Drizzle field: `orgId`.
 
-> **Implementation status (2026-07-25):** CMS storage exists in this domain. Edge `$state` merge is **not wired yet** — see [`CONTENT-RENDER-PIPELINE.md`](../2026-07-25/CONTENT-RENDER-PIPELINE.md) and [`ARCHITECTURE-MAP.md`](../2026-07-25/ARCHITECTURE-MAP.md).
+> **Implementation status (2026-07-25):** Edge `$state` merge is **implemented** — see [`CONTENT-RENDER-PIPELINE.md`](../2026-07-25/CONTENT-RENDER-PIPELINE.md) and [`ARCHITECTURE-MAP.md`](../2026-07-25/ARCHITECTURE-MAP.md).
 
 ## Purpose
 
