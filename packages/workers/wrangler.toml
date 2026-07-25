@@ -6,6 +6,7 @@ compatibility_flags = ["nodejs_compat"]
 [vars]
 API_ORIGIN = "http://localhost:3000"
 ZITADEL_ISSUER = "http://localhost:8080"
+ZITADEL_CLIENT_ID = "383371862547169288"
 
 [[kv_namespaces]]
 binding = "KV"

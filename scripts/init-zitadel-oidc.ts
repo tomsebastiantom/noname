@@ -15,6 +15,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PROJECT_NAME = "noname-dev";
 const APP_NAME = "noname-client";
 const REDIRECT_URI = "http://localhost:5173/auth/callback";
+const ACCESS_TOKEN_TYPE = "OIDC_TOKEN_TYPE_JWT";
 const POST_LOGOUT_URI = "http://localhost:5173";
 
 const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
@@ -202,7 +203,7 @@ async function findApp(
   return { appId: app.id, clientId: app.oidcConfig.clientId };
 }
 
-async function ensureOidcRedirectUri(
+async function ensureOidcAppConfig(
   token: string,
   projectId: string,
   appId: string,
@@ -216,10 +217,12 @@ async function ensureOidcRedirectUri(
       oidcConfiguration: {
         redirectUris: [REDIRECT_URI],
         postLogoutRedirectUris: [POST_LOGOUT_URI],
+        accessTokenType: ACCESS_TOKEN_TYPE,
       },
     },
   );
   console.log(`OIDC redirect URI → ${REDIRECT_URI}`);
+  console.log(`OIDC access token type → ${ACCESS_TOKEN_TYPE}`);
 }
 
 async function createOidcApp(token: string, projectId: string): Promise<string> {
@@ -238,7 +241,7 @@ async function createOidcApp(token: string, projectId: string): Promise<string> 
         postLogoutRedirectUris: [POST_LOGOUT_URI],
         version: "OIDC_VERSION_1_0",
         developmentMode: true,
-        accessTokenType: "OIDC_TOKEN_TYPE_BEARER",
+        accessTokenType: ACCESS_TOKEN_TYPE,
       },
     },
   );
@@ -315,7 +318,7 @@ async function main(): Promise<void> {
 
   if (clientId && existingApp) {
     console.log(`OIDC app "${APP_NAME}" already exists — reusing client.`);
-    await ensureOidcRedirectUri(token, projectId, existingApp.appId);
+    await ensureOidcAppConfig(token, projectId, existingApp.appId);
   } else {
     clientId = await createOidcApp(token, projectId);
     console.log(`Created OIDC app "${APP_NAME}".`);
@@ -323,6 +326,19 @@ async function main(): Promise<void> {
 
   upsertEnvVar(ENV_FILE, "ZITADEL_ISSUER", ZITADEL_ISSUER);
   upsertEnvVar(ENV_FILE, "ZITADEL_CLIENT_ID", clientId);
+
+  const wranglerPath = join(ROOT, "packages/workers/wrangler.toml");
+  if (existsSync(wranglerPath)) {
+    const wrangler = readFileSync(wranglerPath, "utf8");
+    const updated = wrangler.replace(
+      /^ZITADEL_CLIENT_ID = .*$/m,
+      `ZITADEL_CLIENT_ID = "${clientId}"`,
+    );
+    if (updated !== wrangler) {
+      writeFileSync(wranglerPath, updated);
+      console.log(`Updated wrangler ZITADEL_CLIENT_ID → ${clientId}`);
+    }
+  }
   upsertEnvVar(ENV_FILE, "ZITADEL_DEMO_ORG_ID", organizationId);
 
   const oidcJsonPath = join(ROOT, "packages/client/public/oidc.json");

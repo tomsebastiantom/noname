@@ -23,7 +23,7 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
     const result = await parseJwt({
       jwt: token,
       issuer: env.ZITADEL_ISSUER,
-      audience: "",
+      audience: env.ZITADEL_CLIENT_ID,
       resolveKey: getKey,
     });
 
