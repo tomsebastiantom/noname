@@ -1,15 +1,23 @@
 import { getKey, parseJwt } from "@cfworker/jwt";
 import type { EdgeContext, Env } from "./types";
 
-export async function validateJwt(request: Request, env: Env): Promise<EdgeContext | Response> {
+function orgIdFromPayload(payload: Record<string, unknown>): string {
+  return (
+    (payload["urn:zitadel:iam:org:id"] as string) ||
+    (payload.org_id as string) ||
+    (payload.tenant_id as string) ||
+    ""
+  );
+}
+
+/** Returns identity from JWT, or null when no/invalid token (no redirect). */
+export async function tryParseJwt(request: Request, env: Env): Promise<EdgeContext | null> {
   const cookie = request.headers.get("Cookie") || "";
   const authHeader = request.headers.get("Authorization") || "";
+  const token =
+    authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
 
-  const token = authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
-
-  if (!token) {
-    return redirectToLogin(request, env);
-  }
+  if (!token) return null;
 
   try {
     const result = await parseJwt({
@@ -19,23 +27,23 @@ export async function validateJwt(request: Request, env: Env): Promise<EdgeConte
       resolveKey: getKey,
     });
 
-    if (!result.valid) {
-      console.error("JWT validation failed:", result.reason);
-      return redirectToLogin(request, env);
-    }
+    if (!result.valid) return null;
 
     const payload = result.payload as unknown as Record<string, unknown>;
-
     return {
-      orgId:
-        (payload.org_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
+      orgId: orgIdFromPayload(payload),
       userId: (payload.sub as string) || "",
       role: (payload.role as string) || "customer",
     };
-  } catch (err) {
-    console.error("JWT validation error:", err);
-    return redirectToLogin(request, env);
+  } catch {
+    return null;
   }
+}
+
+export async function validateJwt(request: Request, env: Env): Promise<EdgeContext | Response> {
+  const ctx = await tryParseJwt(request, env);
+  if (ctx) return ctx;
+  return redirectToLogin(request, env);
 }
 
 function redirectToLogin(request: Request, env: Env): Response {
