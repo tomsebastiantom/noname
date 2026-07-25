@@ -97,11 +97,11 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (today config 
 | Phase | Scope | Status |
 |-------|-------|--------|
 | 1 Visual polish | AuthLayout, shadcn, divider, password toggle | ✅ |
-| 2 Social sign-in | Buttons + OAuth routes + **per-org config (A2)** | UI ✅ · config 📋 |
+| 2 Social sign-in | Buttons + OAuth routes + **per-org config (A2)** | ✅ |
 | 3 Account flows | Forgot password, sign-up, MFA | 📋 |
-| 4 Admin branding | Auth settings UI writes spec + settings | Phase C |
+| 4 Admin branding | Auth settings UI writes spec + settings | Auth ✅ · login layout branding 📋 |
 
-Social Phase 2 is **not production-done** until [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) steps 1–4 ship.
+Per-org Google is configured via `/admin/settings/auth` (Management API + Postgres). See [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md).
 
 ---
 

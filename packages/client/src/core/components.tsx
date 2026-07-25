@@ -1,12 +1,14 @@
 import { AdminShell } from "./components/AdminShell";
 import { AuthLayout } from "./components/AuthLayout";
 import { AuthSettingsForm } from "./components/AuthSettingsForm";
+import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 import { LoginForm } from "./components/LoginForm";
 import type { ComponentCtx } from "./components/types";
 
 export { AdminShell } from "./components/AdminShell";
 export { AuthLayout } from "./components/AuthLayout";
 export { AuthSettingsForm } from "./components/AuthSettingsForm";
+export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 export { LoginForm } from "./components/LoginForm";
 export type { ComponentCtx } from "./components/types";
 
@@ -147,4 +149,5 @@ export const coreComponents = {
   AuthLayout,
   AdminShell,
   AuthSettingsForm,
+  ContentEntryAdmin,
 };

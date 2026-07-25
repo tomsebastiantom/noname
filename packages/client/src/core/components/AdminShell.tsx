@@ -5,6 +5,7 @@ import { Separator } from "../../components/ui/separator";
 import type { ComponentCtx } from "./types";
 
 const NAV_ITEMS = [
+  { id: "content", label: "Content", href: "/admin/content" },
   { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
 ] as const;
 

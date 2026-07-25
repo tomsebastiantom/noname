@@ -13,7 +13,7 @@
 ✅ B    Commerce extension + cart machine
 ✅ 1    Content render pipeline     → CMS content → $state → resolved spec on edge
 ✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
-📋 C    Admin UI (C)                → edit content/layouts/auth without seeds
+📋 C    Admin UI (C)                → edit content/layouts/auth without seeds (in progress)
 📋 4    Scale (D)                   → slug, domains, editor, 2nd extension
 ```
 
@@ -21,7 +21,7 @@
 |------|-----|----------------|
 | **1 Content pipeline** | [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md) | Product text from CMS entry, not baked into layout JSON |
 | **2 Per-org auth** | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Org A has Google, Org B does not — no `.env` IdP id |
-| **3 Admin** | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | Merchant publishes layout/content without `pnpm seed:demo` |
+| **3 Admin** | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) + [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) | Merchant UI from layout specs — no ad-hoc React pages |
 
 Full phase checklist: [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)
 
@@ -72,6 +72,8 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) | Core vs extension vs MF remote |
+| [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) | **How to add UI** — catalog skeleton, layout docs, where text lives |
+| [`skills/spec-driven-ui/SKILL.md`](../../skills/spec-driven-ui/SKILL.md) | Same workflow for any AI editor (Cursor, Kilo, etc.) |
 | [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) | Spec → `executeAction` → handlers (login, addToCart) |
 | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Extension = manifest + schemas + components + machines + layout |
 | [`EXTENSIONS.md`](./EXTENSIONS.md) | Naming: “extension” not plugin/domain |
@@ -89,7 +91,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
 | Doc | What it covers |
 |-----|----------------|
-| [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, auth settings UI |
+| [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, auth + generic content CMS |
 | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` hostname routing |
 
 ---
@@ -98,8 +100,8 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
 | Data | Storage | Merchant edits via |
 |------|---------|-------------------|
-| Product title, price, description | `content` document | Admin CMS (later) |
-| Page structure (Hero, ProductCard) | `layout` document | Admin layout editor |
+| CMS entry fields (any content type) | `content` document | Admin → Content (`ContentEntryAdmin`) |
+| Page structure (Hero, ProductCard) | `layout` document | Admin layout editor (later) or visual editor |
 | Login welcome text | `layout` login template props | Admin auth appearance |
 | Google on/off per store | `tenant_settings.auth` + ZITADEL IdP | Admin auth settings |
 | `"Continue with Google"` label | Platform component | Not merchant CMS |

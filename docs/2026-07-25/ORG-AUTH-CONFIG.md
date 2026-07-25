@@ -1,7 +1,7 @@
 # Per-Org Auth Configuration — Clerk-Style Vision
 
 > **Date:** 2026-07-25  
-> **Status:** ✅ A2 complete — per-org Postgres config; ZITADEL Management API + admin UI in Phase C  
+> **Status:** ✅ A2 + Phase C auth/content admin (Google IdP on Save, generic CMS)  
 > **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
@@ -15,8 +15,8 @@
 | Login copy / logo | Login **layout spec** props | Seeded spec | ✅ Yes (merchant edit via admin later) |
 | Which social buttons show | **`tenant_settings.auth`** + ZITADEL IdP on **that org** | Postgres `auth.providers` + `idpIds` per org | ✅ Yes |
 | `GET .../auth/config` | Read **Postgres** for `:orgId` | Same | ✅ Yes |
-| IdP credentials | ZITADEL Management API per org (secrets server-only) | Manual console + seed `PUT auth/config` | 📋 Phase C |
-| Merchant toggles | Admin **Auth settings** UI | Seed / API only | 📋 Phase C |
+| IdP credentials | ZITADEL Management API per org (secrets server-only) | Admin Save → ZITADEL (Google) | ✅ Google |
+| Merchant toggles | Admin **Auth settings** UI | `/admin/settings/auth` | ✅ Google + password |
 | Button labels (`Continue with Google`) | Platform defaults in `SocialLoginButtons` | Hardcoded | ✅ Yes (optional overrides in `tenant_settings.auth` later) |
 
 **Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.
@@ -28,9 +28,9 @@ Do **not** move to Phase C admin or “production auth” until steps 1–4 exis
 ```
 ✅ 1. tenant_settings.auth schema     Postgres document shape (providers, idpIds, allowPassword)
 ✅ 2. Persist + read per orgId        GET /auth/config from documents, not process.env
-📋 3. ZITADEL IdP per org             Server API: register/list IdPs for org (Google first)
+✅ 3. ZITADEL IdP per org             Google via Management API on admin Save (`zitadel-management.ts`)
 ✅ 4. Merge runtime                   LoginForm: spec.providers ∩ auth/config (from step 2)
-📋 5. Admin Auth settings (Phase C)   UI toggles → writes steps 1–3; publish login layout spec for copy/logo
+✅ 5. Admin Auth settings (Phase C)   Google OAuth → ZITADEL + Postgres; generic content CMS
 ✅ 6. Remove env shortcut             No listEnabledProviders / resolveIdpId in runtime
 ```
 
@@ -163,13 +163,14 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 
 OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
 
-### Still to build (Phase C)
+### Still to build (Phase C+)
 
 | API / service | Purpose |
 |---------------|---------|
-| `POST .../auth/idp` (admin) | Register IdP credentials in ZITADEL for this org |
+| GitHub / Apple IdP on Save | Same Management API pattern as Google |
 | `GET/PUT .../auth/policies` | MFA, signup (proxy ZITADEL) |
-| Admin UI toggles | Merchant self-service without seeds |
+| Login layout branding from admin | Publish login layout spec (title, logo) |
+| Create content entry UI | `ContentEntryAdmin` is edit-only today |
 
 ### `tenant_settings` extension (planned shape)
 
@@ -192,17 +193,17 @@ Login page load merges **tenant_settings.auth** into LoginForm props (edge or cl
 
 ---
 
-## What admin UI must provide (Clerk-like)
+## What admin UI provides (Clerk-like)
 
-Build in **Phase C** ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — new section **Auth settings**:
+Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth settings** + **Content**:
 
-| Admin screen | Configures | Writes to |
-|--------------|------------|-----------|
-| **Login appearance** | Title, subtitle, logo, layout (centered/split), footer text | Login layout spec (draft → publish) |
-| **Sign-in methods** | Toggle Google/GitHub/email; order of buttons | `tenant_settings.auth` + ZITADEL IdP |
-| **Google / OAuth setup** | Client ID/secret (encrypted server-side) | ZITADEL IdP API |
-| **Security** | MFA required for admins, password policy | ZITADEL org policies |
-| **Users** (later) | List users, invite, roles | ZITADEL Management API |
+| Admin screen | Configures | Writes to | Status |
+|--------------|------------|-----------|--------|
+| **Auth settings** | Toggle Google + password; Google OAuth client ID/secret | ZITADEL IdP API + `tenant_settings.auth` | ✅ Google |
+| **Content** | CMS entry fields by content type | `content` documents via documents API | ✅ |
+| **Login appearance** | Title, subtitle, logo, layout | Login layout spec (draft → publish) | 📋 |
+| **Security** | MFA required for admins, password policy | ZITADEL org policies | 📋 |
+| **Users** (later) | List users, invite, roles | ZITADEL Management API | 📋 |
 
 Merchant flow (target):
 
@@ -268,7 +269,7 @@ Cross-doc consolidated backlog:
 | Item | Doc | Phase |
 |------|-----|-------|
 | `tenant_settings.auth` schema + read in GET auth/config | This doc § Build order | ✅ A2 |
-| Per-org IdP CRUD (Management API) | This doc | Phase C |
+| Per-org IdP CRUD (Management API) | This doc | ✅ Google |
 | Remove env IdP shortcut | This doc | ✅ A2 |
 | IdP start + OAuth callback routes | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ scaffold |
 | Persist catalog manifest in Postgres | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Platform |
@@ -278,8 +279,9 @@ Cross-doc consolidated backlog:
 
 | Item | Doc | Phase |
 |------|-----|-------|
-| AdminShell + `/admin` | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | Phase C |
-| Auth settings screens (Clerk-like) | This doc | Phase C |
+| AdminShell + `/admin` | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | ✅ |
+| Auth settings (Google) | This doc | ✅ |
+| Generic content CMS | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | ✅ |
 | Login layout editor (props panel) | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) | After admin shell |
 | User management (optional) | [`BUILD_PLAN.md`](../2026-05-23/BUILD_PLAN.md) | Later |
 
@@ -298,7 +300,6 @@ Cross-doc consolidated backlog:
 ### Docs to update when implementing
 
 - [`BUILD_PLAN.md`](../2026-05-23/BUILD_PLAN.md) — still says “ZITADEL provides login pages”; update to “we embed, ZITADEL provides API”
-- [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) — add Auth settings section (link this doc)
 
 ---
 
@@ -310,8 +311,9 @@ Cross-doc consolidated backlog:
 ✅ 3. Content render pipeline  — CMS → $state → edge resolve
 ✅ 4. Login social + OAuth      — UI + routes; config from Postgres
 ✅ 5. tenant_settings.auth      — Postgres + GET/PUT auth/config per orgId
-📋 6. Per-org ZITADEL IdP API    — register Google for org via Management API
-📋 7. Phase C Admin             — Auth settings UI writes 5–6
+✅ 6. Per-org ZITADEL IdP API    — Google on admin Save (Management API)
+✅ 7. Phase C Admin (partial)    — Auth settings + ContentEntryAdmin
+📋 8. Layout admin + visual editor
 ```
 
 ---
@@ -322,7 +324,7 @@ Cross-doc consolidated backlog:
 |---------------|--------------|
 | Hosted UI components | **Our** LoginForm (core) — more control |
 | Org-level SSO/social toggles | ZITADEL IdP per org + `tenant_settings.auth` |
-| Dashboard to configure auth | **Admin Auth settings** (Phase C) |
+| Dashboard to configure auth | **Admin Auth settings** (`/admin/settings/auth`) ✅ |
 | User management UI | ZITADEL console or our admin proxy (later) |
 | Session management SDK | Our session.ts + JWT (already) |
 | Billing for MAU | N/A — self-hosted ZITADEL |

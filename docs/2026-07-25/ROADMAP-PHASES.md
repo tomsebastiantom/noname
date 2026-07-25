@@ -62,8 +62,8 @@
 | `PUT /api/tenants/:orgId/auth/config` (admin/seed) | ✅ |
 | `startIdpLogin` uses per-org `idpIds` | ✅ |
 | Removed env `listEnabledProviders` / `resolveIdpId` | ✅ |
-| ZITADEL IdP registration API (Management API) | 📋 Phase C |
-| Admin UI toggles | 📋 Phase C |
+| ZITADEL Google IdP on Save (Management API) | ✅ Phase C |
+| Admin UI toggles (Google) | ✅ Phase C |
 
 **Validate:** `PUT auth/config` with `idpIds.google` → `GET auth/config` returns `providers: ["google"]` (no secrets in response).
 
@@ -84,20 +84,26 @@
 
 ---
 
-## Phase C — Admin UI 📋 (started)
+## Phase C — Admin UI 📋 (in progress)
 
-Merchant manages content, layouts, auth settings without seeds.
+Merchant manages content, layouts, auth settings without re-seeding.
 
 | Task | Status |
 |------|--------|
 | `AdminShell` + `/admin` routing | ✅ |
 | Auth gate → `/login?redirect=` | ✅ |
-| `AuthSettingsForm` → `PUT auth/config` | ✅ |
-| Seed `admin_dashboard` layout | ✅ |
-| Content / layout editors | 📋 |
-| ZITADEL IdP registration API | 📋 |
+| `AuthSettingsForm` → ZITADEL + Postgres | ✅ |
+| `ContentEntryAdmin` → generic CMS (any content type) | ✅ |
+| Seed `admin_dashboard` + `admin_content` layouts | ✅ |
+| Core demo: `page` content type (no commerce required) | ✅ |
+| Layout editor (publish specs from UI) | 📋 |
+| GitHub / Apple IdP in auth admin | 📋 |
+| Visual editor `?edit=true` | 📋 Phase D |
 
-**Validate:** Sign in → `http://{orgId}.localhost:5173/admin/settings/auth` → toggle providers → Save → `GET auth/config` reflects changes.
+**Validate:**
+
+- Content: sign in → `/admin/content` → edit `page` entry → Save & publish
+- Auth: `/admin/settings/auth` → Google OAuth → Save
 
 **Doc:** [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)
 
@@ -121,7 +127,7 @@ Merchant manages content, layouts, auth settings without seeds.
 | **B** | Commerce | Extension + cart | ✅ |
 | **1** | Content pipeline | Edge `$state` resolve | ✅ |
 | **A2** | Auth config | Per-org Postgres + ZITADEL | ✅ |
-| **C** | Admin | Shell + settings UI | No seeds |
+| **C** | Admin | Shell + auth + content CMS | 🔄 in progress |
 | **D** | Polish | Slug, editor | Multi-use-case |
 
 ---
@@ -129,4 +135,5 @@ Merchant manages content, layouts, auth settings without seeds.
 ## References
 
 - [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) — master doc index
+- [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) — how to add UI without drifting from spec pipeline
 - [`documents-domain.md`](../2026-07-10/documents-domain.md) — full CMS model

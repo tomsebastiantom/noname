@@ -86,6 +86,17 @@ export const coreComponentSchemas = {
     }),
     description: "Per-org auth provider toggles and ZITADEL IdP configuration",
   },
+  ContentEntryAdmin: {
+    props: z.object({
+      title: z.string().default("Content"),
+      description: z
+        .string()
+        .nullable()
+        .default("Edit CMS entries by content type — schema-driven, not extension-specific."),
+      locale: z.string().default("en-US"),
+    }),
+    description: "Generic CMS entry list and form driven by content type schema",
+  },
 };
 
 export const coreActionSchemas = {
@@ -125,5 +136,32 @@ export const coreActionSchemas = {
         .optional(),
     }),
     description: "Save per-org auth settings and register Google IdP in ZITADEL when credentials provided",
+  },
+  saveContentEntry: {
+    params: z.object({
+      contentType: z.string().min(1),
+      id: z.string().min(1),
+      schema: z.object({
+        fields: z.array(
+          z.object({
+            key: z.string(),
+            type: z.string(),
+            required: z.boolean(),
+            isLocalizable: z.boolean(),
+            label: z.string(),
+          }),
+        ),
+      }),
+      values: z.record(z.string(), z.string()),
+      locale: z.string().optional(),
+    }),
+    description: "Save a CMS content entry draft",
+  },
+  publishContentEntry: {
+    params: z.object({
+      contentType: z.string().min(1),
+      id: z.string().min(1),
+    }),
+    description: "Publish a CMS content entry",
   },
 };

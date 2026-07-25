@@ -81,6 +81,10 @@ packages/extensions/src/      ← @noname/extensions
 
 ---
 
+## Adding a new platform or admin component
+
+Follow [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) — schema → component → action → layout document → optional `templateFromPath`.
+
 ## Adding a new extension
 
 1. Create `packages/extensions/src/{name}/` with `catalog-schemas.ts`, `components.tsx`, `actions.ts`, `registry.ts`
@@ -95,9 +99,9 @@ packages/extensions/src/      ← @noname/extensions
 | Belongs in **core** | Belongs in an **extension** |
 |---------------------|-----------------------------|
 | Layout primitives (Stack, Grid, Text, Button, Image) | Domain UI (ProductCard, BookingCalendar) |
-| Auth actions (`login`, `logout`) — when added | Domain actions (`addToCart`, `bookSlot`) |
+| Auth UI + actions (`LoginForm`, `login`, `logout`, `saveAuthConfig`) | Domain actions (`addToCart`, `bookSlot`) |
+| Admin platform (`AdminShell`, `ContentEntryAdmin`, `AuthSettingsForm`) | Commerce-specific admin pages |
 | `navigate` | Checkout, cart, subscriptions |
-| LoginForm (planned) | Hero tuned for one use case |
 
 ---
 
@@ -106,4 +110,4 @@ packages/extensions/src/      ← @noname/extensions
 - [`EXTENSIONS.md`](./EXTENSIONS.md) — naming decision
 - [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — action handler split
 - [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) — tenant remotes
-- [`LOGIN-UI.md`](./LOGIN-UI.md) — login in core catalog
+- [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) — spec-driven UI skeleton, anti-drift rules

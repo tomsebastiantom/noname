@@ -90,6 +90,36 @@ const adminDashboardSpec = {
   },
 };
 
+const adminContentSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Content",
+        activeNav: "content",
+      },
+      children: ["contentAdmin"],
+    },
+    contentAdmin: {
+      type: "ContentEntryAdmin",
+      props: {
+        title: "Content entries",
+        description:
+          "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
+        locale: "en-US",
+      },
+    },
+  },
+};
+
+const pageContentType = {
+  fields: [
+    { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
+    { key: "body", type: "longText", required: false, isLocalizable: true, label: "Body" },
+  ],
+};
+
 function orgHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
@@ -184,6 +214,10 @@ async function main() {
   await upsertLayout("home", demoSpec, { skipIfExists: true });
   await upsertLayout("login", loginSpec);
   await upsertLayout("admin_dashboard", adminDashboardSpec);
+  await upsertLayout("admin_content", adminContentSpec);
+
+  await ensurePageContentType();
+  await ensureDemoPageEntry();
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
@@ -196,11 +230,43 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home + login + admin_dashboard (published, core components)`);
+  console.log(`  Layout:  home + login + admin_dashboard + admin_content`);
   console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
   console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
-  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
-  console.log(`  Commerce demo: pnpm seed:demo:commerce`);
+  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin/content`);
+  console.log(`  Auth:    http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
+}
+
+async function ensurePageContentType(): Promise<void> {
+  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  if (types.some((t) => t.name === "page")) {
+    console.log("Page content type already exists.");
+    return;
+  }
+  await api("POST", "/api/documents/content-types", { name: "page", schema: pageContentType });
+  console.log("Page content type created.");
+}
+
+async function ensureDemoPageEntry(): Promise<void> {
+  const { data: existing } = await api<{ data: { id: string; status: string }[] }>(
+    "GET",
+    "/api/documents/page",
+  );
+  if (existing.some((row) => row.status === "published")) {
+    console.log("Demo page entry already published.");
+    return;
+  }
+
+  const { data: created } = await api<{ data: { id: string } }>(
+    "POST",
+    "/api/documents/page?locale=en-US",
+    {
+      title: "Welcome",
+      body: "Edit this page in Admin → Content.",
+    },
+  );
+  await api("PUT", `/api/documents/page/${created.id}/publish`);
+  console.log(`Demo page entry published (${created.id}).`);
 }
 
 main().catch((err: Error) => {
