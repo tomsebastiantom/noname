@@ -1,14 +1,6 @@
 import { defineRegistry } from "@json-render/react";
 import { catalog } from "./catalog";
-import {
-  Hero,
-  ProductCard,
-  Grid,
-  Stack,
-  Text as TextComponent,
-  Button,
-  Image,
-} from "./components";
+import { Button, Grid, Hero, Image, ProductCard, Stack, Text as TextComponent } from "./components";
 
 export const { registry, handlers, executeAction } = defineRegistry(catalog, {
   components: {

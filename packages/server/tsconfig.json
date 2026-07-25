@@ -10,10 +10,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "outDir": "dist",
-    "rootDir": "src",
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx"]
+  "include": ["src/**/*.ts", "src/**/*.tsx", "drizzle.config.ts"]
 }

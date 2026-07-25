@@ -1,5 +1,7 @@
 import { HtmlRspackPlugin } from "@rspack/core";
 
+const isDev = process.env.NODE_ENV !== "production";
+
 export default {
   entry: { main: "./src/main.tsx" },
   output: {
@@ -8,7 +10,7 @@ export default {
     clean: true,
   },
   target: "web",
-  mode: process.env.NODE_ENV === "development" ? "development" : "production",
+  mode: isDev ? "development" : "production",
   devtool: "source-map",
   devServer: {
     port: 5173,
@@ -28,8 +30,8 @@ export default {
               transform: {
                 react: {
                   runtime: "automatic",
-                  development: process.env.NODE_ENV === "development",
-                  refresh: process.env.NODE_ENV === "development",
+                  development: isDev,
+                  refresh: false,
                 },
               },
             },

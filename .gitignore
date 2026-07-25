@@ -46,7 +46,7 @@ data/
 postgres_data/
 dragonfly_data/
 clickhouse_data/
-logto_data/
+zitadel_keys/
 nango_data/
 
 # TypeScript

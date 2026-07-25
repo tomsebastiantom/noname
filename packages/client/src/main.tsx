@@ -1,10 +1,22 @@
-import { useState, useEffect } from "react";
-import { createRoot } from "react-dom/client";
-import { Renderer } from "@json-render/react";
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
+import { JSONUIProvider, Renderer } from "@json-render/react";
+import { useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
+import { resolveSiteId } from "./demo-tenant";
 import { registry as platformRegistry } from "./registry";
-import { loadCatalogs, type CatalogManifest } from "./catalog-loader";
+
+interface EdgeSchemaResponse {
+  siteId?: string;
+  layout?: Spec;
+  flags?: Record<string, unknown>;
+  segment?: string;
+}
+
+function tenantHeaders(tenantId: string): HeadersInit {
+  return { "x-tenant-id": tenantId };
+}
 
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
@@ -13,25 +25,26 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const siteId = window.location.hostname.split(".")[0] || "default";
+    const siteId = resolveSiteId(window.location.hostname);
 
-    const manifestPromise = fetch(`/api/tenants/${siteId}/catalog`)
-      .then((res) => (res.ok ? (res.json() as Promise<CatalogManifest>) : null))
+    const manifestPromise = fetch(`/api/tenants/${siteId}/catalog`, {
+      headers: tenantHeaders(siteId),
+    })
+      .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
+      .then((body) => body?.data ?? null)
       .catch(() => null);
 
-    const specPromise = fetch(`/api/edge/schema/${siteId}?segment=default`)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ data?: Spec }>;
-      })
-      .catch((err: Error) => {
-        throw err;
-      });
+    const specPromise = fetch(`/api/edge/schema/${siteId}?segment=default`, {
+      headers: tenantHeaders(siteId),
+    }).then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
+    });
 
     Promise.all([manifestPromise, specPromise])
-      .then(async ([manifest, data]) => {
-        const tree = data?.data as Spec;
-        if (!tree) throw new Error("No spec returned");
+      .then(async ([manifest, body]) => {
+        const tree = body?.data?.layout as Spec | undefined;
+        if (!tree) throw new Error("No layout spec returned");
 
         if (manifest) {
           const loaded = await loadCatalogs(manifest);
@@ -59,7 +72,11 @@ function App() {
     return <div style={{ padding: 48, textAlign: "center" }}>No spec found</div>;
   }
 
-  return <Renderer spec={spec} registry={registry} />;
+  return (
+    <JSONUIProvider registry={registry}>
+      <Renderer spec={spec} registry={registry} />
+    </JSONUIProvider>
+  );
 }
 
 const root = document.getElementById("root");

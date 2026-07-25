@@ -28,7 +28,7 @@ program
 
 program
   .command("status")
-  .description("Check service health (Postgres, Dragonfly, ClickHouse, Logto)")
+  .description("Check service health (Postgres, Dragonfly, ClickHouse, ZITADEL)")
   .action(async () => {
     console.log("Checking services...");
     // Phase 0: HTTP health check to running server
