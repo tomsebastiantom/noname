@@ -235,6 +235,22 @@ export function createDocumentsService(
       return saved as unknown as LayoutDTO;
     },
 
+    async update(_orgId, id, input) {
+      const existing = await storage.findDocumentById(id);
+      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+      validateSpec(input.spec);
+
+      const entity = toLayoutEntity(existing as LayoutDTO);
+      entity.update(input.spec);
+      const updated = await storage.updateDocument(
+        id,
+        { ...existing.data, spec: input.spec },
+        existing.meta,
+      );
+      flushEvents(entity);
+      return updated as unknown as LayoutDTO;
+    },
+
     async addVariant(orgId, templateName, segment, overrides) {
       validateTemplateName(templateName);
       if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
@@ -288,6 +304,7 @@ export function createDocumentsService(
     list: (orgId, filters) =>
       storage.listDocuments(orgId, {
         type: "layout",
+        key: filters?.templateName,
         segment: filters?.segment,
         status: filters?.status,
       }) as unknown as Promise<LayoutDTO[]>,

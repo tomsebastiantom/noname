@@ -49,6 +49,12 @@ const commerceSpec = {
   },
 };
 
+interface LayoutRow {
+  id: string;
+  key: string;
+  status: string;
+}
+
 function orgHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
@@ -67,6 +73,31 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
     throw new Error(`${method} ${path} → ${res.status}: ${text}`);
   }
   return res.json() as Promise<T>;
+}
+
+async function publishHomeLayout(spec: Record<string, unknown>): Promise<void> {
+  const { data: layouts } = await api<{ data: LayoutRow[] }>(
+    "GET",
+    "/api/documents/layout?segment=default&templateName=home",
+  );
+  const existing = layouts.find((row) => row.key === "home");
+
+  if (existing) {
+    await api("PUT", `/api/documents/layout/${existing.id}`, { spec });
+    if (existing.status !== "published") {
+      await api("PUT", `/api/documents/layout/${existing.id}/publish`);
+    }
+    console.log("Home layout updated with commerce spec.");
+    return;
+  }
+
+  const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
+    templateName: "home",
+    segment: "default",
+    spec,
+  });
+  await api("PUT", `/api/documents/layout/${created.id}/publish`);
+  console.log("Home layout created and published.");
 }
 
 async function main() {
@@ -92,24 +123,11 @@ async function main() {
   await api("POST", "/api/machines/definitions", cartDefinition);
   console.log(`Cart machine definition seeded (${cartDefinition.name}).`);
 
-  const existing = await fetch(
-    `${API_BASE}/api/documents/layout/home/resolve?segment=default`,
-    { headers: orgHeaders() },
-  );
-  if (existing.ok) {
-    console.log("Home layout exists — publishing commerce spec as new draft...");
-  }
-
-  const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
-    templateName: "home",
-    segment: "default",
-    spec: commerceSpec,
-  });
-  await api("PUT", `/api/documents/layout/${created.id}/publish`);
+  await publishHomeLayout(commerceSpec);
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
-    `/api/edge/schema/${DEMO_ORG_ID}?segment=default`,
+    `/api/edge/schema/${DEMO_ORG_ID}?segment=default&template=home`,
   );
 
   if (!schema.layout) {

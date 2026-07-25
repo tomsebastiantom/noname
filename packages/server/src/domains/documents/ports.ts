@@ -153,6 +153,10 @@ export interface CreateLayoutInput {
   baseVersion?: number | null;
 }
 
+export interface UpdateLayoutInput {
+  spec: Record<string, unknown>;
+}
+
 export interface ResolvedLayout {
   templateName: string;
   segment: string;
@@ -337,6 +341,7 @@ export interface ContentDocumentService {
 
 export interface LayoutDocumentService {
   create(orgId: string, input: CreateLayoutInput): Promise<LayoutDTO>;
+  update(orgId: string, id: string, input: UpdateLayoutInput): Promise<LayoutDTO>;
   addVariant(
     orgId: string,
     templateName: string,

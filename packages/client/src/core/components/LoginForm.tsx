@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -9,6 +10,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { Separator } from "../../components/ui/separator";
 import { loginWithPassword } from "../../auth/login";
 import type { ComponentCtx } from "./types";
 
@@ -24,9 +26,13 @@ export function LoginForm({
   title: string;
   subtitle: string | null;
   redirectPath: string | null;
+  logoUrl: string | null;
+  showPasswordToggle: boolean;
+  footerText: string | null;
 }>) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -51,57 +57,91 @@ export function LoginForm({
 
   if (!orgId) {
     return (
-      <p className="text-center text-sm text-destructive">
-        Use {"{orgId}"}.localhost:5173/login
-      </p>
+      <Alert variant="destructive">
+        <AlertDescription>Use {"{orgId}"}.localhost:5173/login</AlertDescription>
+      </Alert>
     );
   }
 
   return (
-    <div className="flex flex-1 items-center justify-center p-6">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
+    <Card className="w-full border shadow-sm">
+      <CardHeader className="space-y-3 text-center">
+        {props.logoUrl && (
+          <img
+            src={props.logoUrl}
+            alt=""
+            className="mx-auto h-10 w-auto object-contain"
+          />
+        )}
+        <div className="space-y-1">
+          <CardTitle className="text-2xl">{props.title}</CardTitle>
           {props.subtitle && <CardDescription>{props.subtitle}</CardDescription>}
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+        </div>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <Separator />
             </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-card px-2 text-muted-foreground">Continue with email</span>
+            </div>
+          </div>
 
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="password">Password</Label>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="email">Email</Label>
+            <Input
+              id="email"
+              type="email"
+              autoComplete="username"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="password">Password</Label>
+            <div className="relative">
               <Input
                 id="password"
-                type="password"
+                type={props.showPasswordToggle && showPassword ? "text" : "password"}
                 autoComplete="current-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                className={props.showPasswordToggle ? "pr-16" : undefined}
               />
+              {props.showPasswordToggle && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
+                  onClick={() => setShowPassword((v) => !v)}
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </Button>
+              )}
             </div>
+          </div>
 
-            {error && (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            )}
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Signing in…" : "Sign in"}
+          </Button>
+
+          {props.footerText && (
+            <p className="text-center text-xs text-muted-foreground">{props.footerText}</p>
+          )}
+        </form>
+      </CardContent>
+    </Card>
   );
 }

@@ -1,8 +1,10 @@
 import { LoginForm } from "./components/LoginForm";
+import { AuthLayout } from "./components/AuthLayout";
 import type { ComponentCtx } from "./components/types";
 
 export type { ComponentCtx } from "./components/types";
 export { LoginForm } from "./components/LoginForm";
+export { AuthLayout } from "./components/AuthLayout";
 
 export function Grid({
   props,
@@ -138,4 +140,5 @@ export const coreComponents = {
   Button,
   Image,
   LoginForm,
+  AuthLayout,
 };

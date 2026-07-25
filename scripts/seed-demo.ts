@@ -13,16 +13,23 @@ const loginSpec = {
   root: "page",
   elements: {
     page: {
-      type: "Stack",
-      props: { direction: "column", gap: 24, align: "center" },
+      type: "AuthLayout",
+      props: {
+        layout: "centered",
+        brandTitle: "Noname",
+        brandSubtitle: "AI-native storefront platform",
+      },
       children: ["form"],
     },
     form: {
       type: "LoginForm",
       props: {
-        title: "Sign in",
-        subtitle: "Use your ZITADEL account for this organization",
+        title: "Welcome back",
+        subtitle: "Sign in to manage your store",
         redirectPath: "/",
+        logoUrl: null,
+        showPasswordToggle: true,
+        footerText: null,
       },
     },
   },
@@ -80,6 +87,45 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json() as Promise<T>;
 }
 
+interface LayoutRow {
+  id: string;
+  key: string;
+  status: string;
+}
+
+async function upsertLayout(
+  templateName: string,
+  spec: Record<string, unknown>,
+  options?: { skipIfExists?: boolean },
+): Promise<void> {
+  const { data: layouts } = await api<{ data: LayoutRow[] }>(
+    "GET",
+    `/api/documents/layout?segment=default&templateName=${templateName}`,
+  );
+  const existing = layouts.find((row) => row.key === templateName);
+
+  if (existing) {
+    if (options?.skipIfExists) {
+      console.log(`${templateName} layout already published — skipping create.`);
+      return;
+    }
+    await api("PUT", `/api/documents/layout/${existing.id}`, { spec });
+    if (existing.status !== "published") {
+      await api("PUT", `/api/documents/layout/${existing.id}/publish`);
+    }
+    console.log(`${templateName} layout updated.`);
+    return;
+  }
+
+  const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
+    templateName,
+    segment: "default",
+    spec,
+  });
+  await api("PUT", `/api/documents/layout/${created.id}/publish`);
+  console.log(`${templateName} layout created and published.`);
+}
+
 async function main() {
   if (!DEMO_ORG_ID) {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
@@ -102,39 +148,8 @@ async function main() {
     extensions: [],
   });
 
-  const existing = await fetch(
-    `${API_BASE}/api/documents/layout/home/resolve?segment=default`,
-    { headers: orgHeaders() },
-  );
-  if (existing.ok) {
-    console.log("Demo home layout already published — skipping create.");
-  } else {
-    const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
-      templateName: "home",
-      segment: "default",
-      spec: demoSpec,
-    });
-    await api("PUT", `/api/documents/layout/${created.id}/publish`);
-  }
-
-  const loginExisting = await fetch(
-    `${API_BASE}/api/documents/layout/login/resolve?segment=default`,
-    { headers: orgHeaders() },
-  );
-  if (loginExisting.ok) {
-    console.log("Login layout already published — skipping create.");
-  } else {
-    const { data: loginCreated } = await api<{ data: { id: string } }>(
-      "POST",
-      "/api/documents/layout",
-      {
-        templateName: "login",
-        segment: "default",
-        spec: loginSpec,
-      },
-    );
-    await api("PUT", `/api/documents/layout/${loginCreated.id}/publish`);
-  }
+  await upsertLayout("home", demoSpec, { skipIfExists: true });
+  await upsertLayout("login", loginSpec);
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",

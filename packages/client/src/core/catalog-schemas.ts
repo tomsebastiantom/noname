@@ -50,8 +50,20 @@ export const coreComponentSchemas = {
       title: z.string(),
       subtitle: z.string().nullable(),
       redirectPath: z.string().nullable(),
+      logoUrl: z.string().url().nullable().default(null),
+      showPasswordToggle: z.boolean().default(true),
+      footerText: z.string().nullable().default(null),
     }),
     description: "Email/password sign-in form (ZITADEL behind the scenes)",
+  },
+  AuthLayout: {
+    props: z.object({
+      layout: z.enum(["centered", "split"]).default("centered"),
+      brandTitle: z.string().nullable().default(null),
+      brandSubtitle: z.string().nullable().default(null),
+    }),
+    slots: ["default"],
+    description: "Login page chrome — centered card or split brand panel",
   },
 };
 

@@ -30,6 +30,12 @@ export default {
         test: /\.css$/,
         type: "css",
         use: ["postcss-loader"],
+        parser: {
+          css: {
+            // Inject Tailwind at runtime — default `link` export was not added to HTML.
+            exportType: "style",
+          },
+        },
       },
       {
         test: /\.tsx?$/,

@@ -179,6 +179,13 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     return found ? ok(c, found) : notFound(c);
   });
 
+  routes.put("/layout/:id", async (c) => {
+    const orgId = getOrgId(c);
+    const { spec } = await c.req.json<{ spec: Record<string, unknown> }>();
+    const updated = await layout.update(orgId, c.req.param("id"), { spec });
+    return ok(c, updated);
+  });
+
   routes.put("/layout/:id/publish", async (c) => {
     const orgId = getOrgId(c);
     const published = await layout.publish(orgId, c.req.param("id"));
