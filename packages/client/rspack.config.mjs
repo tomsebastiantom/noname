@@ -57,6 +57,7 @@ export default {
     extensions: [".tsx", ".ts", ".jsx", ".js"],
     alias: {
       "@": join(dir, "src"),
+      "@/": join(dir, "src/"),
       "@noname/extensions": join(dir, "../extensions/src/index.ts"),
     },
   },

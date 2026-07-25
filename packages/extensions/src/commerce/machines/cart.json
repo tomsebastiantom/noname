@@ -1,0 +1,11 @@
+{
+  "name": "cart",
+  "initial": "active",
+  "states": {
+    "active": {
+      "on": {
+        "addToCart": { "target": "active" }
+      }
+    }
+  }
+}

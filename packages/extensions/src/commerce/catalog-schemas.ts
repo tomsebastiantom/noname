@@ -13,6 +13,7 @@ export const commerceComponentSchemas = {
   },
   ProductCard: {
     props: z.object({
+      productId: z.string(),
       title: z.string(),
       price: z.number(),
       image: z.string().nullable(),

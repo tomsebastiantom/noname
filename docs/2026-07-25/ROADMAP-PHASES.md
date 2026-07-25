@@ -31,7 +31,7 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 | Edge `?template=login` on schema route | ✅ |
 | Seed `login` layout document | ✅ |
 | Replace AuthBar redirect with link to `/login` | ✅ |
-| Tailwind + shadcn polish | Later |
+| Tailwind + shadcn polish | ✅ |
 | ZITADEL password grant enabled on SPA app | N/A — ZITADEL does not support ROPC; uses Session API via `/api/tenants/:orgId/auth/login` |
 | `pnpm init:zitadel` creates login client PAT + `IAM_LOGIN_CLIENT` | ✅ |
 
@@ -52,10 +52,10 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 
 | Task | Status |
 |------|--------|
-| Wire `addToCart` → generic machines API | 📋 |
-| Cart machine definition (JSON) | 📋 |
+| Wire `addToCart` → generic machines API | ✅ |
+| Cart machine definition (JSON) | ✅ |
 | `pnpm seed:demo:commerce` + `extensions: ["commerce"]` | ✅ seed exists |
-| One flow: product card → add to cart → see state | 📋 |
+| One flow: product card → add to cart → see state | ✅ |
 
 **Validate when done:**
 
@@ -119,8 +119,8 @@ Phase D  Scale & polish     → slug, domains, editor, 2nd extension
 
 | # | Phase | Build | Validate |
 |---|-------|-------|----------|
-| **A** | Login | LoginForm, `/login`, token flow | Sign in → Bearer works — **validate next** |
-| **B** | Commerce | Cart machine + extension wiring | Add to cart E2E |
+| **A** | Login | LoginForm, `/login`, token flow | ✅ shadcn + JWT access tokens |
+| **B** | Commerce | Cart machine + extension wiring | Add to cart E2E — **in progress** |
 | **C** | Admin | Shell + one manage screen | Publish without seed |
 | **D** | Polish | Slug, editor, 2nd extension | Multi-use-case platform |
 

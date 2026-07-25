@@ -1,10 +1,14 @@
 /**
- * Optional commerce extension demo: enables commerce in catalog manifest
- * and publishes a storefront-style layout (Hero, ProductCard).
+ * Optional commerce extension demo: enables commerce in catalog manifest,
+ * publishes a storefront-style layout (Hero, ProductCard), and seeds cart machine.
  * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
 import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
@@ -35,6 +39,7 @@ const commerceSpec = {
     product1: {
       type: "ProductCard",
       props: {
+        productId: "demo-sneakers",
         title: "Blue Sneakers",
         price: 99.99,
         image: null,
@@ -80,6 +85,12 @@ async function main() {
     platform: { version: "1", hash: "commerce-demo" },
     extensions: ["commerce"],
   });
+
+  const cartDefinition = JSON.parse(
+    readFileSync(join(ROOT, "packages/extensions/src/commerce/machines/cart.json"), "utf8"),
+  ) as { name: string };
+  await api("POST", "/api/machines/definitions", cartDefinition);
+  console.log(`Cart machine definition seeded (${cartDefinition.name}).`);
 
   const existing = await fetch(
     `${API_BASE}/api/documents/layout/home/resolve?segment=default`,

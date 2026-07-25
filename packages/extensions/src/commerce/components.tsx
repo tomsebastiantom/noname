@@ -1,4 +1,6 @@
+import { useState } from "react";
 import type { ComponentCtx } from "../types";
+import { commerceActions } from "./actions";
 
 export function Hero({
   props,
@@ -38,13 +40,32 @@ export function Hero({
 
 export function ProductCard({
   props,
-  emit,
 }: ComponentCtx<{
+  productId: string;
   title: string;
   price: number;
   image: string | null;
   description: string | null;
 }>) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  async function onAddToCart() {
+    setLoading(true);
+    setStatus(null);
+    try {
+      await commerceActions.addToCart({
+        productId: props.productId,
+        quantity: 1,
+      });
+      setStatus("Added to cart");
+    } catch (err) {
+      setStatus(err instanceof Error ? err.message : "Could not add to cart");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div
       style={{
@@ -72,12 +93,16 @@ export function ProductCard({
           <span style={{ fontWeight: "bold", fontSize: "1.2rem" }}>${props.price.toFixed(2)}</span>
           <button
             type="button"
-            style={{ padding: "8px 16px", cursor: "pointer" }}
-            onClick={() => emit?.("addToCart")}
+            style={{ padding: "8px 16px", cursor: loading ? "not-allowed" : "pointer" }}
+            disabled={loading}
+            onClick={() => void onAddToCart()}
           >
-            Add to Cart
+            {loading ? "Adding…" : "Add to Cart"}
           </button>
         </div>
+        {status && (
+          <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#444" }}>{status}</p>
+        )}
       </div>
     </div>
   );
