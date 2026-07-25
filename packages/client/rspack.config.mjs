@@ -28,8 +28,8 @@ export default {
     rules: [
       {
         test: /\.css$/,
-        use: ["css-loader", "postcss-loader"],
-        type: "javascript/auto",
+        type: "css",
+        use: ["postcss-loader"],
       },
       {
         test: /\.tsx?$/,

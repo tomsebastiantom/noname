@@ -151,7 +151,7 @@ function App() {
   }
 
   return (
-    <div className={template === "login" ? "flex min-h-screen flex-col bg-muted/40" : undefined}>
+    <div className={template === "login" ? "noname-auth flex min-h-screen flex-col" : undefined}>
       <AuthBar onAuthChange={() => void loadPage()} />
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />
