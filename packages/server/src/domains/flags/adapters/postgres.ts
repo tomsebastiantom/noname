@@ -1,7 +1,7 @@
 import { and, eq, gte, lte } from "drizzle-orm";
-import { flags, flagEvaluations } from "../schema";
 import type { Database } from "../../../drizzle";
-import type { FlagDTO, FlagStorage, EvaluationRecord } from "../ports";
+import type { EvaluationRecord, FlagDTO, FlagStorage } from "../ports";
+import { flagEvaluations, flags } from "../schema";
 
 export function createPostgresFlagStorage(db: Database): FlagStorage {
   return {

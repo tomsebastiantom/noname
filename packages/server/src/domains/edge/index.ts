@@ -1,8 +1,8 @@
+import type { ContextEngine } from "../context/ports";
+import type { LayoutDocumentService } from "../documents/ports";
+import type { FlagService } from "../flags/ports";
 import { createEdgeRoutes } from "./api";
 import { createEdgeService } from "./service";
-import type { LayoutDocumentService } from "../documents/ports";
-import type { ContextEngine } from "../context/ports";
-import type { FlagService } from "../flags/ports";
 
 export interface EdgeDomainDeps {
   layout: LayoutDocumentService;

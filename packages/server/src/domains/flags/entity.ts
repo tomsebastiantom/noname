@@ -1,5 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
-import type { FlagType, FlagStatus, TargetingRule } from "./ports";
+import type { FlagStatus, FlagType, TargetingRule } from "./ports";
 
 export class FeatureFlag extends AggregateRoot {
   constructor(

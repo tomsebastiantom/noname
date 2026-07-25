@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { segments, contextCache } from "../schema";
-import type { ContextSignal, ContextStorage, SegmentDTO } from "../ports";
 import type { Database } from "../../../drizzle";
+import type { ContextSignal, ContextStorage, SegmentDTO } from "../ports";
+import { contextCache, segments } from "../schema";
 
 export function createPostgresContextAdapter(db: Database): ContextStorage {
   return {

@@ -1,15 +1,15 @@
-import {
-  pgTable,
-  uuid,
-  text,
-  jsonb,
-  timestamp,
-  integer,
-  pgEnum,
-  uniqueIndex,
-  index,
-} from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
+import {
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 // Unified documents domain — ONE table owns every versioned JSON document.
 //

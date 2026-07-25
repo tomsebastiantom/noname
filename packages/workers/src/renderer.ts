@@ -1,7 +1,12 @@
+import { cacheKey, getCached, setCache } from "./cache";
 import type { Env } from "./types";
-import { getCached, setCache, cacheKey } from "./cache";
 
-async function hmacHeaders(tenantId: string, userId: string, role: string, env: Env): Promise<Record<string, string>> {
+async function hmacHeaders(
+  tenantId: string,
+  userId: string,
+  role: string,
+  env: Env,
+): Promise<Record<string, string>> {
   const payload = `${tenantId}:${userId}:${role}`;
   const key = await crypto.subtle.importKey(
     "raw",
@@ -24,9 +29,16 @@ async function hmacHeaders(tenantId: string, userId: string, role: string, env: 
 export function isBot(request: Request): boolean {
   const ua = (request.headers.get("User-Agent") || "").toLowerCase();
   const botPatterns = [
-    "googlebot", "bingbot", "slurp", "duckduckbot",
-    "baiduspider", "yandexbot", "facebot", "twitterbot",
-    "applebot", "linkedinbot",
+    "googlebot",
+    "bingbot",
+    "slurp",
+    "duckduckbot",
+    "baiduspider",
+    "yandexbot",
+    "facebot",
+    "twitterbot",
+    "applebot",
+    "linkedinbot",
   ];
   return botPatterns.some((p) => ua.includes(p));
 }

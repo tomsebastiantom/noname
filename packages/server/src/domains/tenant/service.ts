@@ -1,12 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { context, propagation } from "@opentelemetry/api";
-import type { TenantCatalogService, CatalogManifest } from "./ports";
 import type { ManifestStore } from "./adapters/manifest-store";
+import type { CatalogManifest, TenantCatalogService } from "./ports";
 import { getCatalogBuildQueue } from "./queue";
 
-export function createTenantCatalogService(
-  manifestStore: ManifestStore,
-): TenantCatalogService {
+export function createTenantCatalogService(manifestStore: ManifestStore): TenantCatalogService {
   return {
     async getManifest(tenantId): Promise<CatalogManifest> {
       const existing = await manifestStore.get(tenantId);

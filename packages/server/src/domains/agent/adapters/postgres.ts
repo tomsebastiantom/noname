@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { agentTasks } from "../schema";
 import type { Database } from "../../../drizzle";
 import type { AgentTaskDTO, AgentTaskStorage } from "../ports";
+import { agentTasks } from "../schema";
 
 export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
   return {

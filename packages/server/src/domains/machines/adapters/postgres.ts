@@ -1,12 +1,12 @@
 import { and, eq } from "drizzle-orm";
-import { machineDefinitions, machineInstances, machineTransitions } from "../schema";
+import type { Database } from "../../../drizzle";
 import type {
   MachineDefinition,
   MachineInstanceDTO,
   MachineStorage,
   TransitionRecord,
 } from "../ports";
-import type { Database } from "../../../drizzle";
+import { machineDefinitions, machineInstances, machineTransitions } from "../schema";
 
 export function createPostgresMachineStorage(db: Database): MachineStorage {
   return {

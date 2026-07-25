@@ -1,8 +1,8 @@
+import type { Database } from "../../drizzle";
+import { createPostgresContextAdapter } from "./adapters/postgres";
 import { createContextRoutes } from "./api";
 import { createContextEngine } from "./engine";
-import { createPostgresContextAdapter } from "./adapters/postgres";
 import type { ContextStorage } from "./ports";
-import type { Database } from "../../drizzle";
 
 export interface ContextDomainDeps {
   db: Database;

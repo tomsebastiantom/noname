@@ -1,19 +1,19 @@
 import { createHash } from "node:crypto";
+import { flushEvents } from "../../shared/aggregate-root";
+import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { eventBus } from "../../shared/event-bus";
+import { FeatureFlag } from "./entity";
+import { FlagEvents } from "./events";
 import type {
-  FlagService,
-  FlagStorage,
-  FlagDTO,
-  FlagEvaluationContext,
-  EvaluationResult,
-  TargetingRule,
   Condition,
   EvaluationRecord,
+  EvaluationResult,
+  FlagDTO,
+  FlagEvaluationContext,
+  FlagService,
+  FlagStorage,
+  TargetingRule,
 } from "./ports";
-import { FeatureFlag } from "./entity";
-import { flushEvents } from "../../shared/aggregate-root";
-import { eventBus } from "../../shared/event-bus";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
-import { FlagEvents } from "./events";
 
 export function createFlagService(storage: FlagStorage): FlagService {
   return {

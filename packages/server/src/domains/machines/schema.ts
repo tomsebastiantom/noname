@@ -1,12 +1,12 @@
 import {
-  pgTable,
-  uuid,
-  text,
-  jsonb,
-  timestamp,
   integer,
+  jsonb,
   pgEnum,
+  pgTable,
+  text,
+  timestamp,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 // Generic state machine engine — vertical-agnostic by design.

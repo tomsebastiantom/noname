@@ -1,9 +1,9 @@
 import { Worker } from "bullmq";
 import { getRedisConnection } from "../../shared/redis";
-import type { CatalogBuildJobData } from "./queue";
-import type { CatalogBundleStorage } from "./adapters/r2";
-import type { ManifestStore } from "./adapters/manifest-store";
 import { bundleCatalog } from "./adapters/bundler";
+import type { ManifestStore } from "./adapters/manifest-store";
+import type { CatalogBundleStorage } from "./adapters/r2";
+import type { CatalogBuildJobData } from "./queue";
 
 export function startCatalogBuildWorker(
   storage: CatalogBundleStorage,

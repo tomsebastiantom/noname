@@ -1,5 +1,4 @@
-import { and, eq, desc, sql } from "drizzle-orm";
-import { documents, documentTypes } from "../schema";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import type {
   ContentTypeDTO,
@@ -8,6 +7,7 @@ import type {
   DocumentStorage,
   TenantSettingsDTO,
 } from "../ports";
+import { documents, documentTypes } from "../schema";
 
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
   return {

@@ -1,5 +1,5 @@
-import { parseJwt, getKey } from "@cfworker/jwt";
-import type { Env, EdgeContext } from "./types";
+import { getKey, parseJwt } from "@cfworker/jwt";
+import type { EdgeContext, Env } from "./types";
 
 export async function validateJwt(request: Request, env: Env): Promise<EdgeContext | Response> {
   const cookie = request.headers.get("Cookie") || "";
@@ -27,7 +27,8 @@ export async function validateJwt(request: Request, env: Env): Promise<EdgeConte
     const payload = result.payload as unknown as Record<string, unknown>;
 
     return {
-      tenantId: (payload.tenant_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
+      tenantId:
+        (payload.tenant_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
       userId: (payload.sub as string) || "",
       role: (payload.role as string) || "customer",
     };
@@ -40,5 +41,8 @@ export async function validateJwt(request: Request, env: Env): Promise<EdgeConte
 function redirectToLogin(request: Request, env: Env): Response {
   const url = new URL(request.url);
   const authRequestId = encodeURIComponent(url.pathname + url.search);
-  return Response.redirect(`${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${authRequestId}`, 302);
+  return Response.redirect(
+    `${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${authRequestId}`,
+    302,
+  );
 }

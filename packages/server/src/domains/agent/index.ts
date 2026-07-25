@@ -1,9 +1,9 @@
+import type { Database } from "../../drizzle";
+import { createPostgresAgentTaskStorage } from "./adapters/postgres";
 import { createAgentRoutes } from "./api";
 import { createAgentService } from "./service";
-import { createPostgresAgentTaskStorage } from "./adapters/postgres";
-import { startAgentWorker } from "./worker";
 import type { AgentExecutor } from "./tools";
-import type { Database } from "../../drizzle";
+import { startAgentWorker } from "./worker";
 
 export interface AgentDomainDeps {
   db: Database;

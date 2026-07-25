@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import type { AssetBinaryStorage } from "./binary";
 
 // Cloudflare R2 is S3-compatible, so this adapter talks the S3 API. Point it

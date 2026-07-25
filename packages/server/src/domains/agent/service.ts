@@ -1,8 +1,8 @@
 import { context, propagation } from "@opentelemetry/api";
-import type { AgentService, AgentTaskStorage } from "./ports";
-import { AgentTask } from "./entity";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { flushEvents } from "../../shared/aggregate-root";
+import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { AgentTask } from "./entity";
+import type { AgentService, AgentTaskStorage } from "./ports";
 import { getAgentQueue } from "./queue";
 
 export function createAgentService(storage: AgentTaskStorage): AgentService {

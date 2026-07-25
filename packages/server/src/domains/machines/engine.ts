@@ -1,16 +1,16 @@
-import { createMachine, createActor } from "xstate";
+import { createActor, createMachine } from "xstate";
+import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { eventBus } from "../../shared/event-bus";
 import type {
+  Guard,
+  GuardContext,
   MachineDefinition,
   MachineEngine,
   MachineInstanceDTO,
-  MachineTransition,
   MachineStorage,
-  Guard,
-  GuardContext,
+  MachineTransition,
   TransitionResult,
 } from "./ports";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
-import { eventBus } from "../../shared/event-bus";
 
 // Built-in guards. External services (payments, inventory, flags) are injected
 // by consumers registering guards here.

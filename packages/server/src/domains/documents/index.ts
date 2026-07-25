@@ -1,10 +1,10 @@
-import { createDocumentsRoutes } from "./api";
-import { createDocumentsService } from "./service";
+import type { Database } from "../../drizzle";
 import { createPostgresDocumentStorage } from "./adapters/postgres";
-import { contentValidator } from "./validator";
+import { createDocumentsRoutes } from "./api";
 import type { AssetBinaryStorage } from "./assets/binary";
 import type { ContentValidator, DocumentStorage } from "./ports";
-import type { Database } from "../../drizzle";
+import { createDocumentsService } from "./service";
+import { contentValidator } from "./validator";
 
 export interface DocumentsDomainDeps {
   db: Database;

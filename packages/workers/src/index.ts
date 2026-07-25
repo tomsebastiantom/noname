@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { Env } from "./types";
 import { createApiRoutes } from "./routes/api";
 import { createStaticRoutes } from "./routes/static";
+import type { Env } from "./types";
 
 const app = new Hono<{ Bindings: Env }>();
 

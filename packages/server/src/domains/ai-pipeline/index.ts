@@ -1,6 +1,6 @@
 import { createAIPipelineRoutes } from "./api";
-import { createAIPipeline } from "./service";
 import type { AIPipeline } from "./ports";
+import { createAIPipeline } from "./service";
 
 export interface AIPipelineDomainDeps {
   pipeline?: AIPipeline;

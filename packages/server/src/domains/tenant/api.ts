@@ -1,6 +1,6 @@
 import { Hono } from "hono";
+import { noContent, ok } from "../../shared/respond";
 import type { TenantCatalogService } from "./ports";
-import { ok, noContent } from "../../shared/respond";
 
 export function createTenantRoutes(service: TenantCatalogService) {
   const routes = new Hono();

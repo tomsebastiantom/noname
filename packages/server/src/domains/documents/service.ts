@@ -1,27 +1,26 @@
+import { flushEvents } from "../../shared/aggregate-root";
+import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { eventBus } from "../../shared/event-bus";
+import { ContentDocument, LayoutDocument } from "./entity";
+import { LayoutEvents } from "./events";
+import { applyOverrides, deepClone } from "./merge";
 import type {
-  AssetDTO,
   AssetDocumentService,
+  AssetDTO,
   ContentDocumentService,
   ContentTypeDocumentService,
   ContentTypeSchema,
   DocumentDTO,
   DocumentService,
   DocumentStorage,
-  LayoutDTO,
   LayoutDocumentService,
+  LayoutDTO,
   PageTreeService,
   TenantSettingsDTO,
   TenantSettingsService,
   UploadAssetInput,
 } from "./ports";
-import { ContentDocument, LayoutDocument } from "./entity";
-import { flushEvents } from "../../shared/aggregate-root";
-import { eventBus } from "../../shared/event-bus";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
-import { applyOverrides, deepClone } from "./merge";
-
 import { contentValidator } from "./validator";
-import { LayoutEvents } from "./events";
 
 const DEFAULT_LOCALES = ["en-US"];
 const DEFAULT_DEFAULT_LOCALE = "en-US";

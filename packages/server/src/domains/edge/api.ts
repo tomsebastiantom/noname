@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getTenantId } from "../../shared/tenant";
 import { ok } from "../../shared/respond";
+import { getTenantId } from "../../shared/tenant";
 import type { EdgeService } from "./ports";
 
 export function createEdgeRoutes(service: EdgeService) {

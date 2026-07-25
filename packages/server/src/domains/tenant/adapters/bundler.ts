@@ -1,9 +1,9 @@
-import { rspack } from "@rspack/core";
-import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
 import { createHash } from "node:crypto";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
+import { rspack } from "@rspack/core";
 
 export interface BundleInput {
   scope: string;

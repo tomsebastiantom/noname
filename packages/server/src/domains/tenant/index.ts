@@ -1,7 +1,7 @@
+import { createInMemoryManifestStore } from "./adapters/manifest-store";
+import { createCatalogBundleStorage, r2ConfigFromEnv } from "./adapters/r2";
 import { createTenantRoutes } from "./api";
 import { createTenantCatalogService } from "./service";
-import { createCatalogBundleStorage, r2ConfigFromEnv } from "./adapters/r2";
-import { createInMemoryManifestStore } from "./adapters/manifest-store";
 import { startCatalogBuildWorker } from "./worker";
 
 export function createTenantDomain() {

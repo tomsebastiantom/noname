@@ -1,6 +1,6 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
-import type { AgentTaskType, AgentTaskStatus, AgentTaskDTO } from "./ports";
 import { AgentEvents } from "./events";
+import type { AgentTaskDTO, AgentTaskStatus, AgentTaskType } from "./ports";
 
 export class AgentTask extends AggregateRoot {
   constructor(

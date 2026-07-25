@@ -1,8 +1,8 @@
+import type { Database } from "../../drizzle";
+import { createPostgresMachineStorage } from "./adapters/postgres";
 import { createMachineRoutes } from "./api";
 import { createMachineEngine, registerGuard } from "./engine";
-import { createPostgresMachineStorage } from "./adapters/postgres";
-import type { MachineStorage, Guard } from "./ports";
-import type { Database } from "../../drizzle";
+import type { Guard, MachineStorage } from "./ports";
 
 export interface MachineDomainDeps {
   db: Database;

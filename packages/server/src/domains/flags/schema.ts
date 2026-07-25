@@ -1,12 +1,12 @@
 import {
-  pgTable,
-  uuid,
-  text,
-  jsonb,
-  timestamp,
-  pgEnum,
-  uniqueIndex,
   index,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 export const flagType = pgEnum("flag_type", ["boolean", "multivariate", "percentage"]);

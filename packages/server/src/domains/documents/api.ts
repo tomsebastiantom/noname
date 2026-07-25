@@ -1,11 +1,15 @@
 import { Hono } from "hono";
-import type { DocumentService, LayoutFilters } from "./ports";
-import type { CreateLayoutInput } from "./ports";
-import type { AssetBinaryStorage } from "./assets/binary";
-import { getTenantId } from "../../shared/tenant";
 import { created, deleted, notFound, ok } from "../../shared/respond";
-import { processImage, sha256, createAssetStorage } from "./assets/binary";
-import type { AssetVariant, UploadAssetInput } from "./ports";
+import { getTenantId } from "../../shared/tenant";
+import type { AssetBinaryStorage } from "./assets/binary";
+import { createAssetStorage, processImage, sha256 } from "./assets/binary";
+import type {
+  AssetVariant,
+  CreateLayoutInput,
+  DocumentService,
+  LayoutFilters,
+  UploadAssetInput,
+} from "./ports";
 
 export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
   const routes = new Hono();

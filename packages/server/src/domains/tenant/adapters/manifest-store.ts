@@ -14,7 +14,11 @@ export interface ManifestStore {
   set(tenantId: string, manifest: CatalogManifest): Promise<void>;
   addComponent(tenantId: string, entry: CatalogManifestRemote): Promise<void>;
   removeComponent(tenantId: string, name: string): Promise<void>;
-  setBuildStatus(buildId: string, status: BuildStatus["status"], result?: BuildStatus["result"]): Promise<void>;
+  setBuildStatus(
+    buildId: string,
+    status: BuildStatus["status"],
+    result?: BuildStatus["result"],
+  ): Promise<void>;
   getBuildStatus(buildId: string): Promise<BuildStatus | null>;
 }
 

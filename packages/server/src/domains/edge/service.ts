@@ -1,7 +1,7 @@
-import type { EdgeService } from "./ports";
-import type { LayoutDocumentService } from "../documents/ports";
 import type { ContextEngine } from "../context/ports";
+import type { LayoutDocumentService } from "../documents/ports";
 import type { FlagService } from "../flags/ports";
+import type { EdgeService } from "./ports";
 
 export function createEdgeService(
   layout: LayoutDocumentService,
