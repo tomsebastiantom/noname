@@ -1,11 +1,7 @@
+import { startIdpLogin } from "../../auth/idp-login";
 import { loginWithPassword } from "../../auth/login";
+import { requireOrgId } from "../../auth/org";
 import { clearSession } from "../../auth/session";
-
-function orgIdFromHostname(hostname: string): string | null {
-  const sub = hostname.split(".")[0];
-  if (!sub || sub === "localhost" || sub === "127") return null;
-  return sub;
-}
 
 export const authActions = {
   login: async (params: unknown) => {
@@ -15,13 +11,19 @@ export const authActions = {
       redirectPath?: string;
     };
 
-    const orgId = orgIdFromHostname(window.location.hostname);
-    if (!orgId) {
-      throw new Error("Missing org subdomain — use {orgId}.localhost:5173");
-    }
-
+    const orgId = requireOrgId();
     await loginWithPassword(orgId, email, password);
     window.location.href = redirectPath ?? "/";
+  },
+
+  idpLogin: async (params: unknown) => {
+    const { provider, redirectPath } = params as {
+      provider: string;
+      redirectPath?: string;
+    };
+
+    const orgId = requireOrgId();
+    await startIdpLogin(orgId, provider, redirectPath ?? "/");
   },
 
   logout: async () => {

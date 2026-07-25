@@ -30,6 +30,7 @@ const loginSpec = {
         logoUrl: null,
         showPasswordToggle: true,
         footerText: null,
+        providers: ["google"],
       },
     },
   },

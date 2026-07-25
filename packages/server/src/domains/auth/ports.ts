@@ -12,6 +12,29 @@ export interface LoginResult {
   expiresIn: number;
 }
 
+export interface OAuthStartInput {
+  orgId: string;
+  provider: string;
+  clientId: string;
+  redirectUri: string;
+  codeChallenge: string;
+}
+
+export interface OAuthCallbackInput {
+  clientId: string;
+  redirectUri: string;
+  code: string;
+  codeVerifier: string;
+}
+
+export interface AuthConfig {
+  providers: string[];
+  allowPassword: boolean;
+}
+
 export interface AuthService {
   login(input: LoginCredentials): Promise<LoginResult>;
+  getConfig(orgId: string): Promise<AuthConfig>;
+  startIdpLogin(input: OAuthStartInput): Promise<{ authorizeUrl: string }>;
+  exchangeOAuthCallback(input: OAuthCallbackInput): Promise<LoginResult>;
 }

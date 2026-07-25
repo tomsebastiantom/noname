@@ -1,5 +1,5 @@
-import { type FormEvent, useState } from "react";
-import { loginWithPassword } from "../../auth/login";
+import { type FormEvent, useEffect, useState } from "react";
+import { orgIdFromHostname } from "../../auth/org";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -12,13 +12,11 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Separator } from "../../components/ui/separator";
+import { executeAction } from "../../platform/registry";
+import { SocialLoginButtons } from "./SocialLoginButtons";
 import type { ComponentCtx } from "./types";
 
-function orgIdFromHostname(hostname: string): string | null {
-  const sub = hostname.split(".")[0];
-  if (!sub || sub === "localhost" || sub === "127") return null;
-  return sub;
-}
+type AuthProvider = "google" | "github" | "apple";
 
 export function LoginForm({
   props,
@@ -29,15 +27,35 @@ export function LoginForm({
   logoUrl: string | null;
   showPasswordToggle: boolean;
   footerText: string | null;
+  providers: AuthProvider[];
 }>) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [enabledProviders, setEnabledProviders] = useState<AuthProvider[]>([]);
 
   const orgId = orgIdFromHostname(window.location.hostname);
   const redirectPath = props.redirectPath ?? "/";
+
+  useEffect(() => {
+    if (!orgId) return;
+    void fetch(`/api/tenants/${orgId}/auth/config`)
+      .then((res) => (res.ok ? (res.json() as Promise<{ data?: { providers?: string[] } }>) : null))
+      .then((body) => {
+        const serverProviders = (body?.data?.providers ?? []) as AuthProvider[];
+        const fromSpec = props.providers ?? [];
+        const merged =
+          fromSpec.length > 0
+            ? fromSpec.filter((p) => serverProviders.includes(p))
+            : serverProviders;
+        setEnabledProviders(merged);
+      })
+      .catch(() => setEnabledProviders([]));
+  }, [orgId, props.providers]);
+
+  const showSocial = enabledProviders.length > 0;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -47,8 +65,7 @@ export function LoginForm({
     setLoading(true);
 
     try {
-      await loginWithPassword(orgId, email, password);
-      window.location.href = redirectPath;
+      await executeAction("login", { email, password, redirectPath }, () => {});
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
@@ -74,16 +91,33 @@ export function LoginForm({
           {props.subtitle && <CardDescription>{props.subtitle}</CardDescription>}
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex flex-col gap-4">
+        {showSocial && (
+          <SocialLoginButtons providers={enabledProviders} redirectPath={redirectPath} />
+        )}
+
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <Separator />
+          {showSocial && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Continue with email</span>
+          )}
+
+          {!showSocial && (
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Continue with email</span>
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="email">Email</Label>

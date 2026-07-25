@@ -13,22 +13,22 @@ export function Hero({
   ctaAction: string | null;
 }>) {
   return (
-    <section style={{ padding: "64px 24px", textAlign: "center", background: "#f5f5f5" }}>
+    <section className="bg-muted/50 px-6 py-16 text-center">
       {props.image && (
         <img
           src={props.image}
           alt={props.title}
-          style={{ maxWidth: "100%", maxHeight: 400, objectFit: "cover", borderRadius: 8 }}
+          className="mx-auto max-h-[400px] max-w-full rounded-lg object-cover"
         />
       )}
-      <h1 style={{ fontSize: "2.5rem", margin: "24px 0 8px" }}>{props.title}</h1>
+      <h1 className="mt-6 text-4xl font-bold tracking-tight">{props.title}</h1>
       {props.subtitle && (
-        <p style={{ fontSize: "1.2rem", color: "#666", marginBottom: 24 }}>{props.subtitle}</p>
+        <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">{props.subtitle}</p>
       )}
       {props.ctaLabel && (
         <button
           type="button"
-          style={{ padding: "12px 32px", fontSize: "1rem", cursor: "pointer" }}
+          className="mt-6 inline-flex items-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           onClick={() => props.ctaAction && emit?.(props.ctaAction)}
         >
           {props.ctaLabel}
@@ -67,33 +67,20 @@ export function ProductCard({
   }
 
   return (
-    <div
-      style={{
-        border: "1px solid #e0e0e0",
-        borderRadius: 8,
-        overflow: "hidden",
-        background: "#fff",
-      }}
-    >
+    <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
       {props.image && (
-        <img
-          src={props.image}
-          alt={props.title}
-          style={{ width: "100%", height: 200, objectFit: "cover" }}
-        />
+        <img src={props.image} alt={props.title} className="h-[200px] w-full object-cover" />
       )}
-      <div style={{ padding: 16 }}>
-        <h3 style={{ margin: "0 0 8px" }}>{props.title}</h3>
+      <div className="p-4">
+        <h3 className="text-lg font-semibold">{props.title}</h3>
         {props.description && (
-          <p style={{ color: "#666", fontSize: "0.9rem", margin: "0 0 12px" }}>
-            {props.description}
-          </p>
+          <p className="mt-1 text-sm text-muted-foreground">{props.description}</p>
         )}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ fontWeight: "bold", fontSize: "1.2rem" }}>${props.price.toFixed(2)}</span>
+        <div className="mt-4 flex items-center justify-between gap-4">
+          <span className="text-xl font-bold">${props.price.toFixed(2)}</span>
           <button
             type="button"
-            style={{ padding: "8px 16px", cursor: loading ? "not-allowed" : "pointer" }}
+            className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
             disabled={loading}
             onClick={() => void onAddToCart()}
           >
@@ -101,7 +88,9 @@ export function ProductCard({
           </button>
         </div>
         {status && (
-          <p style={{ margin: "8px 0 0", fontSize: "0.85rem", color: "#444" }}>{status}</p>
+          <p className="mt-2 text-sm text-muted-foreground" role="status">
+            {status}
+          </p>
         )}
       </div>
     </div>

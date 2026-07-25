@@ -2,11 +2,11 @@ import "./index.css";
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { loadOidcConfig } from "./auth/config";
-import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
+import { apiHeaders, hydrateTokenFromCookie } from "./auth/session";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
+import { AuthBar } from "./core/components/AuthBar";
 import { registry as platformRegistry } from "./registry";
 
 interface EdgeSchemaResponse {
@@ -25,55 +25,20 @@ function orgIdFromHostname(hostname: string): string | null {
 
 function templateFromPath(pathname: string): string {
   if (pathname === "/login") return "login";
+  if (pathname === "/auth/callback") return "login";
   return "home";
 }
 
-function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
-  const [loggedIn, setLoggedIn] = useState(isLoggedIn());
-  const [oidcReady, setOidcReady] = useState<boolean | null>(null);
-  const onLoginPage = window.location.pathname === "/login";
-
-  useEffect(() => {
-    hydrateTokenFromCookie();
-    setLoggedIn(isLoggedIn());
-    void loadOidcConfig().then((cfg) => setOidcReady(cfg !== null));
-  }, []);
-
-  if (onLoginPage || oidcReady === false) {
-    return null;
-  }
-
+function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
   return (
     <div
-      style={{
-        display: "flex",
-        justifyContent: "flex-end",
-        gap: 12,
-        padding: "8px 16px",
-        background: "#f3f4f6",
-        fontSize: 14,
-      }}
+      className={
+        template === "login"
+          ? "noname-auth flex min-h-screen flex-col"
+          : "min-h-screen bg-background"
+      }
     >
-      {loggedIn ? (
-        <>
-          <span>Signed in</span>
-          <button
-            type="button"
-            onClick={() => {
-              clearSession();
-              setLoggedIn(false);
-              onAuthChange();
-              window.location.href = "/login";
-            }}
-          >
-            Sign out
-          </button>
-        </>
-      ) : (
-        <a href="/login" style={{ color: "#111827" }}>
-          Sign in
-        </a>
-      )}
+      {children}
     </div>
   );
 }
@@ -139,28 +104,52 @@ function App() {
   }, [loadPage]);
 
   if (loading) {
-    return <div style={{ padding: 48, textAlign: "center" }}>Loading...</div>;
+    return (
+      <AppShell template={template}>
+        <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
+          Loading…
+        </div>
+      </AppShell>
+    );
   }
 
   if (error) {
-    return <div style={{ padding: 48, textAlign: "center", color: "red" }}>Error: {error}</div>;
+    return (
+      <AppShell template={template}>
+        <div className="flex flex-1 items-center justify-center p-12 text-destructive">
+          Error: {error}
+        </div>
+      </AppShell>
+    );
   }
 
   if (!spec || !orgId) {
-    return <div style={{ padding: 48, textAlign: "center" }}>No spec found</div>;
+    return (
+      <AppShell template={template}>
+        <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
+          No spec found
+        </div>
+      </AppShell>
+    );
   }
 
   return (
-    <div className={template === "login" ? "noname-auth flex min-h-screen flex-col" : undefined}>
+    <AppShell template={template}>
       <AuthBar onAuthChange={() => void loadPage()} />
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />
       </JSONUIProvider>
-    </div>
+    </AppShell>
   );
 }
 
 const root = document.getElementById("root");
 if (root) {
-  createRoot(root).render(<App />);
+  if (window.location.pathname === "/auth/callback") {
+    import("./auth/callback-page").then(({ AuthCallbackPage }) => {
+      createRoot(root).render(<AuthCallbackPage />);
+    });
+  } else {
+    createRoot(root).render(<App />);
+  }
 }

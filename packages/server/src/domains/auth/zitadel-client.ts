@@ -178,3 +178,49 @@ export async function loginWithCredentials(input: {
 
   return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
 }
+
+const IDP_ENV_KEYS: Record<string, string> = {
+  google: "ZITADEL_GOOGLE_IDP_ID",
+};
+
+/** Dev scaffold only — replace with per-org IdP from tenant_settings.auth + ZITADEL. See docs/2026-07-25/ORG-AUTH-CONFIG.md */
+export function resolveIdpId(provider: string): string | null {
+  const envKey = IDP_ENV_KEYS[provider];
+  if (!envKey) return null;
+  const value = process.env[envKey]?.trim();
+  return value || null;
+}
+
+export function listEnabledProviders(): string[] {
+  return Object.keys(IDP_ENV_KEYS).filter((provider) => resolveIdpId(provider) !== null);
+}
+
+export async function buildOAuthAuthorizeUrl(input: {
+  orgId: string;
+  clientId: string;
+  redirectUri: string;
+  codeChallenge: string;
+  idpId?: string;
+}): Promise<string> {
+  const authUrl = new URL(`${ISSUER}/oauth/v2/authorize`);
+  authUrl.searchParams.set("client_id", input.clientId);
+  authUrl.searchParams.set("redirect_uri", input.redirectUri);
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("scope", `openid profile email urn:zitadel:iam:org:id:${input.orgId}`);
+  authUrl.searchParams.set("code_challenge", input.codeChallenge);
+  authUrl.searchParams.set("code_challenge_method", "S256");
+  if (input.idpId) {
+    authUrl.searchParams.set("idp_id", input.idpId);
+  }
+  return authUrl.toString();
+}
+
+export async function exchangeAuthorizationCode(input: {
+  clientId: string;
+  redirectUri: string;
+  code: string;
+  codeVerifier: string;
+}): Promise<{ accessToken: string; expiresIn: number }> {
+  const tokens = await exchangeCode(input);
+  return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
+}

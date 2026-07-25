@@ -53,6 +53,7 @@ export const coreComponentSchemas = {
       logoUrl: z.string().url().nullable().default(null),
       showPasswordToggle: z.boolean().default(true),
       footerText: z.string().nullable().default(null),
+      providers: z.array(z.enum(["google", "github", "apple"])).default([]),
     }),
     description: "Email/password sign-in form (ZITADEL behind the scenes)",
   },
@@ -84,5 +85,12 @@ export const coreActionSchemas = {
   },
   logout: {
     description: "Sign out and redirect to login",
+  },
+  idpLogin: {
+    params: z.object({
+      provider: z.enum(["google", "github", "apple"]),
+      redirectPath: z.string().optional(),
+    }),
+    description: "Start OAuth sign-in with an external identity provider",
   },
 };
