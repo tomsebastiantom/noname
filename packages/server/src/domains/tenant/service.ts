@@ -12,7 +12,12 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
 
       return {
         platform: { version: "1", hash: "init" },
+        verticals: [],
       };
+    },
+
+    async setManifest(orgId, manifest) {
+      await manifestStore.set(orgId, manifest);
     },
 
     async publishComponent(orgId, name, source) {

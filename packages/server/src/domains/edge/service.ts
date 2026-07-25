@@ -10,7 +10,7 @@ export function createEdgeService(
 ): EdgeService {
   return {
     async getSchema(siteId, segment = "default") {
-      const resolved = await layout.resolve(siteId, "store", segment);
+      const resolved = await layout.resolve(siteId, "home", segment);
       const flags = await flagService.evaluate(siteId, {
         orgId: siteId,
         contextHash: segment,
@@ -36,7 +36,7 @@ export function createEdgeService(
       const headers = input.headers ?? {};
       const segment = await contextEngine.segmentForRequest(orgId, headers);
 
-      const resolved = await layout.resolve(orgId, "store", segment.hash);
+      const resolved = await layout.resolve(orgId, "home", segment.hash);
 
       const flags = await flagService.evaluate(
         orgId,

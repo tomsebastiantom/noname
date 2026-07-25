@@ -51,7 +51,7 @@ Run **infra once** (step 3 above). Then start **three app processes on the host*
 | 3 | Edge | `pnpm --filter @noname/workers dev` | http://localhost:8787 |
 | 4 | Client | `pnpm --filter @noname/client dev` | http://localhost:5173 |
 
-Then open the storefront:
+Then open the site:
 
 ```text
 http://{ZITADEL_DEMO_ORG_ID}.localhost:5173
@@ -59,9 +59,11 @@ http://{ZITADEL_DEMO_ORG_ID}.localhost:5173
 
 (`ZITADEL_DEMO_ORG_ID` is in `.env` after `pnpm init:zitadel` — numeric org id as subdomain until [Phase 3 slug](./docs/2026-07-25/PHASE-3-STORE-SLUG.md).)
 
+Optional commerce vertical demo: `pnpm seed:demo:commerce` (after `pnpm seed:demo`).
+
 **Request path:** browser → client `:5173` → proxies `/api` → edge `:8787` → JWT + HMAC → API `:3000`.
 
-**Sign-in:** Sign in on the storefront → ZITADEL → `/callback` → Bearer token on API calls. See [`docs/2026-07-25/AUTH-IDENTITY.md`](./docs/2026-07-25/AUTH-IDENTITY.md).
+**Sign-in:** Sign in on the site → ZITADEL → `/callback` → Bearer token on API calls. See [`docs/2026-07-25/AUTH-IDENTITY.md`](./docs/2026-07-25/AUTH-IDENTITY.md).
 
 **Fresh database:** `podman compose down -v && podman compose up -d` then repeat one-time setup (steps 4–6).
 

@@ -7,6 +7,8 @@ export interface CatalogManifestRemote {
 
 export interface CatalogManifest {
   platform: { version: string; hash: string };
+  /** Built-in vertical packs enabled for this org (e.g. "commerce"). */
+  verticals?: string[];
   private?: CatalogManifestRemote;
   marketplace?: CatalogManifestRemote[];
 }
@@ -22,6 +24,7 @@ export interface BuildStatus {
 
 export interface TenantCatalogService {
   getManifest(orgId: string): Promise<CatalogManifest>;
+  setManifest(orgId: string, manifest: CatalogManifest): Promise<void>;
   /** Enqueue a catalog build job. Returns the build ID for status polling. */
   publishComponent(orgId: string, name: string, source: string): Promise<{ buildId: string }>;
   /** Check the status of a catalog build. */

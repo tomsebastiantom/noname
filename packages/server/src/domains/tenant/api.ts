@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { resolveOrgId } from "../../shared/org";
 import { noContent, ok } from "../../shared/respond";
-import type { TenantCatalogService } from "./ports";
+import type { CatalogManifest, TenantCatalogService } from "./ports";
 
 export function createTenantRoutes(service: TenantCatalogService) {
   const routes = new Hono();
@@ -10,6 +10,18 @@ export function createTenantRoutes(service: TenantCatalogService) {
     const orgId = resolveOrgId(c, c.req.param("id"));
     const manifest = await service.getManifest(orgId);
     return ok(c, manifest);
+  });
+
+  routes.put("/:id/catalog", async (c) => {
+    const orgId = resolveOrgId(c, c.req.param("id"));
+    const body = await c.req.json<CatalogManifest>();
+
+    if (!body?.platform?.version || !body?.platform?.hash) {
+      return c.json({ error: "platform.version and platform.hash are required" }, 400);
+    }
+
+    await service.setManifest(orgId, body);
+    return ok(c, body);
   });
 
   routes.post("/:id/components", async (c) => {

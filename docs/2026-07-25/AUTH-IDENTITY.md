@@ -65,7 +65,9 @@ HMAC payload: `orgId:userId:role`
 | **0** | Infra, `org_id` in DB, seed | ✅ |
 | **1** | Edge proxy, JWT + HMAC, public GET | ✅ |
 | **2** | Client PKCE, Bearer to edge | ✅ |
-| **3** | Store slug + edge Host → `org_id` | 📋 [Planned — not implemented](./PHASE-3-STORE-SLUG.md) |
+| **Login UI** | shadcn `LoginForm`, embedded ZITADEL (no redirect) | 📋 [Next — start here](./LOGIN-UI-PLAN.md) |
+| **3** | Store slug + edge Host → `org_id` | 📋 [Planned](./PHASE-3-STORE-SLUG.md) |
+| **Admin UI** | Shell, load/manage layouts, editor | 📋 [Later](./ADMIN-UI-LATER.md) |
 | **4** | Custom domains, wrangler in compose | Later |
 
 **Today:** dev URL is `http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`.  

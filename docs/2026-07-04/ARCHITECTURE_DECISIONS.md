@@ -14,7 +14,7 @@ noname/
 ├── packages/
 │   ├── server/          ← The platform. All domains, all APIs, all DB schemas.
 │   ├── workers/         ← Cloudflare Edge Worker. JWT validation, KV cache, SEO prerender.
-│   ├── client/          ← json-render runtime + commerce catalog + inline visual editor.
+│   ├── client/          ← json-render runtime + core catalog + vertical packs + inline visual editor.
 │   ├── cli/             ← Developer tool. init, dev, status, logs, errors.
 │   └── browser-sdk/     ← Frontend analytics tracking SDK.
 ├── docs/2026-05-23/     ← Architecture, build plan, findings, roadmap.

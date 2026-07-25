@@ -1,7 +1,7 @@
 /**
- * Seeds a minimal platform demo: published "home" layout using core components only.
- * Run with API server up: pnpm seed:demo
- * Requires: pnpm init:zitadel (sets ZITADEL org id as org_id)
+ * Optional commerce vertical demo: enables commerce pack in catalog manifest
+ * and publishes a storefront-style layout (Hero, ProductCard).
+ * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
 import "dotenv/config";
 
@@ -9,34 +9,37 @@ const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
-const demoSpec = {
+const commerceSpec = {
   root: "main",
   elements: {
     main: {
       type: "Stack",
       props: { direction: "column", gap: 24, align: "stretch" },
-      children: ["header", "intro", "actions"],
+      children: ["hero", "products"],
     },
-    header: {
-      type: "Text",
-      props: { value: "Welcome to Noname", variant: "h1", align: "center" },
-    },
-    intro: {
-      type: "Text",
+    hero: {
+      type: "Hero",
       props: {
-        value: "Platform demo — core layout components only. Enable a vertical pack via catalog manifest for domain-specific UI.",
-        variant: "body",
-        align: "center",
+        title: "Welcome to Noname",
+        subtitle: "Commerce vertical demo layout",
+        image: null,
+        ctaLabel: "Explore",
+        ctaAction: null,
       },
     },
-    actions: {
-      type: "Stack",
-      props: { direction: "row", gap: 12, align: "center" },
-      children: ["cta"],
+    products: {
+      type: "Grid",
+      props: { columns: 2, gap: 16 },
+      children: ["product1"],
     },
-    cta: {
-      type: "Button",
-      props: { label: "Get started", variant: "primary", action: null },
+    product1: {
+      type: "ProductCard",
+      props: {
+        title: "Blue Sneakers",
+        price: 99.99,
+        image: null,
+        description: "Comfortable running shoes for everyday wear.",
+      },
     },
   },
 };
@@ -66,21 +69,16 @@ async function main() {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
   }
 
-  console.log(`Seeding demo org ${DEMO_ORG_ID} via ${API_BASE} ...`);
+  console.log(`Seeding commerce demo for org ${DEMO_ORG_ID} via ${API_BASE} ...`);
 
   const health = await fetch(`${API_BASE}/health`);
   if (!health.ok) {
     throw new Error("API server not reachable — start with: pnpm dev");
   }
 
-  await api("PUT", "/api/documents/tenant_settings/default", {
-    locales: ["en-US"],
-    defaultLocale: "en-US",
-  });
-
   await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
-    platform: { version: "1", hash: "demo" },
-    verticals: [],
+    platform: { version: "1", hash: "commerce-demo" },
+    verticals: ["commerce"],
   });
 
   const existing = await fetch(
@@ -88,15 +86,15 @@ async function main() {
     { headers: orgHeaders() },
   );
   if (existing.ok) {
-    console.log("Demo layout already published — skipping create.");
-  } else {
-    const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
-      templateName: "home",
-      segment: "default",
-      spec: demoSpec,
-    });
-    await api("PUT", `/api/documents/layout/${created.id}/publish`);
+    console.log("Home layout exists — publishing commerce spec as new draft...");
   }
+
+  const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
+    templateName: "home",
+    segment: "default",
+    spec: commerceSpec,
+  });
+  await api("PUT", `/api/documents/layout/${created.id}/publish`);
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
@@ -107,11 +105,11 @@ async function main() {
     throw new Error("Seed succeeded but edge schema returned no layout");
   }
 
-  console.log("Demo seed complete.");
-  console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home (published, core components)`);
-  console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
-  console.log(`  Commerce demo: pnpm seed:demo:commerce`);
+  console.log("Commerce demo seed complete.");
+  console.log(`  Org:       ${DEMO_ORG_ID}`);
+  console.log(`  Verticals: commerce`);
+  console.log(`  Layout:    home (Hero + ProductCard)`);
+  console.log(`  Client:    http://${DEMO_ORG_ID}.localhost:5173`);
 }
 
 main().catch((err: Error) => {
