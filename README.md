@@ -8,6 +8,8 @@ Open source AI-native platform. One server replaces CMS, analytics, A/B testing,
 - **pnpm** >= 10 (`npm install -g pnpm`)
 - **Docker** (Docker Desktop or Podman) for local services
 
+Use either `docker compose` or `podman compose` — both work with `docker-compose.yml`.
+
 ## Quick Start
 
 ```bash
@@ -19,8 +21,8 @@ pnpm install
 cp .env.example .env
 cp packages/server/.env.example packages/server/.env
 
-# 3. Start infrastructure (Postgres, Redis, ClickHouse, Logto, S3, Jaeger)
-docker compose up -d
+# 3. Start infrastructure (Postgres, Redis, ClickHouse, ZITADEL, S3, Jaeger)
+podman compose up -d   # or: docker compose up -d
 
 # 4. Wait for healthy services, then run DB migrations
 pnpm --filter @noname/server drizzle-kit push
@@ -29,6 +31,13 @@ pnpm --filter @noname/server drizzle-kit push
 pnpm dev
 # → http://localhost:3000
 # → http://localhost:3000/health
+
+# 6. Seed demo layout data (idempotent)
+pnpm seed:demo
+
+# 7. Start the client (in another terminal)
+pnpm --filter @noname/client dev
+# → http://localhost:5173
 ```
 
 ## Environment
@@ -40,7 +49,8 @@ Copy `.env.example` to `.env` at the project root:
 | `DATABASE_URL` | `postgres://noname:noname_dev@localhost:5432/app` | Postgres |
 | `REDIS_URL` | `redis://localhost:6379` | DragonflyDB (Redis-compatible) |
 | `CLICKHOUSE_URL` | `http://localhost:8123` | ClickHouse |
-| `LOGTO_ENDPOINT` | `http://localhost:3001` | Logto auth |
+| `ZITADEL_ISSUER` | `http://localhost:8080` | ZITADEL auth (OIDC issuer) |
+| `WORKER_SERVER_SECRET` | (shared secret) | HMAC trust between edge worker and API server |
 | `OPENAI_API_KEY` | (optional) | Real LLM generation |
 | `ANTHROPIC_API_KEY` | (optional) | Real LLM generation |
 
@@ -51,10 +61,10 @@ Copy `packages/server/.env.example` to `packages/server/.env` for R2/S3 asset st
 All services run via Docker Compose:
 
 ```bash
-docker compose up -d         # start everything
-docker compose ps            # check status
-docker compose logs -f       # tail all logs
-docker compose down -v       # tear down + delete data
+podman compose up -d         # start everything (or docker compose up -d)
+podman compose ps            # check status
+podman compose logs -f       # tail all logs
+podman compose down -v       # tear down + delete data
 ```
 
 | Service | Port | Purpose |
@@ -62,7 +72,7 @@ docker compose down -v       # tear down + delete data
 | **Postgres 16** | 5432 | Primary DB — JSONB content, ACID transactions |
 | **DragonflyDB** | 6379 | Redis-compatible — cache + BullMQ queue backend |
 | **ClickHouse** | 8123/9000 | Columnar analytics — event ingestion, aggregations |
-| **Logto** | 3001/3002 | Self-hosted auth — OIDC, MFA, SSO |
+| **ZITADEL** | 8080 | Self-hosted auth — OIDC, MFA, SSO |
 | **S3 emulator** | 9000 | R2-compatible asset storage for local dev |
 | **Jaeger** | 16686/4318 | OpenTelemetry tracing UI |
 
@@ -71,7 +81,9 @@ docker compose down -v       # tear down + delete data
 ```
 noname/
 ├── packages/
-│   ├── server/      → API server (Hono + Node.js) — 8 DDD domains
+│   ├── server/      → API server (Hono + Node.js) — 9 DDD domains
+│   ├── browser-sdk/ → Client SDK — analytics, errors, trace, flags, replay
+│   ├── client/      → Storefront bundle — React 19 + json-render + Module Federation
 │   ├── workers/     → Cloudflare Edge Worker — JWT, KV cache, SEO prerender
 │   └── cli/         → Developer CLI (skeleton)
 ├── docs/            → Architecture decisions, domain plans
@@ -86,8 +98,8 @@ pnpm dev                          # start dev server (tsx watch)
 pnpm --filter @noname/server dev  # same, explicit
 
 # Database
-pnpm --filter @noname/server drizzle-kit push     # push schema to DB
-pnpm --filter @noname/server drizzle-kit generate # generate migrations
+pnpm --filter @noname/server db:push     # push schema to DB
+pnpm --filter @noname/server db:generate # generate migrations
 ```
 
 ### API Routes
@@ -102,6 +114,7 @@ pnpm --filter @noname/server drizzle-kit generate # generate migrations
 | `/api/ai/generate/*` | AI generation pipeline |
 | `/api/analytics/*` | Event tracking + queries |
 | `/api/edge/*` | Edge worker bridge |
+| `/api/tenants/*` | Tenant catalog manifests + component publishing |
 
 ## Edge Worker (`packages/workers`)
 
@@ -142,4 +155,6 @@ Visitor → Cloudflare Edge Worker (JWT, cache, SEO prerender)
          Postgres + ClickHouse + DragonflyDB
 ```
 
-All 8 domains follow Domain-Driven Design: `ports.ts` → `entity.ts` → `service.ts` → `adapters/postgres.ts` → `api.ts` → `index.ts`.
+All 9 domains follow Domain-Driven Design: `ports.ts` → `entity.ts` → `service.ts` → `adapters/postgres.ts` → `api.ts` → `index.ts`.
+
+Auth is handled at the edge (ZITADEL JWT validation + HMAC signing). See `docs/2026-07-13/AUTH.md`.

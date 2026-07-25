@@ -20,6 +20,8 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     ports:
       - "6379:6379"
+    # Podman/local dev: default thread count needs ~1.75GiB RAM; limit to 1 thread.
+    command: ["--proactor_threads=1"]
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -h localhost ping"]
       interval: 5s
