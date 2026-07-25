@@ -1,5 +1,7 @@
 # Auth — ZITADEL OIDC + Edge Worker Passthrough + HMAC
 
+> **Identity model (2026-07-25):** ZITADEL org id = `tenant_id`, JWT `sub` = `user_id` throughout the system — no mapping table. See [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md).
+
 ## Architecture
 
 ```
@@ -119,5 +121,7 @@ When running locally without the edge worker (client proxies directly to server 
 | Dev mode (no edge worker) | ✅ HMAC optional, logs warning when missing |
 | ZITADEL auto-setup | ✅ `docker-compose.yml` — `ZITADEL_FIRSTINSTANCE_*` env vars |
 | Machine account | ✅ `noname-backend` — key in `zitadel_keys` volume |
-| OIDC client app (for browser) | ⚠️ Create via ZITADEL console (`:8080/ui/console`) |
+| OIDC client app (for browser) | ✅ `pnpm init:zitadel` — Management API; writes `ZITADEL_CLIENT_ID` to `.env` |
+| Client PKCE login | ⚠️ Not wired in `packages/client` yet |
+| Identity in DB (`tenant_id` / `user_id`) | ⚠️ Schemas still `uuid`; migrate to `text` = ZITADEL ids — see AUTH-IDENTITY.md |
 | Production hardening | ⚠️ Rotate masterkey + secrets, enable TLS |

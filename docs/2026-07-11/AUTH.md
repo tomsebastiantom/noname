@@ -2,7 +2,8 @@
 
 > **Superseded doc note:** This file was originally written for Logto (2026-07-11).
 > Auth migrated to ZITADEL on 2026-07-13 with HMAC hardening on 2026-07-18.
-> **Canonical reference:** [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md)
+> **Canonical reference:** [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md)  
+> **Identity decision (2026-07-25):** [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md)
 
 ## Summary
 
@@ -34,7 +35,8 @@ API server. Missing HMAC logs a warning; requests are not blocked.
 | JWT signature verification | ✅ `@cfworker/jwt` + JWKS |
 | HMAC worker→server | ✅ Implemented |
 | ZITADEL Docker auto-setup | ✅ `docker-compose.yml` |
-| OIDC client app (browser) | ⚠️ Create manually in ZITADEL console |
+| OIDC client app (browser) | ✅ `pnpm init:zitadel` |
+| DB identity (`tenant_id` = org id) | ⚠️ Migration pending — see AUTH-IDENTITY.md |
 | SPA login / token refresh | ⚠️ Not wired in client yet |
 | Production hardening | ⚠️ Rotate secrets, enable TLS |
 
