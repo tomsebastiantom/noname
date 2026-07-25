@@ -2,6 +2,9 @@
 
 ## Date: 2026-07-10
 ## Updated: 2026-07-11 (content modeling, rich text, assets, R2, permissions, webp/avif, hash dedup, id-based routing)
+## Updated: 2026-07-25 (`tenant_id` → `org_id` — ZITADEL org id as TEXT; see [`AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md))
+
+> **Column naming:** Postgres uses `org_id` (TEXT, ZITADEL organization id). Product language still says “tenant” / “store” (`tenant_settings`, per-tenant config). Drizzle field: `orgId`.
 
 ## Purpose
 
@@ -89,7 +92,7 @@ Once registered, `product` becomes a valid `:type` in `/api/documents/product`.
 | `enum` | string | One of a predefined set of string values. `options` array required. |
 
 > **System fields vs user-defined fields:** The `documents` table has fixed system
-> columns (`id`, `tenantId`, `type`, `key`, `version`, `segment`, `status`,
+> columns (`id`, `orgId`, `type`, `key`, `version`, `segment`, `status`,
 > `baseVersion`, `data`, `meta`, `created_at`, `updated_at`) managed by the system.
 > The field type catalog above is for **user-defined fields** that live inside the
 > `data` JSONB column. Users define fields like `title`, `price`, `description` in
@@ -430,7 +433,7 @@ metadata about the original file and its processed variants.
 documents table row, type = "asset":
 {
   id:           UUID,
-  tenantId:     UUID,
+  orgId:        TEXT (ZITADEL org id),
   type:         "asset",
   key:          assetId (UUID key),
   segment:      "default",
@@ -479,14 +482,14 @@ documents table row, type = "asset":
 
 3. Upload to Cloudflare R2:
    - Bucket: noname-assets-{env}
-   - Key: {tenantId}/{assetId}/{originalFilename}
-   - Object metadata: tenantId, assetId, originalFilename, uploadedAt
+   - Key: {orgId}/{assetId}/{originalFilename}
+   - Object metadata: orgId, assetId, originalFilename, uploadedAt
 
 4. Image processing (Cloudflare Images OR self-managed pipeline):
    - Original → thumbnail (150px), small (480px), medium (960px), large (1920px)
    - Auto-generate WebP and AVIF variants from each size
    - Crop based on focalPoint if provided
-   - All variants written back to R2 under {tenantId}/{assetId}/variants/
+   - All variants written back to R2 under {orgId}/{assetId}/variants/
 
 5. Video processing (Cloudflare Stream):
    - Upload original to Stream
@@ -600,7 +603,7 @@ versioned JSON document with variants. Forcing each into its own DDD domain dupl
 identical ports/adapters/versioning/cache/event code N times. One domain + a **type
 registry** (`DocumentStorage` keyed by `type`) provides the shared machinery once:
 
-- store / read by `(tenantId, type, key)`
+- store / read by `(orgId, type, key)`
 - version + publish (draft → published)
 - per-segment / per-context variants
 - cache invalidation
@@ -610,11 +613,11 @@ registry** (`DocumentStorage` keyed by `type`) provides the shared machinery onc
 
 Each type keeps its **own**:
 - `version` and `status` (content drafts vs layout publishes vs asset uploads never collide)
-- cache key (content by `{tenantId}:{type}:{key}`, layout by `{tenantId}:{templateName}:{segmentHash}`, asset by `{tenantId}:{assetId}`)
+- cache key (content by `{orgId}:{type}:{key}`, layout by `{orgId}:{templateName}:{segmentHash}`, asset by `{orgId}:{assetId}`)
 - event names (`content.created`, `layout.published`, `asset.created`)
 - schema definition (content has field schemas, layout has json-render spec format, asset has variant metadata)
 
-All KV cache keys include `tenantId` to prevent cross-tenant collisions and enable
+All KV cache keys include `orgId` to prevent cross-tenant collisions and enable
 per-tenant cache invalidation without blast-radius across tenants.
 
 ---
@@ -648,7 +651,7 @@ The `documents` table splits storage into two tiers:
 | Column | Type | Purpose |
 |--------|------|---------|
 | `id` | UUID PK | Row identity |
-| `tenant_id` | UUID | Multi-tenant isolation |
+| `org_id` | TEXT | Multi-tenant isolation (ZITADEL org id) |
 | `type` | TEXT | Document-type discriminator (content, layout, page_tree, etc.) |
 | `key` | TEXT | URL identifier. Auto-generated from title. Stable across locales. |
 | `version` | INT | Monotonic version per row |
@@ -673,7 +676,7 @@ table creation, no per-field column migration.
 | Approach | Multi-tenant impact | Field changes | Querying |
 |----------|-------------------|---------------|----------|
 | Separate tables per type | N content types × T tenants = explosion | Every field add/remove = migration | Native SQL on columns |
-| **Unified JSONB (chosen)** | One table, tenant-filtered by `tenant_id` | Zero migrations. Schema in `documentTypes` | JSONB path queries + GIN indexes |
+| **Unified JSONB (chosen)** | One table, org-filtered by `org_id` | Zero migrations. Schema in `documentTypes` | JSONB path queries + GIN indexes |
 
 For a multi-tenant system where each tenant can define their own content types
 with unique field sets, separate tables don't scale. 50 tenants × 10 content
@@ -695,14 +698,14 @@ enforces correctness at write time, not the database.
 
 ```
 ONE domain:   documents
-  ├─ type: content        → data JSONB, keyed (tenantId, type, key), validated against content type schema
-  ├─ type: content_type   → schema definition JSONB, keyed (tenantId, name), defines field catalog for a content type
-  ├─ type: page           → layout + content reference, keyed (tenantId, key), links URL to render targets
-  ├─ type: page_tree      → URL routing tree, keyed (tenantId, key), locale-aware URL → page ID mapping
-  ├─ type: tenant_settings→ per-tenant config JSONB, keyed (tenantId, "default"), locales + defaultLocale
-  ├─ type: asset          → media metadata JSONB, keyed (tenantId, assetId), variants stored in R2
+  ├─ type: content        → data JSONB, keyed (orgId, type, key), validated against content type schema
+  ├─ type: content_type   → schema definition JSONB, keyed (orgId, name), defines field catalog for a content type
+  ├─ type: page           → layout + content reference, keyed (orgId, key), links URL to render targets
+  ├─ type: page_tree      → URL routing tree, keyed (orgId, key), locale-aware URL → page ID mapping
+  ├─ type: tenant_settings→ per-tenant config JSONB, keyed (orgId, "default"), locales + defaultLocale
+  ├─ type: asset          → media metadata JSONB, keyed (orgId, assetId), variants stored in R2
   ├─ type: layout         → spec JSONB. segment="default": full spec. segment≠"default": overrides only.
-  │                          keyed (tenantId, templateName, segment), versioned, per-tenant KV cached
+  │                          keyed (orgId, templateName, segment), versioned, per-tenant KV cached
   │                          `resolve` deep-merges default + overrides → returns full spec
   └─ type: backend-logic  → flow JSONB (future), versioned, variants
 ```
@@ -804,7 +807,7 @@ render hits origin.
 ```
 SEGMENT (cached in KV):
   "vip_customer" → selects layout variant: premium upsell blocks, loyalty banner
-  Cache key:    layout:{tenantId}:product_page:vip_customer
+  Cache key:    layout:{orgId}:product_page:vip_customer
   Cache TTL:    until layout is republished
 
 PER-USER ($state, resolved per request, NOT cached):
@@ -820,13 +823,13 @@ channels, two different caching strategies.
 
 ### Tenant-scoped segments
 
-Segments are defined **per tenant** in the `segments` table (`segments.tenantId`).
+Segments are defined **per tenant** in the `segments` table (`segments.orgId`).
 Each tenant has their own taxonomy. The same signal combination produces the same
-deterministic hash, but the KV cache key includes `tenantId` so there is no
+deterministic hash, but the KV cache key includes `orgId` so there is no
 cross-tenant collision:
 
 ```
-layout:{tenantId}:{templateName}:{segmentHash}
+layout:{orgId}:{templateName}:{segmentHash}
 
 Example:
   layout:tenant_01:homepage:vip_hash   ← Tenant A's VIP homepage variant
@@ -850,7 +853,7 @@ only `layout:tenant_01:*` keys are invalidated. Tenant B's cache is untouched.
      Cookie / session data   → visitor behavior signals
 
 3. Edge calls context engine: POST /api/context/resolve
-     Input:  { tenantId, purchases: 12, visits: 45, subscribed: true, ... }
+     Input:  { orgId, purchases: 12, visits: 45, subscribed: true, ... }
      Output: segment = "vip_customer"  (matched against tenant's behavior-based segment rules)
               Or "default" if no rules match
 
@@ -880,17 +883,17 @@ only `layout:tenant_01:*` keys are invalidated. Tenant B's cache is untouched.
      })
 
 8. Edge renders to HTML (SEO prerender) OR returns JSON (client-side render)
-   HTML cached in KV keyed by (tenantId, template, segment, key, contentVersion)
+   HTML cached in KV keyed by (orgId, template, segment, key, contentVersion)
 ```
 
 ### KV Cache Key Scheme
 
 | Cached Entity | KV Key Pattern | Invalidated By |
 |--------------|----------------|----------------|
-| Layout spec | `layout:{tenantId}:{templateName}:{segmentHash}` | `layout.published` event for that tenant |
-| Content entry | `content:{tenantId}:{type}:{key}` | `content.published` / `content.updated` / `content.deleted` |
-| Rendered HTML | `html:{tenantId}:{template}:{segment}:{key}:{contentVersion}` | Layout OR content publish for that tenant |
-| Asset metadata | `asset:{tenantId}:{assetId}` | `asset.published` / `asset.archived` |
+| Layout spec | `layout:{orgId}:{templateName}:{segmentHash}` | `layout.published` event for that tenant |
+| Content entry | `content:{orgId}:{type}:{key}` | `content.published` / `content.updated` / `content.deleted` |
+| Rendered HTML | `html:{orgId}:{template}:{segment}:{key}:{contentVersion}` | Layout OR content publish for that tenant |
+| Asset metadata | `asset:{orgId}:{assetId}` | `asset.published` / `asset.archived` |
 | Asset binary | R2 CDN (immutable, 1-year TTL) | Asset re-upload (new hash → new object path) |
 
 ### Segment Fallback Resolution
@@ -1617,7 +1620,7 @@ rows with `type: "asset"`. No new table needed.
 ```
 documents table:
   id              UUID PK (default random)
-  tenant_id       UUID NOT NULL
+  org_id          TEXT NOT NULL        ← ZITADEL organization id
   type            TEXT NOT NULL        ← "content" | "content_type" | "page" | "page_tree" | "tenant_settings" | "asset" | "layout" | "backend-logic"
    key             TEXT NOT NULL        ← For content: equals `id` (UUID, no slug). For layout: templateName. For asset: assetId (UUID). For tenant_settings: "default". For page_tree: "main".
   version         INT NOT NULL DEFAULT 1
@@ -1635,13 +1638,13 @@ The `documentTypes` table holds content type schemas:
 ```
 document_types table:
   id              UUID PK
-  tenant_id       UUID NOT NULL
+  org_id          TEXT NOT NULL        ← ZITADEL organization id
   name            TEXT NOT NULL        ← "product", "page", "blog", "faq"
   schema          JSONB NOT NULL       ← { fields: [...], ... }
   created_at      TIMESTAMP
 ```
 
-Adding a content type: `INSERT INTO document_types (tenant_id, name, schema) VALUES (...)`
+Adding a content type: `INSERT INTO document_types (org_id, name, schema) VALUES (...)`
 Adding a field to a content type: `UPDATE document_types SET schema = jsonb_set(...)`
 No migration. No deploy. Content entries for that type are validated on next write.
 
@@ -1659,14 +1662,14 @@ No migration. No deploy. Content entries for that type are validated on next wri
 | Tenant config | `documents` (type: tenant_settings) | Per-tenant: locales, defaultLocale, SEO defaults, external service IDs (GA, FB Pixel). |
 | Rich text fields | `documents.data` (type: richText) | Structured JSON tree (nodeType + marks). Per-field node/mark allowlists via `constraints`. |
 | Asset upload + storage | Cloudflare R2 | Multipart upload → hash dedup (`findByHash`) → variant generation → asset doc row. |
-| Image variants | R2 (`{tenantId}/{hash}/`) | Thumbnail/small/medium/large + WebP/AVIF per size. Generated by `sharp`. Focal point cropping supported. |
+| Image variants | R2 (`{orgId}/{hash}/`) | Thumbnail/small/medium/large + WebP/AVIF per size. Generated by `sharp`. Focal point cropping supported. |
 | Video transcoding | Cloudflare Stream | Upload → HLS transcoding → playback URL stored in asset data. |
 | Asset references in content | `documents.data` (type: media/mediaList) | Asset IDs resolved to R2 variant URLs at read/render time. |
 | Layout templates | `documents` (type: layout) | json-render spec. Default stores full spec. Non-default variants store overrides only; `resolve` deep-merges default + overrides → full spec. |
 | Variant inheritance | `resolve` endpoint + `baseVersion` | Non-default variants store overrides only. `deepMerge(default, overrides)` on server, returns full spec through API, KV-caches merged result. `baseVersion` detects conflicts when default structure shifts under a variant's override paths. |
 | Segment definition | `segments` table (context domain) | Behavior-based conditions per tenant (purchases, visits, engagement). Finite taxonomy (10-100 max). NOT locale, NOT device type. |
 | Segment resolution | `context_cache` (visitorId→segment) | Behavior signals from analytics/session data. Per-tenant. |
-| KV edge cache | Cloudflare Workers KV | Keys include tenantId. Per-segment layout + per-key content + prerendered HTML. |
+| KV edge cache | Cloudflare Workers KV | Keys include orgId. Per-segment layout + per-key content + prerendered HTML. |
 | Per-user personalization | json-render `$state` bindings | Injected at edge render time from JWT/cart/recommendations. NOT part of segment hash. NOT cached by segment. |
 | Field permissions | `documentTypes.schema.fields[].permissions` | read/write arrays of role strings. Enforced by service layer. |
 | Locale configuration | `documents` (type: tenant_settings) | Per-tenant locale list + default locale. One source of truth. |

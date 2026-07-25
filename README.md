@@ -12,6 +12,8 @@ Use either `docker compose` or `podman compose` — both work with `docker-compo
 
 ## Quick Start
 
+### One-time setup
+
 ```bash
 # 1. Clone & install
 git clone <repo-url> && cd noname
@@ -20,24 +22,54 @@ pnpm install
 # 2. Copy environment config
 cp .env.example .env
 cp packages/server/.env.example packages/server/.env
+# Edge: packages/workers/.dev.vars needs WORKER_SERVER_SECRET (same value as root .env)
 
 # 3. Start infrastructure (Postgres, Redis, ClickHouse, ZITADEL, S3, Jaeger)
 podman compose up -d   # or: docker compose up -d
 
-# 4. Wait for healthy services, then run DB migrations
-pnpm --filter @noname/server drizzle-kit push
+# Wait until services are healthy (~30s for ZITADEL on first boot)
+podman compose ps
 
-# 5. Start the API server
-pnpm dev
-# → http://localhost:3000
-# → http://localhost:3000/health
+# 4. ZITADEL OIDC app + demo org id in .env + client oidc.json
+pnpm init:zitadel
 
-# 6. Seed demo layout data (idempotent)
+# 5. Push DB schema (fresh DB only — use compose down -v to reset)
+pnpm --filter @noname/server db:push
+
+# 6. Seed demo layout (requires API running — do step 7 terminal 1 first, or re-run seed after)
 pnpm seed:demo
+```
 
-# 7. Start the client (in another terminal)
+### Dev setup — start order (every day)
+
+Run **infra once** (step 3 above). Then start **three app processes on the host** — edge does **not** run in Docker; use wrangler like client and server.
+
+| Order | Terminal | Command | URL |
+|-------|----------|---------|-----|
+| 1 | — | `podman compose up -d` (if not already up) | — |
+| 2 | API | `pnpm dev` | http://localhost:3000 |
+| 3 | Edge | `pnpm --filter @noname/workers dev` | http://localhost:8787 |
+| 4 | Client | `pnpm --filter @noname/client dev` | http://localhost:5173 |
+
+Then open the storefront:
+
+```text
+http://{ZITADEL_DEMO_ORG_ID}.localhost:5173
+```
+
+(`ZITADEL_DEMO_ORG_ID` is in `.env` after `pnpm init:zitadel` — numeric org id as subdomain until [Phase 3 slug](./docs/2026-07-25/PHASE-3-STORE-SLUG.md).)
+
+**Request path:** browser → client `:5173` → proxies `/api` → edge `:8787` → JWT + HMAC → API `:3000`.
+
+**Sign-in:** Sign in on the storefront → ZITADEL → `/callback` → Bearer token on API calls. See [`docs/2026-07-25/AUTH-IDENTITY.md`](./docs/2026-07-25/AUTH-IDENTITY.md).
+
+**Fresh database:** `podman compose down -v && podman compose up -d` then repeat one-time setup (steps 4–6).
+
+```bash
+# All three app processes (copy into separate terminals):
+pnpm dev
+pnpm --filter @noname/workers dev
 pnpm --filter @noname/client dev
-# → http://localhost:5173
 ```
 
 ## Environment
@@ -118,13 +150,16 @@ pnpm --filter @noname/server db:generate # generate migrations
 
 ## Edge Worker (`packages/workers`)
 
+**Local dev:** run on the host with wrangler (not in `docker-compose.yml`). Same as client/server — restart when you change worker code.
+
 ```bash
-pnpm --filter @noname/workers dev    # start wrangler dev server
-pnpm --filter @noname/workers deploy # deploy to Cloudflare
+pnpm --filter @noname/workers dev    # :8787 — start before or with client (client proxies /api here)
+pnpm --filter @noname/workers deploy # deploy to Cloudflare (production)
 ```
 
-The Edge Worker calls the API server's `/api/edge/*` routes. It does NOT have direct DB access.
-See `docs/2026-07-11/EDGE_WORKER.md` for architecture details.
+The client rspack dev server proxies `/api` → `http://localhost:8787`. The worker validates JWT, signs HMAC, and proxies to the API at `:3000`. It does **not** have direct DB access.
+
+See `docs/2026-07-11/EDGE_WORKER.md` and `docs/2026-07-25/AUTH-IDENTITY.md`.
 
 ## Development
 

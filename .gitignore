@@ -10,6 +10,7 @@ build/
 
 # Environment files
 .env
+packages/client/public/oidc.json
 .env.local
 .env.development.local
 .env.test.local
@@ -40,6 +41,11 @@ coverage/
 *.sqlite
 *.sqlite3
 *.db
+*.sqlite-shm
+*.sqlite-wal
+
+# Wrangler local dev (miniflare KV/R2/cache state)
+.wrangler/
 
 # Docker volumes
 data/

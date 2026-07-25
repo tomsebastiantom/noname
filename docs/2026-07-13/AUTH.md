@@ -1,6 +1,6 @@
 # Auth — ZITADEL OIDC + Edge Worker Passthrough + HMAC
 
-> **Identity model (2026-07-25):** ZITADEL org id = `org_id` column / `x-org-id` header; JWT `sub` = `user_id`. See [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md).
+> **Identity model (2026-07-25):** ZITADEL org id = `org_id` column / edge-set `x-org-id`; JWT `sub` = `user_id`. Browser does **not** send `x-org-id`. See [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md).
 
 ## Architecture
 
@@ -29,20 +29,21 @@ Browser ──► Edge Worker (:8787) ──► Server (:3000) ──► Infra
 ## Flow
 
 1. Client authenticates with ZITADEL (authorization code + PKCE) → gets access token
-2. Client sends `Authorization: Bearer <token>` to edge worker
-3. Worker calls `parseJwt` from `@cfworker/jwt` with `getKey` resolver:
+2. Client sends `Authorization: Bearer <token>` to edge worker (org id in URL path for public routes, e.g. `/api/edge/schema/:orgId`)
+3. Worker resolves `orgId`: JWT org claim → URL path segment → (Phase 3: Host slug lookup)
+4. Worker calls `parseJwt` from `@cfworker/jwt` with `getKey` resolver:
    - Discovers JWKS URI from `{issuer}/.well-known/openid-configuration`
    - Fetches and imports the JWKS key by `kid`
    - Validates RSA signature, issuer (`ZITADEL_ISSUER`), expiry
-4. Worker extracts identity: `sub` → userId, org claim → orgId, `role` → role
-5. Worker computes `HMAC-SHA256(orgId:userId:role)` with `WORKER_SERVER_SECRET`
-6. Worker forwards headers to server: `x-org-id`, `x-user-id`, `x-role`, `x-auth-hmac`
-7. Server middleware (`org.ts`):
+5. Worker extracts identity: `sub` → userId, org claim → orgId, `role` → role
+6. Worker computes `HMAC-SHA256(orgId:userId:role)` with `WORKER_SERVER_SECRET`
+7. Worker forwards headers to server: `x-org-id`, `x-user-id`, `x-role`, `x-auth-hmac`
+8. Server middleware (`org.ts`):
    - If `x-auth-hmac` present: verifies HMAC with `crypto.timingSafeEqual`
    - If `x-auth-hmac` absent AND secret configured: logs warning (dev mode, no edge worker)
    - If `x-auth-hmac` absent AND no secret: pass through (dev without edge worker)
    - `/health` endpoint: always skip HMAC
-8. Domain code uses `getOrgId(c)`, `getUserId(c)`, `getRole(c)` from context
+9. Domain code uses `getOrgId(c)`, `getUserId(c)`, `getRole(c)` from context
 
 ## Defense in Depth
 
@@ -117,11 +118,11 @@ When running locally without the edge worker (client proxies directly to server 
 | JWT signature verification | ✅ `parseJwt` + `getKey` from `@cfworker/jwt` v6 |
 | JWKS caching | ✅ OIDC discovery + in-memory cache in `@cfworker/jwt` |
 | HMAC worker→server signing | ✅ `renderer.ts` — `crypto.subtle.sign` |
-| HMAC server verification | ✅ `tenant.ts` — `createHmac` + `timingSafeEqual` |
+| HMAC server verification | ✅ `org.ts` — `createHmac` + `timingSafeEqual` |
 | Dev mode (no edge worker) | ✅ HMAC optional, logs warning when missing |
 | ZITADEL auto-setup | ✅ `docker-compose.yml` — `ZITADEL_FIRSTINSTANCE_*` env vars |
 | Machine account | ✅ `noname-backend` — key in `zitadel_keys` volume |
 | OIDC client app (for browser) | ✅ `pnpm init:zitadel` — Management API; writes `ZITADEL_CLIENT_ID` to `.env` |
-| Client PKCE login | ⚠️ Not wired in `packages/client` yet |
+| Client PKCE login | ✅ `packages/client/src/auth/pkce.ts` — no client `x-org-id` |
 | Identity in DB | ✅ `org_id` column + `user_id` from JWT — see AUTH-IDENTITY.md |
 | Production hardening | ⚠️ Rotate masterkey + secrets, enable TLS |

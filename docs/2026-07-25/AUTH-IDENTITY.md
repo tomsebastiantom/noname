@@ -52,8 +52,24 @@ HMAC payload: `orgId:userId:role`
 | OIDC SPA | `pnpm init:zitadel` → `.env` | ✅ `ZITADEL_CLIENT_ID`, `ZITADEL_DEMO_ORG_ID` |
 | Edge JWT + HMAC | `packages/workers`, `packages/server/src/shared/org.ts` | ✅ |
 | DB column | Drizzle `orgId: text("org_id")` | ✅ |
-| Client → edge | rspack proxy → `localhost:8787` (wrangler) | ✅ no demo env injection in bundler |
-| Client PKCE login | `packages/client` | ⚠️ Not wired yet |
+| Client → edge | rspack proxy → `localhost:8787`; **no `x-org-id`** from browser | ✅ |
+| Client OIDC config | `pnpm init:zitadel` → `packages/client/public/oidc.json` | ✅ runtime fetch, not bundler |
+| Client PKCE login | `packages/client/src/auth/pkce.ts`, `/callback` | ✅ |
+
+---
+
+## Roadmap (auth + routing)
+
+| Phase | Scope | Status |
+|-------|--------|--------|
+| **0** | Infra, `org_id` in DB, seed | ✅ |
+| **1** | Edge proxy, JWT + HMAC, public GET | ✅ |
+| **2** | Client PKCE, Bearer to edge | ✅ |
+| **3** | Store slug + edge Host → `org_id` | 📋 [Planned — not implemented](./PHASE-3-STORE-SLUG.md) |
+| **4** | Custom domains, wrangler in compose | Later |
+
+**Today:** dev URL is `http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`.  
+**Phase 3 target:** `http://yogastore.localhost:5173` — see [PHASE-3-STORE-SLUG.md](./PHASE-3-STORE-SLUG.md) for the full spec.
 
 ---
 
@@ -71,6 +87,8 @@ pnpm --filter @noname/client dev     # :5173 → proxies /api to edge
 ```
 
 Open the client at **`http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`** — org id comes from the subdomain, same as production hostname routing. No demo org baked into rspack.
+
+**Sign in:** click **Sign in** → ZITADEL login → redirect to `http://localhost:5173/callback` → token stored → back to the org subdomain. API calls send `Authorization: Bearer` only (no client `x-org-id`); edge resolves org from JWT or URL path and forwards HMAC to the API.
 
 **Fresh DB:** `podman compose down -v && podman compose up -d` then `db:push`, `init:zitadel`, `seed:demo`.
 
