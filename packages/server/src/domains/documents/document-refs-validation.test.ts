@@ -154,8 +154,12 @@ describe("assets.get by document row id", () => {
     const found = await assets.get(ORG, ASSET_ID);
     expect(found?.id).toBe(ASSET_ID);
     expect(found?.data.storageKey).toBe("org-1/hash/icon.svg");
-    expect(String(found?.data.original?.url ?? "")).toContain("org-1/hash/icon.svg");
-    expect(String(found?.data.original?.url ?? "")).not.toContain("assets.noname.dev");
+    expect(String((found?.data.original as { url?: string })?.url ?? "")).toContain(
+      "org-1/hash/icon.svg",
+    );
+    expect(String((found?.data.original as { url?: string })?.url ?? "")).not.toContain(
+      "assets.noname.dev",
+    );
   });
 
   it("returns null when row is not an asset", async () => {

@@ -335,6 +335,13 @@ export function AuthSettingsForm({
             <span className="text-sm">Allow email and password sign-in</span>
           </label>
 
+          <p className="text-sm text-muted-foreground">
+            <a href="/admin/settings/login" className="underline underline-offset-2 hover:text-foreground">
+              Edit login appearance
+            </a>{" "}
+            — title, logo, and brand copy on /login.
+          </p>
+
           {error && (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>

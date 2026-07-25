@@ -19,7 +19,12 @@ const LINKS = [
   {
     href: "/admin/settings/auth",
     label: "Auth settings",
-    description: "Social login and sign-in methods",
+    description: "Social login (Google, GitHub, Apple) and password toggle",
+  },
+  {
+    href: "/admin/settings/login",
+    label: "Login appearance",
+    description: "Title, logo, and brand copy on /login",
   },
 ] as const;
 

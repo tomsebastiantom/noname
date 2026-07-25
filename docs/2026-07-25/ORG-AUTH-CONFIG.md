@@ -130,7 +130,7 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 |------------|-----------------|-------------------|--------|
 | Email/password | Session API + users | LoginForm | ✅ |
 | JWT access tokens | OIDC app (JWT type) | — | ✅ |
-| Google / GitHub / Apple | Identity providers on org | Admin toggles + OAuth setup wizard | 📋 |
+| Google / GitHub / Apple | Identity providers on org | Admin toggles + OAuth setup wizard | ✅ |
 | MFA (TOTP, etc.) | Org/login policies | Admin “Security” section | 📋 |
 | Password reset | ZITADEL reset flow | “Forgot password” link | 📋 |
 | User registration | ZITADEL register / invite | Sign-up link or admin-only invite | 📋 |
@@ -163,14 +163,13 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 
 OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
 
-### Still to build (Phase C+)
+### Still to build (Phase D+)
 
 | API / service | Purpose |
 |---------------|---------|
-| GitHub / Apple IdP on Save | Same Management API pattern as Google |
 | `GET/PUT .../auth/policies` | MFA, signup (proxy ZITADEL) |
-| Login layout branding from admin | Publish login layout spec (title, logo) |
-| Create content entry UI | `ContentEntryAdmin` is edit-only today |
+| Admin override UI for built-in `providerLabels` | Optional custom button copy |
+| Account flows | Forgot password, sign-up, MFA |
 
 ### `tenant_settings` extension (planned shape)
 
@@ -201,7 +200,7 @@ Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth setti
 |--------------|------------|-----------|--------|
 | **Auth settings** | Toggle Google + password; Google OAuth client ID/secret | ZITADEL IdP API + `tenant_settings.auth` | ✅ Google |
 | **Content** | CMS entry fields by content type | `content` documents via documents API | ✅ |
-| **Login appearance** | Title, subtitle, logo, layout | Login layout spec (draft → publish) | 📋 |
+| **Login appearance** | Title, subtitle, logo, layout | Login layout spec via `LoginBrandingForm` | ✅ |
 | **Security** | MFA required for admins, password policy | ZITADEL org policies | 📋 |
 | **Users** (later) | List users, invite, roles | ZITADEL Management API | 📋 |
 

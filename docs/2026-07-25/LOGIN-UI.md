@@ -1,7 +1,7 @@
 # Login UI
 
 > **Date:** 2026-07-25  
-> **Status:** Phase 1 ✅ · Social UI scaffold ✅ · Per-org auth 📋 ([`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md))  
+> **Status:** Phase 1 ✅ · Per-org auth ✅ · Login branding admin ✅  
 > **Related:** [`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md), [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md), [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)
 
 ---
@@ -24,8 +24,9 @@ Sign-in on **our** `/login` page — Clerk-like UX, ZITADEL as IdP only (no host
 | shadcn polish (Alert, Separator, password toggle) | ✅ |
 | `POST .../auth/login` server broker | ✅ |
 | OAuth start + `/auth/callback` | ✅ scaffold |
-| Per-org social config (Postgres) | ❌ env shortcut — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
-| Forgot password / MFA / sign-up | ❌ later |
+| Per-org social config (Postgres) | ✅ `GET /auth/config` + admin settings |
+| `allowPassword` hides email form when off | ✅ |
+| Forgot password / MFA / sign-up | 📋 later |
 
 ---
 

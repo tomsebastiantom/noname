@@ -42,6 +42,7 @@ export function LoginForm({
   const [enabledProviders, setEnabledProviders] = useState<string[]>([]);
   const [providerLabels, setProviderLabels] = useState<Record<string, string>>({});
   const [providerIcons, setProviderIcons] = useState<Record<string, string>>({});
+  const [allowPassword, setAllowPassword] = useState(true);
   const storeSlug = storeSlugFromHostname(window.location.hostname);
 
   const redirectFromQuery = safeRedirect(
@@ -57,6 +58,7 @@ export function LoginForm({
           ? (res.json() as Promise<{
               data?: {
                 providers?: string[];
+                allowPassword?: boolean;
                 providerLabels?: Record<string, string>;
                 providerIcons?: Record<string, string>;
               };
@@ -73,17 +75,20 @@ export function LoginForm({
               )
             : serverProviders;
         setEnabledProviders(merged);
+        setAllowPassword(body?.data?.allowPassword !== false);
         setProviderLabels(body?.data?.providerLabels ?? {});
         setProviderIcons(body?.data?.providerIcons ?? {});
       })
       .catch(() => {
         setEnabledProviders([]);
+        setAllowPassword(true);
         setProviderLabels({});
         setProviderIcons({});
       });
   }, [storeSlug, props.providers]);
 
   const showSocial = enabledProviders.length > 0;
+  const showPasswordForm = allowPassword;
 
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -131,6 +136,7 @@ export function LoginForm({
           />
         )}
 
+        {showPasswordForm && (
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
           {showSocial && (
             <div className="relative">
@@ -206,6 +212,19 @@ export function LoginForm({
             <p className="text-center text-xs text-muted-foreground">{props.footerText}</p>
           )}
         </form>
+        )}
+
+        {!showPasswordForm && !showSocial && (
+          <Alert>
+            <AlertDescription>No sign-in methods are enabled for this store.</AlertDescription>
+          </Alert>
+        )}
+
+        {!showPasswordForm && showSocial && error && (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
       </CardContent>
     </Card>
   );

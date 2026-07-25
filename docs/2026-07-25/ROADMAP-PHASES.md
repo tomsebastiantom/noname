@@ -15,7 +15,7 @@
 ✅ B     Commerce extension + cart machine
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
 ✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
-📋 C     Admin UI                  → edit without seeds  (mostly done)
+📋 C     Admin UI                  → edit without seeds  (✅ core done)
 📋 D     Scale                     → slug, domains, visual editor
 ```
 
@@ -84,7 +84,7 @@
 
 ---
 
-## Phase C — Admin UI 🔄 (mostly done)
+## Phase C — Admin UI ✅ (core complete)
 
 Merchant manages content, layouts, pages, auth settings without re-seeding.
 
@@ -92,20 +92,23 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 |------|--------|
 | `AdminShell` + `/admin` routing | ✅ |
 | Auth gate → `/login?redirect=` | ✅ |
-| `AuthSettingsForm` → ZITADEL + Postgres | ✅ |
+| `AuthSettingsForm` → Google + GitHub + Apple → ZITADEL + Postgres | ✅ |
+| `LoginBrandingForm` → edit login layout props (title, logo, brand) | ✅ |
 | `ContentEntryAdmin` → generic CMS (any content type) | ✅ |
 | `LayoutEntryAdmin` → publish layout specs from UI | ✅ |
 | `PageEntryAdmin` + `PageTreeAdmin` → storefront routing | ✅ |
 | Seed `admin_pages` + page_tree commerce URL | ✅ |
-| Seed `admin_dashboard` + `admin_content` layouts | ✅ |
+| Seed `admin_dashboard` + `admin_content` + `admin_login` layouts | ✅ |
 | Core demo: `page` content type (no commerce required) | ✅ |
-| GitHub / Apple IdP in auth admin | 📋 |
+| Custom IdPs via `auth_provider` CMS | ✅ |
 | Visual editor `?edit=true` | 📋 Phase D |
+| Account flows (forgot password, sign-up, MFA) | 📋 later |
 
 **Validate:**
 
-- Content: sign in → `/admin/content` → edit `page` entry → Save & publish
-- Auth: `/admin/settings/auth` → Google OAuth → Save
+- Content: sign in → `/admin/content` → edit entry → Save & publish
+- Auth: `/admin/settings/auth` → enable providers → Save
+- Login branding: `/admin/settings/login` → edit title/logo → Save & publish → `/login`
 
 **Doc:** [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)
 
@@ -132,7 +135,7 @@ Page routing (URL → spec) is ✅ — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md
 | **B** | Commerce | Extension + cart | ✅ |
 | **1** | Content pipeline | Edge `$state` resolve | ✅ |
 | **A2** | Auth config | Per-org Postgres + ZITADEL | ✅ |
-| **C** | Admin | Shell + auth + content + pages CMS | 🔄 mostly done |
+| **C** | Admin | Shell + auth + content + pages CMS | ✅ core done |
 | **D** | Polish | Slug, visual editor, domains | Multi-use-case |
 
 ---

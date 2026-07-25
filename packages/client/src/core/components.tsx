@@ -4,6 +4,7 @@ import { AuthLayout } from "./components/AuthLayout";
 import { AuthSettingsForm } from "./components/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 import { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
+import { LoginBrandingForm } from "./components/LoginBrandingForm";
 import { LoginForm } from "./components/LoginForm";
 import { PageEntryAdmin } from "./components/PageEntryAdmin";
 import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
@@ -16,6 +17,7 @@ export { AuthLayout } from "./components/AuthLayout";
 export { AuthSettingsForm } from "./components/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 export { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
+export { LoginBrandingForm } from "./components/LoginBrandingForm";
 export { LoginForm } from "./components/LoginForm";
 export { PageEntryAdmin } from "./components/PageEntryAdmin";
 export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
@@ -159,6 +161,7 @@ export const coreComponents = {
   AuthLayout,
   AdminShell,
   AuthSettingsForm,
+  LoginBrandingForm,
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,

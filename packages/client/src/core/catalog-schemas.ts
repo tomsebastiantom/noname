@@ -81,10 +81,21 @@ export const coreComponentSchemas = {
         .string()
         .nullable()
         .default(
-          "Configure which providers appear on your login page. Each social provider needs a ZITADEL IdP id for this org.",
+          "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
         ),
     }),
     description: "Per-org auth provider toggles and ZITADEL IdP configuration",
+  },
+  LoginBrandingForm: {
+    props: z.object({
+      title: z.string().default("Login appearance"),
+      description: z
+        .string()
+        .nullable()
+        .default("Edit title, logo, and brand copy on /login without editing raw JSON."),
+      segment: z.string().default("default"),
+    }),
+    description: "Structured editor for login layout branding props",
   },
   ContentEntryAdmin: {
     props: z.object({

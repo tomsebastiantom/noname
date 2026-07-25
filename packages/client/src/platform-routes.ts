@@ -24,6 +24,7 @@ export function platformTemplateFromPath(pathname: string): string {
   if (pathname.startsWith("/admin/content")) return "admin_content";
   if (pathname.startsWith("/admin/layout")) return "admin_layout";
   if (pathname.startsWith("/admin/pages")) return "admin_pages";
+  if (pathname === "/admin/settings/login") return "admin_login";
   if (pathname === "/admin/settings/auth") return "admin_dashboard";
   if (pathname === "/admin" || pathname === "/admin/") return "admin_home";
   if (pathname.startsWith("/admin")) return "admin_home";

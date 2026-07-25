@@ -90,7 +90,30 @@ const adminDashboardSpec = {
       props: {
         title: "Sign-in methods",
         description:
-          "Enable Google sign-in with your OAuth credentials. Save registers the IdP in ZITADEL and updates platform settings for this org.",
+          "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
+      },
+    },
+  },
+};
+
+const adminLoginBrandingSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Login appearance",
+        activeNav: "auth",
+      },
+      children: ["loginBranding"],
+    },
+    loginBranding: {
+      type: "LoginBrandingForm",
+      props: {
+        title: "Login appearance",
+        description:
+          "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
+        segment: "default",
       },
     },
   },
@@ -345,6 +368,7 @@ async function main() {
   await upsertLayout("home", demoSpec, { skipIfExists: true });
   await upsertLayout("login", loginSpec);
   await upsertLayout("admin_dashboard", adminDashboardSpec);
+  await upsertLayout("admin_login", adminLoginBrandingSpec);
   await upsertLayout("admin_content", adminContentSpec);
   await upsertLayout("admin_layout", adminLayoutSpec);
   await upsertLayout("admin_home", adminHomeSpec);

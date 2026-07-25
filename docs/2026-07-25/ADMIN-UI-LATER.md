@@ -1,7 +1,7 @@
 # Admin UI — Load & manage
 
 > **Date:** 2026-07-25  
-> **Status:** Phase C in progress — shell, auth settings, generic content CMS shipped  
+> **Status:** Phase C core complete — shell, auth settings (Google/GitHub/Apple), login branding, generic content CMS  
 > **Start with:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) · Login: [`LOGIN-UI.md`](./LOGIN-UI.md)  
 > **Related:** [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md), [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md), [`documents-domain.md`](../2026-07-10/documents-domain.md)
 
@@ -26,9 +26,10 @@ Merchant dashboard inside `packages/client` (no separate package):
 
 - **Admin shell** — sidebar, header (shadcn) ✅
 - **Content** — schema-driven CMS entry editor (any `:type`) ✅
-- **Auth settings** — social login + ZITADEL IdP registration (Google) ✅
-- **Layout templates** — `admin_dashboard`, `admin_content` in documents domain ✅
-- **Layout editor** — publish home/login specs from UI 📋
+- **Auth settings** — social login + ZITADEL IdP registration (Google, GitHub, Apple) ✅
+- **Login appearance** — title, logo, brand copy via `LoginBrandingForm` ✅
+- **Layout templates** — `admin_dashboard`, `admin_content`, `admin_login` in documents domain ✅
+- **Layout editor (JSON)** — `LayoutEntryAdmin` edit/publish layout specs ✅
 - **Visual editor** — `?edit=true` on live storefront 📋
 - **Page-specific JS** — Module Federation remotes 📋
 
@@ -39,9 +40,10 @@ Merchant dashboard inside `packages/client` (no separate package):
 | Component | Purpose | Status |
 |-----------|---------|--------|
 | `AdminShell` | Sidebar + main slot | ✅ |
-| `AuthSettingsForm` | Per-org auth toggles + Google OAuth → ZITADEL | ✅ |
+| `AuthSettingsForm` | Per-org auth toggles + Google/GitHub/Apple OAuth → ZITADEL | ✅ |
+| `LoginBrandingForm` | Edit login layout props (title, logo, brand) without raw JSON | ✅ |
 | `ContentEntryAdmin` | List/edit/publish CMS entries by content type | ✅ |
-| `LayoutEntryAdmin` | Edit/publish json-render layout templates | ✅ |
+| `LayoutEntryAdmin` | Edit/publish json-render layout templates (JSON) | ✅ |
 | `AdminHome` | Dashboard overview links | ✅ |
 | `AdminNav` / `AdminPageHeader` | Optional polish | 📋 |
 | `DataTable` | CRUD lists | 📋 |
@@ -59,6 +61,7 @@ Same json-render pipeline as storefront — path maps to a **layout template nam
 |------|---------------|----------------|
 | `/admin` | `admin_home` | `AdminHome` (overview) |
 | `/admin/settings/auth` | `admin_dashboard` | `AuthSettingsForm` |
+| `/admin/settings/login` | `admin_login` | `LoginBrandingForm` |
 | `/admin/content` | `admin_content` | `ContentEntryAdmin` (pick content type) |
 | `/admin/content/:type` | `admin_content` | `ContentEntryAdmin` (edit entries) |
 | `/admin/layout` | `admin_layout` | `LayoutEntryAdmin` (pick template) |
@@ -84,9 +87,10 @@ Seed: `pnpm seed:demo` creates `page` content type + demo entry + `admin_content
 2. Protected `/admin` + `/login?redirect=` ✅
 3. **Auth settings** — Google OAuth → ZITADEL + Postgres ✅ ([`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md))
 4. **Generic content CMS** — `ContentEntryAdmin` (schema-driven, not commerce-specific) ✅
-5. Layout editor (publish layout specs from UI) 📋
-6. Visual editor lazy chunk (`editor/`) 📋
-7. Tenant catalog bundler + MF remotes 📋
+5. **Login branding** — `LoginBrandingForm` at `/admin/settings/login` ✅
+6. **Layout editor (JSON)** — `LayoutEntryAdmin` ✅
+7. Visual editor lazy chunk (`editor/`) 📋
+8. Tenant catalog bundler + MF remotes 📋
 
 ---
 
