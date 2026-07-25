@@ -13,8 +13,8 @@
 ✅ B    Commerce extension + cart machine
 ✅ 1    Content render pipeline     → CMS content → $state → resolved spec on edge
 ✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
-📋 C    Admin UI (C)                → edit content/layouts/auth without seeds (in progress)
-📋 4    Scale (D)                   → slug, domains, page_tree routing, editor
+🔄 C    Admin UI (C)                → edit content/layouts/auth/pages without seeds (mostly done)
+📋 D    Scale (D)                   → slug, domains, visual editor
 ```
 
 | Step | Doc | Validates when |
@@ -22,7 +22,7 @@
 | **1 Content pipeline** | [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md) | Product text from CMS entry, not baked into layout JSON |
 | **2 Per-org auth** | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Org A has Google, Org B does not — no `.env` IdP id |
 | **3 Admin** | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) + [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) | Merchant UI from layout specs — no ad-hoc React pages |
-| **4 Page routing** | [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) | `/about` works via page_tree — no `templateFromPath` change |
+| **4 Page routing** | [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) | ✅ `/about` via page_tree — client uses `?url=` for storefront |
 
 Full phase checklist: [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)
 
@@ -55,7 +55,7 @@ layout template  ──┘         │
                       resolved layout JSON ──► Renderer + catalog
 ```
 
-Today: client passes `?template=home` (shortcut). Target: `?url=/path` — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
+Today: client sends `?url=/path` for storefront; platform paths use `?template=` — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
 
 Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
@@ -68,8 +68,9 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | **[`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)** | Phases A → D, validate criteria |
+| **[`PER-ORG-MODEL.md`](./PER-ORG-MODEL.md)** | **Multi-tenant overview** — who owns what, two-store example |
 | **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec |
-| **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema (next for storefront) |
+| **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema ✅ |
 | [`documents-domain.md`](../2026-07-10/documents-domain.md) | Full CMS data model (content types, locales, assets, pages) |
 
 ### Client

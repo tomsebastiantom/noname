@@ -15,8 +15,8 @@
 ✅ B     Commerce extension + cart machine
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
 ✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
-📋 C     Admin UI                  → edit without seeds  (in progress)
-📋 D     Scale                     → slug, domains, editor
+📋 C     Admin UI                  → edit without seeds  (mostly done)
+📋 D     Scale                     → slug, domains, visual editor
 ```
 
 ---
@@ -84,9 +84,9 @@
 
 ---
 
-## Phase C — Admin UI 📋 (in progress)
+## Phase C — Admin UI 🔄 (mostly done)
 
-Merchant manages content, layouts, auth settings without re-seeding.
+Merchant manages content, layouts, pages, auth settings without re-seeding.
 
 | Task | Status |
 |------|--------|
@@ -94,9 +94,11 @@ Merchant manages content, layouts, auth settings without re-seeding.
 | Auth gate → `/login?redirect=` | ✅ |
 | `AuthSettingsForm` → ZITADEL + Postgres | ✅ |
 | `ContentEntryAdmin` → generic CMS (any content type) | ✅ |
+| `LayoutEntryAdmin` → publish layout specs from UI | ✅ |
+| `PageEntryAdmin` + `PageTreeAdmin` → storefront routing | ✅ |
+| Seed `admin_pages` + page_tree commerce URL | ✅ |
 | Seed `admin_dashboard` + `admin_content` layouts | ✅ |
 | Core demo: `page` content type (no commerce required) | ✅ |
-| Layout editor (publish specs from UI) | ✅ basic JSON editor |
 | GitHub / Apple IdP in auth admin | 📋 |
 | Visual editor `?edit=true` | 📋 Phase D |
 
@@ -113,10 +115,12 @@ Merchant manages content, layouts, auth settings without re-seeding.
 
 | Item | Doc |
 |------|-----|
-| **Page routing (URL → spec)** | [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) |
 | Store slug | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
+| Visual editor `?edit=true` | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) |
 | Tenant MF remotes | [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) |
+
+Page routing (URL → spec) is ✅ — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
 
 ---
 
@@ -128,8 +132,8 @@ Merchant manages content, layouts, auth settings without re-seeding.
 | **B** | Commerce | Extension + cart | ✅ |
 | **1** | Content pipeline | Edge `$state` resolve | ✅ |
 | **A2** | Auth config | Per-org Postgres + ZITADEL | ✅ |
-| **C** | Admin | Shell + auth + content CMS | 🔄 in progress |
-| **D** | Polish | Slug, editor | Multi-use-case |
+| **C** | Admin | Shell + auth + content + pages CMS | 🔄 mostly done |
+| **D** | Polish | Slug, visual editor, domains | Multi-use-case |
 
 ---
 
