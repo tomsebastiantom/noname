@@ -12,7 +12,8 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:demo": "tsx scripts/seed-demo.ts"
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "init:zitadel": "tsx scripts/init-zitadel-oidc.ts"
   },
   "engines": {
     "node": ">=20"
