@@ -4,6 +4,7 @@ import { HtmlRspackPlugin } from "@rspack/core";
 
 const dir = dirname(fileURLToPath(import.meta.url));
 const extensionsDir = join(dir, "../extensions/src");
+const edgeDevPort = process.env.EDGE_DEV_PORT || "8787";
 const isDev = process.env.NODE_ENV !== "production";
 
 export default {
@@ -22,8 +23,8 @@ export default {
     hot: true,
     historyApiFallback: true,
     static: { directory: join(dir, "public") },
-    // Edge worker (wrangler dev :8787) — start with: pnpm --filter @noname/workers dev
-    proxy: [{ context: ["/api"], target: "http://localhost:8787" }],
+    // Edge worker (wrangler dev, default :8787) — must match workers/wrangler.toml [dev].port
+    proxy: [{ context: ["/api"], target: `http://localhost:${edgeDevPort}` }],
   },
   module: {
     rules: [

@@ -176,26 +176,18 @@ async function ensureIdpOnLoginPolicy(orgId: string, idpId: string): Promise<voi
   });
 }
 
-export async function upsertGoogleIdp(
+export async function upsertZitadelIdp(
   orgId: string,
-  input: {
-    clientId: string;
-    clientSecret: string;
-    existingIdpId?: string;
-  },
+  zitadelPath: string,
+  displayName: string,
+  payload: Record<string, unknown>,
+  existingIdpId?: string,
 ): Promise<string> {
-  const payload = {
-    name: "Google",
-    clientId: input.clientId,
-    clientSecret: input.clientSecret,
-    scopes: ["openid", "profile", "email"],
-  };
-
-  if (input.existingIdpId) {
+  if (existingIdpId) {
     try {
-      await managementRequest(orgId, "PUT", `/idps/google/${input.existingIdpId}`, payload);
-      await ensureIdpOnLoginPolicy(orgId, input.existingIdpId);
-      return input.existingIdpId;
+      await managementRequest(orgId, "PUT", `/idps/${zitadelPath}/${existingIdpId}`, payload);
+      await ensureIdpOnLoginPolicy(orgId, existingIdpId);
+      return existingIdpId;
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       if (!message.includes("NotExisting") && !message.includes("404")) {
@@ -204,9 +196,14 @@ export async function upsertGoogleIdp(
     }
   }
 
-  const created = await managementRequest<{ id?: string }>(orgId, "POST", "/idps/google", payload);
+  const created = await managementRequest<{ id?: string }>(
+    orgId,
+    "POST",
+    `/idps/${zitadelPath}`,
+    payload,
+  );
   if (!created.id) {
-    throw new Error("ZITADEL did not return a Google IdP id");
+    throw new Error(`ZITADEL did not return a ${displayName} IdP id`);
   }
 
   await ensureIdpOnLoginPolicy(orgId, created.id);

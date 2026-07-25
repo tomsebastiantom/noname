@@ -20,6 +20,77 @@ const PROVIDER_LABELS: Record<AuthProvider, string> = {
   apple: "Apple",
 };
 
+function ClientSecretProviderSection({
+  provider,
+  enabled,
+  configured,
+  clientId,
+  clientSecret,
+  onToggle,
+  onClientIdChange,
+  onClientSecretChange,
+  idPrefix,
+  secretPlaceholder,
+}: Readonly<{
+  provider: "google" | "github";
+  enabled: boolean;
+  configured: boolean;
+  clientId: string;
+  clientSecret: string;
+  onToggle: () => void;
+  onClientIdChange: (value: string) => void;
+  onClientSecretChange: (value: string) => void;
+  idPrefix: string;
+  secretPlaceholder: string;
+}>) {
+  return (
+    <div className="flex flex-col gap-2 rounded-md border p-3">
+      <label className="flex cursor-pointer items-center gap-2">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={onToggle}
+          className="size-4 rounded border-input"
+        />
+        <span className="text-sm font-medium">{PROVIDER_LABELS[provider]}</span>
+        {configured && (
+          <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            Configured in ZITADEL
+          </span>
+        )}
+      </label>
+      {enabled && (
+        <div className="flex flex-col gap-3 pl-6">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${idPrefix}-client-id`}>
+              {PROVIDER_LABELS[provider]} OAuth Client ID
+            </Label>
+            <Input
+              id={`${idPrefix}-client-id`}
+              value={clientId}
+              onChange={(e) => onClientIdChange(e.target.value)}
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor={`${idPrefix}-client-secret`}>
+              {PROVIDER_LABELS[provider]} OAuth Client Secret
+            </Label>
+            <Input
+              id={`${idPrefix}-client-secret`}
+              type="password"
+              value={clientSecret}
+              onChange={(e) => onClientSecretChange(e.target.value)}
+              placeholder={secretPlaceholder}
+              autoComplete="new-password"
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AuthSettingsForm({
   props,
 }: ComponentCtx<{
@@ -33,8 +104,16 @@ export function AuthSettingsForm({
   const [providers, setProviders] = useState<AuthProvider[]>([]);
   const [allowPassword, setAllowPassword] = useState(true);
   const [googleConfigured, setGoogleConfigured] = useState(false);
+  const [githubConfigured, setGithubConfigured] = useState(false);
+  const [appleConfigured, setAppleConfigured] = useState(false);
   const [googleClientId, setGoogleClientId] = useState("");
   const [googleClientSecret, setGoogleClientSecret] = useState("");
+  const [githubClientId, setGithubClientId] = useState("");
+  const [githubClientSecret, setGithubClientSecret] = useState("");
+  const [appleClientId, setAppleClientId] = useState("");
+  const [appleTeamId, setAppleTeamId] = useState("");
+  const [appleKeyId, setAppleKeyId] = useState("");
+  const [applePrivateKey, setApplePrivateKey] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +129,8 @@ export function AuthSettingsForm({
           setProviders(data.providers);
           setAllowPassword(data.allowPassword);
           setGoogleConfigured(data.googleConfigured);
+          setGithubConfigured(data.githubConfigured);
+          setAppleConfigured(data.appleConfigured);
         }
       } catch (err) {
         if (!cancelled) {
@@ -66,9 +147,9 @@ export function AuthSettingsForm({
     };
   }, []);
 
-  function toggleGoogle() {
+  function toggleProvider(provider: AuthProvider) {
     setProviders((current) =>
-      current.includes("google") ? current.filter((p) => p !== "google") : [...current, "google"],
+      current.includes(provider) ? current.filter((p) => p !== provider) : [...current, provider],
     );
     setSuccess(null);
   }
@@ -84,13 +165,38 @@ export function AuthSettingsForm({
         providers.includes("google") && googleClientId.trim() && googleClientSecret.trim()
           ? { clientId: googleClientId.trim(), clientSecret: googleClientSecret.trim() }
           : undefined;
+      const githubOAuth =
+        providers.includes("github") && githubClientId.trim() && githubClientSecret.trim()
+          ? { clientId: githubClientId.trim(), clientSecret: githubClientSecret.trim() }
+          : undefined;
+      const appleOAuth =
+        providers.includes("apple") &&
+        appleClientId.trim() &&
+        appleTeamId.trim() &&
+        appleKeyId.trim() &&
+        applePrivateKey.trim()
+          ? {
+              clientId: appleClientId.trim(),
+              teamId: appleTeamId.trim(),
+              keyId: appleKeyId.trim(),
+              privateKey: applePrivateKey.trim(),
+            }
+          : undefined;
 
-      await executeAction("saveAuthConfig", { providers, allowPassword, googleOAuth }, () => {});
+      await executeAction(
+        "saveAuthConfig",
+        { providers, allowPassword, googleOAuth, githubOAuth, appleOAuth },
+        () => {},
+      );
 
       const data = await loadAuthSettings();
       setProviders(data.providers);
       setGoogleConfigured(data.googleConfigured);
+      setGithubConfigured(data.githubConfigured);
+      setAppleConfigured(data.appleConfigured);
       setGoogleClientSecret("");
+      setGithubClientSecret("");
+      setApplePrivateKey("");
       setSuccess("Auth settings saved.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -114,66 +220,106 @@ export function AuthSettingsForm({
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium">Social providers</legend>
 
+            <ClientSecretProviderSection
+              provider="google"
+              enabled={providers.includes("google")}
+              configured={googleConfigured}
+              clientId={googleClientId}
+              clientSecret={googleClientSecret}
+              onToggle={() => toggleProvider("google")}
+              onClientIdChange={setGoogleClientId}
+              onClientSecretChange={setGoogleClientSecret}
+              idPrefix="google"
+              secretPlaceholder={
+                googleConfigured
+                  ? "Leave blank to keep existing secret"
+                  : "From Google Cloud Console"
+              }
+            />
+
+            <ClientSecretProviderSection
+              provider="github"
+              enabled={providers.includes("github")}
+              configured={githubConfigured}
+              clientId={githubClientId}
+              clientSecret={githubClientSecret}
+              onToggle={() => toggleProvider("github")}
+              onClientIdChange={setGithubClientId}
+              onClientSecretChange={setGithubClientSecret}
+              idPrefix="github"
+              secretPlaceholder={
+                githubConfigured ? "Leave blank to keep existing secret" : "From GitHub OAuth app"
+              }
+            />
+
             <div className="flex flex-col gap-2 rounded-md border p-3">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
-                  checked={providers.includes("google")}
-                  onChange={toggleGoogle}
+                  checked={providers.includes("apple")}
+                  onChange={() => toggleProvider("apple")}
                   className="size-4 rounded border-input"
                 />
-                <span className="text-sm font-medium">{PROVIDER_LABELS.google}</span>
-                {googleConfigured && (
+                <span className="text-sm font-medium">{PROVIDER_LABELS.apple}</span>
+                {appleConfigured && (
                   <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
                     Configured in ZITADEL
                   </span>
                 )}
               </label>
-              {providers.includes("google") && (
+              {providers.includes("apple") && (
                 <div className="flex flex-col gap-3 pl-6">
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="google-client-id">Google OAuth Client ID</Label>
+                    <Label htmlFor="apple-client-id">Apple Services ID</Label>
                     <Input
-                      id="google-client-id"
-                      value={googleClientId}
-                      onChange={(e) => setGoogleClientId(e.target.value)}
-                      placeholder="From Google Cloud Console"
+                      id="apple-client-id"
+                      value={appleClientId}
+                      onChange={(e) => setAppleClientId(e.target.value)}
+                      placeholder="com.example.web"
                       autoComplete="off"
                     />
                   </div>
                   <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="google-client-secret">Google OAuth Client Secret</Label>
+                    <Label htmlFor="apple-team-id">Apple Team ID</Label>
                     <Input
-                      id="google-client-secret"
-                      type="password"
-                      value={googleClientSecret}
-                      onChange={(e) => setGoogleClientSecret(e.target.value)}
-                      placeholder={
-                        googleConfigured
-                          ? "Leave blank to keep existing secret"
-                          : "From Google Cloud Console"
-                      }
-                      autoComplete="new-password"
+                      id="apple-team-id"
+                      value={appleTeamId}
+                      onChange={(e) => setAppleTeamId(e.target.value)}
+                      autoComplete="off"
                     />
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    Save registers the provider in ZITADEL for this org and stores the IdP reference
-                    in platform settings.
-                  </p>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="apple-key-id">Apple Key ID</Label>
+                    <Input
+                      id="apple-key-id"
+                      value={appleKeyId}
+                      onChange={(e) => setAppleKeyId(e.target.value)}
+                      autoComplete="off"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    <Label htmlFor="apple-private-key">Apple Sign In private key (.p8)</Label>
+                    <textarea
+                      id="apple-private-key"
+                      value={applePrivateKey}
+                      onChange={(e) => setApplePrivateKey(e.target.value)}
+                      placeholder={
+                        appleConfigured
+                          ? "Leave blank to keep existing key"
+                          : "Paste contents of AuthKey_XXXX.p8"
+                      }
+                      rows={4}
+                      className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
-            {(["github", "apple"] as const).map((provider) => (
-              <div
-                key={provider}
-                className="flex items-center gap-2 rounded-md border border-dashed p-3 opacity-60"
-              >
-                <input type="checkbox" disabled className="size-4 rounded border-input" />
-                <span className="text-sm font-medium">{PROVIDER_LABELS[provider]}</span>
-                <span className="text-xs text-muted-foreground">Coming soon</span>
-              </div>
-            ))}
+            <p className="text-xs text-muted-foreground">
+              Save registers providers in ZITADEL for this org and stores IdP references in platform
+              settings. Secrets are never returned to the browser after save.
+            </p>
           </fieldset>
 
           <label className="flex cursor-pointer items-center gap-2">

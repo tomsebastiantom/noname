@@ -6,13 +6,15 @@ import { clearSession } from "../../auth/session";
 
 export const authActions = {
   saveAuthConfig: async (params: unknown) => {
-    const { providers, allowPassword, googleOAuth } = params as {
+    const { providers, allowPassword, googleOAuth, githubOAuth, appleOAuth } = params as {
       providers: AuthProvider[];
       allowPassword: boolean;
       googleOAuth?: { clientId: string; clientSecret: string };
+      githubOAuth?: { clientId: string; clientSecret: string };
+      appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };
     };
 
-    await saveAuthConfig({ providers, allowPassword, googleOAuth });
+    await saveAuthConfig({ providers, allowPassword, googleOAuth, githubOAuth, appleOAuth });
   },
 
   login: async (params: unknown) => {

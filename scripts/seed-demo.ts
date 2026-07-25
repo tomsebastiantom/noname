@@ -4,6 +4,11 @@
  * Requires: pnpm init:zitadel (sets ZITADEL org id as org_id)
  */
 import "dotenv/config";
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const scriptDir = dirname(fileURLToPath(import.meta.url));
 
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 const DEMO_STORE_SLUG = "yogastore";
@@ -188,6 +193,63 @@ const pageContentType = {
   ],
 };
 
+const authProviderContentType = {
+  fields: [
+    { key: "name", type: "text", required: true, isLocalizable: false, label: "Display name" },
+    {
+      key: "provider_key",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Provider key (slug)",
+    },
+    { key: "client_id", type: "text", required: true, isLocalizable: false, label: "Client ID" },
+    {
+      key: "client_secret",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Client secret",
+    },
+    {
+      key: "authorization_endpoint",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Authorization endpoint",
+    },
+    {
+      key: "token_endpoint",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Token endpoint",
+    },
+    {
+      key: "user_endpoint",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "User info endpoint",
+    },
+    {
+      key: "scopes",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Scopes (comma-separated)",
+    },
+    { key: "enabled", type: "boolean", required: false, isLocalizable: false, label: "Enabled" },
+    {
+      key: "icon",
+      type: "media",
+      required: false,
+      isLocalizable: false,
+      label: "Login button icon",
+    },
+  ],
+};
+
 function orgHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
@@ -289,6 +351,8 @@ async function main() {
   await upsertLayout("admin_pages", adminPagesSpec);
 
   await ensurePageContentType();
+  await ensureAuthProviderContentType();
+  await ensureBuiltinProviderIcons();
   const pageContentId = await ensureDemoPageEntry();
   await ensurePageRouting(pageContentId);
 
@@ -309,9 +373,94 @@ async function main() {
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);
   console.log(`  Content: http://yogastore.localhost:5173/admin/content`);
+  console.log(`  IdPs:    http://yogastore.localhost:5173/admin/content/auth_provider`);
   console.log(`  Pages:   http://yogastore.localhost:5173/admin/pages`);
   console.log(`  Layouts: http://yogastore.localhost:5173/admin/layout`);
   console.log(`  Auth:    http://yogastore.localhost:5173/admin/settings/auth`);
+}
+
+async function ensureAuthProviderContentType(): Promise<void> {
+  const iconField = authProviderContentType.fields.find((f) => f.key === "icon");
+  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const existing = types.find((t) => t.name === "auth_provider");
+
+  if (existing) {
+    const { data: typeDef } = await api<{ data: { schema: typeof authProviderContentType } }>(
+      "GET",
+      "/api/documents/content-types/auth_provider",
+    );
+    const hasIcon = typeDef.schema.fields.some((f) => f.key === "icon");
+    if (!hasIcon && iconField) {
+      await api("PUT", "/api/documents/content-types/auth_provider", {
+        schema: { fields: [...typeDef.schema.fields, iconField] },
+      });
+      console.log("auth_provider content type updated with icon field.");
+    } else {
+      console.log("auth_provider content type already exists.");
+    }
+    return;
+  }
+
+  await api("POST", "/api/documents/content-types", {
+    name: "auth_provider",
+    schema: authProviderContentType,
+  });
+  console.log("auth_provider content type created.");
+}
+
+interface UploadedAssetRow {
+  id: string;
+  key: string;
+}
+
+async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
+  const filePath = join(scriptDir, "assets", "idp", fileName);
+  const bytes = await readFile(filePath);
+  const form = new FormData();
+  form.append("file", new Blob([bytes], { type: "image/svg+xml" }), fileName);
+
+  const res = await fetch(`${API_BASE}/api/documents/assets/upload`, {
+    method: "POST",
+    headers: { "x-org-id": DEMO_ORG_ID },
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Upload ${fileName} → ${res.status}: ${text}`);
+  }
+  const body = (await res.json()) as { data: UploadedAssetRow };
+  return body.data;
+}
+
+async function ensureBuiltinProviderIcons(): Promise<void> {
+  const iconFiles = {
+    google: "google.svg",
+    github: "github.svg",
+    apple: "apple.svg",
+  } as const;
+
+  const providerIconAssets: Record<string, { assetId: string }> = {};
+  for (const [provider, fileName] of Object.entries(iconFiles)) {
+    const asset = await uploadIdpIcon(fileName);
+    if (asset.key) providerIconAssets[provider] = { assetId: asset.key };
+  }
+
+  const { data: settings } = await api<{ data: { auth?: Record<string, unknown> } }>(
+    "GET",
+    "/api/documents/tenant_settings/default",
+  );
+
+  await api("PUT", "/api/documents/tenant_settings/default", {
+    auth: {
+      ...(settings.auth ?? {}),
+      providerIconAssets: {
+        ...((settings.auth?.providerIconAssets as Record<string, { assetId: string }> | undefined) ??
+          {}),
+        ...providerIconAssets,
+      },
+    },
+  });
+  console.log("Built-in IdP icon assets linked in tenant auth config.");
 }
 
 async function ensurePageContentType(): Promise<void> {

@@ -17,11 +17,11 @@ describe("enabledProviders", () => {
 });
 
 describe("normalizeAuthConfig", () => {
-  it("filters unknown providers", () => {
+  it("filters unknown providers but keeps custom providers", () => {
     const auth = normalizeAuthConfig({
-      providers: ["google", "unknown"],
-      idpIds: { google: "x" },
+      providers: ["google", "unknown", "custom:okta"],
+      idpIds: { google: "x", "custom:okta": "y" },
     });
-    expect(auth.providers).toEqual(["google"]);
+    expect(auth.providers).toEqual(["google", "custom:okta"]);
   });
 });

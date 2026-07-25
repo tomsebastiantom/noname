@@ -30,6 +30,8 @@ export interface OAuthCallbackInput {
 export interface AuthConfig {
   providers: string[];
   allowPassword: boolean;
+  providerLabels: Record<string, string>;
+  providerIcons: Record<string, string>;
 }
 
 export interface AuthConfigUpdate {
@@ -39,6 +41,16 @@ export interface AuthConfigUpdate {
   googleOAuth?: {
     clientId: string;
     clientSecret: string;
+  };
+  githubOAuth?: {
+    clientId: string;
+    clientSecret: string;
+  };
+  appleOAuth?: {
+    clientId: string;
+    teamId: string;
+    keyId: string;
+    privateKey: string;
   };
 }
 

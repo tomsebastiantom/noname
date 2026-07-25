@@ -25,6 +25,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
+import { MediaFieldInput } from "./MediaFieldInput";
 import type { ComponentCtx } from "./types";
 
 function emptyValuesForSchema(typeSchema: ContentTypeSchema): Record<string, string> {
@@ -56,6 +57,17 @@ function FieldInput({
         />
         <span className="text-sm">{field.label}</span>
       </label>
+    );
+  }
+
+  if (field.type === "media") {
+    return (
+      <MediaFieldInput
+        label={field.label}
+        required={field.required}
+        value={value}
+        onChange={onChange}
+      />
     );
   }
 

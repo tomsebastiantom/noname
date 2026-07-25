@@ -77,7 +77,7 @@ export function splitSavePayload(
   const global: Record<string, unknown> = {};
 
   for (const field of schema.fields) {
-    const raw = values[field.key];
+    const raw = values[field.key] ?? "";
     if (raw === undefined || raw === "") {
       if (field.required) {
         // keep empty string so API validation can surface errors
@@ -91,6 +91,13 @@ export function splitSavePayload(
       parsed = raw === "" ? 0 : Number(raw);
     } else if (field.type === "boolean") {
       parsed = raw === "true";
+    } else if (field.type === "media") {
+      if (raw === "") continue;
+      try {
+        parsed = JSON.parse(raw) as unknown;
+      } catch {
+        parsed = { assetId: raw };
+      }
     }
 
     if (field.isLocalizable) {
@@ -104,7 +111,13 @@ export function splitSavePayload(
 }
 
 export function isEditableField(type: string): boolean {
-  return type === "text" || type === "longText" || type === "number" || type === "boolean";
+  return (
+    type === "text" ||
+    type === "longText" ||
+    type === "number" ||
+    type === "boolean" ||
+    type === "media"
+  );
 }
 
 export async function listContentTypes(): Promise<ContentTypeSummary[]> {
@@ -218,3 +231,66 @@ export async function createContentEntry(input: {
 }
 
 export { DEFAULT_LOCALE as CONTENT_DEFAULT_LOCALE };
+
+export interface AssetSummary {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  url: string | null;
+}
+
+function assetFromRow(row: { id: string; key: string; data?: Record<string, unknown> }): AssetSummary {
+  const data = row.data ?? {};
+  return {
+    // Media refs use document key (assets.get lookup), not row id.
+    id: row.key,
+    fileName: String(data.fileName ?? row.key),
+    mimeType: String(data.mimeType ?? ""),
+    url: assetUrlFromData(data),
+  };
+}
+
+function assetUrlFromData(data: Record<string, unknown>): string | null {
+  const original = data.original as { url?: string } | undefined;
+  if (typeof original?.url === "string" && original.url.trim() !== "") return original.url;
+  const variants = data.variants as Record<string, { url?: string }> | undefined;
+  const variantUrl = variants?.original?.url;
+  return typeof variantUrl === "string" && variantUrl.trim() !== "" ? variantUrl : null;
+}
+
+export async function listAssets(): Promise<AssetSummary[]> {
+  const res = await fetch("/api/documents/assets", { headers: apiHeaders() });
+  if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
+  const body = (await res.json()) as {
+    data?: { id: string; key: string; data?: Record<string, unknown> }[];
+  };
+  return (body.data ?? []).map((row) => assetFromRow({ ...row, data: row.data ?? {} }));
+}
+
+export async function uploadAsset(file: File): Promise<AssetSummary> {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch("/api/documents/assets/upload", {
+    method: "POST",
+    headers: apiHeaders(),
+    body: form,
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Upload failed (${res.status})`);
+  }
+  const body = (await res.json()) as { data?: { id: string; key: string; data?: Record<string, unknown> } };
+  if (!body.data) throw new Error("Upload succeeded but no asset returned");
+  return assetFromRow(body.data);
+}
+
+export async function getAsset(assetId: string): Promise<AssetSummary | null> {
+  const res = await fetch(`/api/documents/assets/${encodeURIComponent(assetId)}`, {
+    headers: apiHeaders(),
+  });
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
+  const body = (await res.json()) as { data?: { id: string; key: string; data?: Record<string, unknown> } };
+  if (!body.data) return null;
+  return assetFromRow(body.data);
+}

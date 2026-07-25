@@ -28,6 +28,10 @@ import { contentValidator } from "./validator";
 const DEFAULT_LOCALES = ["en-US"];
 const DEFAULT_DEFAULT_LOCALE = "en-US";
 
+export interface DocumentsServiceOptions {
+  onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
+}
+
 /** Normalize URL paths for page_tree slug matching ("/about/" → "/about"). */
 export function normalizeRoutePath(url: string): string {
   if (!url || url === "/") return "/";
@@ -38,6 +42,7 @@ export function normalizeRoutePath(url: string): string {
 export function createDocumentsService(
   storage: DocumentStorage,
   validator: typeof contentValidator = contentValidator,
+  options: DocumentsServiceOptions = {},
 ): DocumentService {
   // -------------------------------------------------------------------------
   // Content type schema registry.
@@ -192,6 +197,9 @@ export function createDocumentsService(
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, "draft");
       entity.publish();
       flushEvents(entity);
+      if (options.onContentPublished) {
+        await options.onContentPublished(orgId, type, id);
+      }
       return published;
     },
 

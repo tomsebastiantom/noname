@@ -6,7 +6,11 @@ const LINKS = [
     label: "Pages",
     description: "Storefront URL tree and routing page documents",
   },
-  { href: "/admin/content", label: "Content", description: "Edit CMS entries by content type" },
+  {
+    href: "/admin/content/auth_provider",
+    label: "Identity providers",
+    description: "Custom OAuth/OIDC providers (schema-driven CMS entries)",
+  },
   {
     href: "/admin/layout",
     label: "Layouts",

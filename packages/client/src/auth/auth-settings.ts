@@ -9,6 +9,15 @@ export interface AuthSettingsState {
   providers: AuthProvider[];
   allowPassword: boolean;
   googleConfigured: boolean;
+  githubConfigured: boolean;
+  appleConfigured: boolean;
+}
+
+function idpConfigured(
+  idpIds: Record<string, string> | undefined,
+  provider: AuthProvider,
+): boolean {
+  return Boolean(idpIds?.[provider]?.trim());
 }
 
 export async function loadAuthSettings(): Promise<AuthSettingsState> {
@@ -32,13 +41,13 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
     ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
   );
 
-  let googleConfigured = providers.includes("google");
+  let idpIds: Record<string, string> = {};
 
   if (settingsRes.ok) {
     const settingsBody = (await settingsRes.json()) as {
       data?: { auth?: { idpIds?: Record<string, string>; providers?: string[] } };
     };
-    googleConfigured = Boolean(settingsBody.data?.auth?.idpIds?.google?.trim());
+    idpIds = settingsBody.data?.auth?.idpIds ?? {};
     if (providers.length === 0 && settingsBody.data?.auth?.providers) {
       providers = settingsBody.data.auth.providers.filter((p): p is AuthProvider =>
         ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
@@ -49,7 +58,9 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
   return {
     providers,
     allowPassword: configBody.data?.allowPassword !== false,
-    googleConfigured,
+    googleConfigured: idpConfigured(idpIds, "google"),
+    githubConfigured: idpConfigured(idpIds, "github"),
+    appleConfigured: idpConfigured(idpIds, "apple"),
   };
 }
 
@@ -57,6 +68,8 @@ export async function saveAuthConfig(input: {
   providers: AuthProvider[];
   allowPassword: boolean;
   googleOAuth?: { clientId: string; clientSecret: string };
+  githubOAuth?: { clientId: string; clientSecret: string };
+  appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };
 }): Promise<AuthProvider[]> {
   const storeSlug = requireStoreSlug();
 

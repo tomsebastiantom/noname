@@ -316,6 +316,36 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
       providers,
       idpIds,
       allowPassword: authRaw.allowPassword !== false,
+      providerLabels:
+        authRaw.providerLabels && typeof authRaw.providerLabels === "object"
+          ? Object.fromEntries(
+              Object.entries(authRaw.providerLabels as Record<string, unknown>).filter(
+                (entry): entry is [string, string] =>
+                  typeof entry[0] === "string" &&
+                  typeof entry[1] === "string" &&
+                  entry[1].trim() !== "",
+              ),
+            )
+          : {},
+      providerIconAssets:
+        authRaw.providerIconAssets && typeof authRaw.providerIconAssets === "object"
+          ? Object.fromEntries(
+              Object.entries(authRaw.providerIconAssets as Record<string, unknown>)
+                .map(([key, value]) => {
+                  if (
+                    !value ||
+                    typeof value !== "object" ||
+                    Array.isArray(value) ||
+                    typeof (value as { assetId?: unknown }).assetId !== "string"
+                  ) {
+                    return null;
+                  }
+                  const assetId = (value as { assetId: string }).assetId.trim();
+                  return assetId ? ([key, { assetId }] as const) : null;
+                })
+                .filter((entry): entry is [string, { assetId: string }] => entry !== null),
+            )
+          : {},
     },
   };
 }

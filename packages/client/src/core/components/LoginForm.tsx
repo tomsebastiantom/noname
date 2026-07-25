@@ -16,7 +16,7 @@ import { executeAction } from "../../platform/registry";
 import { SocialLoginButtons } from "./SocialLoginButtons";
 import type { ComponentCtx } from "./types";
 
-type AuthProvider = "google" | "github" | "apple";
+type AuthProvider = "google" | "github" | "apple" | (string & {});
 
 function safeRedirect(path: string | null | undefined): string | null {
   if (!path?.startsWith("/") || path.startsWith("//")) return null;
@@ -39,7 +39,9 @@ export function LoginForm({
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [enabledProviders, setEnabledProviders] = useState<AuthProvider[]>([]);
+  const [enabledProviders, setEnabledProviders] = useState<string[]>([]);
+  const [providerLabels, setProviderLabels] = useState<Record<string, string>>({});
+  const [providerIcons, setProviderIcons] = useState<Record<string, string>>({});
   const storeSlug = storeSlugFromHostname(window.location.hostname);
 
   const redirectFromQuery = safeRedirect(
@@ -50,17 +52,35 @@ export function LoginForm({
   useEffect(() => {
     if (!storeSlug) return;
     void fetch(`/api/tenants/${storeSlug}/auth/config`)
-      .then((res) => (res.ok ? (res.json() as Promise<{ data?: { providers?: string[] } }>) : null))
+      .then((res) =>
+        res.ok
+          ? (res.json() as Promise<{
+              data?: {
+                providers?: string[];
+                providerLabels?: Record<string, string>;
+                providerIcons?: Record<string, string>;
+              };
+            }>)
+          : null,
+      )
       .then((body) => {
-        const serverProviders = (body?.data?.providers ?? []) as AuthProvider[];
-        const fromSpec = props.providers ?? [];
+        const serverProviders = body?.data?.providers ?? [];
+        const fromSpec = (props.providers ?? []) as string[];
         const merged =
           fromSpec.length > 0
-            ? fromSpec.filter((p) => serverProviders.includes(p))
+            ? serverProviders.filter(
+                (p) => fromSpec.includes(p as AuthProvider) || p.startsWith("custom:"),
+              )
             : serverProviders;
         setEnabledProviders(merged);
+        setProviderLabels(body?.data?.providerLabels ?? {});
+        setProviderIcons(body?.data?.providerIcons ?? {});
       })
-      .catch(() => setEnabledProviders([]));
+      .catch(() => {
+        setEnabledProviders([]);
+        setProviderLabels({});
+        setProviderIcons({});
+      });
   }, [storeSlug, props.providers]);
 
   const showSocial = enabledProviders.length > 0;
@@ -83,7 +103,9 @@ export function LoginForm({
   if (!storeSlug) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>Use {"{slug}"}.localhost:5173/login — e.g. yogastore.localhost:5173/login</AlertDescription>
+        <AlertDescription>
+          Use {"{slug}"}.localhost:5173/login — e.g. yogastore.localhost:5173/login
+        </AlertDescription>
       </Alert>
     );
   }
@@ -101,7 +123,12 @@ export function LoginForm({
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {showSocial && (
-          <SocialLoginButtons providers={enabledProviders} redirectPath={redirectPath} />
+          <SocialLoginButtons
+            providers={enabledProviders}
+            redirectPath={redirectPath}
+            providerLabels={providerLabels}
+            providerIcons={providerIcons}
+          />
         )}
 
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">

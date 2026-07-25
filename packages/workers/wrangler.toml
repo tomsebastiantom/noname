@@ -3,6 +3,10 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Pin dev port so rspack proxy and docs stay in sync. If bind fails, kill stale workerd on 8787.
+[dev]
+port = 8787
+
 [vars]
 API_ORIGIN = "http://localhost:3000"
 ZITADEL_ISSUER = "http://localhost:8080"

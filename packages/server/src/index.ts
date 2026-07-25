@@ -9,8 +9,10 @@ import { createAgentDomain } from "./domains/agent";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createAuthDomain } from "./domains/auth";
+import { createAuthProviderPublishHandler } from "./domains/auth/sync-auth-provider";
 import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
+import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
 import { createMachineDomain } from "./domains/machines";
@@ -30,8 +32,27 @@ if (!databaseUrl) {
   );
 }
 const db = createDatabase(databaseUrl);
+const storage = createPostgresDocumentStorage(db);
 
-const docs = createDocumentsDomain({ db });
+let syncAuthProviderPublish: ((orgId: string, type: string, id: string) => Promise<void>) | null =
+  null;
+
+const docs = createDocumentsDomain({
+  db,
+  storage,
+  onContentPublished: async (orgId, type, id) => {
+    if (syncAuthProviderPublish) {
+      await syncAuthProviderPublish(orgId, type, id);
+    }
+  },
+});
+
+syncAuthProviderPublish = createAuthProviderPublishHandler({
+  storage,
+  tenantSettings: docs.service.tenantSettings,
+  assets: docs.service.assets,
+});
+
 app.route("/api/documents", docs.routes);
 
 const ctx = createContextDomain({ db });
@@ -100,7 +121,10 @@ app.route("/api/edge", edge.routes);
 const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
 app.route("/api/tenants", tenant.routes);
 
-const auth = createAuthDomain({ tenantSettings: docs.service.tenantSettings });
+const auth = createAuthDomain({
+  tenantSettings: docs.service.tenantSettings,
+  assets: docs.service.assets,
+});
 app.route("/api/tenants", auth.routes);
 
 const port = Number(process.env.PORT) || 3000;

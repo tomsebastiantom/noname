@@ -11,11 +11,14 @@ export interface DocumentsDomainDeps {
   storage?: DocumentStorage;
   validator?: ContentValidator;
   assetBinary?: AssetBinaryStorage;
+  onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
 }
 
 export function createDocumentsDomain(deps: DocumentsDomainDeps) {
   const storage = deps.storage ?? createPostgresDocumentStorage(deps.db);
-  const service = createDocumentsService(storage, deps.validator ?? contentValidator);
+  const service = createDocumentsService(storage, deps.validator ?? contentValidator, {
+    onContentPublished: deps.onContentPublished,
+  });
   const routes = createDocumentsRoutes(service, deps.assetBinary);
   return { storage, service, routes };
 }

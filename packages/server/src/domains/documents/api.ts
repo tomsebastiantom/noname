@@ -65,6 +65,8 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
         providers?: string[];
         idpIds?: Record<string, string>;
         allowPassword?: boolean;
+        providerLabels?: Record<string, string>;
+        providerIconAssets?: Record<string, { assetId: string }>;
       };
     }>();
     const current = await tenantSettings.get(orgId);
@@ -79,6 +81,8 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
             providers: body.auth.providers ?? current.auth.providers,
             idpIds: { ...current.auth.idpIds, ...(body.auth.idpIds ?? {}) },
             allowPassword: body.auth.allowPassword ?? current.auth.allowPassword,
+            providerLabels: body.auth.providerLabels ?? current.auth.providerLabels,
+            providerIconAssets: body.auth.providerIconAssets ?? current.auth.providerIconAssets,
           }
         : current.auth,
     });

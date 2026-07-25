@@ -26,7 +26,7 @@ const oauthCallbackBodySchema = z.object({
   redirectUri: z.url(),
 });
 
-const SUPPORTED_PROVIDERS = new Set(["google", "github", "apple"]);
+import { isSupportedLoginProvider } from "./auth-provider-content";
 
 const authConfigUpdateSchema = z.object({
   providers: z.array(z.enum(["google", "github", "apple"])).optional(),
@@ -36,6 +36,20 @@ const authConfigUpdateSchema = z.object({
     .object({
       clientId: z.string().min(1),
       clientSecret: z.string().min(1),
+    })
+    .optional(),
+  githubOAuth: z
+    .object({
+      clientId: z.string().min(1),
+      clientSecret: z.string().min(1),
+    })
+    .optional(),
+  appleOAuth: z
+    .object({
+      clientId: z.string().min(1),
+      teamId: z.string().min(1),
+      keyId: z.string().min(1),
+      privateKey: z.string().min(1),
     })
     .optional(),
 });
@@ -75,7 +89,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const provider = c.req.param("provider");
-    if (!SUPPORTED_PROVIDERS.has(provider)) {
+    if (!isSupportedLoginProvider(provider)) {
       return c.json({ error: "Unsupported identity provider" }, 400);
     }
 

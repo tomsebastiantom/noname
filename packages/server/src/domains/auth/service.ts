@@ -1,21 +1,30 @@
-import type { TenantSettingsService } from "../documents/ports";
+import type { AssetDocumentService, TenantSettingsService } from "../documents/ports";
+import { resolveProviderIconUrls } from "./asset-url";
 import {
   enabledProviders,
   idpIdForProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
 } from "./auth-config";
+import {
+  IDP_PROVIDER_IDS,
+  IDP_PROVIDER_REGISTRY,
+  publicProviderLabels,
+  resolveIdpUpdate,
+} from "./idp-registry";
 import type { AuthConfig, AuthService } from "./ports";
-import { resolveGoogleIdpId } from "./resolve-google-idp";
 import {
   buildOAuthAuthorizeUrl,
   exchangeAuthorizationCode,
   loginWithCredentials,
 } from "./zitadel-client";
-import { upsertGoogleIdp } from "./zitadel-management";
+import { upsertZitadelIdp } from "./zitadel-management";
 
-export function createAuthService(deps: { tenantSettings: TenantSettingsService }): AuthService {
-  const { tenantSettings } = deps;
+export function createAuthService(deps: {
+  tenantSettings: TenantSettingsService;
+  assets: AssetDocumentService;
+}): AuthService {
+  const { tenantSettings, assets } = deps;
 
   async function loadAuth(orgId: string) {
     const settings = await tenantSettings.get(orgId);
@@ -24,9 +33,17 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
 
   async function publicConfig(orgId: string): Promise<AuthConfig> {
     const auth = await loadAuth(orgId);
+    const providers = enabledProviders(auth);
     return {
-      providers: enabledProviders(auth),
+      providers,
       allowPassword: auth.allowPassword,
+      providerLabels: publicProviderLabels(providers, auth.providerLabels ?? {}),
+      providerIcons: await resolveProviderIconUrls(
+        orgId,
+        providers,
+        auth.providerIconAssets ?? {},
+        assets,
+      ),
     };
   }
 
@@ -38,14 +55,28 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
     async updateConfig(orgId, patch) {
       const settings = await tenantSettings.get(orgId);
       const current = normalizeAuthConfig(settings.auth);
-      const google = resolveGoogleIdpId(current, patch);
-
-      if (google.required && !google.googleOAuth && !google.existingIdpId) {
-        throw new Error("Google OAuth client ID and secret are required to enable Google sign-in");
-      }
-
       let idpIds = patch.idpIds ? { ...current.idpIds, ...patch.idpIds } : { ...current.idpIds };
       const providers = patch.providers ?? current.providers;
+
+      for (const providerId of IDP_PROVIDER_IDS) {
+        const definition = IDP_PROVIDER_REGISTRY[providerId];
+        const resolved = resolveIdpUpdate(providerId, current, patch);
+
+        if (resolved.required && !resolved.credentials && !resolved.existingIdpId) {
+          throw new Error(definition.missingCredentialsError);
+        }
+
+        if (resolved.credentials) {
+          const id = await upsertZitadelIdp(
+            orgId,
+            definition.zitadelPath,
+            definition.label,
+            definition.buildPayload(resolved.credentials),
+            resolved.existingIdpId,
+          );
+          idpIds = { ...idpIds, [providerId]: id };
+        }
+      }
 
       for (const provider of Object.keys(idpIds)) {
         if (!providers.includes(provider)) {
@@ -53,19 +84,19 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
         }
       }
 
-      if (google.googleOAuth) {
-        const id = await upsertGoogleIdp(orgId, {
-          clientId: google.googleOAuth.clientId,
-          clientSecret: google.googleOAuth.clientSecret,
-          existingIdpId: google.existingIdpId,
-        });
-        idpIds = { ...idpIds, google: id };
-      }
-
       const next = mergeAuthConfig(current, {
         providers,
         allowPassword: patch.allowPassword,
         idpIds,
+        providerLabels: {
+          ...(current.providerLabels ?? {}),
+          ...Object.fromEntries(
+            providers
+              .filter((id): id is keyof typeof IDP_PROVIDER_REGISTRY => id in IDP_PROVIDER_REGISTRY)
+              .map((id) => [id, IDP_PROVIDER_REGISTRY[id].label]),
+          ),
+        },
+        providerIconAssets: { ...(current.providerIconAssets ?? {}) },
       });
 
       await tenantSettings.upsert(orgId, {
