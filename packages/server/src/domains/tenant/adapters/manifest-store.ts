@@ -10,10 +10,10 @@ export interface BuildStatus {
 }
 
 export interface ManifestStore {
-  get(tenantId: string): Promise<CatalogManifest | null>;
-  set(tenantId: string, manifest: CatalogManifest): Promise<void>;
-  addComponent(tenantId: string, entry: CatalogManifestRemote): Promise<void>;
-  removeComponent(tenantId: string, name: string): Promise<void>;
+  get(orgId: string): Promise<CatalogManifest | null>;
+  set(orgId: string, manifest: CatalogManifest): Promise<void>;
+  addComponent(orgId: string, entry: CatalogManifestRemote): Promise<void>;
+  removeComponent(orgId: string, name: string): Promise<void>;
   setBuildStatus(
     buildId: string,
     status: BuildStatus["status"],
@@ -27,29 +27,29 @@ export function createInMemoryManifestStore(): ManifestStore {
   const builds = new Map<string, BuildStatus>();
 
   return {
-    async get(tenantId) {
-      return manifests.get(tenantId) ?? null;
+    async get(orgId) {
+      return manifests.get(orgId) ?? null;
     },
-    async set(tenantId, manifest) {
-      manifests.set(tenantId, manifest);
+    async set(orgId, manifest) {
+      manifests.set(orgId, manifest);
     },
-    async addComponent(tenantId, entry) {
-      const manifest = manifests.get(tenantId);
+    async addComponent(orgId, entry) {
+      const manifest = manifests.get(orgId);
       if (!manifest) {
-        manifests.set(tenantId, {
+        manifests.set(orgId, {
           platform: { version: "1", hash: "init" },
           private: entry,
         });
       } else {
         manifest.private = entry;
-        manifests.set(tenantId, manifest);
+        manifests.set(orgId, manifest);
       }
     },
-    async removeComponent(tenantId, _name) {
-      const manifest = manifests.get(tenantId);
+    async removeComponent(orgId, _name) {
+      const manifest = manifests.get(orgId);
       if (manifest) {
         manifest.private = undefined;
-        manifests.set(tenantId, manifest);
+        manifests.set(orgId, manifest);
       }
     },
     async setBuildStatus(buildId, status, result) {

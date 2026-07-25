@@ -7,7 +7,7 @@ type ChangeCallback = Array<{ key: string; cb: Callback }>;
 
 export function createFlagsModule(
   endpoint: string,
-  tenantId: string,
+  orgId: string,
   getContext: () => {
     contextHash: string;
     schemaId: string | null;
@@ -28,7 +28,7 @@ export function createFlagsModule(
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           context: {
-            tenantId,
+            orgId,
             contextHash: ctx.contextHash,
             schemaId: ctx.schemaId,
             variantId: ctx.variantId,
@@ -71,7 +71,7 @@ export function createFlagsModule(
     if (typeof EventSource === "undefined") return;
 
     try {
-      es = new EventSource(`/api/flags/stream?tenantId=${encodeURIComponent(tenantId)}`);
+      es = new EventSource(`/api/flags/stream?orgId=${encodeURIComponent(orgId)}`);
 
       es.onmessage = (event) => {
         try {

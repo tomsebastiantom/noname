@@ -7,9 +7,9 @@ import { getAgentQueue } from "./queue";
 
 export function createAgentService(storage: AgentTaskStorage): AgentService {
   return {
-    async create(tenantId, input) {
-      const entity = AgentTask.create(tenantId, input.type, input.prompt, input.input || {});
-      const saved = await storage.create(tenantId, entity.toDTO());
+    async create(orgId, input) {
+      const entity = AgentTask.create(orgId, input.type, input.prompt, input.input || {});
+      const saved = await storage.create(orgId, entity.toDTO());
       flushEvents(entity);
 
       const carrier: Record<string, string> = {};
@@ -20,7 +20,7 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
         entity.type,
         {
           taskId: entity.id,
-          tenantId,
+          orgId,
           type: entity.type,
           prompt: entity.prompt,
           input: entity.input,
@@ -36,18 +36,18 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
       return saved;
     },
 
-    async list(tenantId, filters) {
-      return storage.list(tenantId, filters);
+    async list(orgId, filters) {
+      return storage.list(orgId, filters);
     },
 
-    async get(tenantId, id) {
-      const task = await storage.findById(tenantId, id);
+    async get(orgId, id) {
+      const task = await storage.findById(orgId, id);
       if (!task) throw new NotFoundError("AgentTask", id);
       return task;
     },
 
-    async approve(tenantId, id) {
-      const task = await storage.findById(tenantId, id);
+    async approve(orgId, id) {
+      const task = await storage.findById(orgId, id);
       if (!task) throw new NotFoundError("AgentTask", id);
 
       if (task.status !== "completed") {
@@ -59,13 +59,13 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
 
       const entity = AgentTask.fromDTO(task);
       entity.approve();
-      const saved = await storage.update(tenantId, id, { status: "approved" });
+      const saved = await storage.update(orgId, id, { status: "approved" });
       flushEvents(entity);
       return saved;
     },
 
-    async reject(tenantId, id) {
-      const task = await storage.findById(tenantId, id);
+    async reject(orgId, id) {
+      const task = await storage.findById(orgId, id);
       if (!task) throw new NotFoundError("AgentTask", id);
 
       if (task.status !== "completed") {
@@ -77,7 +77,7 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
 
       const entity = AgentTask.fromDTO(task);
       entity.reject();
-      const saved = await storage.update(tenantId, id, { status: "rejected" });
+      const saved = await storage.update(orgId, id, { status: "rejected" });
       flushEvents(entity);
       return saved;
     },

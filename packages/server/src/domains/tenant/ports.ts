@@ -21,10 +21,10 @@ export interface BuildStatus {
 }
 
 export interface TenantCatalogService {
-  getManifest(tenantId: string): Promise<CatalogManifest>;
+  getManifest(orgId: string): Promise<CatalogManifest>;
   /** Enqueue a catalog build job. Returns the build ID for status polling. */
-  publishComponent(tenantId: string, name: string, source: string): Promise<{ buildId: string }>;
+  publishComponent(orgId: string, name: string, source: string): Promise<{ buildId: string }>;
   /** Check the status of a catalog build. */
-  getBuildStatus(tenantId: string, buildId: string): Promise<BuildStatus | null>;
-  removeComponent(tenantId: string, name: string): Promise<void>;
+  getBuildStatus(orgId: string, buildId: string): Promise<BuildStatus | null>;
+  removeComponent(orgId: string, name: string): Promise<void>;
 }

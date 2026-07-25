@@ -1,5 +1,5 @@
 export interface EdgeContext {
-  tenantId: string;
+  orgId: string;
   userId: string;
   role: string;
   segment?: string;

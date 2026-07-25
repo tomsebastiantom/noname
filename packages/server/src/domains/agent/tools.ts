@@ -6,7 +6,7 @@ export interface AgentToolResult {
 
 export interface AgentExecutor {
   execute(
-    tenantId: string,
+    orgId: string,
     type: string,
     prompt: string,
     input: Record<string, unknown>,

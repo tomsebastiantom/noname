@@ -5,12 +5,12 @@ import { agentTasks } from "../schema";
 
 export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
   return {
-    async create(_tenantId, input) {
+    async create(_orgId, input) {
       const [row] = await db
         .insert(agentTasks)
         .values({
           id: input.id,
-          tenantId: input.tenantId,
+          orgId: input.orgId,
           type: input.type,
           status: input.status,
           prompt: input.prompt,
@@ -27,16 +27,16 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
       return mapTask(row);
     },
 
-    async findById(tenantId, id) {
+    async findById(orgId, id) {
       const [row] = await db
         .select()
         .from(agentTasks)
-        .where(and(eq(agentTasks.tenantId, tenantId), eq(agentTasks.id, id)));
+        .where(and(eq(agentTasks.orgId, orgId), eq(agentTasks.id, id)));
       return row ? mapTask(row) : null;
     },
 
-    async list(tenantId, filters = {}) {
-      const conditions = [eq(agentTasks.tenantId, tenantId)];
+    async list(orgId, filters = {}) {
+      const conditions = [eq(agentTasks.orgId, orgId)];
       if (filters.status) conditions.push(eq(agentTasks.status, filters.status));
       if (filters.type) conditions.push(eq(agentTasks.type, filters.type));
       const rows = await db
@@ -46,7 +46,7 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
       return rows.map(mapTask);
     },
 
-    async update(tenantId, id, patch) {
+    async update(orgId, id, patch) {
       const [row] = await db
         .update(agentTasks)
         .set({
@@ -57,7 +57,7 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
           tokens: patch.tokens,
           updated_at: new Date(),
         })
-        .where(and(eq(agentTasks.tenantId, tenantId), eq(agentTasks.id, id)))
+        .where(and(eq(agentTasks.orgId, orgId), eq(agentTasks.id, id)))
         .returning();
       if (!row) throw new Error("Failed to update agent task");
       return mapTask(row);
@@ -68,7 +68,7 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
 function mapTask(row: typeof agentTasks.$inferSelect): AgentTaskDTO {
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     type: row.type,
     status: row.status,
     prompt: row.prompt,

@@ -5,11 +5,11 @@ import { flagEvaluations, flags } from "../schema";
 
 export function createPostgresFlagStorage(db: Database): FlagStorage {
   return {
-    async create(tenantId, input) {
+    async create(orgId, input) {
       const [row] = await db
         .insert(flags)
         .values({
-          tenantId,
+          orgId,
           key: input.key,
           type: input.type,
           description: input.description || "",
@@ -23,24 +23,24 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
       return mapFlag(row);
     },
 
-    async findById(tenantId, id) {
+    async findById(orgId, id) {
       const [row] = await db
         .select()
         .from(flags)
-        .where(and(eq(flags.tenantId, tenantId), eq(flags.id, id)));
+        .where(and(eq(flags.orgId, orgId), eq(flags.id, id)));
       return row ? mapFlag(row) : null;
     },
 
-    async findByKey(tenantId, key) {
+    async findByKey(orgId, key) {
       const [row] = await db
         .select()
         .from(flags)
-        .where(and(eq(flags.tenantId, tenantId), eq(flags.key, key)));
+        .where(and(eq(flags.orgId, orgId), eq(flags.key, key)));
       return row ? mapFlag(row) : null;
     },
 
-    async list(tenantId, filters = {}) {
-      const conditions = [eq(flags.tenantId, tenantId)];
+    async list(orgId, filters = {}) {
+      const conditions = [eq(flags.orgId, orgId)];
       if (filters.status) conditions.push(eq(flags.status, filters.status));
       if (filters.type) conditions.push(eq(flags.type, filters.type));
       if (filters.schemaId !== undefined) {
@@ -57,7 +57,7 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
       return rows.map(mapFlag);
     },
 
-    async update(tenantId, id, input) {
+    async update(orgId, id, input) {
       const [row] = await db
         .update(flags)
         .set({
@@ -69,20 +69,20 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
           variantId: input.variantId,
           updated_at: new Date(),
         })
-        .where(and(eq(flags.tenantId, tenantId), eq(flags.id, id)))
+        .where(and(eq(flags.orgId, orgId), eq(flags.id, id)))
         .returning();
       if (!row) throw new Error("Failed to update flag");
       return mapFlag(row);
     },
 
-    async archive(tenantId, id) {
-      return this.update(tenantId, id, { status: "archived" });
+    async archive(orgId, id) {
+      return this.update(orgId, id, { status: "archived" });
     },
 
     async recordEvaluation(record) {
       await db.insert(flagEvaluations).values({
         flagId: record.flagId,
-        tenantId: record.tenantId,
+        orgId: record.orgId,
         contextHash: record.contextHash,
         value: record.value as Record<string, unknown>,
         matchedRule: record.matchedRule,
@@ -111,7 +111,7 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
 function mapFlag(row: typeof flags.$inferSelect): FlagDTO {
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     key: row.key,
     type: row.type,
     description: row.description,
@@ -129,7 +129,7 @@ function mapEvaluation(row: typeof flagEvaluations.$inferSelect): EvaluationReco
   return {
     id: row.id,
     flagId: row.flagId,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     contextHash: row.contextHash,
     value: row.value,
     matchedRule: row.matchedRule as number | null,

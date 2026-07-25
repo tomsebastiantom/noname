@@ -14,7 +14,7 @@ export type AgentTaskStatus =
 
 export interface AgentTaskDTO {
   id: string;
-  tenantId: string;
+  orgId: string;
   type: AgentTaskType;
   status: AgentTaskStatus;
   prompt: string;
@@ -34,10 +34,10 @@ export interface CreateAgentTaskInput {
 }
 
 export interface AgentTaskStorage {
-  create(tenantId: string, input: AgentTaskDTO): Promise<AgentTaskDTO>;
-  findById(tenantId: string, id: string): Promise<AgentTaskDTO | null>;
-  list(tenantId: string, filters?: AgentTaskFilters): Promise<AgentTaskDTO[]>;
-  update(tenantId: string, id: string, patch: Partial<AgentTaskDTO>): Promise<AgentTaskDTO>;
+  create(orgId: string, input: AgentTaskDTO): Promise<AgentTaskDTO>;
+  findById(orgId: string, id: string): Promise<AgentTaskDTO | null>;
+  list(orgId: string, filters?: AgentTaskFilters): Promise<AgentTaskDTO[]>;
+  update(orgId: string, id: string, patch: Partial<AgentTaskDTO>): Promise<AgentTaskDTO>;
 }
 
 export interface AgentTaskFilters {
@@ -46,9 +46,9 @@ export interface AgentTaskFilters {
 }
 
 export interface AgentService {
-  create(tenantId: string, input: CreateAgentTaskInput): Promise<AgentTaskDTO>;
-  list(tenantId: string, filters?: AgentTaskFilters): Promise<AgentTaskDTO[]>;
-  get(tenantId: string, id: string): Promise<AgentTaskDTO | null>;
-  approve(tenantId: string, id: string): Promise<AgentTaskDTO>;
-  reject(tenantId: string, id: string): Promise<AgentTaskDTO>;
+  create(orgId: string, input: CreateAgentTaskInput): Promise<AgentTaskDTO>;
+  list(orgId: string, filters?: AgentTaskFilters): Promise<AgentTaskDTO[]>;
+  get(orgId: string, id: string): Promise<AgentTaskDTO | null>;
+  approve(orgId: string, id: string): Promise<AgentTaskDTO>;
+  reject(orgId: string, id: string): Promise<AgentTaskDTO>;
 }

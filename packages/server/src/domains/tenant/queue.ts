@@ -3,7 +3,7 @@ import { getRedisConnection } from "../../shared/redis";
 
 export interface CatalogBuildJobData {
   buildId: string;
-  tenantId: string;
+  orgId: string;
   name: string;
   source: string;
   traceparent?: string;

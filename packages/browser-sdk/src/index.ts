@@ -72,7 +72,7 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const flags = createFlagsModule(
     options.flags?.endpoint ?? DEFAULT_FLAGS_ENDPOINT,
-    options.tenantId,
+    options.orgId,
     () => ({
       contextHash: contextHash ?? "",
       schemaId,

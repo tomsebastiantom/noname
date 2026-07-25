@@ -23,7 +23,7 @@ export function createApiRoutes() {
     if (!c.req.query("segment")) {
       // Use cached or fallback segment
       const _personalized = await personalizeSchema(
-        ctx.tenantId,
+        ctx.orgId,
         c.req.raw,
         c.env,
         ctx.userId,
@@ -32,7 +32,7 @@ export function createApiRoutes() {
       // Personalization returns segment hash — extract or use default
     }
 
-    const schema = await fetchSchema(ctx.tenantId, segment, c.env, ctx.userId, ctx.role);
+    const schema = await fetchSchema(ctx.orgId, segment, c.env, ctx.userId, ctx.role);
     if (!schema) {
       return c.json({ error: "Schema not found" }, 404);
     }

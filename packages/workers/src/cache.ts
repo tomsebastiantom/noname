@@ -18,8 +18,8 @@ export async function setCache(
   await env.KV.put(key, JSON.stringify(value), { expirationTtl: ttl });
 }
 
-export function cacheKey(tenantId: string, segment: string, path: string): string {
-  return `${tenantId}:${segment}:${path}`;
+export function cacheKey(orgId: string, segment: string, path: string): string {
+  return `${orgId}:${segment}:${path}`;
 }
 
 export function staticCacheKey(path: string): string {

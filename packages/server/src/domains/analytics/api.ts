@@ -1,21 +1,21 @@
 import { Hono } from "hono";
 import { created, ok } from "../../shared/respond";
-import { getTenantId } from "../../shared/tenant";
+import { getOrgId } from "../../shared/org";
 import type { AnalyticsService } from "./ports";
 
 export function createAnalyticsRoutes(service: AnalyticsService) {
   const routes = new Hono();
 
   routes.post("/track", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const body = await c.req.json();
-    const result = await service.track(tenantId, body);
+    const result = await service.track(orgId, body);
     return created(c, result);
   });
 
   routes.get("/events", async (c) => {
     const filters = {
-      tenantId: c.req.query("tenantId") || undefined,
+      orgId: c.req.query("orgId") || undefined,
       eventType: c.req.query("eventType") || undefined,
       eventSource: c.req.query("eventSource") as any,
       from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
@@ -31,9 +31,9 @@ export function createAnalyticsRoutes(service: AnalyticsService) {
   });
 
   routes.get("/aggregations", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const filters = {
-      tenantId,
+      orgId,
       groupBy: c.req.query("groupBy") as any,
       from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
       to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
@@ -44,9 +44,9 @@ export function createAnalyticsRoutes(service: AnalyticsService) {
   });
 
   routes.get("/conversions", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const filters = {
-      tenantId,
+      orgId,
       schemaId: c.req.query("schemaId") || undefined,
       from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
       to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
@@ -56,10 +56,10 @@ export function createAnalyticsRoutes(service: AnalyticsService) {
   });
 
   routes.post("/segment-events", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const body = await c.req.json();
     const filters = {
-      tenantId,
+      orgId,
       signalCategories: body.signalCategories || undefined,
       from: body.from ? new Date(body.from) : undefined,
       to: body.to ? new Date(body.to) : undefined,

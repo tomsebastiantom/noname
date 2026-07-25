@@ -262,8 +262,10 @@ async function main(): Promise<void> {
 
   upsertEnvVar(ENV_FILE, "ZITADEL_ISSUER", ZITADEL_ISSUER);
   upsertEnvVar(ENV_FILE, "ZITADEL_CLIENT_ID", clientId);
+  upsertEnvVar(ENV_FILE, "ZITADEL_DEMO_ORG_ID", organizationId);
 
   console.log("ZITADEL OIDC init complete.");
+  console.log(`  Org ID:    ${organizationId}  (ZITADEL_DEMO_ORG_ID in .env)`);
   console.log(`  Project:   ${PROJECT_NAME} (${projectId})`);
   console.log(`  App:       ${APP_NAME}`);
   console.log(`  Client ID: ${clientId}`);

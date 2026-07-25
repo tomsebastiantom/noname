@@ -8,13 +8,13 @@ export function createAIPipeline(): AIPipeline {
   const provider = createLLMProvider();
 
   async function callLLM(
-    tenantId: string,
+    orgId: string,
     prompt: string,
     targetType: "layout" | "content" | "machine",
     context: Record<string, unknown>,
   ): Promise<{
     id: string;
-    tenantId: string;
+    orgId: string;
     prompt: string;
     response: unknown;
     model: string;
@@ -23,7 +23,7 @@ export function createAIPipeline(): AIPipeline {
   }> {
     return tracer.startActiveSpan(`ai.${targetType}`, async (span) => {
       try {
-        span.setAttribute("ai.tenant_id", tenantId);
+        span.setAttribute("ai.org_id", orgId);
         span.setAttribute("ai.operation", targetType);
         span.setAttribute("ai.prompt_length", prompt.length);
 
@@ -39,7 +39,7 @@ export function createAIPipeline(): AIPipeline {
 
         return {
           id,
-          tenantId,
+          orgId,
           prompt,
           response: result.response,
           model: result.model,
@@ -57,16 +57,16 @@ export function createAIPipeline(): AIPipeline {
   }
 
   return {
-    async generateLayout(tenantId, prompt, context) {
-      return callLLM(tenantId, prompt, "layout", context);
+    async generateLayout(orgId, prompt, context) {
+      return callLLM(orgId, prompt, "layout", context);
     },
 
-    async generateContent(tenantId, _contentType, prompt) {
-      return callLLM(tenantId, prompt, "content", {});
+    async generateContent(orgId, _contentType, prompt) {
+      return callLLM(orgId, prompt, "content", {});
     },
 
-    async generateMachine(tenantId, _machineName, description) {
-      return callLLM(tenantId, description, "machine", {});
+    async generateMachine(orgId, _machineName, description) {
+      return callLLM(orgId, description, "machine", {});
     },
   };
 }

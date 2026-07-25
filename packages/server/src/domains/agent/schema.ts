@@ -20,7 +20,7 @@ export const agentTasks = pgTable(
   "agent_tasks",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     type: agentTaskType("type").notNull(),
     status: agentTaskStatus("status").notNull().default("pending"),
     prompt: text("prompt").notNull(),
@@ -33,7 +33,7 @@ export const agentTasks = pgTable(
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    tenantStatus: index("agent_tasks_tenant_status").on(t.tenantId, t.status),
-    tenantType: index("agent_tasks_tenant_type").on(t.tenantId, t.type),
+    tenantStatus: index("agent_tasks_tenant_status").on(t.orgId, t.status),
+    tenantType: index("agent_tasks_tenant_type").on(t.orgId, t.type),
   }),
 );

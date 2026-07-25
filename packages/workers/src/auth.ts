@@ -27,8 +27,8 @@ export async function validateJwt(request: Request, env: Env): Promise<EdgeConte
     const payload = result.payload as unknown as Record<string, unknown>;
 
     return {
-      tenantId:
-        (payload.tenant_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
+      orgId:
+        (payload.org_id as string) || (payload["urn:zitadel:iam:org:id"] as string) || "",
       userId: (payload.sub as string) || "",
       role: (payload.role as string) || "customer",
     };

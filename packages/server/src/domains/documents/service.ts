@@ -33,21 +33,21 @@ export function createDocumentsService(
   // Content type schema registry.
   // -------------------------------------------------------------------------
   const contentTypes: ContentTypeDocumentService = {
-    async create(tenantId, name, schema) {
+    async create(orgId, name, schema) {
       validateContentTypeName(name);
       validateSchema(schema);
-      const existing = await storage.findContentTypeByName(tenantId, name);
+      const existing = await storage.findContentTypeByName(orgId, name);
       if (existing) throw new ValidationError("name", `Content type '${name}' already exists`);
-      const created = await storage.createContentType(tenantId, name, schema);
+      const created = await storage.createContentType(orgId, name, schema);
       return created;
     },
-    list: (tenantId) => storage.findContentTypes(tenantId),
-    get: (tenantId, name) => storage.findContentTypeByName(tenantId, name),
-    async update(tenantId, name, schema) {
+    list: (orgId) => storage.findContentTypes(orgId),
+    get: (orgId, name) => storage.findContentTypeByName(orgId, name),
+    async update(orgId, name, schema) {
       validateSchema(schema);
-      const existing = await storage.findContentTypeByName(tenantId, name);
+      const existing = await storage.findContentTypeByName(orgId, name);
       if (!existing) throw new NotFoundError("ContentType", name);
-      return storage.updateContentType(tenantId, name, schema);
+      return storage.updateContentType(orgId, name, schema);
     },
   };
 
@@ -55,41 +55,41 @@ export function createDocumentsService(
   // Tenant settings — locales, SEO defaults, integrations.
   // -------------------------------------------------------------------------
   const tenantSettings: TenantSettingsService = {
-    async get(tenantId) {
-      const existing = await storage.getTenantSettings(tenantId);
+    async get(orgId) {
+      const existing = await storage.getTenantSettings(orgId);
       if (existing) return existing;
-      return storage.upsertTenantSettings(tenantId, defaultTenantSettings());
+      return storage.upsertTenantSettings(orgId, defaultTenantSettings());
     },
-    upsert: (tenantId, data) => storage.upsertTenantSettings(tenantId, data),
+    upsert: (orgId, data) => storage.upsertTenantSettings(orgId, data),
   };
 
   // -------------------------------------------------------------------------
   // Content — schema-validated, locale-aware entries.
   // -------------------------------------------------------------------------
   const content: ContentDocumentService = {
-    async create(tenantId, type, data, opts) {
+    async create(orgId, type, data, opts) {
       const locale = opts?.locale;
       const role = opts?.role;
-      const schema = await storage.findContentTypeByName(tenantId, type);
+      const schema = await storage.findContentTypeByName(orgId, type);
       if (!schema) throw new NotFoundError("ContentType", type);
 
       validateFieldWritePermissions(schema.schema.fields, data, role);
 
-      const ts = await storage.getTenantSettings(tenantId);
+      const ts = await storage.getTenantSettings(orgId);
       const locales = ts?.locales ?? DEFAULT_LOCALES;
       const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
 
       const built = buildContentData(schema.schema, data, undefined, locale, true, defaultLocale);
       if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
 
-      await assertAssetRefs(storage, schema.schema, built.data!, tenantId);
+      await assertAssetRefs(storage, schema.schema, built.data!, orgId);
 
       const v = validator.validate(schema.schema, built.data!, locales);
       if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
 
-      const entity = ContentDocument.create(tenantId, type, built.data!);
+      const entity = ContentDocument.create(orgId, type, built.data!);
       const saved = await storage.createDocument({
-        tenantId,
+        orgId,
         type,
         key: entity.id,
         data: entity.data,
@@ -99,23 +99,23 @@ export function createDocumentsService(
       return saved;
     },
 
-    findByType: async (tenantId, type) => {
-      const rows = await storage.listDocuments(tenantId, { type });
+    findByType: async (orgId, type) => {
+      const rows = await storage.listDocuments(orgId, { type });
       return rows;
     },
 
-    findById: async (_tenantId, id, opts) => {
+    findById: async (_orgId, id, opts) => {
       const found = await storage.findDocumentById(id);
       if (!found) return null;
-      const schema = await storage.findContentTypeByName(_tenantId, found.type);
+      const schema = await storage.findContentTypeByName(_orgId, found.type);
       if (!schema) return found;
       return filterReadFields(found, schema.schema.fields, opts?.role);
     },
 
-    async updateById(tenantId, type, id, data, opts) {
+    async updateById(orgId, type, id, data, opts) {
       const locale = opts?.locale;
       const role = opts?.role;
-      const schema = await storage.findContentTypeByName(tenantId, type);
+      const schema = await storage.findContentTypeByName(orgId, type);
       if (!schema) throw new NotFoundError("ContentType", type);
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type)
@@ -123,7 +123,7 @@ export function createDocumentsService(
 
       validateFieldWritePermissions(schema.schema.fields, data, role);
 
-      const ts = await storage.getTenantSettings(tenantId);
+      const ts = await storage.getTenantSettings(orgId);
       const locales = ts?.locales ?? DEFAULT_LOCALES;
       const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
 
@@ -137,25 +137,25 @@ export function createDocumentsService(
       );
       if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
 
-      await assertAssetRefs(storage, schema.schema, built.data!, tenantId);
+      await assertAssetRefs(storage, schema.schema, built.data!, orgId);
 
       const v = validator.validate(schema.schema, built.data!, locales);
       if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
 
       const updated = await storage.updateDocument(existing.id, built.data!);
-      const entity = new ContentDocument(existing.id, tenantId, type, updated.data, "draft");
+      const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
       entity.update(updated.data);
       flushEvents(entity);
       return updated;
     },
 
-    async deleteById(tenantId, type, id) {
+    async deleteById(orgId, type, id) {
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type)
         throw new NotFoundError("ContentEntry", `${type}/${id}`);
       const entity = new ContentDocument(
         existing.id,
-        tenantId,
+        orgId,
         type,
         existing.data,
         existing.status,
@@ -165,22 +165,22 @@ export function createDocumentsService(
       flushEvents(entity);
     },
 
-    async publish(tenantId, type, id) {
+    async publish(orgId, type, id) {
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type)
         throw new NotFoundError("ContentEntry", `${type}/${id}`);
       const published = await storage.publishDocument(existing.id);
-      const entity = new ContentDocument(existing.id, tenantId, type, existing.data, "draft");
+      const entity = new ContentDocument(existing.id, orgId, type, existing.data, "draft");
       entity.publish();
       flushEvents(entity);
       return published;
     },
 
-    async resolve(tenantId, type, id, locale) {
+    async resolve(orgId, type, id, locale) {
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type) return null;
-      const schema = await storage.findContentTypeByName(tenantId, type);
-      const ts = await storage.getTenantSettings(tenantId);
+      const schema = await storage.findContentTypeByName(orgId, type);
+      const ts = await storage.getTenantSettings(orgId);
       const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
 
       const resolved: Record<string, unknown> = {};
@@ -210,12 +210,12 @@ export function createDocumentsService(
   // Layout — json-render templates with per-segment override variants.
   // -------------------------------------------------------------------------
   const layout: LayoutDocumentService = {
-    async create(tenantId, input) {
+    async create(orgId, input) {
       validateTemplateName(input.templateName);
       validateSpec(input.spec);
 
       const entity = LayoutDocument.create(
-        tenantId,
+        orgId,
         input.templateName,
         input.segment || "default",
         input.spec,
@@ -223,7 +223,7 @@ export function createDocumentsService(
         null,
       );
       const saved = await storage.createDocument({
-        tenantId,
+        orgId,
         type: "layout",
         key: entity.templateName,
         segment: entity.segment,
@@ -235,14 +235,14 @@ export function createDocumentsService(
       return saved as unknown as LayoutDTO;
     },
 
-    async addVariant(tenantId, templateName, segment, overrides) {
+    async addVariant(orgId, templateName, segment, overrides) {
       validateTemplateName(templateName);
       if (!overrides || typeof overrides !== "object" || Array.isArray(overrides)) {
         throw new ValidationError("overrides", "overrides must be an object of dot-path keys");
       }
 
       const publishedDefault = await storage.findDocument(
-        tenantId,
+        orgId,
         "layout",
         templateName,
         "default",
@@ -253,7 +253,7 @@ export function createDocumentsService(
       const baseVersion = publishedDefault.version;
 
       const saved = await storage.createDocument({
-        tenantId,
+        orgId,
         type: "layout",
         key: templateName,
         segment,
@@ -265,7 +265,7 @@ export function createDocumentsService(
       return saved as unknown as LayoutDTO;
     },
 
-    async publish(_tenantId, id) {
+    async publish(_orgId, id) {
       const existing = await storage.findDocumentById(id);
       if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
       const entity = toLayoutEntity(existing as LayoutDTO);
@@ -275,7 +275,7 @@ export function createDocumentsService(
       return updated as unknown as LayoutDTO;
     },
 
-    async archive(_tenantId, id) {
+    async archive(_orgId, id) {
       const existing = await storage.findDocumentById(id);
       if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
       const entity = toLayoutEntity(existing as LayoutDTO);
@@ -285,21 +285,21 @@ export function createDocumentsService(
       return updated as unknown as LayoutDTO;
     },
 
-    list: (tenantId, filters) =>
-      storage.listDocuments(tenantId, {
+    list: (orgId, filters) =>
+      storage.listDocuments(orgId, {
         type: "layout",
         segment: filters?.segment,
         status: filters?.status,
       }) as unknown as Promise<LayoutDTO[]>,
 
-    get: async (_tenantId, id) => {
+    get: async (_orgId, id) => {
       const found = await storage.findDocumentById(id);
       return found && found.type === "layout" ? (found as LayoutDTO) : null;
     },
 
-    async resolve(tenantId, templateName, segment) {
+    async resolve(orgId, templateName, segment) {
       const publishedDefault = await storage.findDocument(
-        tenantId,
+        orgId,
         "layout",
         templateName,
         "default",
@@ -317,7 +317,7 @@ export function createDocumentsService(
         };
       }
 
-      const variant = await storage.findDocument(tenantId, "layout", templateName, segment);
+      const variant = await storage.findDocument(orgId, "layout", templateName, segment);
       if (variant?.status !== "published") {
         // Fall back to the default spec when no published variant exists.
         return {
@@ -345,7 +345,7 @@ export function createDocumentsService(
   // Assets — media metadata (binary lives in R2 / pluggable storage).
   // -------------------------------------------------------------------------
   const assets: AssetDocumentService = {
-    async create(tenantId, input: UploadAssetInput) {
+    async create(orgId, input: UploadAssetInput) {
       validateAssetMime(input.mimeType);
       const assetId = crypto.randomUUID();
       const data: Record<string, unknown> = {
@@ -366,7 +366,7 @@ export function createDocumentsService(
         uploadedAt: new Date().toISOString(),
       };
       const saved = await storage.createDocument({
-        tenantId,
+        orgId,
         type: "asset",
         key: assetId,
         data,
@@ -375,24 +375,24 @@ export function createDocumentsService(
       return saved as unknown as AssetDTO;
     },
 
-    async findByHash(tenantId, hash) {
-      const found = await storage.findAssetByHash(tenantId, hash);
+    async findByHash(orgId, hash) {
+      const found = await storage.findAssetByHash(orgId, hash);
       return found ? (found as unknown as AssetDTO) : null;
     },
 
-    get: async (tenantId, assetId) => {
-      const found = await storage.findDocument(tenantId, "asset", assetId);
+    get: async (orgId, assetId) => {
+      const found = await storage.findDocument(orgId, "asset", assetId);
       if (!found) return null;
       return enrichAssetUrls(found as unknown as AssetDTO);
     },
 
-    list: async (tenantId) => {
-      const rows = await storage.listDocuments(tenantId, { type: "asset" });
+    list: async (orgId) => {
+      const rows = await storage.listDocuments(orgId, { type: "asset" });
       return rows.map((r) => enrichAssetUrls(r as unknown as AssetDTO)) as AssetDTO[];
     },
 
-    async update(tenantId, assetId, input) {
-      const existing = await storage.findDocument(tenantId, "asset", assetId);
+    async update(orgId, assetId, input) {
+      const existing = await storage.findDocument(orgId, "asset", assetId);
       if (!existing) throw new NotFoundError("Asset", assetId);
       const data = { ...existing.data };
       if (input.altText !== undefined) data.altText = input.altText;
@@ -403,20 +403,20 @@ export function createDocumentsService(
       return enrichAssetUrls(updated as unknown as AssetDTO);
     },
 
-    async archive(tenantId, assetId) {
-      const existing = await storage.findDocument(tenantId, "asset", assetId);
+    async archive(orgId, assetId) {
+      const existing = await storage.findDocument(orgId, "asset", assetId);
       if (!existing) throw new NotFoundError("Asset", assetId);
       return (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
     },
 
-    async delete(tenantId, assetId) {
-      const existing = await storage.findDocument(tenantId, "asset", assetId);
+    async delete(orgId, assetId) {
+      const existing = await storage.findDocument(orgId, "asset", assetId);
       if (!existing) throw new NotFoundError("Asset", assetId);
       await storage.deleteDocument(existing.id);
     },
 
-    async publish(tenantId, assetId) {
-      const existing = await storage.findDocument(tenantId, "asset", assetId);
+    async publish(orgId, assetId) {
+      const existing = await storage.findDocument(orgId, "asset", assetId);
       if (!existing) throw new NotFoundError("Asset", assetId);
       return (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
     },
@@ -426,15 +426,15 @@ export function createDocumentsService(
   // Page tree — URL routing layer (locale-aware slug -> page identity).
   // -------------------------------------------------------------------------
   const pages: PageTreeService = {
-    async resolveByUrl(tenantId, url, locale) {
-      const tree = await storage.findDocument(tenantId, "page_tree", "main");
+    async resolveByUrl(orgId, url, locale) {
+      const tree = await storage.findDocument(orgId, "page_tree", "main");
       if (!tree) return null;
       const pages =
         (tree.data.pages as
           | Array<{ id: string; slug: Record<string, string>; pageId: string }>
           | undefined) ?? [];
 
-      const ts = await storage.getTenantSettings(tenantId);
+      const ts = await storage.getTenantSettings(orgId);
       const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
 
       const match = pages.find((p) => {
@@ -447,7 +447,7 @@ export function createDocumentsService(
       });
       if (!match) return null;
 
-      const page = await storage.findDocument(tenantId, "page", match.pageId);
+      const page = await storage.findDocument(orgId, "page", match.pageId);
       if (!page) return null;
       const data = page.data;
       return {
@@ -521,7 +521,7 @@ async function assertAssetRefs(
   storage: DocumentStorage,
   schema: ContentTypeSchema,
   data: Record<string, unknown>,
-  tenantId: string,
+  orgId: string,
 ): Promise<void> {
   for (const field of schema.fields) {
     if (field.type !== "media" && field.type !== "mediaList") continue;
@@ -529,7 +529,7 @@ async function assertAssetRefs(
     if (value === undefined) continue;
     const check = async (assetId: string) => {
       if (!assetId) return;
-      const found = await storage.findDocument(tenantId, "asset", assetId);
+      const found = await storage.findDocument(orgId, "asset", assetId);
       if (!found) throw new ValidationError(field.key, `asset '${assetId}' does not exist`);
     };
     if (field.type === "media") {
@@ -642,7 +642,7 @@ function filterReadFields(
   return { ...doc, data: filtered };
 }
 
-function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "tenantId"> {
+function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "orgId"> {
   return {
     locales: [...DEFAULT_LOCALES],
     defaultLocale: DEFAULT_DEFAULT_LOCALE,
@@ -654,7 +654,7 @@ function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "tenantId"> {
 function toLayoutEntity(dto: LayoutDTO): LayoutDocument {
   return new LayoutDocument(
     dto.id,
-    dto.tenantId,
+    dto.orgId,
     dto.key,
     dto.version,
     dto.segment,

@@ -5,40 +5,40 @@ import { contextCache, segments } from "../schema";
 
 export function createPostgresContextAdapter(db: Database): ContextStorage {
   return {
-    async saveSegment(tenantId, hash, signals) {
+    async saveSegment(orgId, hash, signals) {
       const [row] = await db
         .insert(segments)
-        .values({ tenantId, hash, signals })
-        .onConflictDoUpdate({ target: [segments.tenantId, segments.hash], set: { signals } })
+        .values({ orgId, hash, signals })
+        .onConflictDoUpdate({ target: [segments.orgId, segments.hash], set: { signals } })
         .returning();
       if (!row) throw new Error("Failed to save segment");
       return mapRow(row);
     },
-    async findSegmentByHash(tenantId, hash) {
+    async findSegmentByHash(orgId, hash) {
       const [row] = await db
         .select()
         .from(segments)
-        .where(and(eq(segments.tenantId, tenantId), eq(segments.hash, hash)));
+        .where(and(eq(segments.orgId, orgId), eq(segments.hash, hash)));
       return row ? mapRow(row) : null;
     },
-    async cacheSegment(tenantId, visitorId, segmentHash) {
+    async cacheSegment(orgId, visitorId, segmentHash) {
       await db
         .insert(contextCache)
-        .values({ tenantId, visitorId, segmentHash })
+        .values({ orgId, visitorId, segmentHash })
         .onConflictDoUpdate({
-          target: [contextCache.tenantId, contextCache.visitorId],
+          target: [contextCache.orgId, contextCache.visitorId],
           set: { segmentHash },
         });
     },
-    async findCachedSegment(tenantId, visitorId) {
+    async findCachedSegment(orgId, visitorId) {
       const [row] = await db
         .select()
         .from(contextCache)
-        .where(and(eq(contextCache.tenantId, tenantId), eq(contextCache.visitorId, visitorId)));
+        .where(and(eq(contextCache.orgId, orgId), eq(contextCache.visitorId, visitorId)));
       return row ? row.segmentHash : null;
     },
-    async listSegments(tenantId) {
-      const rows = await db.select().from(segments).where(eq(segments.tenantId, tenantId));
+    async listSegments(orgId) {
+      const rows = await db.select().from(segments).where(eq(segments.orgId, orgId));
       return rows.map(mapRow);
     },
   };
@@ -47,7 +47,7 @@ export function createPostgresContextAdapter(db: Database): ContextStorage {
 function mapRow(row: typeof segments.$inferSelect): SegmentDTO {
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     hash: row.hash,
     signals: (row.signals as ContextSignal[]) || [],
     createdAt: row.created_at,

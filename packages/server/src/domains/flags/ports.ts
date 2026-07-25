@@ -16,7 +16,7 @@ export type Condition =
   | { type: "expression"; expr: string };
 
 export interface FlagEvaluationContext {
-  tenantId: string;
+  orgId: string;
   contextHash: string;
   contextProperties: Record<string, string | number | boolean>;
   schemaId: string | null;
@@ -25,7 +25,7 @@ export interface FlagEvaluationContext {
 
 export interface FlagDTO {
   id: string;
-  tenantId: string;
+  orgId: string;
   key: string;
   type: FlagType;
   description: string;
@@ -49,7 +49,7 @@ export interface EvaluationResult {
 export interface EvaluationRecord {
   id: string;
   flagId: string;
-  tenantId: string;
+  orgId: string;
   contextHash: string;
   value: unknown;
   matchedRule: number | null;
@@ -79,12 +79,12 @@ export interface UpdateFlagInput {
 }
 
 export interface FlagStorage {
-  create(tenantId: string, input: CreateFlagInput): Promise<FlagDTO>;
-  findById(tenantId: string, id: string): Promise<FlagDTO | null>;
-  findByKey(tenantId: string, key: string): Promise<FlagDTO | null>;
-  list(tenantId: string, filters?: FlagFilters): Promise<FlagDTO[]>;
-  update(tenantId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
-  archive(tenantId: string, id: string): Promise<FlagDTO>;
+  create(orgId: string, input: CreateFlagInput): Promise<FlagDTO>;
+  findById(orgId: string, id: string): Promise<FlagDTO | null>;
+  findByKey(orgId: string, key: string): Promise<FlagDTO | null>;
+  list(orgId: string, filters?: FlagFilters): Promise<FlagDTO[]>;
+  update(orgId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
+  archive(orgId: string, id: string): Promise<FlagDTO>;
   recordEvaluation(record: Omit<EvaluationRecord, "id">): Promise<void>;
   listEvaluations(flagId: string, filters?: EvaluationFilters): Promise<EvaluationRecord[]>;
 }
@@ -102,23 +102,23 @@ export interface EvaluationFilters {
 }
 
 export interface FlagService {
-  create(tenantId: string, input: CreateFlagInput): Promise<FlagDTO>;
-  list(tenantId: string, filters?: FlagFilters): Promise<FlagDTO[]>;
-  get(tenantId: string, id: string): Promise<FlagDTO | null>;
-  update(tenantId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
-  archive(tenantId: string, id: string): Promise<FlagDTO>;
+  create(orgId: string, input: CreateFlagInput): Promise<FlagDTO>;
+  list(orgId: string, filters?: FlagFilters): Promise<FlagDTO[]>;
+  get(orgId: string, id: string): Promise<FlagDTO | null>;
+  update(orgId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
+  archive(orgId: string, id: string): Promise<FlagDTO>;
   evaluate(
-    tenantId: string,
+    orgId: string,
     context: FlagEvaluationContext,
     flagKeys?: string[],
   ): Promise<EvaluationResult[]>;
   evaluateBatch(
-    tenantId: string,
+    orgId: string,
     contexts: FlagEvaluationContext[],
     flagKeys?: string[],
   ): Promise<{ contextHash: string; evaluations: EvaluationResult[] }[]>;
   listEvaluations(
-    tenantId: string,
+    orgId: string,
     flagId: string,
     filters?: EvaluationFilters,
   ): Promise<EvaluationRecord[]>;

@@ -14,7 +14,7 @@ export function startAgentWorker(
   const worker = new Worker<AgentJobData>(
     "agent-tasks",
     async (job) => {
-      const { taskId, tenantId, type, prompt, input, traceparent, tracestate } = job.data;
+      const { taskId, orgId, type, prompt, input, traceparent, tracestate } = job.data;
 
       const parentContext = traceparent
         ? propagation.extract(context.active(), { traceparent, tracestate })
@@ -24,16 +24,16 @@ export function startAgentWorker(
         tracer.startActiveSpan(`agent.${type}`, async (span) => {
           try {
             span.setAttribute("agent.task_id", taskId);
-            span.setAttribute("agent.tenant_id", tenantId);
+            span.setAttribute("agent.org_id", orgId);
             span.setAttribute("agent.type", type);
 
-            await storage.update(tenantId, taskId, { status: "running" });
+            await storage.update(orgId, taskId, { status: "running" });
 
             try {
-              const result = await executor.execute(tenantId, type, prompt, input);
+              const result = await executor.execute(orgId, type, prompt, input);
               span.setAttribute("agent.model", result.model);
               span.setAttribute("agent.tokens", result.tokens);
-              await storage.update(tenantId, taskId, {
+              await storage.update(orgId, taskId, {
                 status: "completed",
                 output: result.output,
                 model: result.model,
@@ -42,7 +42,7 @@ export function startAgentWorker(
             } catch (err) {
               span.recordException(err as Error);
               span.setStatus({ code: SpanStatusCode.ERROR });
-              await storage.update(tenantId, taskId, {
+              await storage.update(orgId, taskId, {
                 status: "failed",
                 error: err instanceof Error ? err.message : "unknown error",
               });

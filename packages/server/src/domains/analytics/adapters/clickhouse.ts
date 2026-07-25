@@ -23,7 +23,7 @@ let client: ClickHouseClient | null = null;
 const DDL = `
 CREATE TABLE IF NOT EXISTS analytics_events (
   event_id     UUID,
-  tenant_id    UUID,
+  org_id    String,
   event_type   LowCardinality(String),
   event_source LowCardinality(String),
   timestamp    DateTime64(3, 'UTC'),
@@ -35,7 +35,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
 )
 ENGINE = MergeTree()
 PARTITION BY toYYYYMM(timestamp)
-ORDER BY (tenant_id, event_type, timestamp)
+ORDER BY (org_id, event_type, timestamp)
 TTL timestamp + INTERVAL 90 DAY
 `;
 
@@ -47,7 +47,7 @@ export async function ensureClickHouseTable(): Promise<void> {
 function toRow(e: AnalyticsEventDTO) {
   return {
     event_id: e.eventId,
-    tenant_id: e.tenantId,
+    org_id: e.orgId,
     event_type: e.eventType,
     event_source: e.eventSource,
     timestamp: e.timestamp.toISOString().replace("T", " ").replace("Z", ""),
@@ -62,7 +62,7 @@ function toRow(e: AnalyticsEventDTO) {
 function fromRow(row: Record<string, unknown>): AnalyticsEventDTO {
   return {
     eventId: String(row.event_id),
-    tenantId: String(row.tenant_id),
+    orgId: String(row.org_id),
     eventType: String(row.event_type),
     eventSource: row.event_source as "server" | "frontend",
     timestamp: new Date(String(row.timestamp)),
@@ -100,7 +100,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
 
     async query(filters) {
       const conditions: string[] = [];
-      if (filters.tenantId) conditions.push(`tenant_id = {tenantId:String}`);
+      if (filters.orgId) conditions.push(`org_id = {orgId:String}`);
       if (filters.eventType) conditions.push(`event_type = {eventType:String}`);
       if (filters.eventSource) conditions.push(`event_source = {eventSource:String}`);
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
@@ -118,7 +118,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         query: `SELECT * FROM analytics_events ${where} ORDER BY timestamp DESC LIMIT ${limit} OFFSET ${offset}`,
         format: "JSONEachRow",
         query_params: {
-          tenantId: filters.tenantId,
+          orgId: filters.orgId,
           eventType: filters.eventType,
           eventSource: filters.eventSource,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
@@ -145,7 +145,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
                 ? "context_hash"
                 : "event_type";
 
-      const conditions = [`tenant_id = {tenantId:String}`];
+      const conditions = [`org_id = {orgId:String}`];
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
       if (filters.to) conditions.push(`timestamp <= {to:DateTime64(3)}`);
 
@@ -162,7 +162,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         `,
         format: "JSONEachRow",
         query_params: {
-          tenantId: filters.tenantId,
+          orgId: filters.orgId,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
           limit: filters.limit ?? 20,
@@ -176,7 +176,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
     },
 
     async conversionRates(filters) {
-      const conditions = [`tenant_id = {tenantId:String}`];
+      const conditions = [`org_id = {orgId:String}`];
       if (filters.schemaId) conditions.push(`schema_id = {schemaId:String}`);
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
       if (filters.to) conditions.push(`timestamp <= {to:DateTime64(3)}`);
@@ -199,7 +199,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         `,
         format: "JSONEachRow",
         query_params: {
-          tenantId: filters.tenantId,
+          orgId: filters.orgId,
           schemaId: filters.schemaId,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
@@ -227,7 +227,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
     },
 
     async segmentEvents(filters: SegmentEventsInput): Promise<SegmentEventsResult> {
-      const conditions = [`tenant_id = {tenantId:String}`];
+      const conditions = [`org_id = {orgId:String}`];
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
       if (filters.to) conditions.push(`timestamp <= {to:DateTime64(3)}`);
 
@@ -235,7 +235,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         query: `SELECT count(*) as total FROM analytics_events WHERE ${conditions.join(" AND ")}`,
         format: "JSONEachRow",
         query_params: {
-          tenantId: filters.tenantId,
+          orgId: filters.orgId,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
         },
@@ -257,7 +257,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         `,
         format: "JSONEachRow",
         query_params: {
-          tenantId: filters.tenantId,
+          orgId: filters.orgId,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
           limit: filters.limit ?? 50,

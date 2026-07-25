@@ -21,5 +21,5 @@ export interface PersonalizeResponse {
 
 export interface EdgeService {
   getSchema(siteId: string, segment?: string): Promise<EdgeSchemaResponse>;
-  personalize(tenantId: string, input: PersonalizeRequest): Promise<PersonalizeResponse>;
+  personalize(orgId: string, input: PersonalizeRequest): Promise<PersonalizeResponse>;
 }

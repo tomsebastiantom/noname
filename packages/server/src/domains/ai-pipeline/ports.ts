@@ -1,6 +1,6 @@
 export interface AISpecDTO {
   id: string;
-  tenantId: string;
+  orgId: string;
   prompt: string;
   response: unknown;
   model: string;
@@ -10,10 +10,10 @@ export interface AISpecDTO {
 
 export interface AIPipeline {
   generateLayout(
-    tenantId: string,
+    orgId: string,
     prompt: string,
     context: Record<string, unknown>,
   ): Promise<AISpecDTO>;
-  generateContent(tenantId: string, contentType: string, prompt: string): Promise<AISpecDTO>;
-  generateMachine(tenantId: string, machineName: string, description: string): Promise<AISpecDTO>;
+  generateContent(orgId: string, contentType: string, prompt: string): Promise<AISpecDTO>;
+  generateMachine(orgId: string, machineName: string, description: string): Promise<AISpecDTO>;
 }

@@ -3,7 +3,7 @@ import { getRedisConnection } from "../../shared/redis";
 
 export interface AgentJobData {
   taskId: string;
-  tenantId: string;
+  orgId: string;
   type: string;
   prompt: string;
   input: Record<string, unknown>;

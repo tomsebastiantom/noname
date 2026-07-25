@@ -89,7 +89,7 @@ export interface BrowserSDK {
 }
 
 export interface BrowserSDKOptions {
-  tenantId: string;
+  orgId: string;
   analytics?: {
     enabled?: boolean;
     endpoint?: string;

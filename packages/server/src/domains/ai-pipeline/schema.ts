@@ -2,7 +2,7 @@ import { integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-c
 
 export const aiGenerations = pgTable("ai_generations", {
   id: uuid("id").defaultRandom().primaryKey(),
-  tenantId: uuid("tenant_id").notNull(),
+  orgId: text("org_id").notNull(),
   prompt: text("prompt").notNull(),
   response: jsonb("response").notNull(),
   model: text("model").notNull(),

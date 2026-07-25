@@ -12,7 +12,7 @@ export function createEdgeService(
     async getSchema(siteId, segment = "default") {
       const resolved = await layout.resolve(siteId, "store", segment);
       const flags = await flagService.evaluate(siteId, {
-        tenantId: siteId,
+        orgId: siteId,
         contextHash: segment,
         contextProperties: {},
         schemaId: null,
@@ -32,16 +32,16 @@ export function createEdgeService(
       };
     },
 
-    async personalize(tenantId, input) {
+    async personalize(orgId, input) {
       const headers = input.headers ?? {};
-      const segment = await contextEngine.segmentForRequest(tenantId, headers);
+      const segment = await contextEngine.segmentForRequest(orgId, headers);
 
-      const resolved = await layout.resolve(tenantId, "store", segment.hash);
+      const resolved = await layout.resolve(orgId, "store", segment.hash);
 
       const flags = await flagService.evaluate(
-        tenantId,
+        orgId,
         {
-          tenantId,
+          orgId,
           contextHash: segment.hash,
           contextProperties: {},
           schemaId: null,

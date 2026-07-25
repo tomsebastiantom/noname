@@ -2,12 +2,12 @@ import { cacheKey, getCached, setCache } from "./cache";
 import type { Env } from "./types";
 
 async function hmacHeaders(
-  tenantId: string,
+  orgId: string,
   userId: string,
   role: string,
   env: Env,
 ): Promise<Record<string, string>> {
-  const payload = `${tenantId}:${userId}:${role}`;
+  const payload = `${orgId}:${userId}:${role}`;
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(env.WORKER_SERVER_SECRET),
@@ -19,7 +19,7 @@ async function hmacHeaders(
   const hmac = btoa(String.fromCharCode(...new Uint8Array(signature)));
 
   return {
-    "x-tenant-id": tenantId,
+    "x-org-id": orgId,
     "x-user-id": userId,
     "x-role": role,
     "x-auth-hmac": hmac,
@@ -44,19 +44,19 @@ export function isBot(request: Request): boolean {
 }
 
 export async function fetchSchema(
-  tenantId: string,
+  orgId: string,
   segment: string,
   env: Env,
   userId = "",
   role = "",
 ): Promise<Record<string, unknown> | null> {
-  const key = cacheKey(tenantId, segment, `schema:${tenantId}`);
+  const key = cacheKey(orgId, segment, `schema:${orgId}`);
   const cached = await getCached<Record<string, unknown>>(env, key);
   if (cached) return cached;
 
   try {
-    const url = `${env.API_ORIGIN}/api/edge/schema/${tenantId}?segment=${segment}`;
-    const headers = await hmacHeaders(tenantId, userId, role, env);
+    const url = `${env.API_ORIGIN}/api/edge/schema/${orgId}?segment=${segment}`;
+    const headers = await hmacHeaders(orgId, userId, role, env);
     const response = await fetch(url, { headers });
     if (!response.ok) return null;
 
@@ -71,7 +71,7 @@ export async function fetchSchema(
 }
 
 export async function personalizeSchema(
-  tenantId: string,
+  orgId: string,
   request: Request,
   env: Env,
   userId = "",
@@ -86,12 +86,12 @@ export async function personalizeSchema(
     const url = `${env.API_ORIGIN}/api/edge/personalize`;
     const headers = {
       "Content-Type": "application/json",
-      ...(await hmacHeaders(tenantId, userId, role, env)),
+      ...(await hmacHeaders(orgId, userId, role, env)),
     };
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ siteId: tenantId, headers: reqHeaders }),
+      body: JSON.stringify({ siteId: orgId, headers: reqHeaders }),
     });
     if (!response.ok) return null;
 

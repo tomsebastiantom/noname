@@ -16,7 +16,8 @@ export default {
     port: 5173,
     hot: true,
     historyApiFallback: true,
-    proxy: [{ context: ["/api"], target: "http://localhost:3000" }],
+    // Edge worker (wrangler dev :8787) — start with: pnpm --filter @noname/workers dev
+    proxy: [{ context: ["/api"], target: "http://localhost:8787" }],
   },
   module: {
     rules: [

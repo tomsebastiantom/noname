@@ -9,11 +9,11 @@ export function createAnalyticsService(
   queue: Queue<AnalyticsJobData>,
 ): AnalyticsService {
   return {
-    async track(tenantId, input) {
+    async track(orgId, input) {
       const eventId = crypto.randomUUID();
       const event: AnalyticsJobData = {
         eventId,
-        tenantId,
+        orgId,
         eventType: input.eventType,
         eventSource: "frontend",
         timestamp: new Date(),
@@ -28,12 +28,12 @@ export function createAnalyticsService(
     },
 
     async ingestServerEvent(eventType, data) {
-      const tenantId = (data as any).tenantId || "";
-      if (!tenantId) return;
+      const orgId = (data as any).orgId || "";
+      if (!orgId) return;
 
       const event: AnalyticsJobData = {
         eventId: crypto.randomUUID(),
-        tenantId,
+        orgId,
         eventType,
         eventSource: "server",
         timestamp: new Date(),

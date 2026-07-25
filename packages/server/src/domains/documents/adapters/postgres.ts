@@ -12,45 +12,45 @@ import { documents, documentTypes } from "../schema";
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
   return {
     // ---- content type schema registry ----
-    async createContentType(tenantId, name, schema) {
+    async createContentType(orgId, name, schema) {
       const [row] = await db
         .insert(documentTypes)
-        .values({ tenantId, name, schema: schema as unknown as Record<string, unknown> })
+        .values({ orgId, name, schema: schema as unknown as Record<string, unknown> })
         .returning();
       if (!row) throw new Error("Failed to create content type");
       return mapContentType(row);
     },
-    async findContentTypes(tenantId) {
+    async findContentTypes(orgId) {
       const rows = await db
         .select()
         .from(documentTypes)
-        .where(eq(documentTypes.tenantId, tenantId));
+        .where(eq(documentTypes.orgId, orgId));
       return rows.map(mapContentType);
     },
-    async findContentTypeByName(tenantId, name) {
+    async findContentTypeByName(orgId, name) {
       const [row] = await db
         .select()
         .from(documentTypes)
-        .where(and(eq(documentTypes.tenantId, tenantId), eq(documentTypes.name, name)));
+        .where(and(eq(documentTypes.orgId, orgId), eq(documentTypes.name, name)));
       return row ? mapContentType(row) : null;
     },
-    async updateContentType(tenantId, name, schema) {
+    async updateContentType(orgId, name, schema) {
       const [row] = await db
         .update(documentTypes)
         .set({ schema: schema as unknown as Record<string, unknown>, updated_at: new Date() })
-        .where(and(eq(documentTypes.tenantId, tenantId), eq(documentTypes.name, name)))
+        .where(and(eq(documentTypes.orgId, orgId), eq(documentTypes.name, name)))
         .returning();
       if (!row) throw new Error(`Content type '${name}' not found`);
       return mapContentType(row);
     },
 
     // ---- tenant settings ----
-    async getTenantSettings(tenantId) {
-      const row = await findRow(db, tenantId, "tenant_settings", "default");
+    async getTenantSettings(orgId) {
+      const row = await findRow(db, orgId, "tenant_settings", "default");
       return row ? toTenantSettings(row) : null;
     },
-    async upsertTenantSettings(tenantId, data) {
-      const existing = await findRow(db, tenantId, "tenant_settings", "default");
+    async upsertTenantSettings(orgId, data) {
+      const existing = await findRow(db, orgId, "tenant_settings", "default");
       const merged = {
         locales: data.locales,
         defaultLocale: data.defaultLocale,
@@ -69,7 +69,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const [row] = await db
         .insert(documents)
         .values({
-          tenantId,
+          orgId,
           type: "tenant_settings",
           key: "default",
           data: merged,
@@ -83,12 +83,12 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
     // ---- generic documents ----
     async createDocument(input) {
       const segment = input.segment || "default";
-      const latest = await latestVersion(db, input.tenantId, input.type, input.key, segment);
+      const latest = await latestVersion(db, input.orgId, input.type, input.key, segment);
       const version = latest ? latest + 1 : 1;
       const [row] = await db
         .insert(documents)
         .values({
-          tenantId: input.tenantId,
+          orgId: input.orgId,
           type: input.type,
           key: input.key,
           segment,
@@ -102,8 +102,8 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (!row) throw new Error("Failed to create document");
       return mapDocument(row);
     },
-    async listDocuments(tenantId, filters = {}) {
-      const conditions = [eq(documents.tenantId, tenantId)];
+    async listDocuments(orgId, filters = {}) {
+      const conditions = [eq(documents.orgId, orgId)];
       if (filters.type) conditions.push(eq(documents.type, filters.type));
       if (filters.segment) conditions.push(eq(documents.segment, filters.segment));
       if (filters.status) conditions.push(eq(documents.status, filters.status));
@@ -114,9 +114,9 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .where(and(...conditions));
       return rows.map(mapDocument);
     },
-    async findDocument(tenantId, type, key, segment) {
+    async findDocument(orgId, type, key, segment) {
       const conditions = [
-        eq(documents.tenantId, tenantId),
+        eq(documents.orgId, orgId),
         eq(documents.type, type),
         eq(documents.key, key),
       ];
@@ -150,7 +150,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .set({ status: "archived", updated_at: new Date() })
         .where(
           and(
-            eq(documents.tenantId, existing.tenantId),
+            eq(documents.orgId, existing.orgId),
             eq(documents.type, existing.type),
             eq(documents.key, existing.key),
             eq(documents.segment, existing.segment),
@@ -180,13 +180,13 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       await db.delete(documents).where(eq(documents.id, id));
     },
 
-    async findAssetByHash(tenantId, hash) {
+    async findAssetByHash(orgId, hash) {
       const [row] = await db
         .select()
         .from(documents)
         .where(
           and(
-            eq(documents.tenantId, tenantId),
+            eq(documents.orgId, orgId),
             eq(documents.type, "asset"),
             sql`${documents.data}->>'hash' = ${hash}`,
           ),
@@ -200,14 +200,14 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
 
 async function findRow(
   db: Database,
-  tenantId: string,
+  orgId: string,
   type: string,
   key: string,
 ): Promise<DocumentRow | null> {
   const [row] = await db
     .select()
     .from(documents)
-    .where(and(eq(documents.tenantId, tenantId), eq(documents.type, type), eq(documents.key, key)));
+    .where(and(eq(documents.orgId, orgId), eq(documents.type, type), eq(documents.key, key)));
   return row ?? null;
 }
 
@@ -218,7 +218,7 @@ async function findById(db: Database, id: string): Promise<DocumentRow | null> {
 
 async function latestVersion(
   db: Database,
-  tenantId: string,
+  orgId: string,
   type: string,
   key: string,
   segment: string,
@@ -228,7 +228,7 @@ async function latestVersion(
     .from(documents)
     .where(
       and(
-        eq(documents.tenantId, tenantId),
+        eq(documents.orgId, orgId),
         eq(documents.type, type),
         eq(documents.key, key),
         eq(documents.segment, segment),
@@ -245,7 +245,7 @@ type ContentTypeRow = typeof documentTypes.$inferSelect;
 function mapDocument(row: DocumentRow): DocumentDTO {
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     type: row.type,
     key: row.key,
     version: row.version,
@@ -262,7 +262,7 @@ function mapDocument(row: DocumentRow): DocumentDTO {
 function mapContentType(row: ContentTypeRow): ContentTypeDTO {
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     name: row.name,
     schema: row.schema as unknown as ContentTypeSchema,
     createdAt: row.created_at,
@@ -276,7 +276,7 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
   const integrations = (data.integrations ?? {}) as Record<string, unknown>;
   return {
     id: row.id,
-    tenantId: row.tenantId,
+    orgId: row.orgId,
     locales: (data.locales as string[]) ?? ["en-US"],
     defaultLocale: (data.defaultLocale as string) ?? "en-US",
     seo: {

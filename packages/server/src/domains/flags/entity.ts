@@ -4,7 +4,7 @@ import type { FlagStatus, FlagType, TargetingRule } from "./ports";
 export class FeatureFlag extends AggregateRoot {
   constructor(
     public readonly id: string,
-    public readonly tenantId: string,
+    public readonly orgId: string,
     public key: string,
     public type: FlagType,
     public description: string,
@@ -20,7 +20,7 @@ export class FeatureFlag extends AggregateRoot {
   }
 
   static create(
-    tenantId: string,
+    orgId: string,
     key: string,
     type: FlagType,
     description: string,
@@ -31,7 +31,7 @@ export class FeatureFlag extends AggregateRoot {
   ): FeatureFlag {
     const flag = new FeatureFlag(
       crypto.randomUUID(),
-      tenantId,
+      orgId,
       key,
       type,
       description,
@@ -45,7 +45,7 @@ export class FeatureFlag extends AggregateRoot {
     );
     flag.apply("flag.created", {
       flagId: flag.id,
-      tenantId,
+      orgId,
       key,
       type,
     });
@@ -69,7 +69,7 @@ export class FeatureFlag extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply("flag.updated", {
       flagId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       key: this.key,
     });
   }
@@ -79,7 +79,7 @@ export class FeatureFlag extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply("flag.archived", {
       flagId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       key: this.key,
     });
   }

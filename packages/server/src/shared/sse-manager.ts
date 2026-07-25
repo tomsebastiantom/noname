@@ -1,44 +1,44 @@
 import type { SSEStreamingApi } from "hono/streaming";
 
-type TenantId = string;
+type OrgId = string;
 type StreamId = string;
 
-const clients = new Map<TenantId, Map<StreamId, SSEStreamingApi>>();
+const clients = new Map<OrgId, Map<StreamId, SSEStreamingApi>>();
 
-export function addClient(tenantId: TenantId, stream: SSEStreamingApi): StreamId {
-  if (!clients.has(tenantId)) {
-    clients.set(tenantId, new Map());
+export function addClient(orgId: OrgId, stream: SSEStreamingApi): StreamId {
+  if (!clients.has(orgId)) {
+    clients.set(orgId, new Map());
   }
-  const tenantClients = clients.get(tenantId)!;
+  const orgClients = clients.get(orgId)!;
   const streamId = crypto.randomUUID();
-  tenantClients.set(streamId, stream);
+  orgClients.set(streamId, stream);
 
   stream.onAbort(() => {
-    tenantClients.delete(streamId);
-    if (tenantClients.size === 0) {
-      clients.delete(tenantId);
+    orgClients.delete(streamId);
+    if (orgClients.size === 0) {
+      clients.delete(orgId);
     }
   });
 
   return streamId;
 }
 
-export function removeClient(tenantId: TenantId, streamId: StreamId): void {
-  const tenantClients = clients.get(tenantId);
-  if (tenantClients) {
-    tenantClients.delete(streamId);
-    if (tenantClients.size === 0) {
-      clients.delete(tenantId);
+export function removeClient(orgId: OrgId, streamId: StreamId): void {
+  const orgClients = clients.get(orgId);
+  if (orgClients) {
+    orgClients.delete(streamId);
+    if (orgClients.size === 0) {
+      clients.delete(orgId);
     }
   }
 }
 
-export function broadcast(tenantId: TenantId, data: Record<string, unknown>): void {
-  const tenantClients = clients.get(tenantId);
-  if (!tenantClients) return;
+export function broadcast(orgId: OrgId, data: Record<string, unknown>): void {
+  const orgClients = clients.get(orgId);
+  if (!orgClients) return;
 
   const payload = `data: ${JSON.stringify(data)}\n\n`;
-  for (const stream of tenantClients.values()) {
+  for (const stream of orgClients.values()) {
     try {
       stream.write(payload);
     } catch {
@@ -47,9 +47,9 @@ export function broadcast(tenantId: TenantId, data: Record<string, unknown>): vo
   }
 }
 
-export function getClientCount(tenantId?: TenantId): number {
-  if (tenantId) {
-    return clients.get(tenantId)?.size ?? 0;
+export function getClientCount(orgId?: OrgId): number {
+  if (orgId) {
+    return clients.get(orgId)?.size ?? 0;
   }
   let total = 0;
   for (const m of clients.values()) total += m.size;

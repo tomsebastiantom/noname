@@ -1,11 +1,11 @@
 /**
  * Seeds a minimal demo tenant: published "store" layout for first render.
  * Run with API server up: pnpm seed:demo
+ * Requires: pnpm init:zitadel (sets ZITADEL org id as org_id)
  */
 import "dotenv/config";
 
-/** Keep in sync with packages/client/src/demo-tenant.ts */
-export const DEMO_TENANT_ID = "00000000-0000-0000-0000-000000000001";
+const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
@@ -44,17 +44,17 @@ const demoSpec = {
   },
 };
 
-function tenantHeaders(): Record<string, string> {
+function orgHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
-    "x-tenant-id": DEMO_TENANT_ID,
+    "x-org-id": DEMO_ORG_ID,
   };
 }
 
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method,
-    headers: tenantHeaders(),
+    headers: orgHeaders(),
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   if (!res.ok) {
@@ -65,7 +65,11 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 async function main() {
-  console.log(`Seeding demo tenant ${DEMO_TENANT_ID} via ${API_BASE} ...`);
+  if (!DEMO_ORG_ID) {
+    throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
+  }
+
+  console.log(`Seeding demo org ${DEMO_ORG_ID} via ${API_BASE} ...`);
 
   const health = await fetch(`${API_BASE}/health`);
   if (!health.ok) {
@@ -79,7 +83,7 @@ async function main() {
 
   const existing = await fetch(
     `${API_BASE}/api/documents/layout/store/resolve?segment=default`,
-    { headers: tenantHeaders() },
+    { headers: orgHeaders() },
   );
   if (existing.ok) {
     console.log("Demo layout already published — skipping create.");
@@ -94,7 +98,7 @@ async function main() {
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
-    `/api/edge/schema/${DEMO_TENANT_ID}?segment=default`,
+    `/api/edge/schema/${DEMO_ORG_ID}?segment=default`,
   );
 
   if (!schema.layout) {
@@ -102,9 +106,9 @@ async function main() {
   }
 
   console.log("Demo seed complete.");
-  console.log(`  Tenant:  ${DEMO_TENANT_ID}`);
+  console.log(`  Org:     ${DEMO_ORG_ID}`);
   console.log(`  Layout:  store (published)`);
-  console.log(`  Client:  pnpm --filter @noname/client dev → http://localhost:5173`);
+  console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
 }
 
 main().catch((err: Error) => {

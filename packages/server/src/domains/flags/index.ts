@@ -18,18 +18,18 @@ export function createFlagDomain(deps: FlagDomainDeps) {
 
   // SSE: broadcast flag changes to connected clients
   eventBus.subscribe("flag.created", async (data: any) => {
-    if (data?.tenantId && data?.key) {
-      broadcast(data.tenantId, { key: data.key });
+    if (data?.orgId && data?.key) {
+      broadcast(data.orgId, { key: data.key });
     }
   });
   eventBus.subscribe("flag.updated", async (data: any) => {
-    if (data?.tenantId && data?.key) {
-      broadcast(data.tenantId, { key: data.key });
+    if (data?.orgId && data?.key) {
+      broadcast(data.orgId, { key: data.key });
     }
   });
   eventBus.subscribe("flag.archived", async (data: any) => {
-    if (data?.tenantId && data?.key) {
-      broadcast(data.tenantId, { key: data.key });
+    if (data?.orgId && data?.key) {
+      broadcast(data.orgId, { key: data.key });
     }
   });
 

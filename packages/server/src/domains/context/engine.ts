@@ -16,36 +16,36 @@ export function createContextEngine(storage: ContextStorage): ContextEngine {
   };
 
   return {
-    async resolve(signals: ContextSignal[], tenantId = ""): Promise<SegmentDTO> {
+    async resolve(signals: ContextSignal[], orgId = ""): Promise<SegmentDTO> {
       const hash = hashSignals(signals);
       return (
-        (await storage.findSegmentByHash(tenantId, hash)) ??
-        storage.saveSegment(tenantId, hash, signals)
+        (await storage.findSegmentByHash(orgId, hash)) ??
+        storage.saveSegment(orgId, hash, signals)
       );
     },
 
     async segmentForRequest(
-      tenantId: string,
+      orgId: string,
       headers: Record<string, string>,
     ): Promise<SegmentDTO> {
       const signals = extractSignals(headers);
       const hash = hashSignals(signals);
       const visitorId = headers["x-visitor-id"] || headers["visitor-id"] || "";
 
-      const cachedHash = visitorId ? await storage.findCachedSegment(tenantId, visitorId) : null;
+      const cachedHash = visitorId ? await storage.findCachedSegment(orgId, visitorId) : null;
       const segment =
-        (cachedHash ? await storage.findSegmentByHash(tenantId, cachedHash) : null) ??
-        (await storage.findSegmentByHash(tenantId, hash)) ??
-        (await storage.saveSegment(tenantId, hash, signals));
+        (cachedHash ? await storage.findSegmentByHash(orgId, cachedHash) : null) ??
+        (await storage.findSegmentByHash(orgId, hash)) ??
+        (await storage.saveSegment(orgId, hash, signals));
 
-      if (visitorId) await storage.cacheSegment(tenantId, visitorId, segment.hash);
+      if (visitorId) await storage.cacheSegment(orgId, visitorId, segment.hash);
 
-      eventBus.publish("context.segment_resolved", { tenantId, hash: segment.hash, signals });
+      eventBus.publish("context.segment_resolved", { orgId, hash: segment.hash, signals });
       return segment;
     },
 
-    listSegments(tenantId: string): Promise<SegmentDTO[]> {
-      return storage.listSegments(tenantId);
+    listSegments(orgId: string): Promise<SegmentDTO[]> {
+      return storage.listSegments(orgId);
     },
   };
 }

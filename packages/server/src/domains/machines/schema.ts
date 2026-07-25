@@ -31,20 +31,20 @@ export const machineDefinitions = pgTable(
   "machine_definitions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     name: text("name").notNull(),
     definition: jsonb("definition").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    uniqueName: uniqueIndex("machine_definitions_tenant_name").on(t.tenantId, t.name),
+    uniqueName: uniqueIndex("machine_definitions_tenant_name").on(t.orgId, t.name),
   }),
 );
 
 export const machineInstances = pgTable("machine_instances", {
   id: uuid("id").defaultRandom().primaryKey(),
-  tenantId: uuid("tenant_id").notNull(),
+  orgId: text("org_id").notNull(),
   machineName: text("machine_name").notNull(),
   currentState: text("current_state").notNull(),
   context: jsonb("context").notNull().default({}),
@@ -71,7 +71,7 @@ export const machineStatus = pgEnum("machine_status", ["draft", "published", "ar
 
 export const machines = pgTable("machines", {
   id: uuid("id").defaultRandom().primaryKey(),
-  tenantId: uuid("tenant_id").notNull(),
+  orgId: text("org_id").notNull(),
   name: text("name").notNull(),
   definition: jsonb("definition").notNull(),
   version: integer("version").notNull().default(1),

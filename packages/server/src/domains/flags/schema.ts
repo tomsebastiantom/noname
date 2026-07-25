@@ -16,7 +16,7 @@ export const flags = pgTable(
   "flags",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     key: text("key").notNull(),
     type: flagType("type").notNull(),
     description: text("description").notNull().default(""),
@@ -29,9 +29,9 @@ export const flags = pgTable(
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    tenantKey: uniqueIndex("flags_tenant_key").on(t.tenantId, t.key),
-    tenantStatus: index("flags_tenant_status").on(t.tenantId, t.status),
-    tenantSchema: index("flags_tenant_schema").on(t.tenantId, t.schemaId),
+    tenantKey: uniqueIndex("flags_tenant_key").on(t.orgId, t.key),
+    tenantStatus: index("flags_tenant_status").on(t.orgId, t.status),
+    tenantSchema: index("flags_tenant_schema").on(t.orgId, t.schemaId),
   }),
 );
 
@@ -40,7 +40,7 @@ export const flagEvaluations = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     flagId: uuid("flag_id").notNull(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     contextHash: text("context_hash").notNull(),
     value: jsonb("value").notNull(),
     matchedRule: jsonb("matched_rule"),
@@ -51,6 +51,6 @@ export const flagEvaluations = pgTable(
   },
   (t) => ({
     flagTime: index("flag_evals_flag_time").on(t.flagId, t.evaluated_at),
-    contextTime: index("flag_evals_context_time").on(t.tenantId, t.contextHash, t.evaluated_at),
+    contextTime: index("flag_evals_context_time").on(t.orgId, t.contextHash, t.evaluated_at),
   }),
 );

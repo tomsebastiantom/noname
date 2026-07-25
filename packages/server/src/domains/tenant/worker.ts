@@ -12,17 +12,17 @@ export function startCatalogBuildWorker(
   const worker = new Worker<CatalogBuildJobData>(
     "catalog-builds",
     async (job) => {
-      const { buildId, tenantId, name, source } = job.data;
+      const { buildId, orgId, name, source } = job.data;
 
       await manifestStore.setBuildStatus(buildId, "running");
 
       try {
         const output = await bundleCatalog({
-          scope: `tenant-${tenantId}-${name}`,
+          scope: `tenant-${orgId}-${name}`,
           source,
         });
 
-        const prefix = `tenants/${tenantId}`;
+        const prefix = `tenants/${orgId}`;
 
         const entryUrl = await storage.put(
           `${prefix}/${output.remoteEntry.filename}`,
@@ -36,8 +36,8 @@ export function startCatalogBuildWorker(
           "application/javascript",
         );
 
-        await manifestStore.addComponent(tenantId, {
-          name: tenantId,
+        await manifestStore.addComponent(orgId, {
+          name: orgId,
           url: entryUrl,
           hash: output.hash,
           version: 1,

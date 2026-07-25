@@ -21,14 +21,14 @@ export function registerGuard(name: string, guard: Guard): void {
 }
 
 export function createMachineEngine(storage: MachineStorage): MachineEngine {
-  const ensureDefinition = async (tenantId: string, name: string): Promise<MachineDefinition> => {
-    const def = await storage.findDefinition(tenantId, name);
-    if (!def) throw new NotFoundError("MachineDefinition", `${tenantId}/${name}`);
+  const ensureDefinition = async (orgId: string, name: string): Promise<MachineDefinition> => {
+    const def = await storage.findDefinition(orgId, name);
+    if (!def) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
     return def;
   };
 
-  const ensureInstance = async (tenantId: string, id: string): Promise<MachineInstanceDTO> => {
-    const instance = await storage.findInstance(tenantId, id);
+  const ensureInstance = async (orgId: string, id: string): Promise<MachineInstanceDTO> => {
+    const instance = await storage.findInstance(orgId, id);
     if (!instance) throw new NotFoundError("MachineInstance", id);
     return instance;
   };
@@ -69,19 +69,19 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
   };
 
   return {
-    async load(tenantId, name) {
-      return ensureDefinition(tenantId, name);
+    async load(orgId, name) {
+      return ensureDefinition(orgId, name);
     },
 
-    async define(tenantId, definition) {
+    async define(orgId, definition) {
       validateDefinition(definition);
-      const saved = await storage.saveDefinition(tenantId, definition);
-      eventBus.publish("machine.defined", { tenantId, machineName: saved.name });
+      const saved = await storage.saveDefinition(orgId, definition);
+      eventBus.publish("machine.defined", { orgId, machineName: saved.name });
       return saved;
     },
 
-    async start(tenantId, machineName, context) {
-      const definition = await ensureDefinition(tenantId, machineName);
+    async start(orgId, machineName, context) {
+      const definition = await ensureDefinition(orgId, machineName);
       if (!definition.states[definition.initial]) {
         throw new ValidationError("initial", `Unknown initial state ${definition.initial}`);
       }
@@ -90,14 +90,14 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
       actor.start();
       const initialState = actor.getSnapshot().value as string;
 
-      const instance = await storage.createInstance(tenantId, machineName, initialState, context);
-      eventBus.publish("machine.started", { tenantId, instanceId: instance.id, machineName });
+      const instance = await storage.createInstance(orgId, machineName, initialState, context);
+      eventBus.publish("machine.started", { orgId, instanceId: instance.id, machineName });
       return instance;
     },
 
-    async transition(tenantId, instanceId, event, params = {}) {
-      const instance = await ensureInstance(tenantId, instanceId);
-      const definition = await ensureDefinition(tenantId, instance.machineName);
+    async transition(orgId, instanceId, event, params = {}) {
+      const instance = await ensureInstance(orgId, instanceId);
+      const definition = await ensureDefinition(orgId, instance.machineName);
 
       const stateConfig = definition.states[instance.currentState];
       if (!stateConfig) {
@@ -118,7 +118,7 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
 
       if (!result.success) {
         eventBus.publish("machine.transition.rejected", {
-          tenantId,
+          orgId,
           instanceId,
           event,
           fromState: result.fromState,
@@ -140,7 +140,7 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
 
       await storage.updateInstance(updated);
       eventBus.publish("machine.transition", {
-        tenantId,
+        orgId,
         instanceId,
         event,
         fromState: result.fromState,
@@ -150,12 +150,12 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
       return updated;
     },
 
-    async listInstances(tenantId) {
-      return storage.listInstances(tenantId);
+    async listInstances(orgId) {
+      return storage.listInstances(orgId);
     },
 
-    async getInstance(tenantId, id) {
-      return storage.findInstance(tenantId, id);
+    async getInstance(orgId, id) {
+      return storage.findInstance(orgId, id);
     },
   };
 }

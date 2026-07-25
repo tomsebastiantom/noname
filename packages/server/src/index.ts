@@ -15,11 +15,11 @@ import { createFlagDomain } from "./domains/flags";
 import { createMachineDomain } from "./domains/machines";
 import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
-import { tenantMiddleware } from "./shared/tenant";
+import { orgMiddleware } from "./shared/org";
 
 const app = new Hono();
 
-app.use("*", tenantMiddleware);
+app.use("*", orgMiddleware);
 app.get("/health", (c) => c.json({ status: "ok", version: "0.0.1" }));
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -50,10 +50,10 @@ app.route("/api/ai", aiPipeline.routes);
 const agent = createAgentDomain({
   db,
   executor: {
-    async execute(tenantId, type, prompt, input) {
+    async execute(orgId, type, prompt, input) {
       switch (type) {
         case "generate_layout": {
-          const r = await aiPipeline.pipeline.generateLayout(tenantId, prompt, input);
+          const r = await aiPipeline.pipeline.generateLayout(orgId, prompt, input);
           return {
             output: r.response as Record<string, unknown>,
             model: r.model,
@@ -61,7 +61,7 @@ const agent = createAgentDomain({
           };
         }
         case "generate_content": {
-          const r = await aiPipeline.pipeline.generateContent(tenantId, "content", prompt);
+          const r = await aiPipeline.pipeline.generateContent(orgId, "content", prompt);
           return {
             output: r.response as Record<string, unknown>,
             model: r.model,
@@ -69,7 +69,7 @@ const agent = createAgentDomain({
           };
         }
         case "generate_machine": {
-          const r = await aiPipeline.pipeline.generateMachine(tenantId, type, prompt);
+          const r = await aiPipeline.pipeline.generateMachine(orgId, type, prompt);
           return {
             output: r.response as Record<string, unknown>,
             model: r.model,

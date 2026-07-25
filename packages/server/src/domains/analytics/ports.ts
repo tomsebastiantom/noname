@@ -2,7 +2,7 @@ export type AnalyticsEventSource = "server" | "frontend";
 
 export interface AnalyticsEventDTO {
   eventId: string;
-  tenantId: string;
+  orgId: string;
   eventType: string;
   eventSource: AnalyticsEventSource;
   timestamp: Date;
@@ -23,7 +23,7 @@ export interface TrackEventInput {
 }
 
 export interface EventQueryFilters {
-  tenantId?: string;
+  orgId?: string;
   eventType?: string;
   eventSource?: AnalyticsEventSource;
   from?: Date;
@@ -37,7 +37,7 @@ export interface EventQueryFilters {
 }
 
 export interface AggregationFilters {
-  tenantId: string;
+  orgId: string;
   groupBy?: "eventType" | "sessionId" | "schemaId" | "contextHash";
   from?: Date;
   to?: Date;
@@ -50,7 +50,7 @@ export interface AggregationResult {
 }
 
 export interface ConversionFilters {
-  tenantId: string;
+  orgId: string;
   schemaId?: string;
   variantId?: string;
   from?: Date;
@@ -74,7 +74,7 @@ export interface AnalyticsStorage {
 }
 
 export interface SegmentEventsInput {
-  tenantId: string;
+  orgId: string;
   signalCategories?: string[];
   from?: Date;
   to?: Date;
@@ -94,7 +94,7 @@ export interface SegmentEventsResult {
 }
 
 export interface AnalyticsService {
-  track(tenantId: string, input: TrackEventInput): Promise<{ eventId: string; accepted: boolean }>;
+  track(orgId: string, input: TrackEventInput): Promise<{ eventId: string; accepted: boolean }>;
   ingestServerEvent(eventType: string, data: Record<string, unknown>): Promise<void>;
   query(filters: EventQueryFilters): Promise<AnalyticsEventDTO[]>;
   aggregate(filters: AggregationFilters): Promise<AggregationResult[]>;

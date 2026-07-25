@@ -17,18 +17,18 @@ import type {
 
 export function createFlagService(storage: FlagStorage): FlagService {
   return {
-    async create(tenantId, input) {
+    async create(orgId, input) {
       validateKey(input.key);
       validateType(input.type, input.defaultValue);
       normalizeTargeting(input.targeting);
 
-      const existing = await storage.findByKey(tenantId, input.key);
+      const existing = await storage.findByKey(orgId, input.key);
       if (existing) {
         throw new ValidationError("key", `Flag with key '${input.key}' already exists`);
       }
 
       const flag = FeatureFlag.create(
-        tenantId,
+        orgId,
         input.key,
         input.type,
         input.description || "",
@@ -40,7 +40,7 @@ export function createFlagService(storage: FlagStorage): FlagService {
         input.variantId ?? null,
       );
 
-      const saved = await storage.create(tenantId, {
+      const saved = await storage.create(orgId, {
         key: flag.key,
         type: flag.type,
         description: flag.description,
@@ -53,18 +53,18 @@ export function createFlagService(storage: FlagStorage): FlagService {
       return saved;
     },
 
-    async list(tenantId, filters) {
-      return storage.list(tenantId, filters);
+    async list(orgId, filters) {
+      return storage.list(orgId, filters);
     },
 
-    async get(tenantId, id) {
-      const flag = await storage.findById(tenantId, id);
+    async get(orgId, id) {
+      const flag = await storage.findById(orgId, id);
       if (!flag) throw new NotFoundError("FeatureFlag", id);
       return flag;
     },
 
-    async update(tenantId, id, input) {
-      const existing = await storage.findById(tenantId, id);
+    async update(orgId, id, input) {
+      const existing = await storage.findById(orgId, id);
       if (!existing) throw new NotFoundError("FeatureFlag", id);
       if (input.defaultValue !== undefined) {
         validateType(existing.type, input.defaultValue);
@@ -73,7 +73,7 @@ export function createFlagService(storage: FlagStorage): FlagService {
 
       const entity = new FeatureFlag(
         existing.id,
-        existing.tenantId,
+        existing.orgId,
         existing.key,
         existing.type,
         existing.description,
@@ -94,17 +94,17 @@ export function createFlagService(storage: FlagStorage): FlagService {
         input.variantId,
       );
 
-      const updated = await storage.update(tenantId, id, input);
+      const updated = await storage.update(orgId, id, input);
       flushEvents(entity);
       return updated;
     },
 
-    async archive(tenantId, id) {
-      const existing = await storage.findById(tenantId, id);
+    async archive(orgId, id) {
+      const existing = await storage.findById(orgId, id);
       if (!existing) throw new NotFoundError("FeatureFlag", id);
       const entity = new FeatureFlag(
         existing.id,
-        existing.tenantId,
+        existing.orgId,
         existing.key,
         existing.type,
         existing.description,
@@ -117,13 +117,13 @@ export function createFlagService(storage: FlagStorage): FlagService {
         existing.updatedAt,
       );
       entity.archive();
-      const archived = await storage.archive(tenantId, id);
+      const archived = await storage.archive(orgId, id);
       flushEvents(entity);
       return archived;
     },
 
-    async evaluate(tenantId, context, flagKeys) {
-      const flags = await storage.list(tenantId, { status: "active" });
+    async evaluate(orgId, context, flagKeys) {
+      const flags = await storage.list(orgId, { status: "active" });
       const toEvaluate = flagKeys ? flags.filter((f) => flagKeys.includes(f.key)) : flags;
 
       const results = await Promise.all(
@@ -137,19 +137,19 @@ export function createFlagService(storage: FlagStorage): FlagService {
       return results;
     },
 
-    async evaluateBatch(tenantId, contexts, flagKeys) {
+    async evaluateBatch(orgId, contexts, flagKeys) {
       const batch = await Promise.all(
         contexts.map(async (ctx) => ({
           contextHash: ctx.contextHash,
-          evaluations: await this.evaluate(tenantId, ctx, flagKeys),
+          evaluations: await this.evaluate(orgId, ctx, flagKeys),
         })),
       );
       return batch;
     },
 
-    async listEvaluations(tenantId, flagId, filters) {
+    async listEvaluations(orgId, flagId, filters) {
       // Basic authorization check: flag belongs to tenant.
-      const flag = await storage.findById(tenantId, flagId);
+      const flag = await storage.findById(orgId, flagId);
       if (!flag) throw new NotFoundError("FeatureFlag", flagId);
       return storage.listEvaluations(flagId, filters);
     },
@@ -239,7 +239,7 @@ function conditionMatches(
       return condition.hashes.includes(ctx.contextHash);
     case "percentage":
       return deterministicPercentage(
-        ctx.tenantId,
+        ctx.orgId,
         flag.key,
         ctx.contextHash,
         condition.percent,
@@ -258,14 +258,14 @@ function conditionMatches(
 }
 
 function deterministicPercentage(
-  tenantId: string,
+  orgId: string,
   key: string,
   contextHash: string,
   percent: number,
   seed = "",
 ): boolean {
   const hash = createHash("sha256")
-    .update(`${tenantId}:${key}:${contextHash}:${seed}`)
+    .update(`${orgId}:${key}:${contextHash}:${seed}`)
     .digest("hex");
   const bucket = parseInt(hash.slice(0, 8), 16) / 0xffffffff;
   return bucket < percent / 100;
@@ -310,7 +310,7 @@ async function record(
 ): Promise<void> {
   const record: Omit<EvaluationRecord, "id"> = {
     flagId: flag.id,
-    tenantId: flag.tenantId,
+    orgId: flag.orgId,
     contextHash: ctx.contextHash,
     value: result.value,
     matchedRule: result.matchedRule,
@@ -323,7 +323,7 @@ async function record(
   eventBus.publish(FlagEvents.EVALUATED, {
     flagId: flag.id,
     flagKey: flag.key,
-    tenantId: flag.tenantId,
+    orgId: flag.orgId,
     contextHash: ctx.contextHash,
     value: result.value,
     reason: result.reason,

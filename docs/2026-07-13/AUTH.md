@@ -1,6 +1,6 @@
 # Auth — ZITADEL OIDC + Edge Worker Passthrough + HMAC
 
-> **Identity model (2026-07-25):** ZITADEL org id = `tenant_id`, JWT `sub` = `user_id` throughout the system — no mapping table. See [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md).
+> **Identity model (2026-07-25):** ZITADEL org id = `org_id` column / `x-org-id` header; JWT `sub` = `user_id`. See [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md).
 
 ## Architecture
 
@@ -14,12 +14,12 @@ Browser ──► Edge Worker (:8787) ──► Server (:3000) ──► Infra
   │              │     └── JWKS via OIDC discovery (cached)   │
   │              │                                            │
   │              ├── extract sub → userId                     │
-  │              ├── extract org → tenantId                   │
+  │              ├── extract org → orgId                       │
   │              │                                            │
-  │              ├── HMAC-SHA256(tenantId:userId:role)        │
+  │              ├── HMAC-SHA256(orgId:userId:role)            │
   │              │     key: WORKER_SERVER_SECRET              │
   │              │                                            │
-  │              └── forward: x-tenant-id, x-user-id,         │
+  │              └── forward: x-org-id, x-user-id,             │
   │                     x-role, x-auth-hmac                   │
   │                                                           │
   └── ZITADEL (:8080) ────────────────────────────────────────┘
@@ -34,15 +34,15 @@ Browser ──► Edge Worker (:8787) ──► Server (:3000) ──► Infra
    - Discovers JWKS URI from `{issuer}/.well-known/openid-configuration`
    - Fetches and imports the JWKS key by `kid`
    - Validates RSA signature, issuer (`ZITADEL_ISSUER`), expiry
-4. Worker extracts identity: `sub` → userId, org claim → tenantId, `role` → role
-5. Worker computes `HMAC-SHA256(tenantId:userId:role)` with `WORKER_SERVER_SECRET`
-6. Worker forwards headers to server: `x-tenant-id`, `x-user-id`, `x-role`, `x-auth-hmac`
-7. Server middleware (`tenant.ts`):
+4. Worker extracts identity: `sub` → userId, org claim → orgId, `role` → role
+5. Worker computes `HMAC-SHA256(orgId:userId:role)` with `WORKER_SERVER_SECRET`
+6. Worker forwards headers to server: `x-org-id`, `x-user-id`, `x-role`, `x-auth-hmac`
+7. Server middleware (`org.ts`):
    - If `x-auth-hmac` present: verifies HMAC with `crypto.timingSafeEqual`
    - If `x-auth-hmac` absent AND secret configured: logs warning (dev mode, no edge worker)
    - If `x-auth-hmac` absent AND no secret: pass through (dev without edge worker)
    - `/health` endpoint: always skip HMAC
-8. Domain code uses `getTenantId(c)`, `getUserId(c)`, `getRole(c)` from context
+8. Domain code uses `getOrgId(c)`, `getUserId(c)`, `getRole(c)` from context
 
 ## Defense in Depth
 
@@ -52,8 +52,8 @@ Browser ──► Edge Worker (:8787) ──► Server (:3000) ──► Infra
 | **Worker** | `auth.ts` | Issuer validation | Cross-issuer token replay |
 | **Worker** | `auth.ts` | Expiry + skew check | Expired token reuse |
 | **Worker** | `renderer.ts` | `crypto.subtle.sign` HMAC-SHA256 | — (signs for server trust) |
-| **Server** | `tenant.ts` | `createHmac` + `timingSafeEqual` | Direct server access bypassing edge |
-| **Server** | `tenant.ts` | `timingSafeEqual` (not `===`) | Timing side-channel attacks |
+| **Server** | `org.ts` | `createHmac` + `timingSafeEqual` | Direct server access bypassing edge |
+| **Server** | `org.ts` | `timingSafeEqual` (not `===`) | Timing side-channel attacks |
 
 ## Configuration
 
@@ -123,5 +123,5 @@ When running locally without the edge worker (client proxies directly to server 
 | Machine account | ✅ `noname-backend` — key in `zitadel_keys` volume |
 | OIDC client app (for browser) | ✅ `pnpm init:zitadel` — Management API; writes `ZITADEL_CLIENT_ID` to `.env` |
 | Client PKCE login | ⚠️ Not wired in `packages/client` yet |
-| Identity in DB (`tenant_id` / `user_id`) | ⚠️ Schemas still `uuid`; migrate to `text` = ZITADEL ids — see AUTH-IDENTITY.md |
+| Identity in DB | ✅ `org_id` column + `user_id` from JWT — see AUTH-IDENTITY.md |
 | Production hardening | ⚠️ Rotate masterkey + secrets, enable TLS |

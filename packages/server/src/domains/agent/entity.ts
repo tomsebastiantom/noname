@@ -5,7 +5,7 @@ import type { AgentTaskDTO, AgentTaskStatus, AgentTaskType } from "./ports";
 export class AgentTask extends AggregateRoot {
   constructor(
     public readonly id: string,
-    public readonly tenantId: string,
+    public readonly orgId: string,
     public readonly type: AgentTaskType,
     public status: AgentTaskStatus,
     public readonly prompt: string,
@@ -21,14 +21,14 @@ export class AgentTask extends AggregateRoot {
   }
 
   static create(
-    tenantId: string,
+    orgId: string,
     type: AgentTaskType,
     prompt: string,
     input: Record<string, unknown>,
   ): AgentTask {
     const task = new AgentTask(
       crypto.randomUUID(),
-      tenantId,
+      orgId,
       type,
       "pending",
       prompt,
@@ -42,7 +42,7 @@ export class AgentTask extends AggregateRoot {
     );
     task.apply(AgentEvents.CREATED, {
       taskId: task.id,
-      tenantId,
+      orgId,
       type,
     });
     return task;
@@ -53,7 +53,7 @@ export class AgentTask extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply(AgentEvents.STARTED, {
       taskId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
     });
   }
 
@@ -65,7 +65,7 @@ export class AgentTask extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply(AgentEvents.COMPLETED, {
       taskId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       type: this.type,
     });
   }
@@ -76,7 +76,7 @@ export class AgentTask extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply(AgentEvents.FAILED, {
       taskId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       error,
     });
   }
@@ -86,7 +86,7 @@ export class AgentTask extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply(AgentEvents.APPROVED, {
       taskId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       type: this.type,
     });
   }
@@ -96,7 +96,7 @@ export class AgentTask extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply(AgentEvents.REJECTED, {
       taskId: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       type: this.type,
     });
   }
@@ -104,7 +104,7 @@ export class AgentTask extends AggregateRoot {
   toDTO(): AgentTaskDTO {
     return {
       id: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       type: this.type,
       status: this.status,
       prompt: this.prompt,
@@ -121,7 +121,7 @@ export class AgentTask extends AggregateRoot {
   static fromDTO(dto: AgentTaskDTO): AgentTask {
     return new AgentTask(
       dto.id,
-      dto.tenantId,
+      dto.orgId,
       dto.type,
       dto.status,
       dto.prompt,

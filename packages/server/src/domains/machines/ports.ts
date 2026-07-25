@@ -24,7 +24,7 @@ export interface GuardDefinition {
 
 export interface MachineInstanceDTO {
   id: string;
-  tenantId: string;
+  orgId: string;
   machineName: string;
   currentState: string;
   context: Record<string, unknown>;
@@ -47,19 +47,19 @@ export interface GuardResult {
 }
 
 export interface MachineStorage {
-  findDefinition(tenantId: string, name: string): Promise<MachineDefinition | null>;
-  saveDefinition(tenantId: string, definition: MachineDefinition): Promise<MachineDefinition>;
-  listDefinitions(tenantId: string): Promise<MachineDefinition[]>;
+  findDefinition(orgId: string, name: string): Promise<MachineDefinition | null>;
+  saveDefinition(orgId: string, definition: MachineDefinition): Promise<MachineDefinition>;
+  listDefinitions(orgId: string): Promise<MachineDefinition[]>;
 
   createInstance(
-    tenantId: string,
+    orgId: string,
     machineName: string,
     initialState: string,
     context: Record<string, unknown>,
   ): Promise<MachineInstanceDTO>;
-  findInstance(tenantId: string, id: string): Promise<MachineInstanceDTO | null>;
+  findInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
   updateInstance(instance: MachineInstanceDTO): Promise<MachineInstanceDTO>;
-  listInstances(tenantId: string): Promise<MachineInstanceDTO[]>;
+  listInstances(orgId: string): Promise<MachineInstanceDTO[]>;
 
   logTransition(
     instanceId: string,
@@ -92,19 +92,19 @@ export interface GuardContext {
 export type Guard = (ctx: GuardContext) => Promise<GuardResult> | GuardResult;
 
 export interface MachineEngine {
-  load(tenantId: string, name: string): Promise<MachineDefinition>;
-  define(tenantId: string, definition: MachineDefinition): Promise<MachineDefinition>;
+  load(orgId: string, name: string): Promise<MachineDefinition>;
+  define(orgId: string, definition: MachineDefinition): Promise<MachineDefinition>;
   start(
-    tenantId: string,
+    orgId: string,
     machineName: string,
     context: Record<string, unknown>,
   ): Promise<MachineInstanceDTO>;
   transition(
-    tenantId: string,
+    orgId: string,
     instanceId: string,
     event: string,
     params?: Record<string, unknown>,
   ): Promise<MachineInstanceDTO>;
-  listInstances(tenantId: string): Promise<MachineInstanceDTO[]>;
-  getInstance(tenantId: string, id: string): Promise<MachineInstanceDTO | null>;
+  listInstances(orgId: string): Promise<MachineInstanceDTO[]>;
+  getInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
 }

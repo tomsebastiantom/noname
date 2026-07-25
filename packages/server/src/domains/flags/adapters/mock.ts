@@ -5,11 +5,11 @@ export function createInMemoryFlagStorage(): FlagStorage {
   const evaluations = new Map<string, EvaluationRecord[]>();
 
   return {
-    async create(tenantId, input) {
+    async create(orgId, input) {
       const now = new Date();
       const flag: FlagDTO = {
         id: crypto.randomUUID(),
-        tenantId,
+        orgId,
         key: input.key,
         type: input.type,
         description: input.description || "",
@@ -26,21 +26,21 @@ export function createInMemoryFlagStorage(): FlagStorage {
       return flag;
     },
 
-    async findById(tenantId, id) {
+    async findById(orgId, id) {
       const flag = flags.get(id);
-      return flag && flag.tenantId === tenantId ? flag : null;
+      return flag && flag.orgId === orgId ? flag : null;
     },
 
-    async findByKey(tenantId, key) {
+    async findByKey(orgId, key) {
       for (const flag of flags.values()) {
-        if (flag.tenantId === tenantId && flag.key === key) return flag;
+        if (flag.orgId === orgId && flag.key === key) return flag;
       }
       return null;
     },
 
-    async list(tenantId, filters = {}) {
+    async list(orgId, filters = {}) {
       return [...flags.values()].filter((f) => {
-        if (f.tenantId !== tenantId) return false;
+        if (f.orgId !== orgId) return false;
         if (filters.status && f.status !== filters.status) return false;
         if (filters.type && f.type !== filters.type) return false;
         if (filters.schemaId !== undefined && f.schemaId !== filters.schemaId) return false;
@@ -48,8 +48,8 @@ export function createInMemoryFlagStorage(): FlagStorage {
       });
     },
 
-    async update(tenantId, id, input) {
-      const existing = await this.findById(tenantId, id);
+    async update(orgId, id, input) {
+      const existing = await this.findById(orgId, id);
       if (!existing) throw new Error("Flag not found");
       const updated: FlagDTO = {
         ...existing,
@@ -65,8 +65,8 @@ export function createInMemoryFlagStorage(): FlagStorage {
       return updated;
     },
 
-    async archive(tenantId, id) {
-      return this.update(tenantId, id, { status: "archived" });
+    async archive(orgId, id) {
+      return this.update(orgId, id, { status: "archived" });
     },
 
     async recordEvaluation(record) {

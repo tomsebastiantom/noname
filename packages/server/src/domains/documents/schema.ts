@@ -34,7 +34,7 @@ export const documents = pgTable(
   "documents",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     // Document-type key from the URL `/api/documents/:type`:
     //   "layout"            -> a json-render template
     //   "content_type"      -> a content-type schema definition
@@ -65,15 +65,15 @@ export const documents = pgTable(
     // Only one published version per layout template/segment/tenant. Content
     // rows are excluded so a published product doesn't collide with this rule.
     publishedUnique: uniqueIndex("documents_published_unique")
-      .on(t.tenantId, t.type, t.key, t.segment, t.status)
+      .on(t.orgId, t.type, t.key, t.segment, t.status)
       .where(sql`${t.status} = 'published' AND ${t.type} = 'layout'`),
     tenantTypeKey: uniqueIndex("documents_tenant_type_key").on(
-      t.tenantId,
+      t.orgId,
       t.type,
       t.key,
       t.segment,
     ),
-    tenantType: index("documents_tenant_type").on(t.tenantId, t.type),
+    tenantType: index("documents_tenant_type").on(t.orgId, t.type),
   }),
 );
 
@@ -85,13 +85,13 @@ export const documentTypes = pgTable(
   "document_types",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    tenantId: uuid("tenant_id").notNull(),
+    orgId: text("org_id").notNull(),
     name: text("name").notNull(),
     schema: jsonb("schema").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
-    uniqueTypeName: uniqueIndex("document_types_tenant_name").on(t.tenantId, t.name),
+    uniqueTypeName: uniqueIndex("document_types_tenant_name").on(t.orgId, t.name),
   }),
 );

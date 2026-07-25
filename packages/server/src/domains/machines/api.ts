@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { created, notFound, ok } from "../../shared/respond";
-import { getTenantId } from "../../shared/tenant";
+import { getOrgId } from "../../shared/org";
 import type { MachineDefinition, MachineEngine } from "./ports";
 
 export function createMachineRoutes(engine: MachineEngine) {
@@ -12,46 +12,46 @@ export function createMachineRoutes(engine: MachineEngine) {
   });
 
   routes.post("/definitions", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const body = await c.req.json<MachineDefinition>();
-    const saved = await engine.define(tenantId, body);
+    const saved = await engine.define(orgId, body);
     return created(c, saved);
   });
 
   routes.get("/definitions/:name", async (c) => {
-    const tenantId = getTenantId(c);
-    const definition = await engine.load(tenantId, c.req.param("name"));
+    const orgId = getOrgId(c);
+    const definition = await engine.load(orgId, c.req.param("name"));
     return ok(c, definition);
   });
 
   routes.post("/start", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const { machineName, context = {} } = await c.req.json<{
       machineName: string;
       context?: Record<string, unknown>;
     }>();
-    const instance = await engine.start(tenantId, machineName, context);
+    const instance = await engine.start(orgId, machineName, context);
     return created(c, instance);
   });
 
   routes.post("/:id/:event", async (c) => {
-    const tenantId = getTenantId(c);
+    const orgId = getOrgId(c);
     const id = c.req.param("id");
     const event = c.req.param("event");
     const body = (await c.req.json().catch(() => ({}))) as Record<string, unknown>;
-    const instance = await engine.transition(tenantId, id, event, body);
+    const instance = await engine.transition(orgId, id, event, body);
     return ok(c, instance);
   });
 
   routes.get("/instances", async (c) => {
-    const tenantId = getTenantId(c);
-    const instances = await engine.listInstances(tenantId);
+    const orgId = getOrgId(c);
+    const instances = await engine.listInstances(orgId);
     return ok(c, instances);
   });
 
   routes.get("/instances/:id", async (c) => {
-    const tenantId = getTenantId(c);
-    const instance = await engine.getInstance(tenantId, c.req.param("id"));
+    const orgId = getOrgId(c);
+    const instance = await engine.getInstance(orgId, c.req.param("id"));
     return instance ? ok(c, instance) : notFound(c);
   });
 

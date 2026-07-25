@@ -6,8 +6,8 @@ import { getCatalogBuildQueue } from "./queue";
 
 export function createTenantCatalogService(manifestStore: ManifestStore): TenantCatalogService {
   return {
-    async getManifest(tenantId): Promise<CatalogManifest> {
-      const existing = await manifestStore.get(tenantId);
+    async getManifest(orgId): Promise<CatalogManifest> {
+      const existing = await manifestStore.get(orgId);
       if (existing) return existing;
 
       return {
@@ -15,7 +15,7 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
       };
     },
 
-    async publishComponent(tenantId, name, source) {
+    async publishComponent(orgId, name, source) {
       const buildId = randomUUID();
       const carrier: Record<string, string> = {};
       propagation.inject(context.active(), carrier);
@@ -24,10 +24,10 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
 
       const queue = getCatalogBuildQueue();
       await queue.add(
-        `build-${tenantId}-${name}`,
+        `build-${orgId}-${name}`,
         {
           buildId,
-          tenantId,
+          orgId,
           name,
           source,
           traceparent: carrier.traceparent,
@@ -42,12 +42,12 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
       return { buildId };
     },
 
-    async getBuildStatus(_tenantId, buildId) {
+    async getBuildStatus(_orgId, buildId) {
       return manifestStore.getBuildStatus(buildId);
     },
 
-    async removeComponent(tenantId, _name) {
-      await manifestStore.removeComponent(tenantId, _name);
+    async removeComponent(orgId, _name) {
+      await manifestStore.removeComponent(orgId, _name);
     },
   };
 }

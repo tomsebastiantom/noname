@@ -5,7 +5,7 @@ import { AggregateRoot } from "../../shared/aggregate-root";
 export class ContentDocument extends AggregateRoot {
   constructor(
     public readonly id: string,
-    public readonly tenantId: string,
+    public readonly orgId: string,
     public readonly type: string,
     public data: Record<string, unknown>,
     public status: "draft" | "published" | "archived",
@@ -14,8 +14,8 @@ export class ContentDocument extends AggregateRoot {
     super();
   }
 
-  static create(tenantId: string, type: string, data: Record<string, unknown>): ContentDocument {
-    const entry = new ContentDocument(crypto.randomUUID(), tenantId, type, data, "draft");
+  static create(orgId: string, type: string, data: Record<string, unknown>): ContentDocument {
+    const entry = new ContentDocument(crypto.randomUUID(), orgId, type, data, "draft");
     entry.apply("content.created", { id: entry.id, type, data });
     return entry;
   }
@@ -40,7 +40,7 @@ export class ContentDocument extends AggregateRoot {
 export class LayoutDocument extends AggregateRoot {
   constructor(
     public readonly id: string,
-    public readonly tenantId: string,
+    public readonly orgId: string,
     public templateName: string,
     public version: number,
     public segment: string,
@@ -54,7 +54,7 @@ export class LayoutDocument extends AggregateRoot {
   }
 
   static create(
-    tenantId: string,
+    orgId: string,
     templateName: string,
     segment: string,
     spec: Record<string, unknown>,
@@ -63,7 +63,7 @@ export class LayoutDocument extends AggregateRoot {
   ): LayoutDocument {
     const layout = new LayoutDocument(
       crypto.randomUUID(),
-      tenantId,
+      orgId,
       templateName,
       version,
       segment,
@@ -75,7 +75,7 @@ export class LayoutDocument extends AggregateRoot {
     );
     layout.apply("layout.created", {
       id: layout.id,
-      tenantId,
+      orgId,
       templateName,
       segment,
       version,
@@ -89,7 +89,7 @@ export class LayoutDocument extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply("layout.updated", {
       id: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
@@ -104,7 +104,7 @@ export class LayoutDocument extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply("layout.published", {
       id: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
@@ -117,7 +117,7 @@ export class LayoutDocument extends AggregateRoot {
     this.updatedAt = new Date();
     this.apply("layout.archived", {
       id: this.id,
-      tenantId: this.tenantId,
+      orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
