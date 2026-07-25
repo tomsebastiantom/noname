@@ -18,6 +18,8 @@ import type {
   PageDTO,
   PageTreeDTO,
   PageTreeService,
+  RoutingPageView,
+  MainTreeView,
   TenantSettingsDTO,
   TenantSettingsService,
   UploadAssetInput,
@@ -473,6 +475,46 @@ export function createDocumentsService(
         layoutRef: (data.layoutRef as string) ?? "",
         contentRef: (data.contentRef as string) ?? "",
         locale,
+      };
+    },
+
+    async getMainTree(orgId) {
+      const tree = await storage.findDocument(orgId, "page_tree", "main");
+      if (!tree) return null;
+      const pageRefs =
+        (tree.data.pages as
+          | Array<{ id: string; slug: Record<string, string>; pageId: string }>
+          | undefined) ?? [];
+      return {
+        id: tree.id,
+        status: tree.status,
+        pages: pageRefs,
+      };
+    },
+
+    async listRoutingPages(orgId) {
+      const rows = await storage.listDocuments(orgId, { type: "page" });
+      return rows
+        .filter((row) => typeof row.data.layoutRef === "string")
+        .map((row) => ({
+          id: row.id,
+          key: row.key,
+          status: row.status,
+          layoutRef: (row.data.layoutRef as string) ?? "",
+          contentRef: (row.data.contentRef as string) ?? "",
+        }))
+        .sort((a, b) => a.key.localeCompare(b.key));
+    },
+
+    async getRoutingPage(orgId, pageKey) {
+      const row = await storage.findDocument(orgId, "page", pageKey);
+      if (!row || typeof row.data.layoutRef !== "string") return null;
+      return {
+        id: row.id,
+        key: row.key,
+        status: row.status,
+        layoutRef: (row.data.layoutRef as string) ?? "",
+        contentRef: (row.data.contentRef as string) ?? "",
       };
     },
 

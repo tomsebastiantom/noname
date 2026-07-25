@@ -6,6 +6,7 @@ import type { ComponentCtx } from "./types";
 
 const NAV_ITEMS = [
   { id: "home", label: "Overview", href: "/admin" },
+  { id: "pages", label: "Pages", href: "/admin/pages" },
   { id: "content", label: "Content", href: "/admin/content" },
   { id: "layout", label: "Layouts", href: "/admin/layout" },
   { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },

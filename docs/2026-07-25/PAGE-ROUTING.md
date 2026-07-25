@@ -1,7 +1,7 @@
 # Page Routing — URL → Spec (Implementation Plan)
 
 > **Date:** 2026-07-25  
-> **Status:** **Steps 1–4 implemented** (2026-07-25) — admin UI for page_tree still later  
+> **Status:** **Implemented** (2026-07-25) — seed, edge `?url=`, client split, admin UI, commerce URL  
 > **Related:** [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md), [`documents-domain.md`](../2026-07-10/documents-domain.md) § Page Tree
 
 ---
@@ -207,8 +207,8 @@ curl "/api/edge/schema/{orgId}?url=/&segment=default"
 ✅ 2. Edge getSchema accepts ?url= + locale
 ✅ 3. Client: platform vs merchant path split
 ✅ 4. Remove templateFromPath for storefront
-📋 5. Admin UI for page_tree / page (optional before step 4 if seeds enough)
-📋 6. Commerce product URLs in page_tree (seed-demo-commerce)
+✅ 5. Admin UI for page_tree / page (`/admin/pages`, `/admin/pages/tree`)
+✅ 6. Commerce product URLs in page_tree (`seed-demo-commerce`)
 ```
 
 Phase D ties in: [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) (hostname → org) is **orthogonal** — this doc is **path → page** within an org.

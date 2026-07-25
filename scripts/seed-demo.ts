@@ -157,6 +157,29 @@ const adminHomeSpec = {
   },
 };
 
+const adminPagesSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Pages",
+        activeNav: "pages",
+      },
+      children: ["pagesAdmin"],
+    },
+    pagesAdmin: {
+      type: "PageRoutingAdmin",
+      props: {
+        title: "Storefront pages",
+        description:
+          "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
+        locale: "en-US",
+      },
+    },
+  },
+};
+
 const pageContentType = {
   fields: [
     { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
@@ -261,6 +284,7 @@ async function main() {
   await upsertLayout("admin_content", adminContentSpec);
   await upsertLayout("admin_layout", adminLayoutSpec);
   await upsertLayout("admin_home", adminHomeSpec);
+  await upsertLayout("admin_pages", adminPagesSpec);
 
   await ensurePageContentType();
   const pageContentId = await ensureDemoPageEntry();
@@ -277,11 +301,12 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_dashboard`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_dashboard`);
   console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
   console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
   console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin`);
   console.log(`  Content: http://${DEMO_ORG_ID}.localhost:5173/admin/content`);
+  console.log(`  Pages:   http://${DEMO_ORG_ID}.localhost:5173/admin/pages`);
   console.log(`  Layouts: http://${DEMO_ORG_ID}.localhost:5173/admin/layout`);
   console.log(`  Auth:    http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
 }

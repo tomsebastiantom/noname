@@ -238,6 +238,12 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   // -------------------------------------------------------------------------
   // Page tree — URL routing layer.
   // -------------------------------------------------------------------------
+  routes.get("/page_tree/main", async (c) => {
+    const orgId = getOrgId(c);
+    const tree = await pages.getMainTree(orgId);
+    return tree ? ok(c, tree) : notFound(c);
+  });
+
   routes.get("/page_tree/resolve", async (c) => {
     const orgId = getOrgId(c);
     const url = c.req.query("url");
@@ -257,6 +263,17 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     const orgId = getOrgId(c);
     const body = await c.req.json<{ layoutRef: string; contentRef?: string | null }>();
     return ok(c, await pages.upsertPage(orgId, c.req.param("pageKey"), body));
+  });
+
+  routes.get("/routing/pages", async (c) => {
+    const orgId = getOrgId(c);
+    return ok(c, await pages.listRoutingPages(orgId));
+  });
+
+  routes.get("/routing/pages/:pageKey", async (c) => {
+    const orgId = getOrgId(c);
+    const page = await pages.getRoutingPage(orgId, c.req.param("pageKey"));
+    return page ? ok(c, page) : notFound(c);
   });
 
   // -------------------------------------------------------------------------

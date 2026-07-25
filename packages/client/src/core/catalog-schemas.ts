@@ -118,6 +118,38 @@ export const coreComponentSchemas = {
     }),
     description: "Admin overview with links to platform settings",
   },
+  PageRoutingAdmin: {
+    props: z.object({
+      title: z.string().default("Pages"),
+      description: z
+        .string()
+        .nullable()
+        .default("Storefront routing — page documents and URL tree."),
+      locale: z.string().default("en-US"),
+    }),
+    description: "Routing page list/editor and page_tree URL map",
+  },
+  PageTreeAdmin: {
+    props: z.object({
+      title: z.string().default("URL tree"),
+      description: z
+        .string()
+        .nullable()
+        .default("Map storefront paths to page document keys."),
+      locale: z.string().default("en-US"),
+    }),
+    description: "Edit page_tree slug → pageId mappings",
+  },
+  PageEntryAdmin: {
+    props: z.object({
+      title: z.string().default("Page documents"),
+      description: z
+        .string()
+        .nullable()
+        .default("Layout template + contentRef for each routing page."),
+    }),
+    description: "Edit routing page documents (layoutRef, contentRef)",
+  },
 };
 
 export const coreActionSchemas = {

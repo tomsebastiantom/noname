@@ -376,8 +376,25 @@ export interface UpsertPageInput {
   contentRef?: string | null;
 }
 
+export interface MainTreeView {
+  id: string;
+  status: string;
+  pages: PageTreePageRef[];
+}
+
+export interface RoutingPageView {
+  id: string;
+  key: string;
+  status: string;
+  layoutRef: string;
+  contentRef: string;
+}
+
 export interface PageTreeService {
   resolveByUrl(orgId: string, url: string, locale: string): Promise<ResolvedRoute | null>;
+  getMainTree(orgId: string): Promise<MainTreeView | null>;
+  listRoutingPages(orgId: string): Promise<RoutingPageView[]>;
+  getRoutingPage(orgId: string, pageKey: string): Promise<RoutingPageView | null>;
   upsertMainTree(orgId: string, pages: PageTreePageRef[]): Promise<PageTreeDTO>;
   upsertPage(orgId: string, pageKey: string, input: UpsertPageInput): Promise<PageDTO>;
 }

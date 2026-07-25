@@ -7,6 +7,7 @@ import { createRoot } from "react-dom/client";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
+import { isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
 interface EdgeSchemaResponse {
@@ -23,41 +24,13 @@ function orgIdFromHostname(hostname: string): string | null {
   return sub;
 }
 
-function isPlatformPath(pathname: string): boolean {
-  if (pathname === "/login" || pathname === "/auth/callback") return true;
-  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
-  return false;
-}
-
-function templateFromPath(pathname: string): string {
-  if (pathname === "/login") return "login";
-  if (pathname === "/auth/callback") return "login";
-  if (pathname.startsWith("/admin/content")) return "admin_content";
-  if (pathname.startsWith("/admin/layout")) return "admin_layout";
-  if (pathname === "/admin/settings/auth") return "admin_dashboard";
-  if (pathname === "/admin" || pathname === "/admin/") return "admin_home";
-  if (pathname.startsWith("/admin")) return "admin_home";
-  return "home";
-}
-
-function isAdminTemplate(template: string): boolean {
-  return (
-    template === "admin_dashboard" ||
-    template === "admin_content" ||
-    template === "admin_layout" ||
-    template === "admin_home"
-  );
-}
-
 function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
   return (
     <div
       className={
-        template === "login"
+        isLoginTemplate(template)
           ? "noname-auth flex min-h-screen flex-col"
-          : isAdminTemplate(template)
-            ? "min-h-screen bg-background"
-            : "min-h-screen bg-background"
+          : "min-h-screen bg-background"
       }
     >
       {children}
@@ -73,9 +46,10 @@ function App() {
 
   const orgId = orgIdFromHostname(window.location.hostname);
   const pathname = window.location.pathname;
-  const platformRoute = isPlatformPath(pathname);
-  const template = platformRoute ? templateFromPath(pathname) : "home";
-  const adminRoute = platformRoute && isAdminTemplate(template);
+  const route = resolveRoute(pathname);
+  const platformRoute = route.kind === "platform";
+  const template = platformRoute ? route.template : "storefront";
+  const adminRoute = platformRoute && route.requiresAuth;
 
   const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();

@@ -165,6 +165,37 @@ async function publishHomeLayout(spec: Record<string, unknown>, contentRef: stri
   console.log("Home layout created and published with contentRef.");
 }
 
+async function ensureCommercePageRouting(productId: string): Promise<void> {
+  const productPath = "/products/demo-sneakers";
+  await api("PUT", "/api/documents/page/product-demo", {
+    layoutRef: "home",
+    contentRef: `product:${productId}`,
+  });
+
+  const { data: tree } = await api<{ data: { pages: Array<{ id: string; slug: Record<string, string>; pageId: string }> } | null }>(
+    "GET",
+    "/api/documents/page_tree/main",
+  );
+  const pages = tree?.pages ?? [];
+  const hasProduct = pages.some(
+    (entry) =>
+      entry.pageId === "product-demo" ||
+      entry.slug["en-US"] === productPath ||
+      Object.values(entry.slug).includes(productPath),
+  );
+
+  if (!hasProduct) {
+    pages.push({
+      id: "pg-product-demo",
+      slug: { "en-US": productPath },
+      pageId: "product-demo",
+    });
+  }
+
+  await api("PUT", "/api/documents/page_tree/main", { pages });
+  console.log(`Page routing: ${productPath} → product-demo → product:${productId}`);
+}
+
 async function main() {
   if (!DEMO_ORG_ID) {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
@@ -193,10 +224,11 @@ async function main() {
   const contentRef = `product:${productId}`;
 
   await publishHomeLayout(commerceSpec, contentRef);
+  await ensureCommercePageRouting(productId);
 
   const { data: schema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
     "GET",
-    `/api/edge/schema/${DEMO_ORG_ID}?segment=default&template=home`,
+    `/api/edge/schema/${DEMO_ORG_ID}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
 
   const productProps = schema.layout?.elements?.product1?.props;
@@ -211,7 +243,8 @@ async function main() {
   console.log(`  Extensions:  commerce`);
   console.log(`  Content:     ${contentRef}`);
   console.log(`  Layout:      home (Hero + ProductCard with $state)`);
-  console.log(`  Client:      http://${DEMO_ORG_ID}.localhost:5173`);
+  console.log(`  URL:         /products/demo-sneakers (via page_tree)`);
+  console.log(`  Client:      http://${DEMO_ORG_ID}.localhost:5173/products/demo-sneakers`);
 }
 
 main().catch((err: Error) => {

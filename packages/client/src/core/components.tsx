@@ -5,6 +5,9 @@ import { AuthSettingsForm } from "./components/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 import { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 import { LoginForm } from "./components/LoginForm";
+import { PageEntryAdmin } from "./components/PageEntryAdmin";
+import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
+import { PageTreeAdmin } from "./components/PageTreeAdmin";
 import type { ComponentCtx } from "./components/types";
 
 export { AdminHome } from "./components/AdminHome";
@@ -14,6 +17,9 @@ export { AuthSettingsForm } from "./components/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 export { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 export { LoginForm } from "./components/LoginForm";
+export { PageEntryAdmin } from "./components/PageEntryAdmin";
+export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
+export { PageTreeAdmin } from "./components/PageTreeAdmin";
 export type { ComponentCtx } from "./components/types";
 
 export function Grid({
@@ -155,5 +161,8 @@ export const coreComponents = {
   AuthSettingsForm,
   ContentEntryAdmin,
   LayoutEntryAdmin,
+  PageEntryAdmin,
+  PageRoutingAdmin,
+  PageTreeAdmin,
   AdminHome,
 };
