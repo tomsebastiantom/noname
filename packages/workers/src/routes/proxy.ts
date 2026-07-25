@@ -6,6 +6,7 @@ import type { Env } from "../types";
 const PUBLIC_GET = [
   /^\/api\/edge\/schema\/[^/]+$/,
   /^\/api\/tenants\/[^/]+\/catalog$/,
+  /^\/api\/tenants\/[^/]+\/auth\/config$/,
   /^\/health$/,
 ];
 

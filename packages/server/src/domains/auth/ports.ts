@@ -36,6 +36,10 @@ export interface AuthConfigUpdate {
   providers?: string[];
   idpIds?: Record<string, string>;
   allowPassword?: boolean;
+  googleOAuth?: {
+    clientId: string;
+    clientSecret: string;
+  };
 }
 
 export interface AuthService {

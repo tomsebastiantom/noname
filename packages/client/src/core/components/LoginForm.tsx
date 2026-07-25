@@ -18,6 +18,11 @@ import type { ComponentCtx } from "./types";
 
 type AuthProvider = "google" | "github" | "apple";
 
+function safeRedirect(path: string | null | undefined): string | null {
+  if (!path || !path.startsWith("/") || path.startsWith("//")) return null;
+  return path;
+}
+
 export function LoginForm({
   props,
 }: ComponentCtx<{
@@ -37,7 +42,8 @@ export function LoginForm({
   const [enabledProviders, setEnabledProviders] = useState<AuthProvider[]>([]);
 
   const orgId = orgIdFromHostname(window.location.hostname);
-  const redirectPath = props.redirectPath ?? "/";
+  const redirectFromQuery = safeRedirect(new URLSearchParams(window.location.search).get("redirect"));
+  const redirectPath = redirectFromQuery ?? props.redirectPath ?? "/";
 
   useEffect(() => {
     if (!orgId) return;

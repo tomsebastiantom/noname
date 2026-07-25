@@ -66,6 +66,26 @@ export const coreComponentSchemas = {
     slots: ["default"],
     description: "Login page chrome — centered card or split brand panel",
   },
+  AdminShell: {
+    props: z.object({
+      title: z.string(),
+      activeNav: z.string().default("auth"),
+    }),
+    slots: ["default"],
+    description: "Admin dashboard shell with sidebar navigation",
+  },
+  AuthSettingsForm: {
+    props: z.object({
+      title: z.string().default("Sign-in methods"),
+      description: z
+        .string()
+        .nullable()
+        .default(
+          "Configure which providers appear on your login page. Each social provider needs a ZITADEL IdP id for this org.",
+        ),
+    }),
+    description: "Per-org auth provider toggles and ZITADEL IdP configuration",
+  },
 };
 
 export const coreActionSchemas = {
@@ -92,5 +112,18 @@ export const coreActionSchemas = {
       redirectPath: z.string().optional(),
     }),
     description: "Start OAuth sign-in with an external identity provider",
+  },
+  saveAuthConfig: {
+    params: z.object({
+      providers: z.array(z.enum(["google", "github", "apple"])),
+      allowPassword: z.boolean(),
+      googleOAuth: z
+        .object({
+          clientId: z.string().min(1),
+          clientSecret: z.string().min(1),
+        })
+        .optional(),
+    }),
+    description: "Save per-org auth settings and register Google IdP in ZITADEL when credentials provided",
   },
 };

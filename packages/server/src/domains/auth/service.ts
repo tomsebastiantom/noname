@@ -1,17 +1,18 @@
 import type { TenantSettingsService } from "../documents/ports";
 import {
-  DEFAULT_TENANT_AUTH,
   enabledProviders,
   idpIdForProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
 } from "./auth-config";
-import type { AuthConfig, AuthConfigUpdate, AuthService } from "./ports";
+import type { AuthConfig, AuthService } from "./ports";
+import { resolveGoogleIdpId } from "./resolve-google-idp";
 import {
   buildOAuthAuthorizeUrl,
   exchangeAuthorizationCode,
   loginWithCredentials,
 } from "./zitadel-client";
+import { upsertGoogleIdp } from "./zitadel-management";
 
 export function createAuthService(deps: { tenantSettings: TenantSettingsService }): AuthService {
   const { tenantSettings } = deps;
@@ -37,10 +38,34 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
     async updateConfig(orgId, patch) {
       const settings = await tenantSettings.get(orgId);
       const current = normalizeAuthConfig(settings.auth);
+      const google = resolveGoogleIdpId(current, patch);
+
+      if (google.required && !google.googleOAuth && !google.existingIdpId) {
+        throw new Error("Google OAuth client ID and secret are required to enable Google sign-in");
+      }
+
+      let idpIds = patch.idpIds ? { ...current.idpIds, ...patch.idpIds } : { ...current.idpIds };
+      const providers = patch.providers ?? current.providers;
+
+      for (const provider of Object.keys(idpIds)) {
+        if (!providers.includes(provider)) {
+          delete idpIds[provider];
+        }
+      }
+
+      if (google.googleOAuth) {
+        const id = await upsertGoogleIdp(orgId, {
+          clientId: google.googleOAuth.clientId,
+          clientSecret: google.googleOAuth.clientSecret,
+          existingIdpId: google.existingIdpId,
+        });
+        idpIds = { ...idpIds, google: id };
+      }
+
       const next = mergeAuthConfig(current, {
-        providers: patch.providers,
+        providers,
         allowPassword: patch.allowPassword,
-        idpIds: patch.idpIds,
+        idpIds,
       });
 
       await tenantSettings.upsert(orgId, {
@@ -76,4 +101,4 @@ export function createAuthService(deps: { tenantSettings: TenantSettingsService 
   };
 }
 
-export { DEFAULT_TENANT_AUTH, enabledProviders, normalizeAuthConfig };
+export { DEFAULT_TENANT_AUTH, enabledProviders, normalizeAuthConfig } from "./auth-config";

@@ -15,7 +15,7 @@
 ✅ B     Commerce extension + cart machine
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
 ✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
-📋 C     Admin UI                  → edit without seeds
+📋 C     Admin UI                  → edit without seeds  (in progress)
 📋 D     Scale                     → slug, domains, editor
 ```
 
@@ -84,9 +84,20 @@
 
 ---
 
-## Phase C — Admin UI 📋
+## Phase C — Admin UI 📋 (started)
 
 Merchant manages content, layouts, auth settings without seeds.
+
+| Task | Status |
+|------|--------|
+| `AdminShell` + `/admin` routing | ✅ |
+| Auth gate → `/login?redirect=` | ✅ |
+| `AuthSettingsForm` → `PUT auth/config` | ✅ |
+| Seed `admin_dashboard` layout | ✅ |
+| Content / layout editors | 📋 |
+| ZITADEL IdP registration API | 📋 |
+
+**Validate:** Sign in → `http://{orgId}.localhost:5173/admin/settings/auth` → toggle providers → Save → `GET auth/config` reflects changes.
 
 **Doc:** [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)
 

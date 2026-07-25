@@ -1,8 +1,12 @@
+import { AdminShell } from "./components/AdminShell";
 import { AuthLayout } from "./components/AuthLayout";
+import { AuthSettingsForm } from "./components/AuthSettingsForm";
 import { LoginForm } from "./components/LoginForm";
 import type { ComponentCtx } from "./components/types";
 
+export { AdminShell } from "./components/AdminShell";
 export { AuthLayout } from "./components/AuthLayout";
+export { AuthSettingsForm } from "./components/AuthSettingsForm";
 export { LoginForm } from "./components/LoginForm";
 export type { ComponentCtx } from "./components/types";
 
@@ -141,4 +145,6 @@ export const coreComponents = {
   Image,
   LoginForm,
   AuthLayout,
+  AdminShell,
+  AuthSettingsForm,
 };

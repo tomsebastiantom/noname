@@ -55,6 +55,6 @@ export function mergeAuthConfig(
   return {
     providers: patch.providers ?? current.providers,
     allowPassword: patch.allowPassword ?? current.allowPassword,
-    idpIds: patch.idpIds ? { ...current.idpIds, ...patch.idpIds } : { ...current.idpIds },
+    idpIds: patch.idpIds !== undefined ? { ...patch.idpIds } : { ...current.idpIds },
   };
 }

@@ -68,6 +68,28 @@ const demoSpec = {
   },
 };
 
+const adminDashboardSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Auth settings",
+        activeNav: "auth",
+      },
+      children: ["authSettings"],
+    },
+    authSettings: {
+      type: "AuthSettingsForm",
+      props: {
+        title: "Sign-in methods",
+        description:
+          "Enable Google sign-in with your OAuth credentials. Save registers the IdP in ZITADEL and updates platform settings for this org.",
+      },
+    },
+  },
+};
+
 function orgHeaders(): Record<string, string> {
   return {
     "Content-Type": "application/json",
@@ -161,6 +183,7 @@ async function main() {
 
   await upsertLayout("home", demoSpec, { skipIfExists: true });
   await upsertLayout("login", loginSpec);
+  await upsertLayout("admin_dashboard", adminDashboardSpec);
 
   const { data: schema } = await api<{ data: { layout: unknown } }>(
     "GET",
@@ -173,9 +196,10 @@ async function main() {
 
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
-  console.log(`  Layout:  home + login (published, core components)`);
+  console.log(`  Layout:  home + login + admin_dashboard (published, core components)`);
   console.log(`  Client:  http://${DEMO_ORG_ID}.localhost:5173`);
   console.log(`  Login:   http://${DEMO_ORG_ID}.localhost:5173/login`);
+  console.log(`  Admin:   http://${DEMO_ORG_ID}.localhost:5173/admin/settings/auth`);
   console.log(`  Commerce demo: pnpm seed:demo:commerce`);
 }
 

@@ -29,6 +29,12 @@ const authConfigUpdateSchema = z.object({
   providers: z.array(z.enum(["google", "github", "apple"])).optional(),
   idpIds: z.record(z.string(), z.string()).optional(),
   allowPassword: z.boolean().optional(),
+  googleOAuth: z
+    .object({
+      clientId: z.string().min(1),
+      clientSecret: z.string().min(1),
+    })
+    .optional(),
 });
 
 export function createAuthRoutes(service: AuthService) {
@@ -46,8 +52,13 @@ export function createAuthRoutes(service: AuthService) {
     if (!parsed.success) {
       return c.json({ error: "Invalid auth config payload" }, 400);
     }
-    const config = await service.updateConfig(orgId, parsed.data);
-    return c.json({ data: config });
+    try {
+      const config = await service.updateConfig(orgId, parsed.data);
+      return c.json({ data: config });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Auth config update failed";
+      return c.json({ error: message }, 400);
+    }
   });
 
   routes.get("/:orgId/auth/idp/:provider/start", async (c) => {

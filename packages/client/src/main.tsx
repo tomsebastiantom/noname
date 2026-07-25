@@ -4,7 +4,7 @@ import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
 import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
-import { apiHeaders, hydrateTokenFromCookie } from "./auth/session";
+import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { registry as platformRegistry } from "./registry";
@@ -26,7 +26,12 @@ function orgIdFromHostname(hostname: string): string | null {
 function templateFromPath(pathname: string): string {
   if (pathname === "/login") return "login";
   if (pathname === "/auth/callback") return "login";
+  if (pathname.startsWith("/admin")) return "admin_dashboard";
   return "home";
+}
+
+function isAdminTemplate(template: string): boolean {
+  return template === "admin_dashboard";
 }
 
 function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
@@ -35,7 +40,9 @@ function AppShell({ children, template }: Readonly<{ children: ReactNode; templa
       className={
         template === "login"
           ? "noname-auth flex min-h-screen flex-col"
-          : "min-h-screen bg-background"
+          : isAdminTemplate(template)
+            ? "min-h-screen bg-background"
+            : "min-h-screen bg-background"
       }
     >
       {children}
@@ -51,6 +58,7 @@ function App() {
 
   const orgId = orgIdFromHostname(window.location.hostname);
   const template = templateFromPath(window.location.pathname);
+  const adminRoute = isAdminTemplate(template);
 
   const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();
@@ -60,6 +68,12 @@ function App() {
         "Use {orgId}.localhost:5173 — org id is the ZITADEL org (see ZITADEL_DEMO_ORG_ID in .env after pnpm init:zitadel)",
       );
       setLoading(false);
+      return;
+    }
+
+    if (adminRoute && !isLoggedIn()) {
+      const redirect = encodeURIComponent(window.location.pathname);
+      window.location.href = `/login?redirect=${redirect}`;
       return;
     }
 
@@ -97,7 +111,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [orgId, template]);
+  }, [orgId, template, adminRoute]);
 
   useEffect(() => {
     void loadPage();
@@ -135,7 +149,7 @@ function App() {
 
   return (
     <AppShell template={template}>
-      <AuthBar onAuthChange={() => void loadPage()} />
+      {!adminRoute && <AuthBar onAuthChange={() => void loadPage()} />}
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />
       </JSONUIProvider>

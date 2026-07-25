@@ -1,7 +1,7 @@
 # Admin UI — Later (load & manage)
 
 > **Date:** 2026-07-25  
-> **Status:** Planned — **after login UI**  
+> **Status:** Phase C started — AdminShell + Auth settings UI shipped; content editor later  
 > **Start with:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · Login: [`LOGIN-UI.md`](./LOGIN-UI.md)  
 > **Related:** [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md), [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md)
 
@@ -55,9 +55,9 @@ GET /admin  (or admin.{slug}.localhost)
 
 ## Phases (after login)
 
-1. shadcn `AdminShell` + seed `admin_dashboard` layout
-2. Protected `/admin` route + edge role gate
-3. **Auth settings** — per-org social login, MFA, login branding ([`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md))
+1. shadcn `AdminShell` + seed `admin_dashboard` layout ✅
+2. Protected `/admin` route + client auth gate ✅
+3. **Auth settings** — per-org social login toggles + IdP ids ✅ ([`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md))
 4. Visual editor lazy chunk (`editor/`)
 5. Tenant catalog bundler + MF remotes
 
