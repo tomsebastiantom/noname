@@ -27,6 +27,11 @@ export default {
   module: {
     rules: [
       {
+        test: /\.css$/,
+        use: ["css-loader", "postcss-loader"],
+        type: "javascript/auto",
+      },
+      {
         test: /\.tsx?$/,
         include: [join(dir, "src"), extensionsDir],
         use: {
@@ -51,6 +56,7 @@ export default {
   resolve: {
     extensions: [".tsx", ".ts", ".jsx", ".js"],
     alias: {
+      "@": join(dir, "src"),
       "@noname/extensions": join(dir, "../extensions/src/index.ts"),
     },
   },

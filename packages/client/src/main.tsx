@@ -1,3 +1,4 @@
+import "./index.css";
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
@@ -149,13 +150,8 @@ function App() {
     return <div style={{ padding: 48, textAlign: "center" }}>No spec found</div>;
   }
 
-  const pageStyle =
-    template === "login"
-      ? { minHeight: "100vh", display: "flex", flexDirection: "column" as const, background: "#f9fafb" }
-      : undefined;
-
   return (
-    <div style={pageStyle}>
+    <div className={template === "login" ? "flex min-h-screen flex-col bg-muted/40" : undefined}>
       <AuthBar onAuthChange={() => void loadPage()} />
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />

@@ -1,4 +1,14 @@
 import { useState, type FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { loginWithPassword } from "../../auth/login";
 import type { ComponentCtx } from "./types";
 
@@ -41,90 +51,57 @@ export function LoginForm({
 
   if (!orgId) {
     return (
-      <p style={{ color: "#b91c1c", textAlign: "center" }}>
+      <p className="text-center text-sm text-destructive">
         Use {"{orgId}"}.localhost:5173/login
       </p>
     );
   }
 
   return (
-    <div
-      style={{
-        width: "100%",
-        maxWidth: 400,
-        margin: "0 auto",
-        padding: 32,
-        border: "1px solid #e5e7eb",
-        borderRadius: 8,
-        background: "#fff",
-        boxShadow: "0 1px 3px rgba(0,0,0,0.08)",
-      }}
-    >
-      <h1 style={{ margin: "0 0 8px", fontSize: "1.5rem", fontWeight: 600 }}>{props.title}</h1>
-      {props.subtitle && (
-        <p style={{ margin: "0 0 24px", color: "#6b7280", fontSize: "0.95rem" }}>
-          {props.subtitle}
-        </p>
-      )}
+    <div className="flex flex-1 items-center justify-center p-6">
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>{props.title}</CardTitle>
+          {props.subtitle && <CardDescription>{props.subtitle}</CardDescription>}
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
 
-      <form onSubmit={(e) => void onSubmit(e)} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-          Email
-          <input
-            type="email"
-            autoComplete="username"
-            required
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 16,
-            }}
-          />
-        </label>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-        <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-          Password
-          <input
-            type="password"
-            autoComplete="current-password"
-            required
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={{
-              padding: "10px 12px",
-              border: "1px solid #d1d5db",
-              borderRadius: 6,
-              fontSize: 16,
-            }}
-          />
-        </label>
+            {error && (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            )}
 
-        {error && (
-          <p style={{ margin: 0, color: "#b91c1c", fontSize: 14 }} role="alert">
-            {error}
-          </p>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          style={{
-            padding: "12px 16px",
-            fontSize: 16,
-            fontWeight: 500,
-            border: "none",
-            borderRadius: 6,
-            background: loading ? "#9ca3af" : "#111827",
-            color: "#fff",
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? "Signing in…" : "Sign in"}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
