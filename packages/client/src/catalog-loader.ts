@@ -1,5 +1,6 @@
 import type { ComponentRegistry } from "@json-render/react";
 import { loadRemote, registerRemotes } from "@module-federation/runtime";
+import { extensionLoaders } from "@noname/extensions";
 import { initMfRuntime } from "./mf-init";
 import { registry as platformRegistry } from "./registry";
 
@@ -12,8 +13,8 @@ export interface CatalogManifestRemote {
 
 export interface CatalogManifest {
   platform: { version: string; hash: string };
-  /** Built-in vertical packs to merge (e.g. "commerce"). Loaded via code-split imports. */
-  verticals?: string[];
+  /** Built-in extensions to merge (e.g. "commerce"). Loaded via code-split imports. */
+  extensions?: string[];
   private?: CatalogManifestRemote;
   marketplace?: CatalogManifestRemote[];
 }
@@ -21,13 +22,6 @@ export interface CatalogManifest {
 export interface LoadedCatalogs {
   registry: ComponentRegistry;
 }
-
-const VERTICAL_LOADERS: Record<
-  string,
-  () => Promise<{ registry: ComponentRegistry }>
-> = {
-  commerce: () => import("./verticals/commerce/registry"),
-};
 
 function mergeRegistries(registries: ComponentRegistry[]): ComponentRegistry {
   if (registries.length === 1) return registries[0]!;
@@ -43,11 +37,11 @@ function mergeRegistries(registries: ComponentRegistry[]): ComponentRegistry {
   return merged;
 }
 
-async function loadVerticalRegistries(verticals: string[]): Promise<ComponentRegistry[]> {
+async function loadExtensionRegistries(extensions: string[]): Promise<ComponentRegistry[]> {
   const registries: ComponentRegistry[] = [];
 
-  for (const name of verticals) {
-    const loader = VERTICAL_LOADERS[name];
+  for (const name of extensions) {
+    const loader = extensionLoaders[name];
     if (loader) {
       const mod = await loader();
       registries.push(mod.registry);
@@ -60,8 +54,8 @@ async function loadVerticalRegistries(verticals: string[]): Promise<ComponentReg
 export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCatalogs> {
   initMfRuntime();
 
-  const verticalRegistries = await loadVerticalRegistries(manifest.verticals ?? []);
-  const registries: ComponentRegistry[] = [platformRegistry, ...verticalRegistries];
+  const extensionRegistries = await loadExtensionRegistries(manifest.extensions ?? []);
+  const registries: ComponentRegistry[] = [platformRegistry, ...extensionRegistries];
 
   const marketplace = manifest.marketplace ?? [];
   for (const pkg of marketplace) {

@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-/** Commerce vertical — demo pack. Influencer/booking/SaaS get their own verticals later. */
 export const commerceComponentSchemas = {
   Hero: {
     props: z.object({

@@ -1,0 +1,25 @@
+{
+  "name": "@noname/extensions",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./commerce": "./src/commerce/registry.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint",
+    "format": "biome format --write"
+  },
+  "dependencies": {
+    "@json-render/core": "^0.19.0",
+    "@json-render/react": "^0.19.0",
+    "react": "19.2.7",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^7.0.0"
+  }
+}

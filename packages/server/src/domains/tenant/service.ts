@@ -12,7 +12,7 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
 
       return {
         platform: { version: "1", hash: "init" },
-        verticals: [],
+        extensions: [],
       };
     },
 

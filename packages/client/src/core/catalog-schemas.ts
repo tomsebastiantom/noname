@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-/** Platform core — layout + navigation. Every vertical uses these. */
+/** Platform core — layout + navigation. Every extension uses these. */
 export const coreComponentSchemas = {
   Grid: {
     props: z.object({

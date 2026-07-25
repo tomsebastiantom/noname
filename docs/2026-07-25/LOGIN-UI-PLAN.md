@@ -14,7 +14,7 @@
 | 2 | Store slug + Host lookup | Phase 3 (doc only for now) |
 | 3 | **Admin UI** — shell, load/manage layouts, lists | **Last** (see [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) |
 | **4** | Visual editor (`?edit=true`), tenant MF remotes | After admin shell |
-| **Client catalog layers** | Core vs vertical packs (commerce = demo) | [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) |
+| **Client catalog layers** | Core vs extensions (commerce = demo) | [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`EXTENSIONS.md`](./EXTENSIONS.md) |
 
 **Login is not admin.** Login is the merchant/customer sign-in surface. The dashboard for loading and managing store content comes later.
 

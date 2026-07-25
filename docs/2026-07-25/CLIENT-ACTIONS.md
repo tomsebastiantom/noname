@@ -33,8 +33,8 @@ Client stays a **runtime**: evaluate spec → resolve action by name → run han
 │    navigate, login, logout … — every org                      │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. Vertical pack actions (src/verticals/{name}/actions.ts)  │
-│    commerce: addToCart, checkout — only if vertical enabled │
+│ 2. Extension actions (packages/extensions/src/{name}/actions.ts) │
+│    commerce: addToCart, checkout — only if extension enabled │
 └─────────────────────────────────────────────────────────────┘
 ┌─────────────────────────────────────────────────────────────┐
 │ 3. Tenant / marketplace (MF remote)                       │
@@ -42,7 +42,7 @@ Client stays a **runtime**: evaluate spec → resolve action by name → run han
 └─────────────────────────────────────────────────────────────┘
 ```
 
-See [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) for core vs vertical file layout.
+See [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) and [`EXTENSIONS.md`](./EXTENSIONS.md) for core vs extension layout.
 
 ---
 
@@ -53,9 +53,11 @@ Split by domain; compose in `registry.ts`:
 ```
 packages/client/src/
 ├── core/actions/navigation.ts
-├── verticals/commerce/actions.ts
-├── platform/registry.ts      ← merges core + enabled verticals
-└── components/ …             ← call executeAction("login", params)
+├── platform/registry.ts      ← merges core only
+└── catalog-loader.ts         ← merges @noname/extensions + MF remotes
+
+packages/extensions/src/
+└── commerce/actions.ts
 ```
 
 ```typescript
@@ -136,7 +138,7 @@ If a single tenant has hundreds of actions, split tenant remote into multiple MF
 
 ## Checklist
 
-- [ ] Split platform handlers → `actions/{auth,commerce,navigation}.ts`
+- [ ] Split platform handlers → `actions/{auth,navigation}.ts` (+ extension actions stay in `@noname/extensions`)
 - [ ] Keep `registry.ts` thin
 - [ ] Add `login` / `logout` to catalog schemas + auth handlers
 - [ ] Extend `catalog-loader` to merge remote `executeAction`

@@ -1,5 +1,5 @@
 /**
- * Optional commerce vertical demo: enables commerce pack in catalog manifest
+ * Optional commerce extension demo: enables commerce in catalog manifest
  * and publishes a storefront-style layout (Hero, ProductCard).
  * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
@@ -21,7 +21,7 @@ const commerceSpec = {
       type: "Hero",
       props: {
         title: "Welcome to Noname",
-        subtitle: "Commerce vertical demo layout",
+        subtitle: "Commerce extension demo layout",
         image: null,
         ctaLabel: "Explore",
         ctaAction: null,
@@ -69,7 +69,7 @@ async function main() {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
   }
 
-  console.log(`Seeding commerce demo for org ${DEMO_ORG_ID} via ${API_BASE} ...`);
+  console.log(`Seeding commerce extension demo for org ${DEMO_ORG_ID} via ${API_BASE} ...`);
 
   const health = await fetch(`${API_BASE}/health`);
   if (!health.ok) {
@@ -78,7 +78,7 @@ async function main() {
 
   await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
     platform: { version: "1", hash: "commerce-demo" },
-    verticals: ["commerce"],
+    extensions: ["commerce"],
   });
 
   const existing = await fetch(
@@ -105,11 +105,11 @@ async function main() {
     throw new Error("Seed succeeded but edge schema returned no layout");
   }
 
-  console.log("Commerce demo seed complete.");
-  console.log(`  Org:       ${DEMO_ORG_ID}`);
-  console.log(`  Verticals: commerce`);
-  console.log(`  Layout:    home (Hero + ProductCard)`);
-  console.log(`  Client:    http://${DEMO_ORG_ID}.localhost:5173`);
+  console.log("Commerce extension demo seed complete.");
+  console.log(`  Org:         ${DEMO_ORG_ID}`);
+  console.log(`  Extensions:  commerce`);
+  console.log(`  Layout:      home (Hero + ProductCard)`);
+  console.log(`  Client:      http://${DEMO_ORG_ID}.localhost:5173`);
 }
 
 main().catch((err: Error) => {

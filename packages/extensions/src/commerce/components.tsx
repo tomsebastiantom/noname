@@ -1,4 +1,4 @@
-import type { ComponentCtx } from "../../core/components";
+import type { ComponentCtx } from "../types";
 
 export function Hero({
   props,

@@ -76,6 +76,9 @@ importers:
       '@module-federation/runtime':
         specifier: ^2.7.0
         version: 2.7.0
+      '@noname/extensions':
+        specifier: workspace:*
+        version: link:../extensions
       react:
         specifier: 19.2.7
         version: 19.2.7
@@ -101,6 +104,28 @@ importers:
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.3(@types/react@19.2.15)
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
+  packages/extensions:
+    dependencies:
+      '@json-render/core':
+        specifier: ^0.19.0
+        version: 0.19.0(zod@4.4.3)
+      '@json-render/react':
+        specifier: ^0.19.0
+        version: 0.19.0(react@19.2.7)(zod@4.4.3)
+      react:
+        specifier: 19.2.7
+        version: 19.2.7
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.15
       typescript:
         specifier: ^7.0.0
         version: 7.0.2

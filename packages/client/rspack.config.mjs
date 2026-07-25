@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { HtmlRspackPlugin } from "@rspack/core";
 
 const dir = dirname(fileURLToPath(import.meta.url));
+const extensionsDir = join(dir, "../extensions/src");
 const isDev = process.env.NODE_ENV !== "production";
 
 export default {
@@ -27,6 +28,7 @@ export default {
     rules: [
       {
         test: /\.tsx?$/,
+        include: [join(dir, "src"), extensionsDir],
         use: {
           loader: "builtin:swc-loader",
           options: {
@@ -48,6 +50,9 @@ export default {
   },
   resolve: {
     extensions: [".tsx", ".ts", ".jsx", ".js"],
+    alias: {
+      "@noname/extensions": join(dir, "../extensions/src/index.ts"),
+    },
   },
   plugins: [
     new HtmlRspackPlugin({

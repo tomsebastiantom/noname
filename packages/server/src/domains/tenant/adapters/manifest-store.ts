@@ -38,7 +38,7 @@ export function createInMemoryManifestStore(): ManifestStore {
       if (!manifest) {
         manifests.set(orgId, {
           platform: { version: "1", hash: "init" },
-          verticals: [],
+          extensions: [],
           private: entry,
         });
       } else {

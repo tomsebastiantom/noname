@@ -59,7 +59,7 @@ http://{ZITADEL_DEMO_ORG_ID}.localhost:5173
 
 (`ZITADEL_DEMO_ORG_ID` is in `.env` after `pnpm init:zitadel` — numeric org id as subdomain until [Phase 3 slug](./docs/2026-07-25/PHASE-3-STORE-SLUG.md).)
 
-Optional commerce vertical demo: `pnpm seed:demo:commerce` (after `pnpm seed:demo`).
+Optional commerce extension demo: `pnpm seed:demo:commerce` (after `pnpm seed:demo`).
 
 **Request path:** browser → client `:5173` → proxies `/api` → edge `:8787` → JWT + HMAC → API `:3000`.
 

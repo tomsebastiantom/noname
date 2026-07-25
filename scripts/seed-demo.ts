@@ -24,7 +24,7 @@ const demoSpec = {
     intro: {
       type: "Text",
       props: {
-        value: "Platform demo — core layout components only. Enable a vertical pack via catalog manifest for domain-specific UI.",
+        value: "Platform demo — core layout components only. Enable an extension via catalog manifest for domain-specific UI.",
         variant: "body",
         align: "center",
       },
@@ -80,7 +80,7 @@ async function main() {
 
   await api("PUT", `/api/tenants/${DEMO_ORG_ID}/catalog`, {
     platform: { version: "1", hash: "demo" },
-    verticals: [],
+    extensions: [],
   });
 
   const existing = await fetch(

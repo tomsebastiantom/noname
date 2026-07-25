@@ -7,8 +7,8 @@ export interface CatalogManifestRemote {
 
 export interface CatalogManifest {
   platform: { version: string; hash: string };
-  /** Built-in vertical packs enabled for this org (e.g. "commerce"). */
-  verticals?: string[];
+  /** Built-in extensions enabled for this org (e.g. "commerce"). */
+  extensions?: string[];
   private?: CatalogManifestRemote;
   marketplace?: CatalogManifestRemote[];
 }
