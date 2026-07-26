@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented (verified 2026-07-25 — curl + vitest)  
-> **Related:** [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md), [`documents-domain.md`](../2026-07-10/documents-domain.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
+> **Related:** [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) (includes `GET …/ref-backrefs` for delete warnings), [`documents-domain.md`](../2026-07-10/documents-domain.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
 
@@ -119,9 +119,11 @@ Collect ids from admin content entries or `GET /api/documents/:type/:key` respon
 | Piece | Path |
 |-------|------|
 | Core logic | `packages/server/src/domains/documents/resolve-refs.ts` |
-| Service wrapper | `DocumentService.resolveRefs()` in `service.ts` |
-| HTTP route | `packages/server/src/domains/documents/api.ts` |
-| Tests | `packages/server/src/domains/documents/resolve-refs.test.ts` |
+| Ref backrefs | `packages/server/src/domains/documents/find-inbound-refs.ts` |
+| Service wrapper | `DocumentService.resolveRefs()` / `findInboundRefs()` in `service.ts` |
+| HTTP routes | `GET …/resolve-refs`, `GET …/ref-backrefs` in `api.ts` (before `/:type`) |
+| Validation errors | `shared/error-handler.ts` → HTTP 400 |
+| Tests | `resolve-refs.test.ts`, `find-inbound-refs.test.ts` |
 
 Batch limit constant: `MAX_BATCH = 50`.  
 Id parsing: `parseRefIdsParam()` — trim, dedupe, cap.
@@ -142,6 +144,6 @@ Use **this API** when you only have `{ documentId }` blobs (reference fields, ca
 
 ## Future
 
-- Edge cache key: `{orgId}:{documentId}:{locale}`
+- Edge cache for resolve-refs (planned key: `{orgId}:resolve-refs:{idsHash}:{locale}` — not implemented)
 - Optional `?fields=` to trim payload
 - Published-only filter (today returns draft labels too — caller decides)

@@ -20,6 +20,7 @@ import {
   loginWithCredentials,
 } from "./zitadel-client";
 import { upsertZitadelIdp } from "./zitadel-management";
+import { startTotpRegistration, verifyTotpRegistration } from "./zitadel-mfa";
 import {
   findUserIdByEmail,
   passwordResetUrlTemplate,
@@ -77,6 +78,12 @@ export function createAuthService(deps: {
 
     verifyMfa: (input) => completeLoginWithTotp(input),
 
+    startTotpEnrollment: ({ userId, userToken }) => startTotpRegistration(userToken, userId),
+
+    confirmTotpEnrollment: async (input) => {
+      await verifyTotpRegistration(input.userToken, input.userId, input.code);
+    },
+
     async requestPasswordReset(input) {
       const auth = await loadAuth(input.orgId);
       if (!auth.allowPassword || auth.allowPasswordReset === false) {
@@ -90,11 +97,7 @@ export function createAuthService(deps: {
 
       const userId = await findUserIdByEmail(input.orgId, input.email);
       if (userId) {
-        await requestPasswordResetEmail(
-          input.orgId,
-          userId,
-          passwordResetUrlTemplate(slug),
-        );
+        await requestPasswordResetEmail(input.orgId, userId, passwordResetUrlTemplate(slug));
       }
       // Always succeed — do not reveal whether the email exists.
     },

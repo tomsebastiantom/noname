@@ -8,11 +8,11 @@ Canonical doc: `docs/2026-07-25/SPEC-DRIVEN-UI.md`
 
 ```
 main.tsx
-  orgIdFromHostname()
+  slugFromHostname()
   templateFromPath(pathname)     → "home" | "login" | "admin_dashboard" | "admin_content"
   admin JWT gate if needed
-  GET /api/edge/schema/{orgId}?template={template}&segment=default
-  GET /api/tenants/{orgId}/catalog  → loadCatalogs(manifest)
+  GET /api/edge/schema/yogastore?template={template}&segment=default
+  GET /api/tenants/yogastore/catalog  → loadCatalogs(manifest)
   <Renderer spec={layoutTree} registry={mergedRegistry} />
 ```
 

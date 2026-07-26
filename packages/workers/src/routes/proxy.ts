@@ -89,6 +89,8 @@ export function createApiProxyRoutes() {
     }
     const contentType = c.req.header("Content-Type");
     if (contentType) headers.set("Content-Type", contentType);
+    const authorization = c.req.header("Authorization");
+    if (authorization) headers.set("Authorization", authorization);
 
     const init: RequestInit = {
       method: c.req.method,

@@ -22,6 +22,11 @@ const LINKS = [
     description: "Social login (Google, GitHub, Apple) and password toggle",
   },
   {
+    href: "/account/security",
+    label: "Account security",
+    description: "Set up authenticator app (two-factor sign-in)",
+  },
+  {
     href: "/admin/settings/login",
     label: "Login appearance",
     description: "Title, logo, and brand copy on /login",

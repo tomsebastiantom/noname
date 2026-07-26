@@ -311,3 +311,35 @@ export async function getAsset(assetId: string): Promise<AssetSummary | null> {
   if (!body.data) return null;
   return assetFromRow(body.data);
 }
+
+export interface InboundRefHit {
+  id: string;
+  type: string;
+  key: string;
+  status: string;
+  fieldPath: string;
+}
+
+export async function fetchRefBackrefs(documentId: string): Promise<InboundRefHit[]> {
+  const res = await fetch(
+    `/api/documents/ref-backrefs?documentId=${encodeURIComponent(documentId)}`,
+    { headers: apiHeaders() },
+  );
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `Failed to load references (${res.status})`);
+  }
+  const body = (await res.json()) as { data?: InboundRefHit[] };
+  return body.data ?? [];
+}
+
+export async function deleteContentEntry(contentType: string, id: string): Promise<void> {
+  const res = await fetch(
+    `/api/documents/${encodeURIComponent(contentType)}/${encodeURIComponent(id)}`,
+    { method: "DELETE", headers: apiHeaders() },
+  );
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? `Delete failed (${res.status})`);
+  }
+}

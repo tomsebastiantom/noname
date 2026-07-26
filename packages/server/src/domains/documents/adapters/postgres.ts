@@ -194,6 +194,16 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       await db.delete(documents).where(eq(documents.id, id));
     },
 
+    async findDocumentsWithDataMentioning(orgId, needle) {
+      if (!needle.trim()) return [];
+      const pattern = `%${needle}%`;
+      const rows = await db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.orgId, orgId), sql`${documents.data}::text LIKE ${pattern}`));
+      return rows.map(mapDocument);
+    },
+
     async findAssetByHash(orgId, hash) {
       const [row] = await db
         .select()

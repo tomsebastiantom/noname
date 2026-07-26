@@ -7,6 +7,7 @@ import {
   saveRoutingPage,
 } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -17,6 +18,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { DataTable } from "./DataTable";
 import type { ComponentCtx } from "./types";
 
 export function PageEntryAdmin({
@@ -159,26 +161,35 @@ export function PageEntryAdmin({
         {pages.length === 0 ? (
           <p className="text-sm text-muted-foreground">No routing page documents yet.</p>
         ) : (
-          <div className="grid gap-2">
-            {pages.map((row) => (
-              <a
-                key={row.id}
-                href={`/admin/pages/${encodeURIComponent(row.key)}`}
-                className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium">{row.key}</p>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      layout: {row.layoutRef || "—"}
-                      {row.contentRef ? ` · content: ${row.contentRef}` : ""}
-                    </p>
-                  </div>
-                  <span className="text-xs uppercase text-muted-foreground">{row.status}</span>
-                </div>
-              </a>
-            ))}
-          </div>
+          <DataTable
+            rows={pages}
+            rowKey={(row) => row.id}
+            onRowClick={(row) => {
+              window.location.href = `/admin/pages/${encodeURIComponent(row.key)}`;
+            }}
+            columns={[
+              {
+                key: "key",
+                header: "Page key",
+                cell: (row) => <span className="font-medium">{row.key}</span>,
+              },
+              { key: "layout", header: "Layout", cell: (row) => row.layoutRef || "—" },
+              {
+                key: "content",
+                header: "Content ref",
+                cell: (row) => row.contentRef || "—",
+              },
+              {
+                key: "status",
+                header: "Status",
+                cell: (row) => (
+                  <Badge variant={row.status === "published" ? "success" : "muted"}>
+                    {row.status}
+                  </Badge>
+                ),
+              },
+            ]}
+          />
         )}
       </div>
     );

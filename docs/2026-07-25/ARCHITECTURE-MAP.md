@@ -14,8 +14,9 @@
 ✅ B    Commerce extension + cart machine
 ✅ 1    Content render pipeline     → CMS content → $state → resolved spec on edge
 ✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
-🔄 C    Admin UI (C)                → edit content/layouts/auth/pages without seeds (mostly done)
-📋 D    Scale (D)                   → visual editor, custom domains
+✅ C    Admin UI                    → shell, CMS, auth, pages, polish (DataTable, delete warnings)
+✅ 3    Store slug                  → yogastore.localhost → org on edge (KV + resolve API)
+📋 D    Scale                       → visual editor, custom domains
 ```
 
 | Step | Doc | Validates when |
@@ -74,8 +75,9 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec |
 | **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema ✅ |
 | [`documents-domain.md`](../2026-07-10/documents-domain.md) | Full CMS data model (content types, locales, assets, pages) |
-| [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) | Unified `{ documentId }` pointer model |
+| [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) | Unified `{ documentId }` pointer model + delete warnings |
 | [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) | Batch resolve API — labels + asset previews |
+| [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) | Forgot password, sign-up, MFA login + TOTP enrollment |
 
 ### Client
 
@@ -95,15 +97,15 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) | ZITADEL, `org_id`, JWT, edge HMAC |
 | [`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md) | Why password login goes through server broker |
 | [`LOGIN-UI.md`](./LOGIN-UI.md) | LoginForm, social scaffold, UI phases |
+| [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) | Forgot password, sign-up, MFA verify + enrollment |
 | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Per-org providers — **no env shortcuts** |
+| [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` slug routing (slug-only URLs) |
 
-### Later
+### Admin
 
 | Doc | What it covers |
 |-----|----------------|
-| [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, auth + generic content CMS |
-| [`PAGE-ROUTING.md`](./PAGE-ROUTING.md) | URL → page_tree → layout + content |
-| [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` hostname routing |
+| [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, DataTable lists, CMS, auth settings |
 
 ---
 
@@ -111,10 +113,11 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
 | Data | Storage | Merchant edits via |
 |------|---------|-------------------|
-| CMS entry fields (any content type) | `content` document | Admin → Content (`ContentEntryAdmin`) |
-| Page structure (Hero, ProductCard) | `layout` document | Admin layout editor (later) or visual editor |
-| Login welcome text | `layout` login template props | Admin auth appearance |
-| Google on/off per store | `tenant_settings.auth` + ZITADEL IdP | Admin auth settings |
+| CMS entry fields (any content type) | `content` document | Admin → Content (`ContentEntryAdmin`, DataTable + delete warnings) |
+| Page structure (Hero, ProductCard) | `layout` document | Admin → Layouts (`LayoutEntryAdmin`) or visual editor (Phase D) |
+| Login welcome text | `layout` login template props | Admin → Login appearance |
+| Google on/off, sign-up, reset flags | `tenant_settings.auth` + ZITADEL IdP | Admin → Auth settings |
+| TOTP enrollment (user) | ZITADEL user MFA | `/account/security` (`AccountSecurityForm`) |
 | `"Continue with Google"` label | Platform component | Not merchant CMS |
 | Extension components | `@noname/extensions` | Platform ships; manifest enables |
 | Side effects (login, cart) | `core/actions` + `auth/*` | Code — one path only |

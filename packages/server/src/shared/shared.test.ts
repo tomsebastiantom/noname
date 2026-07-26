@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 describe("shared", () => {
   it("event bus publishes and subscribes", async () => {
@@ -43,5 +43,14 @@ describe("shared", () => {
 
     const ve = new ValidationError("email", "invalid");
     expect(ve.message).toBe("Validation failed for email: invalid");
+  });
+
+  it("handleDomainError maps ValidationError to 400", async () => {
+    const { handleDomainError } = await import("./error-handler");
+    const { ValidationError } = await import("./domain-error");
+    const json = vi.fn((_body: unknown, status: number) => new Response(null, { status }));
+    const c = { json } as unknown as import("hono").Context;
+    handleDomainError(new ValidationError("hero", "missing ref"), c);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "VALIDATION_ERROR" }), 400);
   });
 });

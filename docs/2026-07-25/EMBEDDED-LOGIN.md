@@ -10,7 +10,7 @@
 
 Merchants and customers sign in on **our** `LoginForm` at `/login`. We do **not** send users to ZITADEL’s hosted login UI for product flows.
 
-Login goes through **our API** (`POST /api/tenants/:orgId/auth/login`), which calls ZITADEL on the server and returns an OIDC access token (JWT).
+Login goes through **our API** (`POST /api/tenants/:slug/auth/login`), which calls ZITADEL on the server and returns an OIDC access token (JWT).
 
 ---
 
@@ -30,9 +30,9 @@ ZITADEL still owns users, passwords, and tokens. We never store passwords in Pos
 ## Request flow
 
 ```
-Browser ({orgId}.localhost:5173/login)
+Browser (yogastore.localhost:5173/login)
   LoginForm → executeAction("login", { email, password, redirectPath })
-  → actions.login → auth/login.ts → POST /api/tenants/{orgId}/auth/login
+  → actions.login → auth/account-flows.ts → POST /api/tenants/yogastore/auth/login
       { email, password, codeVerifier, clientId, redirectUri }
            │
            ▼

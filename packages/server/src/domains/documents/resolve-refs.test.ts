@@ -62,6 +62,7 @@ function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
     archiveDocument: vi.fn(),
     deleteDocument: vi.fn(),
     findAssetByHash: vi.fn(),
+    findDocumentsWithDataMentioning: vi.fn(async () => []),
   };
 }
 
@@ -136,8 +137,8 @@ describe("parseRefIdsParam", () => {
 
 describe("resolveLabelForRow", () => {
   it("falls back to document key when no title field", () => {
-    expect(
-      resolveLabelForRow(row("x", "page", "home-page", {}), null, "en-US", "en-US"),
-    ).toBe("home-page");
+    expect(resolveLabelForRow(row("x", "page", "home-page", {}), null, "en-US", "en-US")).toBe(
+      "home-page",
+    );
   });
 });

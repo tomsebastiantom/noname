@@ -303,6 +303,7 @@ export interface DocumentStorage {
   archiveDocument(id: string): Promise<DocumentDTO>;
   deleteDocument(id: string): Promise<void>;
   findAssetByHash(orgId: string, hash: string): Promise<DocumentDTO | null>;
+  findDocumentsWithDataMentioning(orgId: string, needle: string): Promise<DocumentDTO[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -411,6 +412,7 @@ export interface PageTreeService {
   upsertPage(orgId: string, pageKey: string, input: UpsertPageInput): Promise<PageDTO>;
 }
 
+import type { InboundRefHit } from "./find-inbound-refs";
 import type { ResolvedDocumentRef } from "./resolve-refs";
 
 export interface DocumentService {
@@ -425,4 +427,5 @@ export interface DocumentService {
     ids: string[],
     locale?: string,
   ): Promise<Record<string, ResolvedDocumentRef | null>>;
+  findInboundRefs(orgId: string, documentId: string): Promise<InboundRefHit[]>;
 }

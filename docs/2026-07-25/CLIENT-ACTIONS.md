@@ -126,7 +126,9 @@ Resolution order: **tenant remote → marketplace remote → platform** (or plat
 
 ## Auth actions (platform-only)
 
-`login`, `idpLogin`, `logout` stay in **platform** `core/actions/auth.ts` + `auth/` helpers. Tenants do not override auth execution — they only style `LoginForm` via spec props. Edge still validates JWT the same way.
+`login`, `idpLogin`, `logout`, `verifyMfa`, `confirmMfaEnrollment`, `requestPasswordReset`, `confirmPasswordReset`, and `register` stay in **platform** `core/actions/auth.ts` + `auth/account-flows.ts`. Tenants do not override auth execution — they only style `LoginForm` via spec props. Edge still validates JWT the same way.
+
+TOTP **enrollment** start uses `account-flows.startTotpEnrollment()` directly from `AccountSecurityForm` (returns QR/secret — not an action schema).
 
 ### Canonical pattern (do not duplicate)
 

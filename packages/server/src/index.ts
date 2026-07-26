@@ -18,11 +18,19 @@ import { createFlagDomain } from "./domains/flags";
 import { createMachineDomain } from "./domains/machines";
 import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
+import { handleDomainError } from "./shared/error-handler";
 import { orgMiddleware } from "./shared/org";
 
 const app = new Hono();
 
 app.use("*", orgMiddleware);
+
+app.onError((err, c) => {
+  const handled = handleDomainError(err, c);
+  if (handled) return handled;
+  console.error(err);
+  return c.json({ error: "Internal server error" }, 500);
+});
 app.get("/health", (c) => c.json({ status: "ok", version: "0.0.1" }));
 
 const databaseUrl = process.env.DATABASE_URL;

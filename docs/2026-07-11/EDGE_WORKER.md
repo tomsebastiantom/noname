@@ -97,10 +97,17 @@ packages/workers/
 
 ## KV Cache (`src/cache.ts`) — implemented
 
-- Cache key: `{tenantId}:{segment}:{path}`
-- Write: after fetching from API server
+| Key helper | Pattern | Used for |
+|------------|---------|----------|
+| `slugCacheKey(slug)` | `slug:{slug}` | Store slug → org id (Phase 3) |
+| `cacheKey(orgId, segment, path)` | `{orgId}:{segment}:{path}` | Edge schema cache (`path` = `schema:{orgId}` today) |
+| `staticCacheKey(path)` | `static:{path}` | Static asset helper |
+
 - Read: before API call — return if hit
+- Write: after fetching from API server
 - TTL: 300s for schema (configurable in `renderer.ts`)
+
+See [`documents-domain.md`](../2026-07-10/documents-domain.md) § KV Cache Key Scheme for **planned** content/layout/html keys (not implemented in the worker yet).
 
 ## SEO Prerenderer — NOT YET IMPLEMENTED
 

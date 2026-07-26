@@ -1,12 +1,13 @@
-import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
 import {
   confirmPasswordReset,
+  confirmTotpEnrollment,
   loginWithPassword,
+  type MfaLoginState,
   registerAccount,
   requestPasswordReset,
   verifyMfaAndLogin,
-  type MfaLoginState,
 } from "../../auth/account-flows";
+import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
@@ -74,6 +75,11 @@ export const authActions = {
     await verifyMfaAndLogin(storeSlug, state, totpCode);
     sessionStorage.removeItem("noname_mfa_login");
     window.location.href = redirectPath ?? "/";
+  },
+
+  confirmMfaEnrollment: async (params: unknown) => {
+    const { code } = params as { code: string };
+    await confirmTotpEnrollment(code);
   },
 
   requestPasswordReset: async (params: unknown) => {

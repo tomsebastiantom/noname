@@ -22,7 +22,7 @@ function templateFromPath(pathname: string): string {
 Client then calls:
 
 ```
-GET /api/edge/schema/{orgId}?template=home&segment=default
+GET /api/edge/schema/yogastore?template=home&segment=default
 ```
 
 **Merchant URLs are not in CMS.** Adding `/about` or `/products/shoes` requires a code change. That breaks the spec-driven model in [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md).
@@ -112,7 +112,7 @@ API already exists: `GET /api/documents/page_tree/resolve?url=&locale=`.
 
 ### Step 2 — Edge: resolve URL → schema
 
-Extend `GET /api/edge/schema/:orgId`:
+Extend `GET /api/edge/schema/:slug` (server resolves slug → org id):
 
 **Today:** `?template=home&segment=default`
 
@@ -148,7 +148,7 @@ return { mode: "url", url: pathname, locale: detectLocale() };
 Fetch:
 
 ```
-GET /api/edge/schema/{orgId}?url={pathname}&segment=default&locale=en-US
+GET /api/edge/schema/yogastore?url={pathname}&segment=default&locale=en-US
 ```
 
 **Remove** hardcoded `return "home"` for unknown storefront paths — 404 from edge if no `page_tree` match.
@@ -169,8 +169,8 @@ Or generic content admin once `page` and `page_tree` are registered content type
 ```bash
 pnpm seed:demo   # includes page_tree + page for /
 curl "/api/documents/page_tree/resolve?url=/&locale=en-US"
-curl "/api/edge/schema/{orgId}?url=/&segment=default"
-# Browser: http://{orgId}.localhost:5173/ → same as today, no templateFromPath for /
+curl "/api/edge/schema/yogastore?url=/&segment=default"
+# Browser: http://yogastore.localhost:5173/ → same as today, no templateFromPath for /
 ```
 
 ---

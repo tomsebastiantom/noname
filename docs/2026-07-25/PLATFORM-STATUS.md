@@ -30,12 +30,15 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 
 | Area | What | Doc |
 |------|------|-----|
-| **Document refs** | All pointers `{ documentId }`; validate on save | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) |
+| **Document refs** | All pointers `{ documentId }`; validate on save; 400 on bad refs | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) |
+| **Ref backrefs + delete warnings** | `GET /ref-backrefs`; admin delete confirm | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) |
 | **Resolve API** | `GET /api/documents/resolve-refs` — batch labels + asset previews | [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) |
 | **Admin Phase C** | Content, layouts, pages, auth settings, login branding | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
-| **Phase 3 slug** | `yogastore.localhost` → edge KV + resolve API | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
-| **Account flows** | Forgot password, sign-up, MFA login step | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
+| **Admin polish** | DataTable lists, settings nav, delete-ref warnings | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
+| **Phase 3 slug** | `yogastore.localhost` → edge KV + resolve API (slug-only) | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
+| **Account flows** | Forgot password, sign-up, MFA login + TOTP enrollment | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | **Domain doc sync** | `documents-domain.md` aligned with refs + resolve API | [`documents-domain.md`](../2026-07-10/documents-domain.md) |
+| **Validation errors** | `ValidationError` → HTTP 400 (not 500) | `packages/server/src/shared/error-handler.ts` |
 
 ---
 
@@ -45,6 +48,7 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 http://yogastore.localhost:5173          storefront
 http://yogastore.localhost:5173/login    login (spec props + auth/config)
 http://yogastore.localhost:5173/admin    admin (JWT required)
+http://yogastore.localhost:5173/account/security   MFA enrollment (JWT required)
 API :3000 · edge :8787 · ZITADEL :8080
 pnpm seed:demo
 ```
@@ -78,7 +82,10 @@ pnpm seed:demo
 | `POST /api/tenants/:slug/auth/login` | Email login or `mfaRequired` |
 | `POST …/auth/register` | Sign-up (if `allowSignUp`) |
 | `POST …/auth/password-reset/*` | Forgot / confirm reset |
+| `POST …/auth/mfa/totp/register` | Start TOTP enrollment (JWT) |
+| `POST …/auth/mfa/totp/confirm` | Confirm TOTP enrollment |
 | `GET /api/documents/resolve-refs?ids=` | Batch ref → label/preview |
+| `GET /api/documents/ref-backrefs?documentId=` | Inbound refs before delete |
 | `GET /api/edge/schema/:slug?template=` | Page spec (storefront + admin) |
 | `GET /api/tenants/resolve/:slug` | Slug → org id (edge cache warm-up) |
 
@@ -92,10 +99,9 @@ Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant UR
 |------|----------------|-----|
 | Visual editor `?edit=true` | Click-to-edit storefront | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | `shop.example.com` → org | Phase D |
-| Published-only refs / delete warnings | Safer CMS | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
-| Admin polish | `DataTable`, nav chrome | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
+| Published-only refs | Stricter ref validation on publish | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
 
-**Suggested next build:** **Visual editor** — Phase 3 slug is done.
+**Suggested next build:** **Visual editor** — admin polish and MFA enrollment are done.
 
 ---
 
@@ -118,9 +124,11 @@ Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant UR
 ```bash
 pnpm seed:demo
 # Login + Google icon → /login
-# CMS → /admin/content
-# Auth toggles → /admin/settings/auth (enable sign-up, save)
+# CMS + delete warnings → /admin/content/:type
+# Auth toggles → /admin/settings/auth
+# MFA enroll → /account/security
 # Resolve → curl -H "x-org-id: $ORG" "localhost:3000/api/documents/resolve-refs?ids=..."
+# Backrefs → curl -H "x-org-id: $ORG" "localhost:3000/api/documents/ref-backrefs?documentId=..."
 pnpm test && pnpm typecheck
 ```
 

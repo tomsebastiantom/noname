@@ -1,13 +1,10 @@
 import { type FormEvent, useEffect, useState } from "react";
+import { getLayoutForTemplate, specToJson } from "../../admin/layout-entries";
 import {
   applyLoginBranding,
   extractLoginBranding,
   type LoginBrandingValues,
 } from "../../admin/login-branding";
-import {
-  getLayoutForTemplate,
-  specToJson,
-} from "../../admin/layout-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";

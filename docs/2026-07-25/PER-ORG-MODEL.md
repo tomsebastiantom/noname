@@ -39,8 +39,9 @@ Think Shopify: one engine, many stores.
 
 | Phase | Dev URL | Resolution |
 |-------|---------|------------|
-| **Today** | `{orgId}.localhost:5173` | Subdomain = ZITADEL org id |
-| **Phase 3** | `{slug}.localhost:5173` | Subdomain = store slug → lookup org id |
+| **Today ✅** | `{slug}.localhost:5173` e.g. `yogastore.localhost:5173` | Subdomain = store slug → `GET /api/tenants/resolve/:slug` |
+
+Legacy numeric org id in subdomain/URLs is **not supported**.
 
 See [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md).
 
@@ -71,7 +72,7 @@ See [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md).
 ### Org A — Yoga Store
 
 ```
-URL:  yogastore.localhost:5173/     (today: {orgId}.localhost:5173/)
+URL:  yogastore.localhost:5173/
 Auth: Google + password
 Extensions: none (core only)
 
@@ -139,7 +140,7 @@ Merchant adds `/products/demo-sneakers` in **Admin → Pages → URL tree**. No 
 Client fetch shape:
 
 ```
-GET /api/edge/schema/{orgId}?url=/products/demo-sneakers
+GET /api/edge/schema/yogastore?url=/products/demo-sneakers
 ```
 
 See [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
@@ -159,7 +160,7 @@ Same admin UI for every org. Edits **that org’s** content only.
 Client fetch shape:
 
 ```
-GET /api/edge/schema/{orgId}?template=admin_content
+GET /api/edge/schema/yogastore?template=admin_content
 ```
 
 Platform paths stay in code because they are finite and not merchant CMS. See [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md).

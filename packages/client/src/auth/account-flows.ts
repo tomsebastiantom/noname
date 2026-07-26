@@ -1,5 +1,6 @@
 import { loadOidcConfig } from "./config";
-import { setSessionToken } from "./session";
+import { requireStoreSlug } from "./org";
+import { apiHeaders, setSessionToken } from "./session";
 
 function base64UrlEncode(bytes: Uint8Array): string {
   let binary = "";
@@ -106,7 +107,12 @@ export async function loginWithPassword(
     };
   };
 
-  if (body.data?.mfaRequired && body.data.sessionId && body.data.sessionToken && body.data.authRequestId) {
+  if (
+    body.data?.mfaRequired &&
+    body.data.sessionId &&
+    body.data.sessionToken &&
+    body.data.authRequestId
+  ) {
     return {
       sessionId: body.data.sessionId,
       sessionToken: body.data.sessionToken,
@@ -123,7 +129,11 @@ export async function loginWithPassword(
   return null;
 }
 
-export async function verifyMfaAndLogin(storeSlug: string, state: MfaLoginState, totpCode: string): Promise<void> {
+export async function verifyMfaAndLogin(
+  storeSlug: string,
+  state: MfaLoginState,
+  totpCode: string,
+): Promise<void> {
   const oidc = await loadOidcOrThrow();
 
   const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/verify`, {
@@ -151,4 +161,37 @@ export async function verifyMfaAndLogin(storeSlug: string, state: MfaLoginState,
   }
 
   setSessionToken(body.data.accessToken, body.data.expiresIn ?? 3600);
+}
+
+export async function startTotpEnrollment(): Promise<{ uri: string; secret: string }> {
+  const storeSlug = requireStoreSlug();
+  const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/totp/register`, {
+    method: "POST",
+    headers: { ...apiHeaders(), "Content-Type": "application/json" },
+    body: "{}",
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `TOTP enrollment failed (${res.status})`);
+  }
+  const body = (await res.json()) as { data?: { uri?: string; secret?: string } };
+  const uri = body.data?.uri?.trim();
+  const secret = body.data?.secret?.trim();
+  if (!uri || !secret) {
+    throw new Error("No TOTP registration details returned");
+  }
+  return { uri, secret };
+}
+
+export async function confirmTotpEnrollment(code: string): Promise<void> {
+  const storeSlug = requireStoreSlug();
+  const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/totp/confirm`, {
+    method: "POST",
+    headers: { ...apiHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ code }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `TOTP confirmation failed (${res.status})`);
+  }
 }

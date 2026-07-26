@@ -189,7 +189,15 @@ export function AuthSettingsForm({
 
       await executeAction(
         "saveAuthConfig",
-        { providers, allowPassword, allowSignUp, allowPasswordReset, googleOAuth, githubOAuth, appleOAuth },
+        {
+          providers,
+          allowPassword,
+          allowSignUp,
+          allowPasswordReset,
+          googleOAuth,
+          githubOAuth,
+          appleOAuth,
+        },
         () => {},
       );
 
@@ -370,7 +378,10 @@ export function AuthSettingsForm({
           )}
 
           <p className="text-sm text-muted-foreground">
-            <a href="/admin/settings/login" className="underline underline-offset-2 hover:text-foreground">
+            <a
+              href="/admin/settings/login"
+              className="underline underline-offset-2 hover:text-foreground"
+            >
               Edit login appearance
             </a>{" "}
             — title, logo, and brand copy on /login.

@@ -15,12 +15,14 @@ export type AppRoute = PlatformRoute | StorefrontRoute;
 export function isPlatformPath(pathname: string): boolean {
   if (pathname === "/login" || pathname === "/auth/callback") return true;
   if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
+  if (pathname.startsWith("/account")) return true;
   return false;
 }
 
 /** Map platform pathname → layout template. Call only when isPlatformPath is true. */
 export function platformTemplateFromPath(pathname: string): string {
   if (pathname === "/login" || pathname === "/auth/callback") return "login";
+  if (pathname.startsWith("/account/security")) return "account_security";
   if (pathname.startsWith("/admin/content")) return "admin_content";
   if (pathname.startsWith("/admin/layout")) return "admin_layout";
   if (pathname.startsWith("/admin/pages")) return "admin_pages";
@@ -39,6 +41,12 @@ export function isLoginTemplate(template: string): boolean {
   return template === "login";
 }
 
+export function requiresAuthPath(pathname: string): boolean {
+  if (pathname.startsWith("/account")) return true;
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) return true;
+  return false;
+}
+
 export function resolveRoute(pathname: string): AppRoute {
   if (!isPlatformPath(pathname)) {
     return { kind: "storefront" };
@@ -47,6 +55,6 @@ export function resolveRoute(pathname: string): AppRoute {
   return {
     kind: "platform",
     template,
-    requiresAuth: isAdminTemplate(template),
+    requiresAuth: requiresAuthPath(pathname),
   };
 }

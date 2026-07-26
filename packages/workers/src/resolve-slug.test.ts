@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { storeSlugFromHost, resolveSiteId } from "./resolve-slug";
+import { resolveSiteId, storeSlugFromHost } from "./resolve-slug";
 import type { Env } from "./types";
 
 describe("storeSlugFromHost", () => {
@@ -38,9 +38,7 @@ describe("resolveSiteId", () => {
 
     vi.stubGlobal(
       "fetch",
-      vi.fn(async () =>
-        Response.json({ data: { orgId: "org-from-api" } }),
-      ),
+      vi.fn(async () => Response.json({ data: { orgId: "org-from-api" } })),
     );
 
     const orgId = await resolveSiteId(env, "yogastore");

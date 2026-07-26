@@ -1,3 +1,4 @@
+import { AccountSecurityForm } from "./components/AccountSecurityForm";
 import { AdminHome } from "./components/AdminHome";
 import { AdminShell } from "./components/AdminShell";
 import { AuthLayout } from "./components/AuthLayout";
@@ -11,6 +12,7 @@ import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 import { PageTreeAdmin } from "./components/PageTreeAdmin";
 import type { ComponentCtx } from "./components/types";
 
+export { AccountSecurityForm } from "./components/AccountSecurityForm";
 export { AdminHome } from "./components/AdminHome";
 export { AdminShell } from "./components/AdminShell";
 export { AuthLayout } from "./components/AuthLayout";
@@ -162,6 +164,7 @@ export const coreComponents = {
   AdminShell,
   AuthSettingsForm,
   LoginBrandingForm,
+  AccountSecurityForm,
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,

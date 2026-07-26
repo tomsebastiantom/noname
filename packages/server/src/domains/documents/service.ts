@@ -4,6 +4,7 @@ import { eventBus } from "../../shared/event-bus";
 import { assertValidStoreSlug, normalizeStoreSlug } from "../../shared/store-slug";
 import { ContentDocument, LayoutDocument } from "./entity";
 import { LayoutEvents } from "./events";
+import { findInboundRefs as collectInboundRefs } from "./find-inbound-refs";
 import { applyOverrides, deepClone } from "./merge";
 import type {
   AssetDocumentService,
@@ -23,8 +24,8 @@ import type {
   TenantSettingsService,
   UploadAssetInput,
 } from "./ports";
-import { resolveDocumentRefs } from "./resolve-refs";
 import { documentIdFromRef } from "./refs";
+import { resolveDocumentRefs } from "./resolve-refs";
 import { contentValidator } from "./validator";
 
 const DEFAULT_LOCALES = ["en-US"];
@@ -615,6 +616,13 @@ export function createDocumentsService(
         defaultLocale,
         (oid, documentId) => assets.get(oid, documentId),
       );
+    },
+
+    async findInboundRefs(orgId, documentId) {
+      const trimmed = documentId.trim();
+      if (!trimmed) return [];
+      const candidates = await storage.findDocumentsWithDataMentioning(orgId, trimmed);
+      return collectInboundRefs(candidates, trimmed);
     },
   };
 }

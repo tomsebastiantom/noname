@@ -142,7 +142,7 @@ pnpm test          # if actions/schemas changed
 pnpm seed:demo     # if layout/seed changed
 ```
 
-Manual: load `{orgId}.localhost:5173/{path}` — page must render from edge schema, not a blank React shell.
+Manual: load `yogastore.localhost:5173/{path}` — page must render from edge schema, not a blank React shell.
 
 ---
 

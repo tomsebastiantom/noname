@@ -89,6 +89,7 @@ function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
     },
     deleteDocument: async () => {},
     findAssetByHash: async () => null,
+    findDocumentsWithDataMentioning: async () => [],
   };
 }
 

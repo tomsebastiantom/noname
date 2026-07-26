@@ -730,7 +730,10 @@ PUT    /api/documents/content-types/:name        # update content type schema (a
 # Resolve stored refs (batch labels + asset previews)
 GET    /api/documents/resolve-refs               # ?ids=uuid1,uuid2&locale=en-US → { [id]: ResolvedDocumentRef | null }
 
-# CRUD by type
+# Inbound refs (delete warnings)
+GET    /api/documents/ref-backrefs               # ?documentId=uuid → [{ type, key, fieldPath, status }]
+
+# CRUD by type (invalid refs → HTTP 400 via ValidationError handler)
 POST   /api/documents/:type                      # create entry (validated against content type schema)
 GET    /api/documents/:type                      # list entries by type
 GET    /api/documents/:type/:key                 # get entry by key
@@ -901,13 +904,27 @@ only `layout:tenant_01:*` keys are invalidated. Tenant B's cache is untouched.
 
 ### KV Cache Key Scheme
 
-| Cached Entity | KV Key Pattern | Invalidated By |
-|--------------|----------------|----------------|
-| Layout spec | `layout:{orgId}:{templateName}:{segmentHash}` | `layout.published` event for that tenant |
-| Content entry | `content:{orgId}:{type}:{key}` | `content.published` / `content.updated` / `content.deleted` |
-| Rendered HTML | `html:{orgId}:{template}:{segment}:{key}:{contentVersion}` | Layout OR content publish for that tenant |
-| Asset metadata | `asset:{orgId}:{documentId}` | `asset.published` / `asset.archived` |
-| Asset binary | R2 CDN (immutable, 1-year TTL) | Asset re-upload (new hash → new object path) |
+**Implemented today** (`packages/workers/src/cache.ts`):
+
+| Cached Entity | KV Key Pattern | TTL | Notes |
+|--------------|----------------|-----|-------|
+| Store slug → org id | `slug:{slug}` | 300s | Phase 3; miss → `GET /api/tenants/resolve/:slug` |
+| Edge schema fetch | `{orgId}:{segment}:schema:{orgId}` | 300s | Written in `renderer.ts` after API miss |
+| Static assets | `static:{path}` | default 60s | Helper exists; R2 route uses direct fetch |
+
+**Planned (not in worker yet)** — design targets from this doc:
+
+| Cached Entity | Planned Key Pattern | Invalidated By |
+|--------------|---------------------|----------------|
+| Layout spec (merged) | `layout:{orgId}:{templateName}:{segmentHash}` | `layout.published` |
+| Content entry (resolved) | `content:{orgId}:{type}:{key}` | `content.published` / `content.deleted` |
+| Rendered HTML | `html:{orgId}:{template}:{segment}:{key}:{contentVersion}` | Layout or content publish |
+| Asset metadata | `asset:{orgId}:{documentId}` | `asset.archived` |
+| Resolve-refs batch | `{orgId}:resolve-refs:{idsHash}:{locale}` | Content/asset publish (future) |
+
+Asset binary files live on R2/CDN (immutable hash paths), not KV.
+
+**Note:** The edge worker does **not** cache per-content-entry JSON or resolve-refs responses yet. Storefront specs are fetched from the API on cache miss for the schema key above.
 
 ### Segment Fallback Resolution
 

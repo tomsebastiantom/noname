@@ -15,7 +15,8 @@
 ✅ B     Commerce extension + cart machine
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
 ✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
-📋 C     Admin UI                  → edit without seeds  (✅ core done)
+✅ C     Admin UI                  → edit without seeds
+✅ 3     Store slug                → Host + path + KV → org id
 📋 D     Scale                     → visual editor, custom domains
 ```
 
@@ -58,8 +59,8 @@
 | Task | Status |
 |------|--------|
 | `tenant_settings.auth` schema | ✅ |
-| `GET /api/tenants/:orgId/auth/config` from Postgres | ✅ |
-| `PUT /api/tenants/:orgId/auth/config` (admin/seed) | ✅ |
+| `GET /api/tenants/:slug/auth/config` from Postgres | ✅ |
+| `PUT /api/tenants/:slug/auth/config` (admin/seed) | ✅ |
 | `startIdpLogin` uses per-org `idpIds` | ✅ |
 | Removed env `listEnabledProviders` / `resolveIdpId` | ✅ |
 | ZITADEL Google IdP on Save (Management API) | ✅ Phase C |
@@ -101,8 +102,9 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 | Seed `admin_dashboard` + `admin_content` + `admin_login` layouts | ✅ |
 | Core demo: `page` content type (no commerce required) | ✅ |
 | Custom IdPs via `auth_provider` CMS | ✅ |
+| Admin polish — `DataTable`, settings nav, delete-ref warnings | ✅ |
+| Account flows — forgot password, sign-up, MFA login + enrollment | ✅ [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | Visual editor `?edit=true` | 📋 Phase D |
-| Account flows (forgot password, sign-up, MFA) | ✅ [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 
 **Validate:**
 
@@ -114,14 +116,33 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 
 ---
 
+## Phase 3 — Store slug ✅
+
+**Goal:** Friendly dev URLs (`yogastore.localhost`) — slug in paths and Host, edge KV cache.
+
+| Task | Status |
+|------|--------|
+| `tenant_settings.data.slug` + unique on save | ✅ |
+| `GET /api/tenants/resolve/:slug` | ✅ |
+| Edge: Host + path slug → org id (KV) | ✅ |
+| Client: slug subdomain + slug in fetch paths | ✅ |
+| Legacy numeric org id in URLs | ❌ removed (slug-only) |
+
+**Validate:** `GET /api/tenants/resolve/yogastore` → `{ orgId }`; open `http://yogastore.localhost:5173`.
+
+**Doc:** [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md)
+
+---
+
 ## Phase D — Scale 📋
 
 | Item | Doc |
 |------|-----|
-| Store slug | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
 | Visual editor `?edit=true` | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) |
 | Tenant MF remotes | [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) |
+| Org MFA policy (`requireMfaForAdmin`) | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
+| Published-only refs on save/publish | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
 
 Page routing (URL → spec) is ✅ — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).
 
@@ -135,8 +156,9 @@ Page routing (URL → spec) is ✅ — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md
 | **B** | Commerce | Extension + cart | ✅ |
 | **1** | Content pipeline | Edge `$state` resolve | ✅ |
 | **A2** | Auth config | Per-org Postgres + ZITADEL | ✅ |
-| **C** | Admin | Shell + auth + content + pages CMS | ✅ core done |
-| **D** | Polish | Slug, visual editor, domains | Multi-use-case |
+| **C** | Admin | Shell + auth + content + pages CMS + polish | ✅ |
+| **3** | Store slug | `yogastore.localhost` → org on edge | ✅ |
+| **D** | Scale | Visual editor, custom domains | 📋 |
 
 ---
 

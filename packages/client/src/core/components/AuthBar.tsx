@@ -22,6 +22,12 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
     <header className="flex items-center justify-end gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
       {loggedIn ? (
         <>
+          <a
+            href="/account/security"
+            className="text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Security
+          </a>
           <span className="text-muted-foreground">Signed in</span>
           <Button
             type="button"

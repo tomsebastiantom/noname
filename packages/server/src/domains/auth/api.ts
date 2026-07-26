@@ -1,5 +1,7 @@
+import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getUserId } from "../../shared/org";
 import { notFound } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
 import type { TenantSettingsService } from "../documents/ports";
@@ -82,6 +84,25 @@ const mfaVerifyBodySchema = z.object({
   clientId: z.string().min(1),
   redirectUri: z.url(),
 });
+
+const mfaEnrollmentConfirmSchema = z.object({
+  code: z.string().min(1),
+});
+
+function bearerToken(c: Context): string | null {
+  const auth = c.req.header("Authorization") ?? "";
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+function requireAuthenticatedUser(c: Context): { userId: string; userToken: string } | Response {
+  const userId = getUserId(c);
+  const userToken = bearerToken(c);
+  if (!userId || !userToken) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+  return { userId, userToken };
+}
 
 export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSettingsService) {
   const routes = new Hono();
@@ -227,6 +248,49 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
     } catch (err) {
       const message = err instanceof Error ? err.message : "MFA verification failed";
       return c.json({ error: message }, 401);
+    }
+  });
+
+  routes.post("/:orgId/auth/mfa/totp/register", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    try {
+      const result = await service.startTotpEnrollment({
+        userId: auth.userId,
+        userToken: auth.userToken,
+      });
+      return c.json({ data: result });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "TOTP enrollment failed";
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  routes.post("/:orgId/auth/mfa/totp/confirm", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    const parsed = mfaEnrollmentConfirmSchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      return c.json({ error: "Invalid TOTP confirmation payload" }, 400);
+    }
+
+    try {
+      await service.confirmTotpEnrollment({
+        orgId,
+        userId: auth.userId,
+        userToken: auth.userToken,
+        code: parsed.data.code,
+      });
+      return c.json({ data: { ok: true } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "TOTP confirmation failed";
+      return c.json({ error: message }, 400);
     }
   });
 

@@ -49,10 +49,10 @@ Details: [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) · [`EMBEDDED-LOGIN.md`](./E
 ## Login page load
 
 ```
-GET {orgId}.localhost:5173/login
-  → GET /api/edge/schema/{orgId}?template=login
-  → GET /api/tenants/{orgId}/auth/config   (provider merge)
-  → GET /api/tenants/{orgId}/catalog       (core only)
+GET yogastore.localhost:5173/login
+  → GET /api/edge/schema/yogastore?template=login
+  → GET /api/tenants/yogastore/auth/config   (provider merge)
+  → GET /api/tenants/yogastore/catalog       (core only)
   → Renderer(LoginForm from spec)
 ```
 
@@ -66,7 +66,7 @@ Login text comes from **layout spec props**, not `$state` / content CMS.
 
 ```
 LoginForm → executeAction("login")
-  → POST /api/tenants/{orgId}/auth/login
+  → POST /api/tenants/yogastore/auth/login
   → ZITADEL Session API (server) → JWT
   → sessionStorage + cookie → redirect
 ```
@@ -99,7 +99,7 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgre
 |-------|-------|--------|
 | 1 Visual polish | AuthLayout, shadcn, divider, password toggle | ✅ |
 | 2 Social sign-in | Buttons + OAuth routes + **per-org config (A2)** | ✅ |
-| 3 Account flows | Forgot password, sign-up, MFA | ✅ |
+| 3 Account flows | Forgot password, sign-up, MFA login + enrollment | ✅ [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | 4 Admin branding | Auth settings + login layout props | Auth ✅ · login branding ✅ (`/admin/settings/login`) |
 
 Per-org Google/GitHub/Apple + password toggles via `/admin/settings/auth`. Login copy via `/admin/settings/login`. See [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md).

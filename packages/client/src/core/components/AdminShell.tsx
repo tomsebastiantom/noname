@@ -9,14 +9,25 @@ const NAV_ITEMS = [
   { id: "pages", label: "Pages", href: "/admin/pages" },
   { id: "content", label: "Content", href: "/admin/content" },
   { id: "layout", label: "Layouts", href: "/admin/layout" },
-  { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
 ] as const;
+
+const SETTINGS_ITEMS = [
+  { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
+  { id: "login", label: "Login appearance", href: "/admin/settings/login" },
+] as const;
+
+function navLinkClass(active: boolean): string {
+  return active
+    ? "rounded-md bg-background px-3 py-2 text-sm font-medium shadow-sm"
+    : "rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground";
+}
 
 export function AdminShell({
   props,
   children,
 }: ComponentCtx<{
   title: string;
+  description?: string | null;
   activeNav: string;
 }>) {
   const loggedIn = isLoggedIn();
@@ -31,18 +42,23 @@ export function AdminShell({
         <Separator />
         <nav className="flex flex-1 flex-col gap-1 p-3">
           {NAV_ITEMS.map((item) => (
-            <a
-              key={item.id}
-              href={item.href}
-              className={
-                props.activeNav === item.id
-                  ? "rounded-md bg-background px-3 py-2 text-sm font-medium shadow-sm"
-                  : "rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground"
-              }
-            >
+            <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
               {item.label}
             </a>
           ))}
+
+          <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Settings
+          </p>
+          {SETTINGS_ITEMS.map((item) => (
+            <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
+              {item.label}
+            </a>
+          ))}
+
+          <a href="/account/security" className={navLinkClass(false)}>
+            Account security
+          </a>
           <a
             href="/"
             className="mt-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground"
@@ -78,6 +94,9 @@ export function AdminShell({
       <main className="flex flex-1 flex-col">
         <header className="border-b px-8 py-5">
           <h2 className="text-2xl font-semibold tracking-tight">{props.title}</h2>
+          {props.description ? (
+            <p className="mt-1 text-sm text-muted-foreground">{props.description}</p>
+          ) : null}
         </header>
         <div className="flex-1 p-8">{children as ReactNode}</div>
       </main>

@@ -6,7 +6,9 @@ import {
   type ContentTypeSchema,
   contentTypeFromPath,
   createContentEntry,
+  deleteContentEntry,
   entryLabel,
+  fetchRefBackrefs,
   getContentType,
   isEditableField,
   listContentTypes,
@@ -14,6 +16,7 @@ import {
   loadEntryFields,
 } from "../../admin/content-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -25,6 +28,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
+import { DataTable } from "./DataTable";
 import { MediaFieldInput } from "./MediaFieldInput";
 import { ReferenceFieldInput } from "./ReferenceFieldInput";
 import type { ComponentCtx } from "./types";
@@ -138,6 +142,7 @@ export function ContentEntryAdmin({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -286,6 +291,44 @@ export function ContentEntryAdmin({
     }
   }
 
+  async function onDelete() {
+    if (!selectedId || !contentType) return;
+
+    setDeleting(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      const backrefs = await fetchRefBackrefs(selectedId);
+      let message = "Delete this entry? This cannot be undone.";
+      if (backrefs.length > 0) {
+        const lines = backrefs
+          .slice(0, 8)
+          .map((hit) => `• ${hit.type}/${hit.key} (${hit.fieldPath})`)
+          .join("\n");
+        const more = backrefs.length > 8 ? `\n…and ${backrefs.length - 8} more` : "";
+        message += `\n\n${backrefs.length} document(s) still reference it:\n${lines}${more}`;
+      }
+      if (!window.confirm(message)) {
+        return;
+      }
+
+      await deleteContentEntry(contentType, selectedId);
+      const rows = await listEntries(contentType);
+      setEntries(rows);
+      if (rows[0]) {
+        await selectEntry(rows[0].id);
+      } else {
+        setSelectedId(null);
+        if (schema) setValues(emptyValuesForSchema(schema));
+      }
+      setSuccess("Entry deleted.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   if (loading) {
     return <p className="text-muted-foreground">Loading content…</p>;
   }
@@ -297,24 +340,27 @@ export function ContentEntryAdmin({
           <CardTitle>{props.title}</CardTitle>
           {props.description && <CardDescription>{props.description}</CardDescription>}
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {types.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No content types yet. Register one via{" "}
-              <code className="rounded bg-muted px-1">POST /api/documents/content-types</code>.
-            </p>
-          ) : (
-            types.map((t) => (
-              <a
-                key={t.name}
-                href={`/admin/content/${t.name}`}
-                className="rounded-md border px-4 py-3 text-sm font-medium hover:bg-muted/60"
-              >
-                {t.name}
-                <span className="ml-2 text-xs text-muted-foreground">{t.fieldCount} fields</span>
-              </a>
-            ))
-          )}
+        <CardContent>
+          <DataTable
+            rows={types}
+            rowKey={(t) => t.name}
+            onRowClick={(t) => {
+              window.location.href = `/admin/content/${t.name}`;
+            }}
+            emptyMessage="No content types yet. Register one via POST /api/documents/content-types."
+            columns={[
+              {
+                key: "name",
+                header: "Type",
+                cell: (t) => <span className="font-medium">{t.name}</span>,
+              },
+              {
+                key: "fields",
+                header: "Fields",
+                cell: (t) => <span className="text-muted-foreground">{t.fieldCount}</span>,
+              },
+            ]}
+          />
         </CardContent>
       </Card>
     );
@@ -419,22 +465,29 @@ export function ContentEntryAdmin({
               + New
             </Button>
           </CardHeader>
-          <CardContent className="flex flex-col gap-1 p-2 pt-0">
-            {entries.map((entry) => (
-              <button
-                key={entry.id}
-                type="button"
-                onClick={() => void selectEntry(entry.id)}
-                className={
-                  selectedId === entry.id
-                    ? "rounded-md bg-muted px-3 py-2 text-left text-sm font-medium"
-                    : "rounded-md px-3 py-2 text-left text-sm text-muted-foreground hover:bg-muted/60"
-                }
-              >
-                {entryLabel(entry, schema, locale)}
-                <span className="ml-2 text-xs uppercase text-muted-foreground">{entry.status}</span>
-              </button>
-            ))}
+          <CardContent className="p-2 pt-0">
+            <DataTable
+              rows={entries}
+              rowKey={(entry) => entry.id}
+              onRowClick={(entry) => void selectEntry(entry.id)}
+              emptyMessage="No entries yet."
+              columns={[
+                {
+                  key: "label",
+                  header: "Entry",
+                  cell: (entry) => entryLabel(entry, schema, locale),
+                },
+                {
+                  key: "status",
+                  header: "Status",
+                  cell: (entry) => (
+                    <Badge variant={entry.status === "published" ? "success" : "muted"}>
+                      {entry.status}
+                    </Badge>
+                  ),
+                },
+              ]}
+            />
           </CardContent>
         </Card>
 
@@ -477,16 +530,24 @@ export function ContentEntryAdmin({
               )}
 
               <div className="flex flex-wrap gap-2">
-                <Button type="submit" disabled={saving || publishing}>
+                <Button type="submit" disabled={saving || publishing || deleting}>
                   {saving ? "Saving…" : "Save draft"}
                 </Button>
                 <Button
                   type="button"
                   variant="outline"
-                  disabled={saving || publishing}
+                  disabled={saving || publishing || deleting}
                   onClick={() => void onPublish()}
                 >
                   {publishing ? "Publishing…" : "Save & publish"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={saving || publishing || deleting || isNewEntry}
+                  onClick={() => void onDelete()}
+                >
+                  {deleting ? "Deleting…" : "Delete"}
                 </Button>
               </div>
             </form>

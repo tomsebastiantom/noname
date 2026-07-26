@@ -69,6 +69,7 @@ export const coreComponentSchemas = {
   AdminShell: {
     props: z.object({
       title: z.string(),
+      description: z.string().nullable().optional(),
       activeNav: z.string().default("auth"),
     }),
     slots: ["default"],
@@ -96,6 +97,16 @@ export const coreComponentSchemas = {
       segment: z.string().default("default"),
     }),
     description: "Structured editor for login layout branding props",
+  },
+  AccountSecurityForm: {
+    props: z.object({
+      title: z.string().default("Account security"),
+      description: z
+        .string()
+        .nullable()
+        .default("Set up an authenticator app for two-factor sign-in."),
+    }),
+    description: "TOTP enrollment for the signed-in user",
   },
   ContentEntryAdmin: {
     props: z.object({
@@ -245,6 +256,12 @@ export const coreActionSchemas = {
       redirectPath: z.string().optional(),
     }),
     description: "Complete sign-in with TOTP after password step",
+  },
+  confirmMfaEnrollment: {
+    params: z.object({
+      code: z.string().min(1),
+    }),
+    description: "Confirm TOTP enrollment with a verification code",
   },
   saveContentEntry: {
     params: z.object({

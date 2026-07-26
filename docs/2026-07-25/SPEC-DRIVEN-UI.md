@@ -61,11 +61,11 @@ templateFromPath("/admin/content/page")   →  "admin_content"
 templateFromPath("/login")                →  "login"
 templateFromPath("/")                     →  "home"
 
-// 2. Fetch resolved layout tree from edge
-GET /api/edge/schema/{orgId}?template={template}&segment=default
+// 2. Fetch resolved layout tree from edge (path segment = store slug, not numeric org id)
+GET /api/edge/schema/yogastore?template={template}&segment=default
 
 // 3. Fetch catalog manifest (which extensions to merge)
-GET /api/tenants/{orgId}/catalog
+GET /api/tenants/yogastore/catalog
 
 // 4. Render
 <JSONUIProvider registry={mergedRegistry}>

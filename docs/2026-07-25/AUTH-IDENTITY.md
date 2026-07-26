@@ -69,7 +69,8 @@ HMAC payload: `orgId:userId:role`
 | **2** | Client Bearer to edge | ✅ |
 | **Login UI** | shadcn `LoginForm`, server-brokered ZITADEL Session API | ✅ [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
 | **3** | Store slug + edge Host → `org_id` | ✅ [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
-| **Admin UI** | Shell, content, auth, login branding, pages, layouts | ✅ core — [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) · visual editor 📋 |
+| **Admin UI** | Shell, content, auth, login branding, pages, layouts, DataTable polish | ✅ [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
+| **Account flows** | Forgot password, sign-up, MFA login + TOTP enrollment | ✅ [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | **4** | Custom domains, wrangler in compose | Later |
 
 **Today:** dev URL is `http://yogastore.localhost:5173` (slug → org via `GET /api/tenants/resolve/:slug`). Full edge Host routing: [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md).
@@ -91,7 +92,7 @@ pnpm --filter @noname/client dev     # :5173 → proxies /api to edge
 
 Open the client at **`http://yogastore.localhost:5173`** — store slug in the subdomain resolves to org id, same as production hostname routing. No demo org baked into rspack.
 
-**Sign in:** open **`/login`** (or click **Sign in**) → enter email/password on our `LoginForm` → client POSTs to `POST /api/tenants/{orgId}/auth/login` → server calls ZITADEL Session API (PAT stays on server) → JWT returned → stored in sessionStorage + cookie → redirected to storefront.
+**Sign in:** open **`/login`** → enter email/password → client POSTs to `POST /api/tenants/yogastore/auth/login` → server calls ZITADEL Session API → JWT stored → redirect.
 
 Why the server is in the path: ZITADEL does not support password grant in the browser, and the Session API requires a secret. See [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md).
 

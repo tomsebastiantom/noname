@@ -8,6 +8,7 @@ import {
   specToJson,
 } from "../../admin/layout-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -19,6 +20,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
+import { DataTable } from "./DataTable";
 import type { ComponentCtx } from "./types";
 
 export function LayoutEntryAdmin({
@@ -135,29 +137,36 @@ export function LayoutEntryAdmin({
           <CardTitle>{props.title}</CardTitle>
           {props.description && <CardDescription>{props.description}</CardDescription>}
         </CardHeader>
-        <CardContent className="flex flex-col gap-2">
-          {layouts.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No layout templates yet. Seed with{" "}
-              <code className="rounded bg-muted px-1">pnpm seed:demo</code>.
-            </p>
-          ) : (
-            layouts.map((layout) => (
-              <a
-                key={layout.id}
-                href={`/admin/layout/${layout.templateName}`}
-                className="rounded-md border px-4 py-3 text-sm font-medium hover:bg-muted/60"
-              >
-                {layout.templateName}
-                <span className="ml-2 text-xs uppercase text-muted-foreground">
-                  {layout.status}
-                </span>
-                {layout.hasContentRef && (
-                  <span className="ml-2 text-xs text-muted-foreground">· contentRef</span>
-                )}
-              </a>
-            ))
-          )}
+        <CardContent>
+          <DataTable
+            rows={layouts}
+            rowKey={(layout) => layout.id}
+            onRowClick={(layout) => {
+              window.location.href = `/admin/layout/${layout.templateName}`;
+            }}
+            emptyMessage="No layout templates yet. Seed with pnpm seed:demo."
+            columns={[
+              {
+                key: "template",
+                header: "Template",
+                cell: (layout) => <span className="font-medium">{layout.templateName}</span>,
+              },
+              {
+                key: "status",
+                header: "Status",
+                cell: (layout) => (
+                  <Badge variant={layout.status === "published" ? "success" : "muted"}>
+                    {layout.status}
+                  </Badge>
+                ),
+              },
+              {
+                key: "contentRef",
+                header: "Content ref",
+                cell: (layout) => (layout.hasContentRef ? "Yes" : "—"),
+              },
+            ]}
+          />
         </CardContent>
       </Card>
     );

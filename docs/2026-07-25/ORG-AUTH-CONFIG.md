@@ -131,9 +131,11 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 | Email/password | Session API + users | LoginForm | ✅ |
 | JWT access tokens | OIDC app (JWT type) | — | ✅ |
 | Google / GitHub / Apple | Identity providers on org | Admin toggles + OAuth setup wizard | ✅ |
-| MFA (TOTP, etc.) | Org/login policies | Admin “Security” section | 📋 |
-| Password reset | ZITADEL reset flow | “Forgot password” link | 📋 |
-| User registration | ZITADEL register / invite | Sign-up link or admin-only invite | 📋 |
+| MFA (TOTP login) | Session API TOTP check | LoginForm `/login?mfa=1` | ✅ |
+| MFA (TOTP enrollment) | `POST /v2/users/{id}/totp` | `/account/security` | ✅ |
+| Org MFA policy (require for admins) | ZITADEL login policies | Admin “Security” section | 📋 |
+| Password reset | ZITADEL reset flow | “Forgot password” on `/login` | ✅ |
+| User registration | ZITADEL register | Sign-up on `/login` (if `allowSignUp`) | ✅ |
 | Roles (admin/customer) | ZITADEL roles in JWT | Edge HMAC `x-role` | ✅ |
 | Audit / user list | ZITADEL console or API | Admin “Users” (later) | 📋 |
 
@@ -147,18 +149,20 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 
 | API | Purpose |
 |-----|---------|
-| `POST /api/tenants/:orgId/auth/login` | Email/password → JWT |
-| `GET/PUT /api/tenants/:orgId/catalog` | Extension manifest |
+| `POST /api/tenants/:slug/auth/login` | Email/password → JWT |
+| `GET/PUT /api/tenants/:slug/catalog` | Extension manifest |
 | `GET/PUT /api/documents/tenant_settings/default` | Locales, SEO, integrations (extend with `auth` block) |
 | `POST/PUT /api/documents/layout` | Login layout spec publish |
 | Edge JWT + HMAC | Post-login API access |
+
+> **Note:** Path segment is the **store slug** (e.g. `yogastore`). Server resolves slug → org id via `resolveSiteIdToOrgId`.
 
 ### Per-org auth (A2 ✅)
 
 | API | Purpose |
 |-----|---------|
-| `GET /api/tenants/:orgId/auth/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
-| `PUT /api/tenants/:orgId/auth/config` | Seed/admin: save providers + `idpIds` per org |
+| `GET /api/tenants/:slug/auth/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
+| `PUT /api/tenants/:slug/auth/config` | Seed/admin: save providers + `idpIds` per org |
 | `GET/PUT /api/documents/tenant_settings/default` | Full settings including `auth` block |
 
 OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
@@ -167,9 +171,9 @@ OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
 
 | API / service | Purpose |
 |---------------|---------|
-| `GET/PUT .../auth/policies` | MFA, signup (proxy ZITADEL) |
+| `GET/PUT .../auth/policies` | Org MFA policy (`requireMfaForAdmin`) |
 | Admin override UI for built-in `providerLabels` | Optional custom button copy |
-| Account flows | Forgot password, sign-up, MFA |
+| Admin user list / invite | ZITADEL Management API |
 
 ### `tenant_settings` extension (planned shape)
 
@@ -198,10 +202,11 @@ Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth setti
 
 | Admin screen | Configures | Writes to | Status |
 |--------------|------------|-----------|--------|
-| **Auth settings** | Toggle Google + password; Google OAuth client ID/secret | ZITADEL IdP API + `tenant_settings.auth` | ✅ Google |
-| **Content** | CMS entry fields by content type | `content` documents via documents API | ✅ |
+| **Auth settings** | Toggle Google + password; sign-up + reset flags; OAuth credentials | ZITADEL IdP API + `tenant_settings.auth` | ✅ |
+| **Content** | CMS entry fields by content type; delete with ref warnings | `content` documents via documents API | ✅ |
 | **Login appearance** | Title, subtitle, logo, layout | Login layout spec via `LoginBrandingForm` | ✅ |
-| **Security** | MFA required for admins, password policy | ZITADEL org policies | 📋 |
+| **Account security** | TOTP enrollment (authenticator app) | ZITADEL user TOTP API via broker | ✅ |
+| **Security (org policy)** | MFA required for admins, password policy | ZITADEL org policies | 📋 |
 | **Users** (later) | List users, invite, roles | ZITADEL Management API | 📋 |
 
 Merchant flow (target):
@@ -221,10 +226,10 @@ Merchant flow (target):
 ## Login page runtime (how config reaches UI)
 
 ```
-GET {orgId}.localhost:5173/login
+GET yogastore.localhost:5173/login
   │
-  ├─► GET /api/edge/schema/{orgId}?template=login     → layout spec (LoginForm tree)
-  ├─► GET /api/tenants/{orgId}/auth/config (public)  → providers, theme (no secrets)
+  ├─► GET /api/edge/schema/yogastore?template=login     → layout spec (LoginForm tree)
+  ├─► GET /api/tenants/yogastore/auth/config (public)  → providers, flags (no secrets)
   └─► catalog manifest (core only for login)
 
 Client merges auth/config into LoginForm props

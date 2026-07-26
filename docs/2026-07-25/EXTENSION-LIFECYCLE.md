@@ -14,7 +14,7 @@ An **extension** is a **bundle** of platform-shipped assets. Enabling `"commerce
 
 | # | Asset | What it is | Package / storage |
 |---|--------|------------|-------------------|
-| 1 | **Manifest flag** | Which extensions this org may load | `PUT /api/tenants/:orgId/catalog` |
+| 1 | **Manifest flag** | Which extensions this org may load | `PUT /api/tenants/:slug/catalog` |
 | 2 | **Catalog schemas** | Zod: valid component props + action params | `extensions/src/{name}/catalog-schemas.ts` |
 | 3 | **Components + actions** | React UI + side effects | `extensions/src/{name}/components.tsx`, `actions.ts` |
 | 4 | **Registry** | Wires schemas → handlers for json-render | `extensions/src/{name}/registry.ts` |
@@ -216,7 +216,7 @@ Seeded by `pnpm seed:demo:commerce` (example tree):
 ```
 Fetch manifest     → extensions: ["commerce"]
 loadCatalogs()     → core registry + commerce registry
-Fetch layout spec  → edge GET .../schema/:orgId?template=home
+Fetch layout spec  → edge GET .../schema/yogastore?template=home
 Renderer           → Stack, Grid (core) + Hero, ProductCard (commerce)
 User clicks Add    → commerce action → machines API
 ```

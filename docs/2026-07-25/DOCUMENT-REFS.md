@@ -145,15 +145,13 @@ These build on `{ documentId }` without changing the stored shape.
 
 ---
 
-### 2. Cascade / delete warnings
+### 2. Delete warnings ✅
 
-**Goal:** Before archiving/deleting a document, report inbound refs (“3 products reference this category”).
+**Implemented.** Before deleting a content entry, admin loads inbound refs and shows a confirm dialog.
 
-**How:**
-
-- Query: scan `documents.data` JSONB for matching `documentId` values (or maintain a reverse index later if scan is too slow)
-- Admin: show warning dialog with list of dependents
-- Policy options: block delete, allow with broken ref, or auto-clear ref (merchant choice)
+- API: `GET /api/documents/ref-backrefs?documentId=<uuid>` → list of `{ type, key, fieldPath, status }`
+- Scan: JSONB `data` text search + walk for `{ documentId }` / legacy keys / bare string refs
+- UI: **Delete** on `ContentEntryAdmin` — warns when dependents exist (does not block delete)
 
 **Does not change:** stored `{ documentId }`.
 
@@ -210,6 +208,8 @@ When adding a field or config that points at another document:
 | Zod accept legacy + canonical | `packages/server/src/domains/documents/validator.ts` |
 | Postgres normalize on read | `packages/server/src/domains/documents/adapters/postgres.ts` |
 | Resolve refs API | [`RESOLVE-REFS.md`](./RESOLVE-REFS.md), `resolve-refs.ts`, `GET …/resolve-refs` | ✅ |
+| Ref backrefs API | `find-inbound-refs.ts`, `GET …/ref-backrefs` | ✅ |
+| Delete warnings (admin) | `ContentEntryAdmin` + `fetchRefBackrefs` | ✅ |
 | Auth icon resolve | `packages/server/src/domains/auth/asset-url.ts`, `auth-config.ts` | ✅ |
 | Admin media picker | `packages/client/src/core/components/MediaFieldInput.tsx` |
 | Admin reference picker | `packages/client/src/core/components/ReferenceFieldInput.tsx` |

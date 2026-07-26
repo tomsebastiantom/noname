@@ -52,6 +52,13 @@ export interface MfaVerifyInput {
   codeVerifier: string;
 }
 
+export interface MfaEnrollmentConfirmInput {
+  orgId: string;
+  userId: string;
+  userToken: string;
+  code: string;
+}
+
 export interface OAuthStartInput {
   orgId: string;
   provider: string;
@@ -101,6 +108,11 @@ export interface AuthConfigUpdate {
 export interface AuthService {
   login(input: LoginCredentials): Promise<LoginResponse>;
   verifyMfa(input: MfaVerifyInput): Promise<LoginResult>;
+  startTotpEnrollment(input: {
+    userId: string;
+    userToken: string;
+  }): Promise<{ uri: string; secret: string }>;
+  confirmTotpEnrollment(input: MfaEnrollmentConfirmInput): Promise<void>;
   requestPasswordReset(input: PasswordResetRequestInput): Promise<void>;
   confirmPasswordReset(input: PasswordResetConfirmInput): Promise<void>;
   register(input: RegisterInput): Promise<{ userId: string }>;

@@ -37,9 +37,7 @@ function labelFromContentData(
     schema?.fields.find((f) => f.type === "text" || f.type === "longText");
   if (titleField) {
     const raw = data[titleField.key];
-    const picked = titleField.isLocalizable
-      ? pickLocalized(raw, locale, defaultLocale)
-      : raw;
+    const picked = titleField.isLocalizable ? pickLocalized(raw, locale, defaultLocale) : raw;
     if (picked !== undefined && picked !== null && String(picked).trim() !== "") {
       return String(picked).trim();
     }

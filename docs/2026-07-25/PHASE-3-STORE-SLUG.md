@@ -25,75 +25,54 @@ Production shape is the same: hostname identifies the store; edge resolves it to
 
 ---
 
-## Pieces to build (when we implement)
+## What was built
 
 ### 1. Store slug in DB
 
-**Option A (preferred):** add `slug` to `tenant_settings.data` (or top-level field if we split it out).
+`slug` on `tenant_settings.data` (e.g. `"yogastore"`). Uniqueness enforced on save.
 
-```json
-{
-  "slug": "yogastore",
-  "defaultLocale": "en-US",
-  "locales": ["en-US"]
-}
-```
+**Constraints:** lowercase `[a-z0-9-]`, unique per platform; reserved names (`www`, `api`, `admin`, etc.) rejected.
 
-**Option B:** small lookup table `store_hosts (hostname, org_id)` for custom domains later — can defer until Phase 4.
-
-**Constraints:**
-
-- Slug: lowercase, `[a-z0-9-]`, unique per platform
-- Reserved: `www`, `api`, `admin`, `localhost`, etc.
-
-**API:** optional public route for edge cache warm-up, e.g. `GET /api/edge/resolve?host=yogastore.localhost` → `{ orgId }` — or edge calls existing tenant settings internally via HMAC/service path.
+**API:** `GET /api/tenants/resolve/:slug` → `{ orgId, slug }` (edge cache warm-up + client bootstrap).
 
 ### 2. Seed
 
-Update `scripts/seed-demo.ts`:
-
-- Set `slug: "yogastore"` in demo `tenant_settings`
-- Log dev URL: `http://yogastore.localhost:5173`
+`scripts/seed-demo.ts` sets `slug: "yogastore"` and logs `http://yogastore.localhost:5173`.
 
 ### 3. Edge lookup
 
-In `packages/workers/src/routes/proxy.ts` (or a small `resolveHost.ts`):
+`packages/workers/src/resolve-slug.ts` + `routes/proxy.ts`:
 
-1. Parse `Host` → store slug (first label: `yogastore.localhost:5173` → `yogastore`)
-2. Resolve slug → `org_id` (Workers KV cache keyed by slug, miss → API lookup)
+1. Parse `Host` → store slug (`yogastore.localhost:5173` → `yogastore`)
+2. Resolve slug → `org_id` (Workers KV keyed by slug, miss → API)
 3. Use resolved `org_id` for HMAC when JWT/path/header do not already provide it
 4. Reject unknown host with 404
 
-**Resolution order (proposed):**
+**Resolution order:**
 
 ```
-JWT org claim  →  URL path org segment  →  Host → slug lookup (Phase 3)
+JWT org claim  →  URL path slug  →  Host → slug lookup
 ```
 
-Public GET routes today embed org in path (`/api/edge/schema/:orgId`). Phase 3 can either:
-
-- Keep path segment as org id (client fetches slug→org once), or
-- Change to slug in path and let edge rewrite to org id upstream — **decide at implementation time**
+Public paths use **slug** in the segment (`/api/edge/schema/yogastore`, `/api/tenants/yogastore/...`). Edge and server resolve slug → org id before upstream HMAC.
 
 ### 4. Client
 
-In `packages/client/src/main.tsx`:
+`packages/client/src/main.tsx` + `auth/org.ts`:
 
-- Replace `orgIdFromHostname` with **`slugFromHostname`** (same parsing, different meaning)
-- Either:
-  - Call edge with slug in paths and let edge resolve, or
-  - One-time resolve slug → org id for API paths (simpler short-term)
+- Subdomain = store slug (`slugFromHostname`)
+- All tenant/edge fetches use slug in path (no numeric org id in URLs)
 
-Remove requirement that subdomain be numeric. Plain `localhost:5173` still shows setup error unless we add a default store.
+Plain `localhost:5173` without subdomain still shows setup error (no default store).
 
 ### 5. Dev URL
 
 ```bash
-# after seed
+pnpm seed:demo
 open http://yogastore.localhost:5173
 ```
 
-No `/etc/hosts` change needed — `*.localhost` resolves in modern browsers.
+No `/etc/hosts` change — `*.localhost` resolves in modern browsers.
 
 ---
 

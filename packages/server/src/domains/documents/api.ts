@@ -15,7 +15,16 @@ import type {
 export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
   const routes = new Hono();
   const assetBinary = binary ?? createAssetStorage();
-  const { contentTypes, tenantSettings, content, layout, assets, pages, resolveRefs } = service;
+  const {
+    contentTypes,
+    tenantSettings,
+    content,
+    layout,
+    assets,
+    pages,
+    resolveRefs,
+    findInboundRefs,
+  } = service;
 
   // -------------------------------------------------------------------------
   // Content type schema management.
@@ -280,6 +289,16 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     const orgId = getOrgId(c);
     const page = await pages.getRoutingPage(orgId, c.req.param("pageKey"));
     return page ? ok(c, page) : notFound(c);
+  });
+
+  routes.get("/ref-backrefs", async (c) => {
+    const orgId = getOrgId(c);
+    const documentId = c.req.query("documentId")?.trim();
+    if (!documentId) {
+      return c.json({ error: "missing ?documentId= document row id" }, 400);
+    }
+    const hits = await findInboundRefs(orgId, documentId);
+    return ok(c, hits);
   });
 
   routes.get("/resolve-refs", async (c) => {

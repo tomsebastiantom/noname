@@ -20,7 +20,7 @@ Storefront text and data live in **CMS content entries**. Layout templates defin
 1. Merchant writes content     POST /api/documents/product  (CMS entry)
 2. Designer writes layout        layout spec with { "$state": "title" } slots
 3. Page links them (optional)    page document: layoutRef + contentRef
-4. Browser requests page         GET /api/edge/schema/:orgId?template=home&contentRef=product:ID
+4. Browser requests page         GET /api/edge/schema/yogastore?template=home&contentRef=product:ID
 5. Edge resolves
      a. layout.resolve(template, segment)
      b. content.resolve(type, id, locale)

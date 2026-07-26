@@ -81,6 +81,7 @@ const adminDashboardSpec = {
       type: "AdminShell",
       props: {
         title: "Auth settings",
+        description: "Social providers, password login, sign-up, and reset flags.",
         activeNav: "auth",
       },
       children: ["authSettings"],
@@ -103,7 +104,8 @@ const adminLoginBrandingSpec = {
       type: "AdminShell",
       props: {
         title: "Login appearance",
-        activeNav: "auth",
+        description: "Title, logo, and brand copy on the sign-in page.",
+        activeNav: "login",
       },
       children: ["loginBranding"],
     },
@@ -114,6 +116,28 @@ const adminLoginBrandingSpec = {
         description:
           "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
         segment: "default",
+      },
+    },
+  },
+};
+
+const accountSecuritySpec = {
+  root: "page",
+  elements: {
+    page: {
+      type: "AuthLayout",
+      props: {
+        layout: "centered",
+        brandTitle: "Account security",
+        brandSubtitle: "Protect your store account",
+      },
+      children: ["security"],
+    },
+    security: {
+      type: "AccountSecurityForm",
+      props: {
+        title: "Two-factor authentication",
+        description: "Use an authenticator app for an extra sign-in step after your password.",
       },
     },
   },
@@ -373,6 +397,7 @@ async function main() {
   await upsertLayout("admin_layout", adminLayoutSpec);
   await upsertLayout("admin_home", adminHomeSpec);
   await upsertLayout("admin_pages", adminPagesSpec);
+  await upsertLayout("account_security", accountSecuritySpec);
 
   await ensurePageContentType();
   await ensureAuthProviderContentType();
