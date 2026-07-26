@@ -105,6 +105,7 @@ export function AuthSettingsForm({
   const [allowPassword, setAllowPassword] = useState(true);
   const [allowSignUp, setAllowSignUp] = useState(false);
   const [allowPasswordReset, setAllowPasswordReset] = useState(true);
+  const [requireMfaForAdmin, setRequireMfaForAdmin] = useState(false);
   const [googleConfigured, setGoogleConfigured] = useState(false);
   const [githubConfigured, setGithubConfigured] = useState(false);
   const [appleConfigured, setAppleConfigured] = useState(false);
@@ -132,6 +133,7 @@ export function AuthSettingsForm({
           setAllowPassword(data.allowPassword);
           setAllowSignUp(data.allowSignUp);
           setAllowPasswordReset(data.allowPasswordReset);
+          setRequireMfaForAdmin(data.requireMfaForAdmin);
           setGoogleConfigured(data.googleConfigured);
           setGithubConfigured(data.githubConfigured);
           setAppleConfigured(data.appleConfigured);
@@ -194,6 +196,7 @@ export function AuthSettingsForm({
           allowPassword,
           allowSignUp,
           allowPasswordReset,
+          requireMfaForAdmin,
           googleOAuth,
           githubOAuth,
           appleOAuth,
@@ -376,6 +379,29 @@ export function AuthSettingsForm({
               </label>
             </>
           )}
+
+          <fieldset className="flex flex-col gap-3 rounded-md border p-3">
+            <legend className="px-1 text-sm font-medium">Admin security</legend>
+            <label className="flex cursor-pointer items-center gap-2">
+              <input
+                type="checkbox"
+                checked={requireMfaForAdmin}
+                onChange={(e) => {
+                  setRequireMfaForAdmin(e.target.checked);
+                  setSuccess(null);
+                }}
+                className="size-4 rounded border-input"
+              />
+              <span className="text-sm">Require authenticator app (MFA) for admin access</span>
+            </label>
+            <p className="text-xs text-muted-foreground">
+              When enabled, team members must enroll at{" "}
+              <a href="/account/security" className="underline underline-offset-2">
+                Account security
+              </a>{" "}
+              before using /admin.
+            </p>
+          </fieldset>
 
           <p className="text-sm text-muted-foreground">
             <a

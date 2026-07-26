@@ -171,9 +171,8 @@ OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
 
 | API / service | Purpose |
 |---------------|---------|
-| `GET/PUT .../auth/policies` | Org MFA policy (`requireMfaForAdmin`) |
 | Admin override UI for built-in `providerLabels` | Optional custom button copy |
-| Admin user list / invite | ZITADEL Management API |
+| ZITADEL org password policies UI | Beyond MFA-for-admin toggle |
 
 ### `tenant_settings` extension (planned shape)
 
@@ -206,8 +205,8 @@ Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth setti
 | **Content** | CMS entry fields by content type; delete with ref warnings | `content` documents via documents API | ✅ |
 | **Login appearance** | Title, subtitle, logo, layout | Login layout spec via `LoginBrandingForm` | ✅ |
 | **Account security** | TOTP enrollment (authenticator app) | ZITADEL user TOTP API via broker | ✅ |
-| **Security (org policy)** | MFA required for admins, password policy | ZITADEL org policies | 📋 |
-| **Users** (later) | List users, invite, roles | ZITADEL Management API | 📋 |
+| **Security (org policy)** | MFA required for admins | `tenant_settings.auth.requireMfaForAdmin` | ✅ |
+| **Users** | List users, invite, roles | ZITADEL + `tenant_settings.auth.teamRoles` | ✅ |
 
 Merchant flow (target):
 

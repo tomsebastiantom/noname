@@ -13,6 +13,7 @@ const NAV_ITEMS = [
 
 const SETTINGS_ITEMS = [
   { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
+  { id: "users", label: "Team members", href: "/admin/settings/users" },
   { id: "login", label: "Login appearance", href: "/admin/settings/login" },
 ] as const;
 

@@ -1,9 +1,26 @@
+import { randomBytes } from "node:crypto";
 import { getManagementToken, v2Request } from "./zitadel-management";
 
 const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
+interface ZitadelUserRow {
+  userId?: string;
+  state?: string;
+  human?: {
+    profile?: { givenName?: string; familyName?: string; displayName?: string };
+    email?: { email?: string; isVerified?: boolean };
+  };
+}
+
 interface ListUsersResponse {
-  result?: Array<{ userId?: string }>;
+  result?: ZitadelUserRow[];
+}
+
+export interface OrgUserSummary {
+  userId: string;
+  email: string;
+  displayName: string;
+  state: string;
 }
 
 export async function findUserIdByEmail(orgId: string, email: string): Promise<string | null> {
@@ -97,6 +114,64 @@ export async function registerHumanUser(
     throw new Error("ZITADEL did not return a user id");
   }
   return { userId: created.userId };
+}
+
+export async function listOrgUsers(orgId: string): Promise<OrgUserSummary[]> {
+  const body = await v2Request<ListUsersResponse>(orgId, "POST", "/users/_search", {
+    query: { offset: "0", limit: "100", asc: true },
+  });
+
+  return (body.result ?? [])
+    .map((row) => {
+      const userId = row.userId?.trim();
+      const email = row.human?.email?.email?.trim().toLowerCase() ?? "";
+      if (!userId || !email) return null;
+
+      const profile = row.human?.profile;
+      const displayName =
+        profile?.displayName?.trim() ||
+        [profile?.givenName, profile?.familyName].filter(Boolean).join(" ").trim() ||
+        email;
+
+      return {
+        userId,
+        email,
+        displayName,
+        state: row.state ?? "USER_STATE_UNSPECIFIED",
+      };
+    })
+    .filter((row): row is OrgUserSummary => row !== null);
+}
+
+export async function inviteHumanUser(
+  orgId: string,
+  storeSlug: string,
+  input: {
+    email: string;
+    givenName?: string;
+    familyName?: string;
+  },
+): Promise<{ userId: string }> {
+  const email = input.email.trim().toLowerCase();
+  if (!email) {
+    throw new Error("Email is required");
+  }
+
+  const existing = await findUserIdByEmail(orgId, email);
+  if (existing) {
+    throw new Error("A user with this email already exists in this organization");
+  }
+
+  const tempPassword = randomBytes(24).toString("base64url");
+  const { userId } = await registerHumanUser(orgId, {
+    email,
+    password: tempPassword,
+    givenName: input.givenName,
+    familyName: input.familyName,
+  });
+
+  await requestPasswordResetEmail(orgId, userId, passwordResetUrlTemplate(storeSlug));
+  return { userId };
 }
 
 /** @internal test hook */

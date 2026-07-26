@@ -20,9 +20,11 @@ import {
   loginWithCredentials,
 } from "./zitadel-client";
 import { upsertZitadelIdp } from "./zitadel-management";
-import { startTotpRegistration, verifyTotpRegistration } from "./zitadel-mfa";
+import { startTotpRegistration, userHasTotpFactor, verifyTotpRegistration } from "./zitadel-mfa";
 import {
   findUserIdByEmail,
+  inviteHumanUser,
+  listOrgUsers,
   passwordResetUrlTemplate,
   registerHumanUser,
   requestPasswordResetEmail,
@@ -49,6 +51,7 @@ export function createAuthService(deps: {
       allowPassword,
       allowSignUp: auth.allowSignUp === true,
       allowPasswordReset: allowPassword && auth.allowPasswordReset !== false,
+      requireMfaForAdmin: auth.requireMfaForAdmin === true,
       providerLabels: publicProviderLabels(providers, auth.providerLabels ?? {}),
       providerIcons: await resolveProviderIconUrls(
         orgId,
@@ -165,6 +168,7 @@ export function createAuthService(deps: {
         allowPassword: patch.allowPassword,
         allowSignUp: patch.allowSignUp,
         allowPasswordReset: patch.allowPasswordReset,
+        requireMfaForAdmin: patch.requireMfaForAdmin,
         idpIds,
         providerLabels: {
           ...(current.providerLabels ?? {}),
@@ -187,6 +191,71 @@ export function createAuthService(deps: {
       });
 
       return publicConfig(orgId);
+    },
+
+    async getSessionStatus(orgId, userId) {
+      const auth = await loadAuth(orgId);
+      const mfaEnrolled = await userHasTotpFactor(orgId, userId);
+      return {
+        userId,
+        requireMfaForAdmin: auth.requireMfaForAdmin === true,
+        mfaEnrolled,
+      };
+    },
+
+    async listTeamUsers(orgId) {
+      const auth = await loadAuth(orgId);
+      const teamRoles = auth.teamRoles ?? {};
+      const users = await listOrgUsers(orgId);
+
+      return Promise.all(
+        users.map(async (user) => ({
+          userId: user.userId,
+          email: user.email,
+          displayName: user.displayName,
+          state: user.state,
+          role: teamRoles[user.userId] ?? "editor",
+          mfaEnrolled: await userHasTotpFactor(orgId, user.userId),
+        })),
+      );
+    },
+
+    async inviteTeamUser(orgId, input) {
+      const settings = await tenantSettings.get(orgId);
+      const slug = settings.slug?.trim();
+      if (!slug) {
+        throw new Error("Store slug is required to invite users");
+      }
+
+      const { userId } = await inviteHumanUser(orgId, slug, input);
+      const current = normalizeAuthConfig(settings.auth);
+      const teamRoles = { ...(current.teamRoles ?? {}), [userId]: input.role };
+
+      await tenantSettings.upsert(orgId, {
+        slug: settings.slug,
+        locales: settings.locales,
+        defaultLocale: settings.defaultLocale,
+        seo: settings.seo,
+        integrations: settings.integrations,
+        auth: mergeAuthConfig(current, { teamRoles }),
+      });
+
+      return { userId };
+    },
+
+    async updateTeamUserRole(orgId, userId, role) {
+      const settings = await tenantSettings.get(orgId);
+      const current = normalizeAuthConfig(settings.auth);
+      const teamRoles = { ...(current.teamRoles ?? {}), [userId]: role };
+
+      await tenantSettings.upsert(orgId, {
+        slug: settings.slug,
+        locales: settings.locales,
+        defaultLocale: settings.defaultLocale,
+        seo: settings.seo,
+        integrations: settings.integrations,
+        auth: mergeAuthConfig(current, { teamRoles }),
+      });
     },
 
     async startIdpLogin(input) {

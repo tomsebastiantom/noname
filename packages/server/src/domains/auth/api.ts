@@ -36,6 +36,7 @@ const authConfigUpdateSchema = z.object({
   allowPassword: z.boolean().optional(),
   allowSignUp: z.boolean().optional(),
   allowPasswordReset: z.boolean().optional(),
+  requireMfaForAdmin: z.boolean().optional(),
   googleOAuth: z
     .object({
       clientId: z.string().min(1),
@@ -87,6 +88,17 @@ const mfaVerifyBodySchema = z.object({
 
 const mfaEnrollmentConfirmSchema = z.object({
   code: z.string().min(1),
+});
+
+const teamInviteSchema = z.object({
+  email: z.email(),
+  givenName: z.string().min(1).optional(),
+  familyName: z.string().min(1).optional(),
+  role: z.enum(["admin", "editor"]).default("editor"),
+});
+
+const teamRoleUpdateSchema = z.object({
+  role: z.enum(["admin", "editor"]),
 });
 
 function bearerToken(c: Context): string | null {
@@ -354,6 +366,78 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
       const message = err instanceof Error ? err.message : "Registration failed";
       const status = message.toLowerCase().includes("already") ? 409 : 400;
       return c.json({ error: message }, status);
+    }
+  });
+
+  routes.get("/:orgId/auth/session", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    try {
+      const status = await service.getSessionStatus(orgId, auth.userId);
+      return c.json({ data: status });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Session status failed";
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  routes.get("/:orgId/auth/users", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    try {
+      const users = await service.listTeamUsers(orgId);
+      return c.json({ data: users });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to list users";
+      return c.json({ error: message }, 400);
+    }
+  });
+
+  routes.post("/:orgId/auth/users/invite", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    const parsed = teamInviteSchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      return c.json({ error: "Invalid invite payload" }, 400);
+    }
+
+    try {
+      const result = await service.inviteTeamUser(orgId, parsed.data);
+      return c.json({ data: result }, 201);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invite failed";
+      const status = message.toLowerCase().includes("already") ? 409 : 400;
+      return c.json({ error: message }, status);
+    }
+  });
+
+  routes.put("/:orgId/auth/users/:userId/role", async (c) => {
+    const orgId = await orgFromParam(c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+
+    const parsed = teamRoleUpdateSchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      return c.json({ error: "Invalid role payload" }, 400);
+    }
+
+    const userId = c.req.param("userId");
+    try {
+      await service.updateTeamUserRole(orgId, userId, parsed.data.role);
+      return c.json({ data: { ok: true } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Role update failed";
+      return c.json({ error: message }, 400);
     }
   });
 

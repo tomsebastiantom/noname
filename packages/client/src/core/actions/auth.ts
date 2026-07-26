@@ -19,6 +19,7 @@ export const authActions = {
       allowPassword,
       allowSignUp,
       allowPasswordReset,
+      requireMfaForAdmin,
       googleOAuth,
       githubOAuth,
       appleOAuth,
@@ -27,6 +28,7 @@ export const authActions = {
       allowPassword: boolean;
       allowSignUp?: boolean;
       allowPasswordReset?: boolean;
+      requireMfaForAdmin?: boolean;
       googleOAuth?: { clientId: string; clientSecret: string };
       githubOAuth?: { clientId: string; clientSecret: string };
       appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };
@@ -37,6 +39,7 @@ export const authActions = {
       allowPassword,
       allowSignUp,
       allowPasswordReset,
+      requireMfaForAdmin,
       googleOAuth,
       githubOAuth,
       appleOAuth,

@@ -1,3 +1,5 @@
+import { v2Request } from "./zitadel-management";
+
 const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 export interface TotpRegistrationStart {
@@ -68,4 +70,25 @@ export async function verifyTotpRegistration(
   await userV2Request(userToken, "POST", `/v2/users/${encodeURIComponent(userId)}/totp/verify`, {
     code: code.trim(),
   });
+}
+
+/** Whether the user has TOTP enrolled (management/service token). */
+export async function userHasTotpFactor(orgId: string, userId: string): Promise<boolean> {
+  try {
+    const body = await v2Request<{ result?: Array<{ type?: string; state?: string }> }>(
+      orgId,
+      "POST",
+      `/users/${encodeURIComponent(userId)}/authentication_factors/_search`,
+      { query: { offset: "0", limit: "20" } },
+    );
+    return (body.result ?? []).some((factor) => {
+      const type = (factor.type ?? "").toUpperCase();
+      const state = (factor.state ?? "").toUpperCase();
+      const isTotp = type.includes("TOTP") || type.includes("OTP");
+      const ready = !state || state.includes("READY") || state.includes("ACTIVE");
+      return isTotp && ready;
+    });
+  } catch {
+    return false;
+  }
 }

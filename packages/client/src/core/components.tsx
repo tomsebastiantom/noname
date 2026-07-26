@@ -11,6 +11,7 @@ import { PageEntryAdmin } from "./components/PageEntryAdmin";
 import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 import { PageTreeAdmin } from "./components/PageTreeAdmin";
 import type { ComponentCtx } from "./components/types";
+import { UsersAdminForm } from "./components/UsersAdminForm";
 
 export { AccountSecurityForm } from "./components/AccountSecurityForm";
 export { AdminHome } from "./components/AdminHome";
@@ -25,6 +26,7 @@ export { PageEntryAdmin } from "./components/PageEntryAdmin";
 export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 export { PageTreeAdmin } from "./components/PageTreeAdmin";
 export type { ComponentCtx } from "./components/types";
+export { UsersAdminForm } from "./components/UsersAdminForm";
 
 export function Grid({
   props,
@@ -165,6 +167,7 @@ export const coreComponents = {
   AuthSettingsForm,
   LoginBrandingForm,
   AccountSecurityForm,
+  UsersAdminForm,
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,

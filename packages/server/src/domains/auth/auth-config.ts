@@ -10,6 +10,8 @@ export const DEFAULT_TENANT_AUTH: TenantAuthConfig = {
   allowPassword: true,
   allowSignUp: false,
   allowPasswordReset: true,
+  requireMfaForAdmin: false,
+  teamRoles: {},
   providerLabels: {},
   providerIconAssets: {},
 };
@@ -61,12 +63,26 @@ export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
       if (ref) providerIconAssets[key] = ref;
     }
   }
+  const teamRoles: Record<string, "admin" | "editor"> = {};
+  if (
+    record.teamRoles &&
+    typeof record.teamRoles === "object" &&
+    !Array.isArray(record.teamRoles)
+  ) {
+    for (const [key, value] of Object.entries(record.teamRoles as Record<string, unknown>)) {
+      if (value === "admin" || value === "editor") {
+        teamRoles[key] = value;
+      }
+    }
+  }
   return {
     providers,
     idpIds,
     allowPassword: record.allowPassword !== false,
     allowSignUp: record.allowSignUp === true,
     allowPasswordReset: record.allowPasswordReset !== false,
+    requireMfaForAdmin: record.requireMfaForAdmin === true,
+    teamRoles,
     providerLabels,
     providerIconAssets,
   };
@@ -94,6 +110,9 @@ export function mergeAuthConfig(
     allowPassword: patch.allowPassword ?? current.allowPassword,
     allowSignUp: patch.allowSignUp ?? current.allowSignUp ?? false,
     allowPasswordReset: patch.allowPasswordReset ?? current.allowPasswordReset ?? true,
+    requireMfaForAdmin: patch.requireMfaForAdmin ?? current.requireMfaForAdmin ?? false,
+    teamRoles:
+      patch.teamRoles !== undefined ? { ...patch.teamRoles } : { ...(current.teamRoles ?? {}) },
     idpIds: patch.idpIds !== undefined ? { ...patch.idpIds } : { ...current.idpIds },
     providerLabels:
       patch.providerLabels !== undefined

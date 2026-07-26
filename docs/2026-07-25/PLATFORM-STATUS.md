@@ -58,7 +58,8 @@ pnpm seed:demo
 | `/admin/content/:type` | CMS entries |
 | `/admin/layout/:template` | Layout JSON specs |
 | `/admin/pages` | URL routing |
-| `/admin/settings/auth` | IdPs, password, sign-up, reset flags |
+| `/admin/settings/auth` | IdPs, password, sign-up, reset flags, MFA policy |
+| `/admin/settings/users` | Team list, invite, roles |
 | `/admin/settings/login` | Title, logo, brand copy |
 
 ---
@@ -87,7 +88,10 @@ pnpm seed:demo
 | `GET /api/documents/resolve-refs?ids=` | Batch ref → label/preview |
 | `GET /api/documents/ref-backrefs?documentId=` | Inbound refs before delete |
 | `GET /api/edge/schema/:slug?template=` | Page spec (storefront + admin) |
-| `GET /api/tenants/resolve/:slug` | Slug → org id (edge cache warm-up) |
+| `GET /api/tenants/:slug/auth/session` | MFA policy + enrollment status (JWT) |
+| `GET /api/tenants/:slug/auth/users` | List org team (JWT) |
+| `POST …/auth/users/invite` | Invite by email + role |
+| `PUT …/auth/users/:userId/role` | Assign admin/editor |
 
 Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant URLs.
 

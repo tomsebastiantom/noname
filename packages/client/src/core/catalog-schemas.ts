@@ -108,6 +108,16 @@ export const coreComponentSchemas = {
     }),
     description: "TOTP enrollment for the signed-in user",
   },
+  UsersAdminForm: {
+    props: z.object({
+      title: z.string().default("Team members"),
+      description: z
+        .string()
+        .nullable()
+        .default("Invite staff and assign admin or editor roles for this store."),
+    }),
+    description: "List and invite ZITADEL users for this org",
+  },
   ContentEntryAdmin: {
     props: z.object({
       title: z.string().default("Content"),
@@ -202,6 +212,7 @@ export const coreActionSchemas = {
       allowPassword: z.boolean(),
       allowSignUp: z.boolean().optional(),
       allowPasswordReset: z.boolean().optional(),
+      requireMfaForAdmin: z.boolean().optional(),
       googleOAuth: z
         .object({
           clientId: z.string().min(1),

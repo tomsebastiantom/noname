@@ -79,8 +79,26 @@ export interface AuthConfig {
   allowPassword: boolean;
   allowSignUp: boolean;
   allowPasswordReset: boolean;
+  requireMfaForAdmin: boolean;
   providerLabels: Record<string, string>;
   providerIcons: Record<string, string>;
+}
+
+export interface AuthSessionStatus {
+  requireMfaForAdmin: boolean;
+  mfaEnrolled: boolean;
+  userId: string;
+}
+
+export type TeamMemberRole = "admin" | "editor";
+
+export interface TeamUser {
+  userId: string;
+  email: string;
+  displayName: string;
+  state: string;
+  role: TeamMemberRole;
+  mfaEnrolled: boolean;
 }
 
 export interface AuthConfigUpdate {
@@ -89,6 +107,7 @@ export interface AuthConfigUpdate {
   allowPassword?: boolean;
   allowSignUp?: boolean;
   allowPasswordReset?: boolean;
+  requireMfaForAdmin?: boolean;
   googleOAuth?: {
     clientId: string;
     clientSecret: string;
@@ -118,6 +137,13 @@ export interface AuthService {
   register(input: RegisterInput): Promise<{ userId: string }>;
   getConfig(orgId: string): Promise<AuthConfig>;
   updateConfig(orgId: string, patch: AuthConfigUpdate): Promise<AuthConfig>;
+  getSessionStatus(orgId: string, userId: string): Promise<AuthSessionStatus>;
+  listTeamUsers(orgId: string): Promise<TeamUser[]>;
+  inviteTeamUser(
+    orgId: string,
+    input: { email: string; givenName?: string; familyName?: string; role: TeamMemberRole },
+  ): Promise<{ userId: string }>;
+  updateTeamUserRole(orgId: string, userId: string, role: TeamMemberRole): Promise<void>;
   startIdpLogin(input: OAuthStartInput): Promise<{ authorizeUrl: string }>;
   exchangeOAuthCallback(input: OAuthCallbackInput): Promise<LoginResult>;
 }

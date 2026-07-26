@@ -6,6 +6,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { storeSlugFromHostname } from "./auth/org";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
+import { fetchAuthSessionStatus } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
@@ -58,6 +59,19 @@ function App() {
       const redirect = encodeURIComponent(window.location.pathname);
       window.location.href = `/login?redirect=${redirect}`;
       return;
+    }
+
+    if (adminRoute && pathname.startsWith("/admin") && isLoggedIn()) {
+      try {
+        const session = await fetchAuthSessionStatus();
+        if (session.requireMfaForAdmin && !session.mfaEnrolled) {
+          const redirect = encodeURIComponent(pathname);
+          window.location.href = `/account/security?redirect=${redirect}&mfaRequired=1`;
+          return;
+        }
+      } catch {
+        // Session check failed — still load admin; API calls will 401 if needed.
+      }
     }
 
     setLoading(true);

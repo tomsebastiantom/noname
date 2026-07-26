@@ -17,6 +17,11 @@ const LINKS = [
     description: "Edit json-render templates (home, login, …)",
   },
   {
+    href: "/admin/settings/users",
+    label: "Team members",
+    description: "Invite staff, assign admin/editor roles, view MFA status",
+  },
+  {
     href: "/admin/settings/auth",
     label: "Auth settings",
     description: "Social login (Google, GitHub, Apple) and password toggle",

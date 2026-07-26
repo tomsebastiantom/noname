@@ -81,7 +81,7 @@ const adminDashboardSpec = {
       type: "AdminShell",
       props: {
         title: "Auth settings",
-        description: "Social providers, password login, sign-up, and reset flags.",
+        description: "Social providers, password login, sign-up, MFA policy, and reset flags.",
         activeNav: "auth",
       },
       children: ["authSettings"],
@@ -92,6 +92,29 @@ const adminDashboardSpec = {
         title: "Sign-in methods",
         description:
           "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
+      },
+    },
+  },
+};
+
+const adminUsersSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: {
+        title: "Team members",
+        description: "Invite staff and assign roles for this store.",
+        activeNav: "users",
+      },
+      children: ["usersAdmin"],
+    },
+    usersAdmin: {
+      type: "UsersAdminForm",
+      props: {
+        title: "Team members",
+        description:
+          "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
       },
     },
   },
@@ -392,6 +415,7 @@ async function main() {
   await upsertLayout("home", demoSpec, { skipIfExists: true });
   await upsertLayout("login", loginSpec);
   await upsertLayout("admin_dashboard", adminDashboardSpec);
+  await upsertLayout("admin_users", adminUsersSpec);
   await upsertLayout("admin_login", adminLoginBrandingSpec);
   await upsertLayout("admin_content", adminContentSpec);
   await upsertLayout("admin_layout", adminLayoutSpec);

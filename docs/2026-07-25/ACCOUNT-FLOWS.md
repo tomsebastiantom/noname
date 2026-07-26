@@ -87,8 +87,8 @@ Admin: enable flows at `/admin/settings/auth`. Account security link also in adm
 ## Future (not implemented)
 
 - SMS/email OTP factors beyond TOTP
-- `requireMfaForAdmin` policy flag
-- User list / invite admin screen
+- User disable/remove in admin UI
+- ZITADEL org-wide password policy UI
 
 ---
 

@@ -30,6 +30,7 @@ export function AccountSecurityForm({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const mfaRequired = new URLSearchParams(window.location.search).get("mfaRequired") === "1";
 
   if (!isLoggedIn()) {
     return (
@@ -76,6 +77,14 @@ export function AccountSecurityForm({
       setStep("enabled");
       setSuccess("Authenticator app enabled. You will be asked for a code at sign-in.");
       setCode("");
+
+      const params = new URLSearchParams(window.location.search);
+      const redirect = params.get("redirect");
+      if (redirect?.startsWith("/")) {
+        window.setTimeout(() => {
+          window.location.href = redirect;
+        }, 1200);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -99,6 +108,13 @@ export function AccountSecurityForm({
           {props.description && <CardDescription>{props.description}</CardDescription>}
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
+          {mfaRequired && step !== "enabled" && (
+            <Alert>
+              <AlertDescription>
+                Your store requires an authenticator app before you can use the admin dashboard.
+              </AlertDescription>
+            </Alert>
+          )}
           {step === "enabled" ? (
             <p className="text-sm text-muted-foreground">
               Two-factor authentication is enabled for your account.

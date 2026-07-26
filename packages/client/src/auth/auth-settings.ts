@@ -10,6 +10,7 @@ export interface AuthSettingsState {
   allowPassword: boolean;
   allowSignUp: boolean;
   allowPasswordReset: boolean;
+  requireMfaForAdmin: boolean;
   googleConfigured: boolean;
   githubConfigured: boolean;
   appleConfigured: boolean;
@@ -41,6 +42,7 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
       allowPassword?: boolean;
       allowSignUp?: boolean;
       allowPasswordReset?: boolean;
+      requireMfaForAdmin?: boolean;
     };
   };
 
@@ -67,6 +69,7 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
     allowPassword: configBody.data?.allowPassword !== false,
     allowSignUp: configBody.data?.allowSignUp === true,
     allowPasswordReset: configBody.data?.allowPasswordReset !== false,
+    requireMfaForAdmin: configBody.data?.requireMfaForAdmin === true,
     googleConfigured: idpConfigured(idpIds, "google"),
     githubConfigured: idpConfigured(idpIds, "github"),
     appleConfigured: idpConfigured(idpIds, "apple"),
@@ -78,6 +81,7 @@ export async function saveAuthConfig(input: {
   allowPassword: boolean;
   allowSignUp?: boolean;
   allowPasswordReset?: boolean;
+  requireMfaForAdmin?: boolean;
   googleOAuth?: { clientId: string; clientSecret: string };
   githubOAuth?: { clientId: string; clientSecret: string };
   appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };

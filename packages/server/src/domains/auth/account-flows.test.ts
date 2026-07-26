@@ -17,6 +17,11 @@ describe("account flow auth config", () => {
     expect(auth.allowSignUp).toBe(true);
     expect(auth.allowPasswordReset).toBe(false);
   });
+
+  it("reads requireMfaForAdmin flag", () => {
+    const auth = normalizeAuthConfig({ requireMfaForAdmin: true });
+    expect(auth.requireMfaForAdmin).toBe(true);
+  });
 });
 
 describe("passwordResetUrlTemplate", () => {
