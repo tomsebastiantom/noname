@@ -23,6 +23,7 @@ import type {
   TenantSettingsService,
   UploadAssetInput,
 } from "./ports";
+import { resolveDocumentRefs } from "./resolve-refs";
 import { documentIdFromRef } from "./refs";
 import { contentValidator } from "./validator";
 
@@ -595,7 +596,27 @@ export function createDocumentsService(
     },
   };
 
-  return { contentTypes, tenantSettings, content, layout, assets, pages };
+  return {
+    contentTypes,
+    tenantSettings,
+    content,
+    layout,
+    assets,
+    pages,
+    async resolveRefs(orgId, ids, locale) {
+      const ts = await storage.getTenantSettings(orgId);
+      const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
+      const resolvedLocale = locale?.trim() || defaultLocale;
+      return resolveDocumentRefs(
+        storage,
+        orgId,
+        ids,
+        resolvedLocale,
+        defaultLocale,
+        (oid, documentId) => assets.get(oid, documentId),
+      );
+    },
+  };
 }
 
 // ---------------------------------------------------------------------------

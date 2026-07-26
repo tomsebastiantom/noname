@@ -72,6 +72,8 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec |
 | **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema ✅ |
 | [`documents-domain.md`](../2026-07-10/documents-domain.md) | Full CMS data model (content types, locales, assets, pages) |
+| [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) | Unified `{ documentId }` pointer model |
+| [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) | Batch resolve API — labels + asset previews |
 
 ### Client
 

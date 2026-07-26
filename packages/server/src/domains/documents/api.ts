@@ -15,7 +15,7 @@ import type {
 export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
   const routes = new Hono();
   const assetBinary = binary ?? createAssetStorage();
-  const { contentTypes, tenantSettings, content, layout, assets, pages } = service;
+  const { contentTypes, tenantSettings, content, layout, assets, pages, resolveRefs } = service;
 
   // -------------------------------------------------------------------------
   // Content type schema management.
@@ -280,6 +280,24 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
     const orgId = getOrgId(c);
     const page = await pages.getRoutingPage(orgId, c.req.param("pageKey"));
     return page ? ok(c, page) : notFound(c);
+  });
+
+  routes.get("/resolve-refs", async (c) => {
+    const orgId = getOrgId(c);
+    const idsParam = c.req.query("ids");
+    if (!idsParam?.trim()) {
+      return c.json({ error: "missing ?ids= comma-separated document row ids" }, 400);
+    }
+    const ids = idsParam
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+    if (ids.length === 0) {
+      return c.json({ error: "no valid document ids in ?ids=" }, 400);
+    }
+    const locale = c.req.query("locale") || undefined;
+    const resolved = await resolveRefs(orgId, ids, locale);
+    return ok(c, resolved);
   });
 
   // -------------------------------------------------------------------------

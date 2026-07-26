@@ -409,6 +409,8 @@ export interface PageTreeService {
   upsertPage(orgId: string, pageKey: string, input: UpsertPageInput): Promise<PageDTO>;
 }
 
+import type { ResolvedDocumentRef } from "./resolve-refs";
+
 export interface DocumentService {
   contentTypes: ContentTypeDocumentService;
   tenantSettings: TenantSettingsService;
@@ -416,4 +418,9 @@ export interface DocumentService {
   layout: LayoutDocumentService;
   assets: AssetDocumentService;
   pages: PageTreeService;
+  resolveRefs(
+    orgId: string,
+    ids: string[],
+    locale?: string,
+  ): Promise<Record<string, ResolvedDocumentRef | null>>;
 }

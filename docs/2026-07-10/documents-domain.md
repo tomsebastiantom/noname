@@ -4,10 +4,13 @@
 ## Updated: 2026-07-11 (content modeling, rich text, assets, R2, permissions, webp/avif, hash dedup, id-based routing)
 ## Updated: 2026-07-25 (`tenant_id` → `org_id` — ZITADEL org id as TEXT; see [`AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md))
 ## Updated: 2026-07-25 (unified document refs — `{ documentId }`; see [`DOCUMENT-REFS.md`](../2026-07-25/DOCUMENT-REFS.md))
+## Updated: 2026-07-25 (resolve refs API — batch labels/previews; see [`RESOLVE-REFS.md`](../2026-07-25/RESOLVE-REFS.md))
 
 > **Column naming:** Postgres uses `org_id` (TEXT, ZITADEL organization id). Product language still says “tenant” / “store” (`tenant_settings`, per-tenant config). Drizzle field: `orgId`.
 
 > **Implementation status (2026-07-25):** Edge `$state` merge is **implemented** — see [`CONTENT-RENDER-PIPELINE.md`](../2026-07-25/CONTENT-RENDER-PIPELINE.md) and [`ARCHITECTURE-MAP.md`](../2026-07-25/ARCHITECTURE-MAP.md).
+
+> **Document references (2026-07-25):** All cross-document pointers use **`{ documentId }`** (row id in `documents`). Save-time validation checks org + type match. Batch label/preview resolve: [`RESOLVE-REFS.md`](../2026-07-25/RESOLVE-REFS.md). Full pointer model: [`DOCUMENT-REFS.md`](../2026-07-25/DOCUMENT-REFS.md). Legacy `{ assetId }`, `{ entryId }`, and bare uuid strings are still **read** for migration; new writes use `{ documentId }` only.
 
 ## Purpose
 
@@ -87,9 +90,9 @@ Once registered, `product` becomes a valid `:type` in `/api/documents/product`.
 | `number` | number | Integer or decimal. Configurable min/max. |
 | `boolean` | boolean | True/false toggle. |
 | `date` | ISO 8601 string | Date/time field. |
-| `media` | AssetReference | Single media asset (image, video, PDF). Validates accepted MIME types and max size. |
-| `mediaList` | AssetReference[] | Ordered list of media assets. |
-| `reference` | EntityReference | References another content entry by ID. Configurable `references` constraint limits which content types can be referenced. |
+| `media` | DocumentRef | Single media asset (image, video, PDF). Stored as `{ documentId }` → asset row. Validates accepted MIME types and max size. |
+| `mediaList` | DocumentRef[] | Ordered list of asset refs (`{ documentId }` each). |
+| `reference` | DocumentRef | References another content entry. Stored as `{ documentId }`. Field `references` constrains target content type. |
 | `array` | T[] | Ordered list of a single primitive type. `items` defines the element type. |
 | `json` | Record<string, unknown> | Arbitrary structured JSON. Escape hatch for complex nested data. |
 | `enum` | string | One of a predefined set of string values. `options` array required. |
@@ -178,7 +181,7 @@ Internally stored:
   "description": { "en-US": "<rich-text-en>", "fr": "<rich-text-fr>" },
   "price":       99.99,
   "inStock":     true,
-  "featuredImage": { "en-US": { "assetId": "a1" }, "fr": { "assetId": "a2" } },
+  "featuredImage": { "en-US": { "documentId": "a1-uuid" }, "fr": { "documentId": "a2-uuid" } },
   "tags":        ["running"]
 }
 ```
@@ -340,7 +343,7 @@ has a `nodeType` and optional `data`. Text-bearing nodes have an array of `marks
       "data": {
         "target": {
           "type": "asset",
-          "assetId": "asset_01JXXX...",
+          "documentId": "550e8400-e29b-41d4-a716-446655440001",
           "altText": "Product hero shot"
         }
       }
@@ -350,7 +353,7 @@ has a `nodeType` and optional `data`. Text-bearing nodes have an array of `marks
       "data": {
         "target": {
           "type": "entry",
-          "entryId": "entry_01JYYY...",
+          "documentId": "550e8400-e29b-41d4-a716-446655440002",
           "contentType": "callout"
         }
       }
@@ -438,7 +441,7 @@ documents table row, type = "asset":
   id:           UUID,
   orgId:        TEXT (ZITADEL org id),
   type:         "asset",
-  key:          assetId (UUID key),
+  key:          slug or logical key (may differ from row id),
   segment:      "default",
   status:       "draft" | "published",
   data: {
@@ -524,27 +527,30 @@ Stream video UID and the playback URL for embedding.
 
 ### Asset Reference in Content
 
-Content fields of type `media` or `mediaList` store **asset IDs**, not URLs. At read
-time (or at edge render time), the platform resolves asset IDs to actual R2 URLs with
-appropriate variant selection based on the requesting context (viewport size, device
-type, network quality).
+Content fields of type `media` or `mediaList` store **`{ documentId }`** (asset row id), not URLs. At read or edge render time, the platform resolves ids to R2 URLs with appropriate variant selection.
 
 ```jsonc
-// Content entry data (what the API returns)
+// Stored in content entry data (write path)
+{
+  "featuredImage": { "documentId": "550e8400-e29b-41d4-a716-446655440001" },
+  "category":      { "documentId": "550e8400-e29b-41d4-a716-446655440002" }
+}
+```
+
+```jsonc
+// Optional: resolved at render boundary (not stored on save)
 {
   "featuredImage": {
-    "assetId": "asset_01JXXX...",
-    "altText": "Product hero shot",
-    // Variant URLs resolved at render time:
+    "documentId": "550e8400-e29b-41d4-a716-446655440001",
     "_resolved": {
       "thumbnail": "https://r2.noname.dev/.../hero-shot_thumbnail.webp",
-      "small":     "https://r2.noname.dev/.../hero-shot_small.webp",
-      "medium":    "https://r2.noname.dev/.../hero-shot_medium.webp",
-      "large":     "https://r2.noname.dev/.../hero-shot_large.webp"
+      "medium":    "https://r2.noname.dev/.../hero-shot_medium.webp"
     }
   }
 }
 ```
+
+For labels/previews without full entry loads, use **`GET /api/documents/resolve-refs`** — see [`RESOLVE-REFS.md`](../2026-07-25/RESOLVE-REFS.md).
 
 ### Supported Asset Types
 
@@ -616,7 +622,7 @@ registry** (`DocumentStorage` keyed by `type`) provides the shared machinery onc
 
 Each type keeps its **own**:
 - `version` and `status` (content drafts vs layout publishes vs asset uploads never collide)
-- cache key (content by `{orgId}:{type}:{key}`, layout by `{orgId}:{templateName}:{segmentHash}`, asset by `{orgId}:{assetId}`)
+- cache key (content by `{orgId}:{type}:{key}`, layout by `{orgId}:{templateName}:{segmentHash}`, asset by `{orgId}:{documentId}`)
 - event names (`content.created`, `layout.published`, `asset.created`)
 - schema definition (content has field schemas, layout has json-render spec format, asset has variant metadata)
 
@@ -706,7 +712,7 @@ ONE domain:   documents
   ├─ type: page           → layout + content reference, keyed (orgId, key), links URL to render targets
   ├─ type: page_tree      → URL routing tree, keyed (orgId, key), locale-aware URL → page ID mapping
   ├─ type: tenant_settings→ per-tenant config JSONB, keyed (orgId, "default"), locales + defaultLocale
-  ├─ type: asset          → media metadata JSONB, keyed (orgId, assetId), variants stored in R2
+  ├─ type: asset          → media metadata JSONB, row id for API lookups, variants stored in R2
   ├─ type: layout         → spec JSONB. segment="default": full spec. segment≠"default": overrides only.
   │                          keyed (orgId, templateName, segment), versioned, per-tenant KV cached
   │                          `resolve` deep-merges default + overrides → returns full spec
@@ -720,6 +726,9 @@ POST   /api/documents/content-types              # define a new content type (sc
 GET    /api/documents/content-types              # list all content types
 GET    /api/documents/content-types/:name        # get one content type schema
 PUT    /api/documents/content-types/:name        # update content type schema (add/remove fields)
+
+# Resolve stored refs (batch labels + asset previews)
+GET    /api/documents/resolve-refs               # ?ids=uuid1,uuid2&locale=en-US → { [id]: ResolvedDocumentRef | null }
 
 # CRUD by type
 POST   /api/documents/:type                      # create entry (validated against content type schema)
@@ -739,10 +748,10 @@ GET    /api/documents/tenant_settings/default    # get tenant locale config
 PUT    /api/documents/:type/:name/variants       # add variant for segment
 GET    /api/documents/:type/:name/resolve        # resolve per segment
 
-# Assets
+# Assets (URL param `:assetId` = document row id)
 POST   /api/documents/assets/upload              # upload asset to R2 (multipart)
 GET    /api/documents/assets                     # list assets
-GET    /api/documents/assets/:assetId            # get asset metadata + resolved variant URLs
+GET    /api/documents/assets/:assetId            # get by row id — metadata + resolved variant URLs
 PUT    /api/documents/assets/:assetId            # update asset metadata (altText, caption, tags)
 DELETE /api/documents/assets/:assetId            # archive asset
 PUT    /api/documents/assets/:assetId/publish    # publish asset
@@ -873,9 +882,10 @@ only `layout:tenant_01:*` keys are invalidated. Tenant B's cache is untouched.
      Miss: GET /api/documents/product/blue-sneakers
            → KV.put(key, entry, { ttl: until_published })
 
-6. Edge resolves asset references in content data:
-     media field "featuredImage" → assetId → R2 variant URL for viewport
-     media field "gallery"       → assetIds → R2 variant URLs
+6. Edge resolves document refs in content data:
+     media field "featuredImage" → documentId → asset row → R2 variant URL for viewport
+     reference field "category"  → documentId → entry label (or resolve-refs batch)
+     gallery mediaList           → documentIds → R2 variant URLs
 
 7. Edge merges layout spec + content data via json-render:
      resolveElementProps(spec, $state: {
@@ -896,7 +906,7 @@ only `layout:tenant_01:*` keys are invalidated. Tenant B's cache is untouched.
 | Layout spec | `layout:{orgId}:{templateName}:{segmentHash}` | `layout.published` event for that tenant |
 | Content entry | `content:{orgId}:{type}:{key}` | `content.published` / `content.updated` / `content.deleted` |
 | Rendered HTML | `html:{orgId}:{template}:{segment}:{key}:{contentVersion}` | Layout OR content publish for that tenant |
-| Asset metadata | `asset:{orgId}:{assetId}` | `asset.published` / `asset.archived` |
+| Asset metadata | `asset:{orgId}:{documentId}` | `asset.published` / `asset.archived` |
 | Asset binary | R2 CDN (immutable, 1-year TTL) | Asset re-upload (new hash → new object path) |
 
 ### Segment Fallback Resolution
@@ -1434,7 +1444,7 @@ via the `meta` JSON field.
   "seo": {
     "metaTitleTemplate": "{{ title }} | Store Name",
     "metaDescription": "Default description for all pages",
-    "ogImage":        { "assetId": "default_og_image" },
+    "ogImage":        { "documentId": "550e8400-e29b-41d4-a716-446655440003" },
     "twitterCard":    "summary_large_image",
     "canonicalDomain": "https://store.com"
   },
@@ -1461,7 +1471,7 @@ service ID is a tenant_settings update, never a schema migration.
       "metaTitle":       "Custom Title for This Page",    // overrides tenant's template
       "metaDescription": "Specific description",          // overrides tenant's default
       "ogTitle":         "Custom OG Title",               // if not set, falls back to metaTitle → title
-      "ogImage":         { "assetId": "page_og_image" }   // overrides tenant's default OG image
+      "ogImage":         { "documentId": "550e8400-e29b-41d4-a716-446655440004" }   // overrides tenant's default OG image
     },
     "noIndex": false,                                     // robots meta
     "canonicalPath": "/custom-path"                       // overrides tenant's canonicalDomain + this path
@@ -1625,7 +1635,7 @@ documents table:
   id              UUID PK (default random)
   org_id          TEXT NOT NULL        ← ZITADEL organization id
   type            TEXT NOT NULL        ← "content" | "content_type" | "page" | "page_tree" | "tenant_settings" | "asset" | "layout" | "backend-logic"
-   key             TEXT NOT NULL        ← For content: equals `id` (UUID, no slug). For layout: templateName. For asset: assetId (UUID). For tenant_settings: "default". For page_tree: "main".
+   key             TEXT NOT NULL        ← For content: logical key (often equals id). For layout: templateName. For asset: stable key (API lookups use row `id`). For tenant_settings: "default". For page_tree: "main".
   version         INT NOT NULL DEFAULT 1
   segment         TEXT NOT NULL DEFAULT 'default'
   status          ENUM('draft','published','archived')
@@ -1667,7 +1677,8 @@ No migration. No deploy. Content entries for that type are validated on next wri
 | Asset upload + storage | Cloudflare R2 | Multipart upload → hash dedup (`findByHash`) → variant generation → asset doc row. |
 | Image variants | R2 (`{orgId}/{hash}/`) | Thumbnail/small/medium/large + WebP/AVIF per size. Generated by `sharp`. Focal point cropping supported. |
 | Video transcoding | Cloudflare Stream | Upload → HLS transcoding → playback URL stored in asset data. |
-| Asset references in content | `documents.data` (type: media/mediaList) | Asset IDs resolved to R2 variant URLs at read/render time. |
+| Asset references in content | `documents.data` (type: media/mediaList/reference) | Stored as `{ documentId }`. Validated on save. URLs/labels resolved at read/render or via `GET /resolve-refs`. |
+| Resolve refs API | `GET /api/documents/resolve-refs` | Batch `{ documentId }` → label + asset preview URL. See [`RESOLVE-REFS.md`](../2026-07-25/RESOLVE-REFS.md). |
 | Layout templates | `documents` (type: layout) | json-render spec. Default stores full spec. Non-default variants store overrides only; `resolve` deep-merges default + overrides → full spec. |
 | Variant inheritance | `resolve` endpoint + `baseVersion` | Non-default variants store overrides only. `deepMerge(default, overrides)` on server, returns full spec through API, KV-caches merged result. `baseVersion` detects conflicts when default structure shifts under a variant's override paths. |
 | Segment definition | `segments` table (context domain) | Behavior-based conditions per tenant (purchases, visits, engagement). Finite taxonomy (10-100 max). NOT locale, NOT device type. |

@@ -159,27 +159,13 @@ These build on `{ documentId }` without changing the stored shape.
 
 ---
 
-### 3. Resolve API (ref → label / preview for storefront)
+### 3. Resolve API (ref → label / preview for storefront) ✅
 
-**Goal:** Edge or client needs human-readable labels without N+1 fetches.
+**Implemented.** Full spec: [`RESOLVE-REFS.md`](./RESOLVE-REFS.md).
 
-**Example:**
+`GET /api/documents/resolve-refs?ids=uuid1,uuid2&locale=en-US` — batch labels + asset preview URLs for stored `{ documentId }` pointers.
 
-```
-GET /api/documents/resolve-refs?ids=uuid1,uuid2&locale=en-US
-→ { "uuid1": { "type": "product", "label": "Blue Sneakers", "url": "..." }, ... }
-```
-
-**Uses:** category breadcrumbs, related products, cart line display, admin previews.
-
-**Implementation sketch:**
-
-- Batch `findDocumentById` for ids
-- For content types: pick title field from content type schema
-- For assets: return variant URL + altText
-- Cache by `{orgId}:{documentId}:{locale}` at edge
-
-**Does not change:** stored `{ documentId }`.
+**Uses:** category breadcrumbs, cart lines, related products — anywhere stored data has `{ documentId }` but UI needs a label.
 
 ---
 
@@ -223,7 +209,8 @@ When adding a field or config that points at another document:
 | Save validation | `packages/server/src/domains/documents/service.ts` (`assertDocumentRefs`) |
 | Zod accept legacy + canonical | `packages/server/src/domains/documents/validator.ts` |
 | Postgres normalize on read | `packages/server/src/domains/documents/adapters/postgres.ts` |
-| Auth icon resolve | `packages/server/src/domains/auth/asset-url.ts`, `auth-config.ts` |
+| Resolve refs API | [`RESOLVE-REFS.md`](./RESOLVE-REFS.md), `resolve-refs.ts`, `GET …/resolve-refs` | ✅ |
+| Auth icon resolve | `packages/server/src/domains/auth/asset-url.ts`, `auth-config.ts` | ✅ |
 | Admin media picker | `packages/client/src/core/components/MediaFieldInput.tsx` |
 | Admin reference picker | `packages/client/src/core/components/ReferenceFieldInput.tsx` |
 | Save payload | `packages/client/src/admin/content-entries.ts` |
@@ -232,5 +219,6 @@ When adding a field or config that points at another document:
 
 ## Related docs to update over time
 
-- [`documents-domain.md`](../2026-07-10/documents-domain.md) — still shows legacy `assetId` in examples; treat **this doc** as source of truth for ref shape until that file is refreshed
+- [`documents-domain.md`](../2026-07-10/documents-domain.md) — full CMS data model (synced 2026-07-25 for `{ documentId }` + resolve API)
 - [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) — provider icon assets follow `MediaRef` pattern described here
+- [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) — batch resolve API for labels and asset previews
