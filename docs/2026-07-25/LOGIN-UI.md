@@ -78,7 +78,7 @@ SocialLoginButtons → executeAction("idpLogin")
   → OAuth redirect → /auth/callback → JWT
 ```
 
-Provider list = **layout spec `providers` ∩ `GET auth/config`** (today config reads env — replace per [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)).
+Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgres per org — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)).
 
 ---
 
@@ -86,7 +86,7 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (today config 
 
 | Prop | Source | Merchant-editable? |
 |------|--------|-------------------|
-| `title`, `subtitle`, `footerText`, `logoUrl` | Layout spec | Yes (admin later) |
+| `title`, `subtitle`, `footerText`, `logoUrl` | Layout spec | Yes — `/admin/settings/login` (`LoginBrandingForm`) |
 | `providers` | Layout spec (intent) | Yes |
 | `redirectPath`, `showPasswordToggle` | Layout spec | Yes |
 | `"Continue with Google"` button text | `SocialLoginButtons` | No — platform default |
@@ -100,9 +100,9 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (today config 
 | 1 Visual polish | AuthLayout, shadcn, divider, password toggle | ✅ |
 | 2 Social sign-in | Buttons + OAuth routes + **per-org config (A2)** | ✅ |
 | 3 Account flows | Forgot password, sign-up, MFA | 📋 |
-| 4 Admin branding | Auth settings UI writes spec + settings | Auth ✅ · login layout branding 📋 |
+| 4 Admin branding | Auth settings + login layout props | Auth ✅ · login branding ✅ (`/admin/settings/login`) |
 
-Per-org Google is configured via `/admin/settings/auth` (Management API + Postgres). See [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md).
+Per-org Google/GitHub/Apple + password toggles via `/admin/settings/auth`. Login copy via `/admin/settings/login`. See [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md).
 
 ---
 

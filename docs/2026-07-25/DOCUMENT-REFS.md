@@ -1,7 +1,7 @@
 # Document References — Unified Pointer Model
 
 > **Date:** 2026-07-25  
-> **Status:** ✅ Implemented (server + client + seed)  
+> **Status:** ✅ Implemented (server + client + seed) · resolve API verified 2026-07-25  
 > **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md), [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)
 
 ---

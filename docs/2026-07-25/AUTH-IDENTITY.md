@@ -60,6 +60,8 @@ HMAC payload: `orgId:userId:role`
 
 ## Roadmap (auth + routing)
 
+> **Updated 2026-07-25:** login branding admin, per-org `auth/config` from Postgres — verified against live API.
+
 | Phase | Scope | Status |
 |-------|--------|--------|
 | **0** | Infra, `org_id` in DB, seed | ✅ |
@@ -67,11 +69,10 @@ HMAC payload: `orgId:userId:role`
 | **2** | Client Bearer to edge | ✅ |
 | **Login UI** | shadcn `LoginForm`, server-brokered ZITADEL Session API | ✅ [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
 | **3** | Store slug + edge Host → `org_id` | 📋 [Planned](./PHASE-3-STORE-SLUG.md) |
-| **Admin UI** | Shell, load/manage layouts, editor | 📋 [Later](./ADMIN-UI-LATER.md) |
+| **Admin UI** | Shell, content, auth, login branding, pages, layouts | ✅ core — [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) · visual editor 📋 |
 | **4** | Custom domains, wrangler in compose | Later |
 
-**Today:** dev URL is `http://{ZITADEL_DEMO_ORG_ID}.localhost:5173`.  
-**Phase 3 target:** `http://yogastore.localhost:5173` — see [PHASE-3-STORE-SLUG.md](./PHASE-3-STORE-SLUG.md) for the full spec.
+**Today:** dev URL is `http://yogastore.localhost:5173` (slug → org via `GET /api/tenants/resolve/:slug`). Org-id subdomain still works for some scripts. Full edge Host routing: [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md).
 
 ---
 

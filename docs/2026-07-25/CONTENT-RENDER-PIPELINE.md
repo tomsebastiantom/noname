@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented (2026-07-25) — edge merges content into `$state` on `GET /api/edge/schema`  
-> **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md)
+> **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md), [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md)
 
 ---
 

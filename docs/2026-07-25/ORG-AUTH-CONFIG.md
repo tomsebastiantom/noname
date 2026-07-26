@@ -1,7 +1,6 @@
 # Per-Org Auth Configuration — Clerk-Style Vision
 
-> **Date:** 2026-07-25  
-> **Status:** ✅ A2 + Phase C auth/content admin (Google IdP on Save, generic CMS)  
+> **Updated:** 2026-07-25 — GitHub/Apple IdP in admin, `providerIconAssets` as `{ documentId }`, login branding admin verified  
 > **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
@@ -12,11 +11,12 @@
 |-------|------------------|-------|-------------------|
 | Email/password login | Server broker → ZITADEL Session API | Same | ✅ Yes |
 | JWT session | `session.ts` + edge | Same | ✅ Yes |
-| Login copy / logo | Login **layout spec** props | Seeded spec | ✅ Yes (merchant edit via admin later) |
+| Login copy / logo | Login **layout spec** props | Seeded spec + `LoginBrandingForm` | ✅ Yes |
 | Which social buttons show | **`tenant_settings.auth`** + ZITADEL IdP on **that org** | Postgres `auth.providers` + `idpIds` per org | ✅ Yes |
-| `GET .../auth/config` | Read **Postgres** for `:orgId` | Same | ✅ Yes |
-| IdP credentials | ZITADEL Management API per org (secrets server-only) | Admin Save → ZITADEL (Google) | ✅ Google |
-| Merchant toggles | Admin **Auth settings** UI | `/admin/settings/auth` | ✅ Google + password |
+| `GET .../auth/config` | Read **Postgres** for store slug | Same | ✅ Yes |
+| IdP credentials | ZITADEL Management API per org (secrets server-only) | Admin Save → ZITADEL (Google/GitHub/Apple) | ✅ |
+| Merchant toggles | Admin **Auth settings** UI | `/admin/settings/auth` | ✅ Google/GitHub/Apple + password |
+| Provider icons | `providerIconAssets` as `{ documentId }` → resolved URLs on config | Same | ✅ Yes |
 | Button labels (`Continue with Google`) | Platform defaults in `SocialLoginButtons` | Hardcoded | ✅ Yes (optional overrides in `tenant_settings.auth` later) |
 
 **Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.
@@ -268,7 +268,7 @@ Cross-doc consolidated backlog:
 | Item | Doc | Phase |
 |------|-----|-------|
 | `tenant_settings.auth` schema + read in GET auth/config | This doc § Build order | ✅ A2 |
-| Per-org IdP CRUD (Management API) | This doc | ✅ Google |
+| Per-org IdP CRUD (Management API) | This doc | ✅ Google/GitHub/Apple |
 | Remove env IdP shortcut | This doc | ✅ A2 |
 | IdP start + OAuth callback routes | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ scaffold |
 | Persist catalog manifest in Postgres | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Platform |
@@ -279,7 +279,8 @@ Cross-doc consolidated backlog:
 | Item | Doc | Phase |
 |------|-----|-------|
 | AdminShell + `/admin` | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | ✅ |
-| Auth settings (Google) | This doc | ✅ |
+| Auth settings (Google/GitHub/Apple) | This doc | ✅ |
+| Login branding | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ `/admin/settings/login` |
 | Generic content CMS | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | ✅ |
 | Login layout editor (props panel) | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) | After admin shell |
 | User management (optional) | [`BUILD_PLAN.md`](../2026-05-23/BUILD_PLAN.md) | Later |
@@ -291,7 +292,8 @@ Cross-doc consolidated backlog:
 | [`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md) | Why server broker for password |
 | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) | org_id, JWT, edge |
 | [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md) | Login not an extension |
-| [`LOGIN-UI.md`](./LOGIN-UI.md) | Login UI phases |
+| [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) | Unified `{ documentId }` refs |
+| [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) | Batch resolve API (verified 2026-07-25) |
 | [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md) | CMS → resolved spec |
 | [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) | Master index |
 | [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md) | Build order |

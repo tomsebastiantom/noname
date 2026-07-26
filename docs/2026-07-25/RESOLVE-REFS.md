@@ -1,7 +1,7 @@
 # Resolve Document Refs API
 
 > **Date:** 2026-07-25  
-> **Status:** ✅ Implemented  
+> **Status:** ✅ Implemented (verified 2026-07-25 — curl + vitest)  
 > **Related:** [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md), [`documents-domain.md`](../2026-07-10/documents-domain.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 
 ---
@@ -39,23 +39,25 @@ JSON object keyed by requested id. Value is resolved metadata or `null` if missi
 
 ```json
 {
-  "550e8400-e29b-41d4-a716-446655440001": {
-    "documentId": "550e8400-e29b-41d4-a716-446655440001",
-    "type": "category",
-    "key": "yoga-mats",
-    "status": "published",
-    "label": "Yoga Mats",
-    "imageUrl": null
-  },
-  "550e8400-e29b-41d4-a716-446655440002": {
-    "documentId": "550e8400-e29b-41d4-a716-446655440002",
-    "type": "asset",
-    "key": "google-icon",
-    "status": "published",
-    "label": "google.svg",
-    "imageUrl": "http://localhost:9000/..."
-  },
-  "missing-id": null
+  "data": {
+    "550e8400-e29b-41d4-a716-446655440001": {
+      "documentId": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "category",
+      "key": "yoga-mats",
+      "status": "published",
+      "label": "Yoga Mats",
+      "imageUrl": null
+    },
+    "550e8400-e29b-41d4-a716-446655440002": {
+      "documentId": "550e8400-e29b-41d4-a716-446655440002",
+      "type": "asset",
+      "key": "google-icon",
+      "status": "published",
+      "label": "google.svg",
+      "imageUrl": "http://localhost:9000/..."
+    },
+    "missing-id": null
+  }
 }
 ```
 
