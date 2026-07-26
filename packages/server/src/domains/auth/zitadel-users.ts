@@ -117,8 +117,10 @@ export async function registerHumanUser(
 }
 
 export async function listOrgUsers(orgId: string): Promise<OrgUserSummary[]> {
-  const body = await v2Request<ListUsersResponse>(orgId, "POST", "/users/_search", {
-    query: { offset: "0", limit: "100", asc: true },
+  const body = await v2Request<ListUsersResponse>(orgId, "POST", "/users", {
+    queries: [],
+    limit: 100,
+    offset: 0,
   });
 
   return (body.result ?? [])

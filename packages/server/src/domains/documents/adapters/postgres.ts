@@ -1,5 +1,6 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { normalizeAuthConfig } from "../../auth/auth-config";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
@@ -298,17 +299,6 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
   const data = (row.data ?? {}) as Record<string, unknown>;
   const seo = (data.seo ?? {}) as Record<string, unknown>;
   const integrations = (data.integrations ?? {}) as Record<string, unknown>;
-  const authRaw = (data.auth ?? {}) as Record<string, unknown>;
-  const idpIdsRaw = (authRaw.idpIds ?? {}) as Record<string, unknown>;
-  const idpIds: Record<string, string> = {};
-  for (const [key, value] of Object.entries(idpIdsRaw)) {
-    if (typeof value === "string" && value.trim() !== "") {
-      idpIds[key] = value.trim();
-    }
-  }
-  const providers = Array.isArray(authRaw.providers)
-    ? authRaw.providers.filter((p): p is string => typeof p === "string")
-    : [];
   return {
     id: row.id,
     orgId: row.orgId,
@@ -323,32 +313,6 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
       canonicalDomain: seo.canonicalDomain as string | undefined,
     },
     integrations: integrations as TenantSettingsDTO["integrations"],
-    auth: {
-      providers,
-      idpIds,
-      allowPassword: authRaw.allowPassword !== false,
-      providerLabels:
-        authRaw.providerLabels && typeof authRaw.providerLabels === "object"
-          ? Object.fromEntries(
-              Object.entries(authRaw.providerLabels as Record<string, unknown>).filter(
-                (entry): entry is [string, string] =>
-                  typeof entry[0] === "string" &&
-                  typeof entry[1] === "string" &&
-                  entry[1].trim() !== "",
-              ),
-            )
-          : {},
-      providerIconAssets:
-        authRaw.providerIconAssets && typeof authRaw.providerIconAssets === "object"
-          ? Object.fromEntries(
-              Object.entries(authRaw.providerIconAssets as Record<string, unknown>)
-                .map(([key, value]) => {
-                  const ref = parseDocumentRef(value);
-                  return ref ? ([key, ref] as const) : null;
-                })
-                .filter((entry): entry is [string, { documentId: string }] => entry !== null),
-            )
-          : {},
-    },
+    auth: normalizeAuthConfig(data.auth),
   };
 }
