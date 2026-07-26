@@ -140,8 +140,9 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 |------|-----|
 | Visual editor `?edit=true` | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) |
-| Tenant MF remotes | [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) |
-| Org MFA policy (`requireMfaForAdmin`) | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
+| Tenant MF remotes (CDN) | 📋 Rebuild — [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md) (code reverted) |
+| Tenant catalog Git source | 📋 [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |
+| Org MFA policy (`requireMfaForAdmin`) | ✅ [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
 | Published-only refs on save/publish | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
 
 Page routing (URL → spec) is ✅ — see [`PAGE-ROUTING.md`](./PAGE-ROUTING.md).

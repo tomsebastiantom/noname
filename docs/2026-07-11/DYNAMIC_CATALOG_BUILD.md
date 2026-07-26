@@ -58,8 +58,8 @@ Let tenants add custom React components to their storefront without rebuilding t
         │  └──────────────────────────────────────────────────┘│
         │                                                       │
         │  ┌──────────────────────────────────────────────────┐│
-        │  │         packages/workers (unchanged)               ││
-        │  │    → GET /_assets/* from R2                       ││
+        │  │         packages/workers (edge CDN)              ││
+        │  │    → GET /_assets/* from R2 (tenant + platform)  ││
         │  └──────────────────────────────────────────────────┘│
         └──────────────────────────────────────────────────────┘
 ```
@@ -95,28 +95,36 @@ Browser polls:
 
 ## R2 Storage Path Convention
 
-All tenant catalog bundles live under a per-tenant prefix:
+All tenant catalog bundles live under a per-tenant prefix keyed by **org id** (not store slug):
 
 ```
 R2 bucket: noname-assets
   tenants/
-    yogastore/
+    383371762538184712/
       remoteEntry.js              # MF container bootstrap
-      catalog.a3f2b8c1.js         # Hashed catalog chunk
-    crossfit-co/
+      745.catalog.a3f2b8c1.js     # Hashed catalog chunk(s)
+    {other-org-id}/
       remoteEntry.js
       catalog.d9e4f7a2.js
 
   marketplace/                    # Future: Phase 3
     stripe-pricing/
       remoteEntry.js
-      catalog.js
 
   _assets/                        # Platform client bundle (built separately)
     platform-v2/
       index.html
       assets/index.js
 ```
+
+**CDN URLs** (served by edge worker `/_assets/*` → R2 key without prefix):
+
+```
+/_assets/tenants/{orgId}/remoteEntry.js?v={version}
+/_assets/tenants/{orgId}/745.catalog.{hash}.js
+```
+
+Manifest stores the versioned remoteEntry URL; chunks use content hashes in filenames. See [`TENANT-MF-CDN.md`](../2026-07-25/TENANT-MF-CDN.md).
 
 The `remoteEntry.js` filename is **stable** (no hash) — this is the URL the manifest points to. The `catalog.[contenthash:8].js` filename includes a content hash from Rspack, enabling long-term browser caching. When a tenant republishes a component, only `remoteEntry.js` changes (its `__federation__` container references the new catalog chunk hash). Old catalog chunks remain in R2 for cached visitors.
 
@@ -146,6 +154,14 @@ function computeHash(input: BundleInput): string {
 | **BullMQ** | Job deduplication via `buildId` UUID | Per build |
 
 There is no separate build cache directory. If a tenant publishes the exact same source: `computeHash` returns the same key, the `pendingBuilds` Map short-circuits (if still in flight), and the BullMQ `buildId` is different (a new UUID) so the job runs fresh. For true caching (skip the build entirely), we'd add a `buildResults` Map in `bundler.ts` keyed by hash — this is a Phase 2 optimization.
+
+---
+
+## Tenant source input (production)
+
+Today builds accept inline TSX via `POST /components { source }` (dev/seed). **Production:** tenant TSX lives in **their Git repo**; Noname clones on webhook, validates, then runs the same bundler → R2 → manifest path.
+
+Full design: [`TENANT-MF-GIT.md`](../2026-07-25/TENANT-MF-GIT.md)
 
 ---
 
@@ -194,7 +210,9 @@ Currently hardcoded (`version: "1", hash: "init"`). When we add a CI build pipel
 
 ### packages/workers
 
-Unchanged — already serves `/_assets/*` from R2.
+Serves tenant MF bundles via `GET /_assets/tenants/{orgId}/*` → R2. API `catalog-assets` route remains for local dev without R2.
+
+Detail: [`TENANT-MF-CDN.md`](../2026-07-25/TENANT-MF-CDN.md)
 
 ---
 

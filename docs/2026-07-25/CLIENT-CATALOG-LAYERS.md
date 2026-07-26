@@ -26,7 +26,7 @@ See [`EXTENSIONS.md`](./EXTENSIONS.md) for the naming decision (extension vs pac
 |-------|------|--------|----------|
 | **Core platform** | `packages/client/src/core/` | Every org | `Stack`, `Grid`, `Button`, `navigate` |
 | **Extension** | `packages/extensions/src/{name}/` | Manifest `extensions` | `commerce`: `ProductCard`, `addToCart` |
-| **Tenant private** | MF remote (R2) | Per org manifest | Custom widgets/actions |
+| **Tenant private** | MF remote (R2 → CDN) | Per org manifest | Custom widgets — [`TENANT-MF-CDN.md`](./TENANT-MF-CDN.md); source in Git — [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |
 | **Marketplace** | MF remote | Per org manifest | Third-party bundles |
 
 An influencer site loads **core + influencer extension** — not commerce `addToCart` unless that extension is enabled.

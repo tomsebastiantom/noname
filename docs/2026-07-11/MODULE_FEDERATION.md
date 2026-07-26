@@ -187,14 +187,14 @@ Returns the merged manifest for this tenant:
 {
   "platform": { "version": "2", "hash": "platform-abc" },
   "private": {
-    "url": "https://r2.noname.dev/tenants/yogastore/remoteEntry.js",
+    "url": "/_assets/tenants/383371762538184712/remoteEntry.js?v=5",
     "hash": "abc123",
     "version": 5
   },
   "marketplace": [
     {
       "name": "stripe-pricing",
-      "url": "https://r2.noname.dev/marketplace/stripe-pricing/remoteEntry.js",
+      "url": "/_assets/marketplace/stripe-pricing/remoteEntry.js?v=1",
       "hash": "def456",
       "version": 1
     }

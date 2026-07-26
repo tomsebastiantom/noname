@@ -38,6 +38,8 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 | **Phase 3 slug** | `yogastore.localhost` → edge KV + resolve API (slug-only) | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
 | **Account flows** | Forgot password, sign-up, MFA login + TOTP enrollment | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | **Auth security hardening** | MFA policy, team admin, JWT guards, persistence fixes | [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) |
+| **Tenant MF remotes** | Proven in dev, code reverted — docs only | [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md) |
+| **Tenant MF Git source** | Planned | [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |
 | **Domain doc sync** | `documents-domain.md` aligned with refs + resolve API | [`documents-domain.md`](../2026-07-10/documents-domain.md) |
 | **Validation errors** | `ValidationError` → HTTP 400 (not 500) | `packages/server/src/shared/error-handler.ts` |
 

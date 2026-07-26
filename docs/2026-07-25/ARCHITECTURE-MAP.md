@@ -3,6 +3,7 @@
 > **Date:** 2026-07-25  
 > **Status:** Active — master index for platform docs  
 > **Current snapshot:** [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md) — where we are before the next build  
+> **Tenant MF handoff:** [`TENANT-MF-HANDOFF.md`](./TENANT-MF-HANDOFF.md) — per-file changes, bugs, fixes (2026-07-25)  
 > **Read this first**, then open the linked doc for the area you are working on.
 
 ---
@@ -84,6 +85,11 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) | Core vs extension vs MF remote |
+| [`TENANT-MF-CDN.md`](./TENANT-MF-CDN.md) | **Tenant MF remotes** — build, R2, CDN delivery (design) |
+| [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md) | **Rebuild guide** — step order + checklist (start here when coding) |
+| [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) | **Tenant catalog source** — Git repo → validate → build → publish (planned) |
+| [`TENANT-MF-SECURITY.md`](./TENANT-MF-SECURITY.md) | **Tenant catalog security** — trust model, allowlist, gaps (later) |
+| [`TENANT-MF-HANDOFF.md`](./TENANT-MF-HANDOFF.md) | **Session handoff** — file changelog, issues, fixes (review before commit) |
 | [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) | **How to add UI** — catalog skeleton, layout docs, where text lives |
 | [`skills/spec-driven-ui/SKILL.md`](../../skills/spec-driven-ui/SKILL.md) | Same workflow for any AI editor (Cursor, Kilo, etc.) |
 | [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) | Spec → `executeAction` → handlers (login, addToCart) |
@@ -121,6 +127,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | TOTP enrollment (user) | ZITADEL user MFA | `/account/security` (`AccountSecurityForm`) |
 | `"Continue with Google"` label | Platform component | Not merchant CMS |
 | Extension components | `@noname/extensions` | Platform ships; manifest enables |
+| Tenant custom components | R2 + CDN (planned) | Rebuild per [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md); Git later [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |
 | Side effects (login, cart) | `core/actions` + `auth/*` | Code — one path only |
 
 ---
