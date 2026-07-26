@@ -99,6 +99,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | [`LOGIN-UI.md`](./LOGIN-UI.md) | LoginForm, social scaffold, UI phases |
 | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) | Forgot password, sign-up, MFA verify + enrollment |
 | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Per-org providers — **no env shortcuts** |
+| [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) | Auth hardening: issues, fixes, test checklist |
 | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` slug routing (slug-only URLs) |
 
 ### Admin

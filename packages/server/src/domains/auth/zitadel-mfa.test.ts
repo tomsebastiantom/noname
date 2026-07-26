@@ -1,9 +1,23 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { startTotpRegistration, verifyTotpRegistration } from "./zitadel-mfa";
+import { startTotpRegistration, userHasTotpFactor, verifyTotpRegistration } from "./zitadel-mfa";
+
+vi.mock("./zitadel-management", () => ({
+  v2Request: vi.fn(),
+}));
+
+import { v2Request } from "./zitadel-management";
 
 describe("zitadel-mfa", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    vi.mocked(v2Request).mockReset();
+  });
+
+  it("detects TOTP from ZITADEL otp factor shape", async () => {
+    vi.mocked(v2Request).mockResolvedValue({
+      result: [{ state: "AUTH_FACTOR_STATE_READY", otp: {} }],
+    });
+    await expect(userHasTotpFactor("org-1", "user-1")).resolves.toBe(true);
   });
 
   it("starts TOTP registration with user token", async () => {

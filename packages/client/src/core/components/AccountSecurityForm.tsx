@@ -1,7 +1,9 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { startTotpEnrollment } from "../../auth/account-flows";
 import { isLoggedIn } from "../../auth/session";
+import { fetchAuthSessionStatus } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
+import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
 import {
   Card,
@@ -24,13 +26,29 @@ export function AccountSecurityForm({
   description: string | null;
 }>) {
   const [step, setStep] = useState<Step>("idle");
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [uri, setUri] = useState("");
   const [secret, setSecret] = useState("");
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const mfaRequired = new URLSearchParams(window.location.search).get("mfaRequired") === "1";
+  const searchParams = new URLSearchParams(window.location.search);
+  const mfaRequired = searchParams.get("mfaRequired") === "1";
+  const redirectPath = searchParams.get("redirect");
+
+  useEffect(() => {
+    if (!isLoggedIn()) {
+      setSessionLoading(false);
+      return;
+    }
+    void fetchAuthSessionStatus()
+      .then((status) => {
+        if (status.mfaEnrolled) setStep("enabled");
+      })
+      .catch(() => {})
+      .finally(() => setSessionLoading(false));
+  }, []);
 
   if (!isLoggedIn()) {
     return (
@@ -75,14 +93,11 @@ export function AccountSecurityForm({
     try {
       await executeAction("confirmMfaEnrollment", { code }, () => {});
       setStep("enabled");
-      setSuccess("Authenticator app enabled. You will be asked for a code at sign-in.");
       setCode("");
 
-      const params = new URLSearchParams(window.location.search);
-      const redirect = params.get("redirect");
-      if (redirect?.startsWith("/")) {
+      if (redirectPath?.startsWith("/")) {
         window.setTimeout(() => {
-          window.location.href = redirect;
+          window.location.href = redirectPath;
         }, 1200);
       }
     } catch (err) {
@@ -96,6 +111,14 @@ export function AccountSecurityForm({
     ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(uri)}`
     : null;
 
+  const showSetupDescription = step !== "enabled" && !sessionLoading;
+  const cardDescription =
+    step === "enabled"
+      ? "Your account is protected with an authenticator app."
+      : showSetupDescription
+        ? props.description
+        : null;
+
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4">
       <a href="/" className="text-sm text-muted-foreground hover:text-foreground">
@@ -104,75 +127,95 @@ export function AccountSecurityForm({
 
       <Card>
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          {props.description && <CardDescription>{props.description}</CardDescription>}
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex flex-col gap-1.5">
+              <CardTitle>{props.title}</CardTitle>
+              {cardDescription && <CardDescription>{cardDescription}</CardDescription>}
+            </div>
+            {step === "enabled" && !sessionLoading ? (
+              <Badge variant="success">Enabled</Badge>
+            ) : null}
+          </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {mfaRequired && step !== "enabled" && (
-            <Alert>
-              <AlertDescription>
-                Your store requires an authenticator app before you can use the admin dashboard.
-              </AlertDescription>
-            </Alert>
-          )}
-          {step === "enabled" ? (
-            <p className="text-sm text-muted-foreground">
-              Two-factor authentication is enabled for your account.
-            </p>
-          ) : step === "setup" ? (
-            <>
-              <p className="text-sm text-muted-foreground">
-                Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter the
-                secret manually.
-              </p>
-              {qrUrl ? (
-                <img
-                  src={qrUrl}
-                  alt="TOTP QR code"
-                  width={180}
-                  height={180}
-                  className="self-center rounded-md border bg-white p-2"
-                />
-              ) : null}
-              <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{secret}</div>
-              <form onSubmit={(e) => void handleVerify(e)} className="flex flex-col gap-3">
-                <div className="flex flex-col gap-1.5">
-                  <Label htmlFor="totp-code">Verification code</Label>
-                  <Input
-                    id="totp-code"
-                    inputMode="numeric"
-                    autoComplete="one-time-code"
-                    value={code}
-                    onChange={(e) => setCode(e.target.value)}
-                    placeholder="123456"
-                    required
-                  />
-                </div>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "Verifying…" : "Confirm setup"}
-                </Button>
-              </form>
-            </>
+          {sessionLoading ? (
+            <p className="text-sm text-muted-foreground">Checking security settings…</p>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">
-                Add an authenticator app for an extra sign-in step after your password.
-              </p>
-              <Button type="button" onClick={() => void handleStart()} disabled={loading}>
-                {loading ? "Starting…" : "Set up authenticator app"}
-              </Button>
-            </>
-          )}
+              {mfaRequired && step !== "enabled" && (
+                <Alert>
+                  <AlertDescription>
+                    Your store requires an authenticator app before you can use the admin dashboard.
+                  </AlertDescription>
+                </Alert>
+              )}
+              {step === "enabled" ? (
+                <div className="flex flex-col gap-3">
+                  <p className="text-sm text-muted-foreground">
+                    Sign-in may ask for a code from your authenticator app after your password.
+                  </p>
+                  {redirectPath?.startsWith("/") ? (
+                    <Button asChild variant="default">
+                      <a href={redirectPath}>Continue to admin →</a>
+                    </Button>
+                  ) : null}
+                </div>
+              ) : step === "setup" ? (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter
+                    the secret manually.
+                  </p>
+                  {qrUrl ? (
+                    <img
+                      src={qrUrl}
+                      alt="TOTP QR code"
+                      width={180}
+                      height={180}
+                      className="self-center rounded-md border bg-white p-2"
+                    />
+                  ) : null}
+                  <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{secret}</div>
+                  <form onSubmit={(e) => void handleVerify(e)} className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-1.5">
+                      <Label htmlFor="totp-code">Verification code</Label>
+                      <Input
+                        id="totp-code"
+                        inputMode="numeric"
+                        autoComplete="one-time-code"
+                        value={code}
+                        onChange={(e) => setCode(e.target.value)}
+                        placeholder="123456"
+                        required
+                      />
+                    </div>
+                    <Button type="submit" disabled={loading}>
+                      {loading ? "Verifying…" : "Confirm setup"}
+                    </Button>
+                  </form>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground">
+                    Add an authenticator app for an extra sign-in step after your password.
+                  </p>
+                  <Button type="button" onClick={() => void handleStart()} disabled={loading}>
+                    {loading ? "Starting…" : "Set up authenticator app"}
+                  </Button>
+                </>
+              )}
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-          {success && (
-            <Alert>
-              <AlertDescription>{success}</AlertDescription>
-            </Alert>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              {success && (
+                <Alert>
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

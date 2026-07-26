@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAuthConfig } from "./auth-config";
+import { normalizeAuthConfig, teamRoleForUser } from "./auth-config";
 import { passwordResetUrlTemplate } from "./zitadel-users";
 
 describe("account flow auth config", () => {
@@ -21,6 +21,17 @@ describe("account flow auth config", () => {
   it("reads requireMfaForAdmin flag", () => {
     const auth = normalizeAuthConfig({ requireMfaForAdmin: true });
     expect(auth.requireMfaForAdmin).toBe(true);
+  });
+
+  it("bootstrap team role defaults to admin when no roles configured", () => {
+    const auth = normalizeAuthConfig({});
+    expect(teamRoleForUser(auth, "user-1")).toBe("admin");
+  });
+
+  it("assigned team role overrides bootstrap default", () => {
+    const auth = normalizeAuthConfig({ teamRoles: { "user-1": "editor" } });
+    expect(teamRoleForUser(auth, "user-1")).toBe("editor");
+    expect(teamRoleForUser(auth, "user-2")).toBe("editor");
   });
 });
 

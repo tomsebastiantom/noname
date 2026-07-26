@@ -5,6 +5,7 @@ import {
   idpIdForProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
+  teamRoleForUser,
 } from "./auth-config";
 import {
   IDP_PROVIDER_IDS,
@@ -205,7 +206,6 @@ export function createAuthService(deps: {
 
     async listTeamUsers(orgId) {
       const auth = await loadAuth(orgId);
-      const teamRoles = auth.teamRoles ?? {};
       const users = await listOrgUsers(orgId);
 
       return Promise.all(
@@ -214,7 +214,7 @@ export function createAuthService(deps: {
           email: user.email,
           displayName: user.displayName,
           state: user.state,
-          role: teamRoles[user.userId] ?? "editor",
+          role: teamRoleForUser(auth, user.userId),
           mfaEnrolled: await userHasTotpFactor(orgId, user.userId),
         })),
       );

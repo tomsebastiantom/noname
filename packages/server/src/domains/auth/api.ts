@@ -5,6 +5,8 @@ import { getUserId } from "../../shared/org";
 import { notFound } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
 import type { TenantSettingsService } from "../documents/ports";
+import { isTeamAdmin, normalizeAuthConfig } from "./auth-config";
+import { userIdFromAccessToken } from "./jwt-user";
 import type { AuthService } from "./ports";
 
 const loginBodySchema = z.object({
@@ -108,9 +110,12 @@ function bearerToken(c: Context): string | null {
 }
 
 function requireAuthenticatedUser(c: Context): { userId: string; userToken: string } | Response {
-  const userId = getUserId(c);
   const userToken = bearerToken(c);
-  if (!userId || !userToken) {
+  if (!userToken) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+  const userId = getUserId(c) || userIdFromAccessToken(userToken) || "";
+  if (!userId) {
     return c.json({ error: "Authentication required" }, 401);
   }
   return { userId, userToken };
@@ -118,6 +123,22 @@ function requireAuthenticatedUser(c: Context): { userId: string; userToken: stri
 
 export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSettingsService) {
   const routes = new Hono();
+
+  async function requireTeamAdmin(
+    c: Context,
+    orgId: string,
+  ): Promise<{ userId: string; userToken: string } | Response> {
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+    if (!tenantSettings) return auth;
+
+    const settings = await tenantSettings.get(orgId);
+    const teamAuth = normalizeAuthConfig(settings.auth);
+    if (!isTeamAdmin(teamAuth, auth.userId)) {
+      return c.json({ error: "Admin access required" }, 403);
+    }
+    return auth;
+  }
 
   async function orgFromParam(siteId: string): Promise<string | null> {
     if (!tenantSettings) return siteId;
@@ -134,6 +155,9 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.put("/:orgId/auth/config", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
+    const auth = await requireTeamAdmin(c, orgId);
+    if (auth instanceof Response) return auth;
+
     const parsed = authConfigUpdateSchema.safeParse(await c.req.json());
     if (!parsed.success) {
       return c.json({ error: "Invalid auth config payload" }, 400);
@@ -387,7 +411,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.get("/:orgId/auth/users", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireTeamAdmin(c, orgId);
     if (auth instanceof Response) return auth;
 
     try {
@@ -402,7 +426,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.post("/:orgId/auth/users/invite", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireTeamAdmin(c, orgId);
     if (auth instanceof Response) return auth;
 
     const parsed = teamInviteSchema.safeParse(await c.req.json());
@@ -423,7 +447,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.put("/:orgId/auth/users/:userId/role", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireTeamAdmin(c, orgId);
     if (auth instanceof Response) return auth;
 
     const parsed = teamRoleUpdateSchema.safeParse(await c.req.json());

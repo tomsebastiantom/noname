@@ -399,10 +399,12 @@ async function main() {
 
   const googleIdpId = process.env.ZITADEL_GOOGLE_IDP_ID?.trim();
   if (googleIdpId) {
-    await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/auth/config`, {
-      providers: ["google"],
-      idpIds: { google: googleIdpId },
-      allowPassword: true,
+    await api("PUT", "/api/documents/tenant_settings/default", {
+      auth: {
+        providers: ["google"],
+        idpIds: { google: googleIdpId },
+        allowPassword: true,
+      },
     });
     console.log("Auth config: Google IdP stored in tenant_settings for demo org.");
   }

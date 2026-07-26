@@ -82,9 +82,10 @@ export async function userHasTotpFactor(orgId: string, userId: string): Promise<
       { query: { offset: "0", limit: "20" } },
     );
     return (body.result ?? []).some((factor) => {
-      const type = (factor.type ?? "").toUpperCase();
-      const state = (factor.state ?? "").toUpperCase();
-      const isTotp = type.includes("TOTP") || type.includes("OTP");
+      const record = factor as { type?: string; state?: string; otp?: unknown };
+      const type = (record.type ?? "").toUpperCase();
+      const state = (record.state ?? "").toUpperCase();
+      const isTotp = Boolean(record.otp) || type.includes("TOTP") || type.includes("OTP");
       const ready = !state || state.includes("READY") || state.includes("ACTIVE");
       return isTotp && ready;
     });

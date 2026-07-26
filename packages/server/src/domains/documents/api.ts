@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { getOrgId } from "../../shared/org";
 import { created, deleted, notFound, ok } from "../../shared/respond";
+import { mergeAuthConfig, normalizeAuthConfig } from "../auth/auth-config";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { createAssetStorage, processImage, sha256 } from "./assets/binary";
 import type {
@@ -9,6 +10,7 @@ import type {
   DocumentService,
   LayoutFilters,
   PageTreePageRef,
+  TenantAuthConfig,
   UploadAssetInput,
 } from "./ports";
 
@@ -86,13 +88,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
       seo: (body.seo ?? current.seo) as never,
       integrations: (body.integrations ?? current.integrations) as never,
       auth: body.auth
-        ? {
-            providers: body.auth.providers ?? current.auth.providers,
-            idpIds: { ...current.auth.idpIds, ...(body.auth.idpIds ?? {}) },
-            allowPassword: body.auth.allowPassword ?? current.auth.allowPassword,
-            providerLabels: body.auth.providerLabels ?? current.auth.providerLabels,
-            providerIconAssets: body.auth.providerIconAssets ?? current.auth.providerIconAssets,
-          }
+        ? mergeAuthConfig(normalizeAuthConfig(current.auth), body.auth as Partial<TenantAuthConfig>)
         : current.auth,
     });
     return ok(c, upserted);

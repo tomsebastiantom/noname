@@ -133,11 +133,11 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 | Google / GitHub / Apple | Identity providers on org | Admin toggles + OAuth setup wizard | ✅ |
 | MFA (TOTP login) | Session API TOTP check | LoginForm `/login?mfa=1` | ✅ |
 | MFA (TOTP enrollment) | `POST /v2/users/{id}/totp` | `/account/security` | ✅ |
-| Org MFA policy (require for admins) | ZITADEL login policies | Admin “Security” section | 📋 |
+| Org MFA policy (require for admins) | Client gate + `tenant_settings.auth.requireMfaForAdmin` | Admin “Security” section | ✅ |
 | Password reset | ZITADEL reset flow | “Forgot password” on `/login` | ✅ |
 | User registration | ZITADEL register | Sign-up on `/login` (if `allowSignUp`) | ✅ |
 | Roles (admin/customer) | ZITADEL roles in JWT | Edge HMAC `x-role` | ✅ |
-| Audit / user list | ZITADEL console or API | Admin “Users” (later) | 📋 |
+| Audit / user list | ZITADEL API + team roles | Admin “Users” | ✅ |
 
 **Backend rule:** all ZITADEL Admin/Management calls that need secrets run on **server** (machine user or PAT), same as today’s password login broker ([`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md)).
 
@@ -162,7 +162,7 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 | API | Purpose |
 |-----|---------|
 | `GET /api/tenants/:slug/auth/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
-| `PUT /api/tenants/:slug/auth/config` | Seed/admin: save providers + `idpIds` per org |
+| `PUT /api/tenants/:slug/auth/config` | Admin JWT required: save providers + `idpIds` + MFA policy |
 | `GET/PUT /api/documents/tenant_settings/default` | Full settings including `auth` block |
 
 OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
@@ -207,6 +207,8 @@ Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth setti
 | **Account security** | TOTP enrollment (authenticator app) | ZITADEL user TOTP API via broker | ✅ |
 | **Security (org policy)** | MFA required for admins | `tenant_settings.auth.requireMfaForAdmin` | ✅ |
 | **Users** | List users, invite, roles | ZITADEL + `tenant_settings.auth.teamRoles` | ✅ |
+
+See [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) for issues found during hardening, test steps, and remaining gaps.
 
 Merchant flow (target):
 

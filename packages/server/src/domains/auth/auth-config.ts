@@ -124,3 +124,16 @@ export function mergeAuthConfig(
         : { ...(current.providerIconAssets ?? {}) },
   };
 }
+
+/** Effective team role; bootstrap orgs with no roles configured treat everyone as admin. */
+export function teamRoleForUser(auth: TenantAuthConfig, userId: string): "admin" | "editor" {
+  const roles = auth.teamRoles ?? {};
+  const assigned = roles[userId];
+  if (assigned) return assigned;
+  if (Object.keys(roles).length === 0) return "admin";
+  return "editor";
+}
+
+export function isTeamAdmin(auth: TenantAuthConfig, userId: string): boolean {
+  return teamRoleForUser(auth, userId) === "admin";
+}

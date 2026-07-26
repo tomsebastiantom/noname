@@ -37,6 +37,7 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 | **Admin polish** | DataTable lists, settings nav, delete-ref warnings | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
 | **Phase 3 slug** | `yogastore.localhost` → edge KV + resolve API (slug-only) | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
 | **Account flows** | Forgot password, sign-up, MFA login + TOTP enrollment | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
+| **Auth security hardening** | MFA policy, team admin, JWT guards, persistence fixes | [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) |
 | **Domain doc sync** | `documents-domain.md` aligned with refs + resolve API | [`documents-domain.md`](../2026-07-10/documents-domain.md) |
 | **Validation errors** | `ValidationError` → HTTP 400 (not 500) | `packages/server/src/shared/error-handler.ts` |
 
@@ -119,6 +120,7 @@ Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant UR
 | **Full CMS** | `documents-domain.md` | Content types, assets, locales |
 | **Refs** | `DOCUMENT-REFS.md` + `RESOLVE-REFS.md` | Pointer shape + resolve API |
 | **Login** | `LOGIN-UI.md` + `ACCOUNT-FLOWS.md` | Auth UI + broker flows |
+| **Security** | `SECURITY-HANDOFF.md` | Auth hardening issues, fixes, test checklist |
 | **Admin** | `ADMIN-UI-LATER.md` + `SPEC-DRIVEN-UI.md` | How to add admin screens |
 
 ---

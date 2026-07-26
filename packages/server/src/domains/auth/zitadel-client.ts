@@ -3,6 +3,13 @@ import { join } from "node:path";
 
 const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
+/** Scope required for end-user tokens to call ZITADEL user APIs (e.g. TOTP enrollment). */
+const ZITADEL_USER_API_SCOPE = "urn:zitadel:iam:org:project:id:zitadel:aud";
+
+function oidcScope(orgId: string): string {
+  return `openid profile email urn:zitadel:iam:org:id:${orgId} ${ZITADEL_USER_API_SCOPE}`;
+}
+
 function loadLoginClientPat(): string {
   if (process.env.ZITADEL_LOGIN_CLIENT_PAT) {
     return process.env.ZITADEL_LOGIN_CLIENT_PAT.trim();
@@ -41,7 +48,7 @@ async function startAuthRequest(input: {
   authUrl.searchParams.set("client_id", input.clientId);
   authUrl.searchParams.set("redirect_uri", input.redirectUri);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", `openid profile email urn:zitadel:iam:org:id:${input.orgId}`);
+  authUrl.searchParams.set("scope", oidcScope(input.orgId));
   authUrl.searchParams.set("code_challenge", input.codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
 
@@ -299,7 +306,7 @@ export async function buildOAuthAuthorizeUrl(input: {
   authUrl.searchParams.set("client_id", input.clientId);
   authUrl.searchParams.set("redirect_uri", input.redirectUri);
   authUrl.searchParams.set("response_type", "code");
-  authUrl.searchParams.set("scope", `openid profile email urn:zitadel:iam:org:id:${input.orgId}`);
+  authUrl.searchParams.set("scope", oidcScope(input.orgId));
   authUrl.searchParams.set("code_challenge", input.codeChallenge);
   authUrl.searchParams.set("code_challenge_method", "S256");
   if (input.idpId) {
