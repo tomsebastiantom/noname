@@ -16,7 +16,7 @@
 ✅ 1     Content render pipeline   → CMS → $state → resolved spec on edge
 ✅ A2    Per-org auth config       → tenant_settings.auth in Postgres
 📋 C     Admin UI                  → edit without seeds  (✅ core done)
-📋 D     Scale                     → slug, domains, visual editor
+📋 D     Scale                     → visual editor, custom domains
 ```
 
 ---

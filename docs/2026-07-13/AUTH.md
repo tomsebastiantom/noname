@@ -29,7 +29,7 @@ Browser ──► Edge Worker (:8787) ──► Server (:3000) ──► Infra
 ## Flow
 
 1. Client authenticates with ZITADEL (authorization code + PKCE) → gets access token
-2. Client sends `Authorization: Bearer <token>` to edge worker (org id in URL path for public routes, e.g. `/api/edge/schema/:orgId`)
+2. Client sends `Authorization: Bearer <token>` to edge worker (store slug in URL path for public routes, e.g. `/api/edge/schema/yogastore`)
 3. Worker resolves `orgId`: JWT org claim → URL path segment → (Phase 3: Host slug lookup)
 4. Worker calls `parseJwt` from `@cfworker/jwt` with `getKey` resolver:
    - Discovers JWKS URI from `{issuer}/.well-known/openid-configuration`

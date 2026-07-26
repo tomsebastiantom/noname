@@ -132,7 +132,7 @@ extensionLoaders: {
 ### 2. Org enables extension (manifest)
 
 ```http
-PUT /api/tenants/383371762538184712/catalog
+PUT /api/tenants/yogastore/catalog
 Content-Type: application/json
 
 {

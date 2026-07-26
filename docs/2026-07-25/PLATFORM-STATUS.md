@@ -20,7 +20,8 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 ✅ 1      CMS → edge $state → resolved spec
 ✅ A2     Per-org auth (Postgres + ZITADEL IdPs)
 ✅ C      Admin shell + CMS + auth + pages + login branding  (core done)
-📋 D      Visual editor, full slug routing, custom domains
+✅ 3      Store slug → org on edge (Host + path + KV)
+📋 D      Visual editor, custom domains
 ```
 
 ---
@@ -32,6 +33,7 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 | **Document refs** | All pointers `{ documentId }`; validate on save | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) |
 | **Resolve API** | `GET /api/documents/resolve-refs` — batch labels + asset previews | [`RESOLVE-REFS.md`](./RESOLVE-REFS.md) |
 | **Admin Phase C** | Content, layouts, pages, auth settings, login branding | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
+| **Phase 3 slug** | `yogastore.localhost` → edge KV + resolve API | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
 | **Account flows** | Forgot password, sign-up, MFA login step | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 | **Domain doc sync** | `documents-domain.md` aligned with refs + resolve API | [`documents-domain.md`](../2026-07-10/documents-domain.md) |
 
@@ -77,7 +79,8 @@ pnpm seed:demo
 | `POST …/auth/register` | Sign-up (if `allowSignUp`) |
 | `POST …/auth/password-reset/*` | Forgot / confirm reset |
 | `GET /api/documents/resolve-refs?ids=` | Batch ref → label/preview |
-| `GET /api/edge/schema/:orgId?template=` | Page spec (storefront + admin) |
+| `GET /api/edge/schema/:slug?template=` | Page spec (storefront + admin) |
+| `GET /api/tenants/resolve/:slug` | Slug → org id (edge cache warm-up) |
 
 Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant URLs.
 
@@ -88,12 +91,11 @@ Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant UR
 | Item | Why it matters | Doc |
 |------|----------------|-----|
 | Visual editor `?edit=true` | Click-to-edit storefront | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
-| Edge Host → org (Phase 3) | Slug everywhere, not only client | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) |
-| MFA **registration** in admin | Enroll TOTP for users | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) § Future |
+| Custom domains | `shop.example.com` → org | Phase D |
 | Published-only refs / delete warnings | Safer CMS | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
 | Admin polish | `DataTable`, nav chrome | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) |
 
-**Suggested next build:** Visual editor **or** Phase 3 slug — pick based on demo audience.
+**Suggested next build:** **Visual editor** — Phase 3 slug is done.
 
 ---
 

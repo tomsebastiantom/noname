@@ -3,7 +3,7 @@ import type { Env } from "./types";
 
 const SLUG_CACHE_TTL = 300;
 
-function storeSlugFromHost(host: string): string | null {
+export function storeSlugFromHost(host: string): string | null {
   const hostname = host.split(":")[0]?.trim() ?? "";
   const sub = hostname.split(".")[0];
   if (!sub || sub === "localhost" || sub === "127") return null;

@@ -1,9 +1,9 @@
 # Phase 3 — Store Slug + Edge Hostname Lookup
 
 > **Date:** 2026-07-25  
-> **Status:** Planned — **not implemented**  
+> **Status:** ✅ Implemented  
 > **Depends on:** Phase 2 (PKCE login) ✅  
-> **Related:** [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md)
+> **Related:** [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)
 
 ---
 
@@ -17,12 +17,11 @@ Production shape is the same: hostname identifies the store; edge resolves it to
 
 ## Current vs target
 
-| | Today (Phase 2) | After Phase 3 |
-|---|-----------------|---------------|
+| | Before Phase 3 | Now ✅ |
+|---|----------------|--------|
 | Dev URL | `{orgId}.localhost:5173` | `{slug}.localhost:5173` e.g. `yogastore.localhost:5173` |
-| Client org source | Subdomain parsed as org id | Subdomain parsed as **slug**; API paths may use slug or edge resolves |
-| Edge org source | JWT → URL path org segment → Host slug (Phase 3) | JWT → URL path |
-| DB | `tenant_settings` has locales, etc. | Add **`slug`** on store config |
+| Client paths | Numeric org id | **Store slug** in `/api/tenants/:slug`, `/api/edge/schema/:slug` |
+| Edge org resolution | JWT → path → **Host slug** → `x-org-id` | Same order; path slug resolved via KV + `GET /api/tenants/resolve/:slug` |
 
 ---
 
@@ -120,15 +119,17 @@ Phase 3 only changes **how `orgId` is discovered** from the incoming request (Ho
 
 ---
 
-## Implementation checklist (for later)
+## Implementation checklist
 
-- [ ] Schema: `slug` on `tenant_settings` (+ uniqueness enforcement)
-- [ ] `seed:demo` → `yogastore`
-- [ ] Server: resolve slug → org id (query or dedicated endpoint)
-- [ ] Edge: Host → slug → org id (+ optional KV cache)
-- [ ] Client: slug subdomain + updated fetch paths
-- [ ] Docs: update dev workflow in `AUTH-IDENTITY.md`
-- [ ] Manual test: `yogastore.localhost:5173` → catalog + schema + sign-in
+- [x] Schema: `slug` on `tenant_settings` (+ uniqueness on save)
+- [x] `seed:demo` → `yogastore`
+- [x] Server: `GET /api/tenants/resolve/:slug` + `resolveSiteIdToOrgId` on edge/tenant/auth paths
+- [x] Edge: Host → slug → org id (KV cache in `resolve-slug.ts`)
+- [x] Edge proxy: slug in path segments resolved to org id for HMAC upstream
+- [x] Edge public routes: auth config, login, register, password-reset, MFA, OAuth start
+- [x] Client: slug subdomain + slug in fetch paths (`main.tsx`, `auth/org.ts`)
+- [x] Tests: `site-id.test.ts`, `resolve-slug.test.ts`
+- [x] Docs: `AUTH-IDENTITY.md`, this file
 
 ---
 

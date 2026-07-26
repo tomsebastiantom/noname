@@ -9,10 +9,18 @@ const PUBLIC_GET = [
   /^\/api\/tenants\/resolve\/[^/]+$/,
   /^\/api\/tenants\/[^/]+\/catalog$/,
   /^\/api\/tenants\/[^/]+\/auth\/config$/,
+  /^\/api\/tenants\/[^/]+\/auth\/idp\/[^/]+\/start$/,
   /^\/health$/,
 ];
 
-const PUBLIC_POST = [/^\/api\/tenants\/[^/]+\/auth\/login$/];
+const PUBLIC_POST = [
+  /^\/api\/tenants\/[^/]+\/auth\/login$/,
+  /^\/api\/tenants\/[^/]+\/auth\/register$/,
+  /^\/api\/tenants\/[^/]+\/auth\/password-reset\/request$/,
+  /^\/api\/tenants\/[^/]+\/auth\/password-reset\/confirm$/,
+  /^\/api\/tenants\/[^/]+\/auth\/mfa\/verify$/,
+  /^\/api\/tenants\/[^/]+\/auth\/callback$/,
+];
 
 function isPublicGet(method: string, pathname: string): boolean {
   return method === "GET" && PUBLIC_GET.some((re) => re.test(pathname));

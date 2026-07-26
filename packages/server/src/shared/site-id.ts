@@ -8,5 +8,6 @@ export async function resolveSiteIdToOrgId(
 ): Promise<string | null> {
   const trimmed = siteId.trim();
   if (!trimmed) return null;
+
   return tenantSettings.resolveStoreSlug(normalizeStoreSlug(trimmed));
 }

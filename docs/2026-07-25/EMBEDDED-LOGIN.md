@@ -85,7 +85,7 @@ Default dev user (from `docker-compose.yml` first-instance admin):
 
 - **Email:** `admin@zitadel.localhost`
 - **Password:** `NonameAdmin1!`
-- **URL:** `http://{ZITADEL_DEMO_ORG_ID}.localhost:5173/login`
+- **URL:** `http://yogastore.localhost:5173/login`
 
 ---
 

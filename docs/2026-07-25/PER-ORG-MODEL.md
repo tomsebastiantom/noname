@@ -50,7 +50,7 @@ See [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md).
 
 | Thing | Owner | Storage | Example |
 |-------|-------|---------|---------|
-| **Which org am I?** | Platform | Hostname → org id | `383371762538184712.localhost` |
+| **Which org am I?** | Platform | Hostname → slug → org id | `yogastore.localhost` |
 | **Storefront URLs** (`/`, `/about`, `/products/…`) | **Merchant (per org)** | `page_tree` document | Org A: `/` → home; Org B: `/` → different page |
 | **Layout + content for a URL** | **Merchant (per org)** | `page` document | `layoutRef: "home"`, `contentRef: "product:uuid"` |
 | **Page structure** (Hero, grid, ProductCard) | **Merchant (per org)** | `layout` document | Org A home layout ≠ Org B home layout |
