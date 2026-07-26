@@ -47,8 +47,8 @@ Merchant dashboard inside `packages/client` (no separate package):
 | `AdminHome` | Dashboard overview links | ✅ |
 | `DataTable` | CRUD list tables (content, layouts, pages) | ✅ |
 | `AccountSecurityForm` | TOTP enrollment at `/account/security` | ✅ |
-| `AdminNav` / `AdminPageHeader` | Optional extract (inline in shell today) | 📋 |
-| `PropsPanel` | Visual editor side panel | 📋 |
+| `AdminNav` / `AdminPageHeader` | Sidebar + page header extracted from `AdminShell` | ✅ |
+| `PropsPanel` | Visual editor side panel (`packages/client/src/editor/`) | ✅ (foundation) |
 
 `LoginForm` lives on `/login` — not part of admin shell.
 
@@ -97,7 +97,7 @@ Seed: `pnpm seed:demo` creates `page` content type + demo entry + `admin_content
 6. **Layout editor (JSON)** — `LayoutEntryAdmin` ✅
 7. **Admin polish** — `DataTable`, settings nav, delete-ref warnings ✅
 8. **Account security** — `/account/security` TOTP enrollment ✅
-9. Visual editor lazy chunk (`editor/`) 📋
+9. Visual editor lazy chunk (`editor/`) — `PropsPanel` + field types ✅; overlay + `?edit=true` 📋
 10. Tenant catalog bundler + MF remotes 📋
 
 ---

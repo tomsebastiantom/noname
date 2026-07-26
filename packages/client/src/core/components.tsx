@@ -15,6 +15,8 @@ import { UsersAdminForm } from "./components/UsersAdminForm";
 
 export { AccountSecurityForm } from "./components/AccountSecurityForm";
 export { AdminHome } from "./components/AdminHome";
+export { AdminNav } from "./components/AdminNav";
+export { AdminPageHeader } from "./components/AdminPageHeader";
 export { AdminShell } from "./components/AdminShell";
 export { AuthLayout } from "./components/AuthLayout";
 export { AuthSettingsForm } from "./components/AuthSettingsForm";

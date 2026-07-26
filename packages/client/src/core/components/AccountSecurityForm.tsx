@@ -175,7 +175,9 @@ export function AccountSecurityForm({
                       className="self-center rounded-md border bg-white p-2"
                     />
                   ) : null}
-                  <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{secret}</div>
+                  <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">
+                    {secret}
+                  </div>
                   <form onSubmit={(e) => void handleVerify(e)} className="flex flex-col gap-3">
                     <div className="flex flex-col gap-1.5">
                       <Label htmlFor="totp-code">Verification code</Label>
