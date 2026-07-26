@@ -8,6 +8,8 @@ export const ALL_AUTH_PROVIDERS: AuthProvider[] = ["google", "github", "apple"];
 export interface AuthSettingsState {
   providers: AuthProvider[];
   allowPassword: boolean;
+  allowSignUp: boolean;
+  allowPasswordReset: boolean;
   googleConfigured: boolean;
   githubConfigured: boolean;
   appleConfigured: boolean;
@@ -34,7 +36,12 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
   }
 
   const configBody = (await configRes.json()) as {
-    data?: { providers?: string[]; allowPassword?: boolean };
+    data?: {
+      providers?: string[];
+      allowPassword?: boolean;
+      allowSignUp?: boolean;
+      allowPasswordReset?: boolean;
+    };
   };
 
   let providers = (configBody.data?.providers ?? []).filter((p): p is AuthProvider =>
@@ -58,6 +65,8 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
   return {
     providers,
     allowPassword: configBody.data?.allowPassword !== false,
+    allowSignUp: configBody.data?.allowSignUp === true,
+    allowPasswordReset: configBody.data?.allowPasswordReset !== false,
     googleConfigured: idpConfigured(idpIds, "google"),
     githubConfigured: idpConfigured(idpIds, "github"),
     appleConfigured: idpConfigured(idpIds, "apple"),
@@ -67,6 +76,8 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
 export async function saveAuthConfig(input: {
   providers: AuthProvider[];
   allowPassword: boolean;
+  allowSignUp?: boolean;
+  allowPasswordReset?: boolean;
   googleOAuth?: { clientId: string; clientSecret: string };
   githubOAuth?: { clientId: string; clientSecret: string };
   appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };

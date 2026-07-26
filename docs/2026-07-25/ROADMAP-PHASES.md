@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Active  
-> **Start here:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)
+> **Start here:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · **Snapshot:** [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)
 
 ---
 
@@ -102,7 +102,7 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 | Core demo: `page` content type (no commerce required) | ✅ |
 | Custom IdPs via `auth_provider` CMS | ✅ |
 | Visual editor `?edit=true` | 📋 Phase D |
-| Account flows (forgot password, sign-up, MFA) | 📋 later |
+| Account flows (forgot password, sign-up, MFA) | ✅ [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 
 **Validate:**
 

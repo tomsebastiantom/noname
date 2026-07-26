@@ -144,6 +144,71 @@ async function exchangeCode(input: {
   return { access_token: body.access_token, expires_in: body.expires_in };
 }
 
+export interface LoginSession {
+  sessionId: string;
+  sessionToken: string;
+}
+
+export interface LoginSuccess {
+  status: "success";
+  accessToken: string;
+  expiresIn: number;
+}
+
+export interface LoginMfaRequired {
+  status: "mfa_required";
+  sessionId: string;
+  sessionToken: string;
+  authRequestId: string;
+}
+
+export type LoginResult = LoginSuccess | LoginMfaRequired;
+
+export interface LoginContext {
+  orgId: string;
+  clientId: string;
+  redirectUri: string;
+  codeVerifier: string;
+  authRequestId: string;
+}
+
+async function verifyTotpOnSession(
+  sessionId: string,
+  sessionToken: string,
+  code: string,
+  pat: string,
+): Promise<LoginSession> {
+  const res = await fetch(`${ISSUER}/v2/sessions/${sessionId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      "Content-Type": "application/json",
+      "x-zitadel-session-token": sessionToken,
+    },
+    body: JSON.stringify({ checks: { totp: { code } } }),
+  });
+  const body = (await res.json()) as {
+    sessionId?: string;
+    sessionToken?: string;
+    message?: string;
+  };
+  if (!res.ok || !body.sessionToken) {
+    throw new Error(body.message ?? "Invalid verification code");
+  }
+  return { sessionId: body.sessionId ?? sessionId, sessionToken: body.sessionToken };
+}
+
+function isMfaRequiredError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return (
+    lower.includes("mfa") ||
+    lower.includes("second factor") ||
+    lower.includes("multifactor") ||
+    lower.includes("totp") ||
+    lower.includes("otp")
+  );
+}
+
 export async function loginWithCredentials(input: {
   orgId: string;
   email: string;
@@ -151,7 +216,7 @@ export async function loginWithCredentials(input: {
   clientId: string;
   redirectUri: string;
   codeVerifier: string;
-}): Promise<{ accessToken: string; expiresIn: number }> {
+}): Promise<LoginResult> {
   const pat = loadLoginClientPat();
   const codeChallenge = await pkceChallenge(input.codeVerifier);
   const authRequestId = await startAuthRequest({
@@ -168,14 +233,58 @@ export async function loginWithCredentials(input: {
     input.password,
     pat,
   );
-  const code = await finalizeAuthRequest(authRequestId, verified, pat);
+
+  try {
+    const code = await finalizeAuthRequest(authRequestId, verified, pat);
+    const tokens = await exchangeCode({
+      clientId: input.clientId,
+      redirectUri: input.redirectUri,
+      code,
+      codeVerifier: input.codeVerifier,
+    });
+    return {
+      status: "success",
+      accessToken: tokens.access_token,
+      expiresIn: tokens.expires_in ?? 3600,
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    if (!isMfaRequiredError(message)) {
+      throw err;
+    }
+    return {
+      status: "mfa_required",
+      sessionId: verified.sessionId,
+      sessionToken: verified.sessionToken,
+      authRequestId,
+    };
+  }
+}
+
+export async function completeLoginWithTotp(input: {
+  orgId: string;
+  sessionId: string;
+  sessionToken: string;
+  authRequestId: string;
+  totpCode: string;
+  clientId: string;
+  redirectUri: string;
+  codeVerifier: string;
+}): Promise<{ accessToken: string; expiresIn: number }> {
+  const pat = loadLoginClientPat();
+  const verified = await verifyTotpOnSession(
+    input.sessionId,
+    input.sessionToken,
+    input.totpCode,
+    pat,
+  );
+  const code = await finalizeAuthRequest(input.authRequestId, verified, pat);
   const tokens = await exchangeCode({
     clientId: input.clientId,
     redirectUri: input.redirectUri,
     code,
     codeVerifier: input.codeVerifier,
   });
-
   return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
 }
 

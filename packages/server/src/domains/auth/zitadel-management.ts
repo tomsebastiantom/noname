@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 const MANAGEMENT_BASE = `${ISSUER}/management/v1`;
+export const ZITADEL_V2_BASE = `${ISSUER}/v2`;
 
 interface ServiceAccountKey {
   keyId: string;
@@ -213,4 +214,37 @@ export async function upsertZitadelIdp(
 /** Test hook — reset cached management token between tests. */
 export function resetManagementTokenCache(): void {
   cachedToken = null;
+}
+
+export { getManagementToken };
+
+export async function v2Request<T>(
+  orgId: string,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const token = await getManagementToken();
+  const res = await fetch(`${ZITADEL_V2_BASE}${path}`, {
+    method,
+    headers: orgHeaders(orgId, token),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await res.text();
+  let parsed: unknown = {};
+  if (text) {
+    try {
+      parsed = JSON.parse(text) as unknown;
+    } catch {
+      parsed = { message: text };
+    }
+  }
+
+  const err = parsed as { code?: number | string; message?: string };
+  if (!res.ok) {
+    throw new Error(`ZITADEL v2 ${path} → ${res.status}: ${err.message ?? text}`);
+  }
+
+  return parsed as T;
 }

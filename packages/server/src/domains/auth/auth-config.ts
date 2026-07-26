@@ -8,6 +8,8 @@ export const DEFAULT_TENANT_AUTH: TenantAuthConfig = {
   providers: [],
   idpIds: {},
   allowPassword: true,
+  allowSignUp: false,
+  allowPasswordReset: true,
   providerLabels: {},
   providerIconAssets: {},
 };
@@ -63,6 +65,8 @@ export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
     providers,
     idpIds,
     allowPassword: record.allowPassword !== false,
+    allowSignUp: record.allowSignUp === true,
+    allowPasswordReset: record.allowPasswordReset !== false,
     providerLabels,
     providerIconAssets,
   };
@@ -88,6 +92,8 @@ export function mergeAuthConfig(
   return {
     providers: patch.providers ?? current.providers,
     allowPassword: patch.allowPassword ?? current.allowPassword,
+    allowSignUp: patch.allowSignUp ?? current.allowSignUp ?? false,
+    allowPasswordReset: patch.allowPasswordReset ?? current.allowPasswordReset ?? true,
     idpIds: patch.idpIds !== undefined ? { ...patch.idpIds } : { ...current.idpIds },
     providerLabels:
       patch.providerLabels !== undefined

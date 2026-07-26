@@ -189,15 +189,62 @@ export const coreActionSchemas = {
     params: z.object({
       providers: z.array(z.enum(["google", "github", "apple"])),
       allowPassword: z.boolean(),
+      allowSignUp: z.boolean().optional(),
+      allowPasswordReset: z.boolean().optional(),
       googleOAuth: z
         .object({
           clientId: z.string().min(1),
           clientSecret: z.string().min(1),
         })
         .optional(),
+      githubOAuth: z
+        .object({
+          clientId: z.string().min(1),
+          clientSecret: z.string().min(1),
+        })
+        .optional(),
+      appleOAuth: z
+        .object({
+          clientId: z.string().min(1),
+          teamId: z.string().min(1),
+          keyId: z.string().min(1),
+          privateKey: z.string().min(1),
+        })
+        .optional(),
     }),
     description:
-      "Save per-org auth settings and register Google IdP in ZITADEL when credentials provided",
+      "Save per-org auth settings and register IdPs in ZITADEL when credentials provided",
+  },
+  requestPasswordReset: {
+    params: z.object({
+      email: z.string().email(),
+    }),
+    description: "Send password reset email via ZITADEL",
+  },
+  confirmPasswordReset: {
+    params: z.object({
+      userId: z.string().min(1),
+      verificationCode: z.string().min(1),
+      newPassword: z.string().min(8),
+    }),
+    description: "Confirm password reset with verification code",
+  },
+  register: {
+    params: z.object({
+      email: z.string().email(),
+      password: z.string().min(8),
+      givenName: z.string().optional(),
+      familyName: z.string().optional(),
+      redirectPath: z.string().optional(),
+    }),
+    description: "Create a new account in ZITADEL for this org",
+  },
+  verifyMfa: {
+    params: z.object({
+      totpCode: z.string().min(1),
+      redirectPath: z.string().optional(),
+    }),
+    description: "Complete sign-in with TOTP after password step",
   },
   saveContentEntry: {
     params: z.object({

@@ -15,10 +15,18 @@ import {
 import type { AuthConfig, AuthService } from "./ports";
 import {
   buildOAuthAuthorizeUrl,
+  completeLoginWithTotp,
   exchangeAuthorizationCode,
   loginWithCredentials,
 } from "./zitadel-client";
 import { upsertZitadelIdp } from "./zitadel-management";
+import {
+  findUserIdByEmail,
+  passwordResetUrlTemplate,
+  registerHumanUser,
+  requestPasswordResetEmail,
+  setPasswordWithVerificationCode,
+} from "./zitadel-users";
 
 export function createAuthService(deps: {
   tenantSettings: TenantSettingsService;
@@ -34,9 +42,12 @@ export function createAuthService(deps: {
   async function publicConfig(orgId: string): Promise<AuthConfig> {
     const auth = await loadAuth(orgId);
     const providers = enabledProviders(auth);
+    const allowPassword = auth.allowPassword;
     return {
       providers,
-      allowPassword: auth.allowPassword,
+      allowPassword,
+      allowSignUp: auth.allowSignUp === true,
+      allowPasswordReset: allowPassword && auth.allowPasswordReset !== false,
       providerLabels: publicProviderLabels(providers, auth.providerLabels ?? {}),
       providerIcons: await resolveProviderIconUrls(
         orgId,
@@ -48,7 +59,69 @@ export function createAuthService(deps: {
   }
 
   return {
-    login: (input) => loginWithCredentials(input),
+    async login(input) {
+      const result = await loginWithCredentials(input);
+      if (result.status === "mfa_required") {
+        return {
+          mfaRequired: true,
+          sessionId: result.sessionId,
+          sessionToken: result.sessionToken,
+          authRequestId: result.authRequestId,
+        };
+      }
+      return {
+        accessToken: result.accessToken,
+        expiresIn: result.expiresIn,
+      };
+    },
+
+    verifyMfa: (input) => completeLoginWithTotp(input),
+
+    async requestPasswordReset(input) {
+      const auth = await loadAuth(input.orgId);
+      if (!auth.allowPassword || auth.allowPasswordReset === false) {
+        throw new Error("Password reset is not enabled for this store");
+      }
+      const settings = await tenantSettings.get(input.orgId);
+      const slug = settings.slug?.trim();
+      if (!slug) {
+        throw new Error("Store slug is required for password reset emails");
+      }
+
+      const userId = await findUserIdByEmail(input.orgId, input.email);
+      if (userId) {
+        await requestPasswordResetEmail(
+          input.orgId,
+          userId,
+          passwordResetUrlTemplate(slug),
+        );
+      }
+      // Always succeed — do not reveal whether the email exists.
+    },
+
+    async confirmPasswordReset(input) {
+      const auth = await loadAuth(input.orgId);
+      if (!auth.allowPassword || auth.allowPasswordReset === false) {
+        throw new Error("Password reset is not enabled for this store");
+      }
+      await setPasswordWithVerificationCode(
+        input.orgId,
+        input.userId,
+        input.verificationCode,
+        input.newPassword,
+      );
+    },
+
+    async register(input) {
+      const auth = await loadAuth(input.orgId);
+      if (!auth.allowSignUp) {
+        throw new Error("Sign-up is not enabled for this store");
+      }
+      if (!auth.allowPassword) {
+        throw new Error("Password sign-up requires email/password login to be enabled");
+      }
+      return registerHumanUser(input.orgId, input);
+    },
 
     getConfig: publicConfig,
 
@@ -87,6 +160,8 @@ export function createAuthService(deps: {
       const next = mergeAuthConfig(current, {
         providers,
         allowPassword: patch.allowPassword,
+        allowSignUp: patch.allowSignUp,
+        allowPasswordReset: patch.allowPasswordReset,
         idpIds,
         providerLabels: {
           ...(current.providerLabels ?? {}),

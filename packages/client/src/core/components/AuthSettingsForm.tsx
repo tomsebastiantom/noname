@@ -103,6 +103,8 @@ export function AuthSettingsForm({
   const [success, setSuccess] = useState<string | null>(null);
   const [providers, setProviders] = useState<AuthProvider[]>([]);
   const [allowPassword, setAllowPassword] = useState(true);
+  const [allowSignUp, setAllowSignUp] = useState(false);
+  const [allowPasswordReset, setAllowPasswordReset] = useState(true);
   const [googleConfigured, setGoogleConfigured] = useState(false);
   const [githubConfigured, setGithubConfigured] = useState(false);
   const [appleConfigured, setAppleConfigured] = useState(false);
@@ -128,6 +130,8 @@ export function AuthSettingsForm({
         if (!cancelled) {
           setProviders(data.providers);
           setAllowPassword(data.allowPassword);
+          setAllowSignUp(data.allowSignUp);
+          setAllowPasswordReset(data.allowPasswordReset);
           setGoogleConfigured(data.googleConfigured);
           setGithubConfigured(data.githubConfigured);
           setAppleConfigured(data.appleConfigured);
@@ -185,7 +189,7 @@ export function AuthSettingsForm({
 
       await executeAction(
         "saveAuthConfig",
-        { providers, allowPassword, googleOAuth, githubOAuth, appleOAuth },
+        { providers, allowPassword, allowSignUp, allowPasswordReset, googleOAuth, githubOAuth, appleOAuth },
         () => {},
       );
 
@@ -334,6 +338,36 @@ export function AuthSettingsForm({
             />
             <span className="text-sm">Allow email and password sign-in</span>
           </label>
+
+          {allowPassword && (
+            <>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={allowPasswordReset}
+                  onChange={(e) => {
+                    setAllowPasswordReset(e.target.checked);
+                    setSuccess(null);
+                  }}
+                  className="size-4 rounded border-input"
+                />
+                <span className="text-sm">Allow forgot-password reset emails</span>
+              </label>
+
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={allowSignUp}
+                  onChange={(e) => {
+                    setAllowSignUp(e.target.checked);
+                    setSuccess(null);
+                  }}
+                  className="size-4 rounded border-input"
+                />
+                <span className="text-sm">Allow customers to create accounts on /login</span>
+              </label>
+            </>
+          )}
 
           <p className="text-sm text-muted-foreground">
             <a href="/admin/settings/login" className="underline underline-offset-2 hover:text-foreground">

@@ -2,6 +2,7 @@
 
 > **Date:** 2026-07-25  
 > **Status:** Active — master index for platform docs  
+> **Current snapshot:** [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md) — where we are before the next build  
 > **Read this first**, then open the linked doc for the area you are working on.
 
 ---
@@ -68,6 +69,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | **[`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)** | Phases A → D, validate criteria |
+| **[`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)** | **Current snapshot** — shipped vs next (read before new work) |
 | **[`PER-ORG-MODEL.md`](./PER-ORG-MODEL.md)** | **Multi-tenant overview** — who owns what, two-store example |
 | **[`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)** | CMS → layout → `$state` → resolved spec |
 | **[`PAGE-ROUTING.md`](./PAGE-ROUTING.md)** | URL → page_tree → edge schema ✅ |

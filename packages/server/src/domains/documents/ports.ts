@@ -115,6 +115,8 @@ export interface TenantAuthConfig {
   providers: string[];
   idpIds: Record<string, string>;
   allowPassword: boolean;
+  allowSignUp?: boolean;
+  allowPasswordReset?: boolean;
   providerLabels?: Record<string, string>;
   /** Media refs — same shape as content `icon` / SEO `ogImage` fields. URLs resolved at read time. */
   providerIconAssets?: Record<string, MediaRef>;

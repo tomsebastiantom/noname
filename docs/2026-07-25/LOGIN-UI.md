@@ -26,7 +26,7 @@ Sign-in on **our** `/login` page — Clerk-like UX, ZITADEL as IdP only (no host
 | OAuth start + `/auth/callback` | ✅ scaffold |
 | Per-org social config (Postgres) | ✅ `GET /auth/config` + admin settings |
 | `allowPassword` hides email form when off | ✅ |
-| Forgot password / MFA / sign-up | 📋 later |
+| Forgot password / MFA / sign-up | ✅ see [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 
 ---
 
@@ -99,7 +99,7 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgre
 |-------|-------|--------|
 | 1 Visual polish | AuthLayout, shadcn, divider, password toggle | ✅ |
 | 2 Social sign-in | Buttons + OAuth routes + **per-org config (A2)** | ✅ |
-| 3 Account flows | Forgot password, sign-up, MFA | 📋 |
+| 3 Account flows | Forgot password, sign-up, MFA | ✅ |
 | 4 Admin branding | Auth settings + login layout props | Auth ✅ · login branding ✅ (`/admin/settings/login`) |
 
 Per-org Google/GitHub/Apple + password toggles via `/admin/settings/auth`. Login copy via `/admin/settings/login`. See [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md).

@@ -1,20 +1,45 @@
 import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
+import {
+  confirmPasswordReset,
+  loginWithPassword,
+  registerAccount,
+  requestPasswordReset,
+  verifyMfaAndLogin,
+  type MfaLoginState,
+} from "../../auth/account-flows";
 import { startIdpLogin } from "../../auth/idp-login";
-import { loginWithPassword } from "../../auth/login";
 import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
 
 export const authActions = {
   saveAuthConfig: async (params: unknown) => {
-    const { providers, allowPassword, googleOAuth, githubOAuth, appleOAuth } = params as {
+    const {
+      providers,
+      allowPassword,
+      allowSignUp,
+      allowPasswordReset,
+      googleOAuth,
+      githubOAuth,
+      appleOAuth,
+    } = params as {
       providers: AuthProvider[];
       allowPassword: boolean;
+      allowSignUp?: boolean;
+      allowPasswordReset?: boolean;
       googleOAuth?: { clientId: string; clientSecret: string };
       githubOAuth?: { clientId: string; clientSecret: string };
       appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };
     };
 
-    await saveAuthConfig({ providers, allowPassword, googleOAuth, githubOAuth, appleOAuth });
+    await saveAuthConfig({
+      providers,
+      allowPassword,
+      allowSignUp,
+      allowPasswordReset,
+      googleOAuth,
+      githubOAuth,
+      appleOAuth,
+    });
   },
 
   login: async (params: unknown) => {
@@ -25,8 +50,60 @@ export const authActions = {
     };
 
     const storeSlug = requireStoreSlug();
-    await loginWithPassword(storeSlug, email, password);
+    const mfa = await loginWithPassword(storeSlug, email, password);
+    if (mfa) {
+      sessionStorage.setItem("noname_mfa_login", JSON.stringify(mfa));
+      window.location.href = `/login?mfa=1&redirect=${encodeURIComponent(redirectPath ?? "/")}`;
+      return;
+    }
     window.location.href = redirectPath ?? "/";
+  },
+
+  verifyMfa: async (params: unknown) => {
+    const { totpCode, redirectPath } = params as {
+      totpCode: string;
+      redirectPath?: string;
+    };
+
+    const storeSlug = requireStoreSlug();
+    const raw = sessionStorage.getItem("noname_mfa_login");
+    if (!raw) {
+      throw new Error("MFA session expired — sign in again");
+    }
+    const state = JSON.parse(raw) as MfaLoginState;
+    await verifyMfaAndLogin(storeSlug, state, totpCode);
+    sessionStorage.removeItem("noname_mfa_login");
+    window.location.href = redirectPath ?? "/";
+  },
+
+  requestPasswordReset: async (params: unknown) => {
+    const { email } = params as { email: string };
+    const storeSlug = requireStoreSlug();
+    await requestPasswordReset(storeSlug, email);
+  },
+
+  confirmPasswordReset: async (params: unknown) => {
+    const { userId, verificationCode, newPassword } = params as {
+      userId: string;
+      verificationCode: string;
+      newPassword: string;
+    };
+    const storeSlug = requireStoreSlug();
+    await confirmPasswordReset(storeSlug, { userId, verificationCode, newPassword });
+  },
+
+  register: async (params: unknown) => {
+    const { email, password, givenName, familyName, redirectPath } = params as {
+      email: string;
+      password: string;
+      givenName?: string;
+      familyName?: string;
+      redirectPath?: string;
+    };
+
+    const storeSlug = requireStoreSlug();
+    await registerAccount(storeSlug, { email, password, givenName, familyName });
+    window.location.href = redirectPath ?? "/login";
   },
 
   idpLogin: async (params: unknown) => {
@@ -41,6 +118,7 @@ export const authActions = {
 
   logout: async () => {
     clearSession();
+    sessionStorage.removeItem("noname_mfa_login");
     window.location.href = "/login";
   },
 };
