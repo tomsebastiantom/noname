@@ -11,9 +11,10 @@ import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
+import type { CatalogActionHandler } from "./types";
 
 export const authActions = {
-  saveAuthConfig: async (params: unknown) => {
+  saveAuthConfig: (async (params) => {
     const {
       providers,
       allowPassword,
@@ -44,9 +45,9 @@ export const authActions = {
       githubOAuth,
       appleOAuth,
     });
-  },
+  }) satisfies CatalogActionHandler,
 
-  login: async (params: unknown) => {
+  login: (async (params) => {
     const { email, password, redirectPath } = params as {
       email: string;
       password: string;
@@ -61,9 +62,9 @@ export const authActions = {
       return;
     }
     window.location.href = redirectPath ?? "/";
-  },
+  }) satisfies CatalogActionHandler,
 
-  verifyMfa: async (params: unknown) => {
+  verifyMfa: (async (params) => {
     const { totpCode, redirectPath } = params as {
       totpCode: string;
       redirectPath?: string;
@@ -78,20 +79,20 @@ export const authActions = {
     await verifyMfaAndLogin(storeSlug, state, totpCode);
     sessionStorage.removeItem("noname_mfa_login");
     window.location.href = redirectPath ?? "/";
-  },
+  }) satisfies CatalogActionHandler,
 
-  confirmMfaEnrollment: async (params: unknown) => {
+  confirmMfaEnrollment: (async (params) => {
     const { code } = params as { code: string };
     await confirmTotpEnrollment(code);
-  },
+  }) satisfies CatalogActionHandler,
 
-  requestPasswordReset: async (params: unknown) => {
+  requestPasswordReset: (async (params) => {
     const { email } = params as { email: string };
     const storeSlug = requireStoreSlug();
     await requestPasswordReset(storeSlug, email);
-  },
+  }) satisfies CatalogActionHandler,
 
-  confirmPasswordReset: async (params: unknown) => {
+  confirmPasswordReset: (async (params) => {
     const { userId, verificationCode, newPassword } = params as {
       userId: string;
       verificationCode: string;
@@ -99,9 +100,9 @@ export const authActions = {
     };
     const storeSlug = requireStoreSlug();
     await confirmPasswordReset(storeSlug, { userId, verificationCode, newPassword });
-  },
+  }) satisfies CatalogActionHandler,
 
-  register: async (params: unknown) => {
+  register: (async (params) => {
     const { email, password, givenName, familyName, redirectPath } = params as {
       email: string;
       password: string;
@@ -113,9 +114,9 @@ export const authActions = {
     const storeSlug = requireStoreSlug();
     await registerAccount(storeSlug, { email, password, givenName, familyName });
     window.location.href = redirectPath ?? "/login";
-  },
+  }) satisfies CatalogActionHandler,
 
-  idpLogin: async (params: unknown) => {
+  idpLogin: (async (params) => {
     const { provider, redirectPath } = params as {
       provider: string;
       redirectPath?: string;
@@ -123,11 +124,11 @@ export const authActions = {
 
     const storeSlug = requireStoreSlug();
     await startIdpLogin(storeSlug, provider, redirectPath ?? "/");
-  },
+  }) satisfies CatalogActionHandler,
 
-  logout: async () => {
+  logout: (async () => {
     clearSession();
     sessionStorage.removeItem("noname_mfa_login");
     window.location.href = "/login";
-  },
+  }) satisfies CatalogActionHandler,
 };

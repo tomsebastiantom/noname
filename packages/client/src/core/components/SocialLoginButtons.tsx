@@ -1,6 +1,6 @@
+import { useActions } from "@json-render/react";
 import { useState } from "react";
 import { Button } from "../../components/ui/button";
-import { executeAction } from "../../platform/registry";
 
 export function SocialLoginButtons({
   providers,
@@ -15,6 +15,7 @@ export function SocialLoginButtons({
   /** Icon URLs from GET /api/tenants/:slug/auth/config */
   providerIcons?: Record<string, string>;
 }>) {
+  const { execute } = useActions();
   const [loadingProvider, setLoadingProvider] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export function SocialLoginButtons({
     setError(null);
     setLoadingProvider(provider);
     try {
-      await executeAction("idpLogin", { provider, redirectPath }, () => {});
+      await execute({ action: "idpLogin", params: { provider, redirectPath } });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setLoadingProvider(null);

@@ -1,11 +1,6 @@
+import { useActions, useStateValue } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
-import {
-  listRoutingPages,
-  loadRoutingPage,
-  type RoutingPageView,
-  routingPageKeyFromPath,
-  saveRoutingPage,
-} from "../../admin/routing-entries";
+import { type RoutingPageView, routingPageKeyFromPath } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -18,6 +13,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { ADMIN_STATE } from "../admin-state";
 import { DataTable } from "./DataTable";
 import type { ComponentCtx } from "./types";
 
@@ -26,51 +22,48 @@ export function PageEntryAdmin({
 }: ComponentCtx<{
   title: string;
   description: string | null;
+  saveLabel: string;
+  savingLabel: string;
+  pageSavedMessage: string;
+  createLabel: string;
+  creatingLabel: string;
+  loadingLabel: string;
+  editUrlTreeLabel: string;
+  allPagesLinkLabel: string;
+  urlTreeLinkLabel: string;
 }>) {
   const pageKey = routingPageKeyFromPath(window.location.pathname);
-  const [loading, setLoading] = useState(true);
+  const { execute } = useActions();
+
+  const pages = (useStateValue(ADMIN_STATE.routing.pages) as RoutingPageView[] | undefined) ?? [];
+  const currentPage = useStateValue(ADMIN_STATE.routing.currentPage) as RoutingPageView | undefined;
+  const loading = (useStateValue(ADMIN_STATE.routing.loading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(ADMIN_STATE.routing.error) as string | null | undefined;
+
   const [saving, setSaving] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [pages, setPages] = useState<RoutingPageView[]>([]);
   const [layoutRef, setLayoutRef] = useState("home");
   const [contentRef, setContentRef] = useState("");
   const [status, setStatus] = useState("draft");
   const [newPageKey, setNewPageKey] = useState("");
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        if (!pageKey) {
-          const rows = await listRoutingPages();
-          if (!cancelled) setPages(rows);
-          return;
-        }
-
-        const row = await loadRoutingPage(pageKey);
-        if (!row) throw new Error(`Routing page "${pageKey}" not found`);
-        if (!cancelled) {
-          setLayoutRef(row.layoutRef);
-          setContentRef(row.contentRef);
-          setStatus(row.status);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (!pageKey) {
+      void execute({ action: "listRoutingPages" });
+    } else {
+      void execute({ action: "loadRoutingPage", params: { pageKey } });
     }
+  }, [pageKey, execute]);
 
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [pageKey]);
+  useEffect(() => {
+    if (currentPage) {
+      setLayoutRef(currentPage.layoutRef);
+      setContentRef(currentPage.contentRef);
+      setStatus(currentPage.status);
+    }
+  }, [currentPage]);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -79,10 +72,15 @@ export function PageEntryAdmin({
     setError(null);
     setSuccess(null);
     try {
-      await saveRoutingPage({ pageKey, layoutRef, contentRef: contentRef || null });
-      setSuccess("Page document saved.");
-      const row = await loadRoutingPage(pageKey);
-      if (row) setStatus(row.status);
+      await execute({
+        action: "saveRoutingPage",
+        params: {
+          pageKey,
+          layoutRef,
+          contentRef: contentRef || null,
+        },
+      });
+      setSuccess(props.pageSavedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -97,7 +95,14 @@ export function PageEntryAdmin({
     setCreating(true);
     setError(null);
     try {
-      await saveRoutingPage({ pageKey: key, layoutRef: "home", contentRef: null });
+      await execute({
+        action: "saveRoutingPage",
+        params: {
+          pageKey: key,
+          layoutRef: "home",
+          contentRef: null,
+        },
+      });
       window.location.href = `/admin/pages/${encodeURIComponent(key)}`;
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -105,21 +110,22 @@ export function PageEntryAdmin({
     }
   }
 
+  const displayError = error ?? loadError ?? null;
+
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading pages…</p>;
+    return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   if (!pageKey) {
     return (
       <div className="max-w-3xl">
-        <p className="mb-4 text-sm text-muted-foreground">
-          {props.description ??
-            "Routing page documents bind a layout template and optional contentRef for storefront URLs."}
-        </p>
+        {props.description ? (
+          <p className="mb-4 text-sm text-muted-foreground">{props.description}</p>
+        ) : null}
 
-        {error ? (
+        {displayError ? (
           <Alert variant="destructive" className="mb-4">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{displayError}</AlertDescription>
           </Alert>
         ) : null}
 
@@ -128,7 +134,7 @@ export function PageEntryAdmin({
             href="/admin/pages/tree"
             className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
           >
-            Edit URL tree →
+            {props.editUrlTreeLabel}
           </a>
         </div>
 
@@ -152,7 +158,7 @@ export function PageEntryAdmin({
                 />
               </div>
               <Button type="submit" disabled={creating}>
-                {creating ? "Creating…" : "Create"}
+                {creating ? props.creatingLabel : props.createLabel}
               </Button>
             </form>
           </CardContent>
@@ -202,9 +208,9 @@ export function PageEntryAdmin({
         {status ? ` · ${status}` : ""}
       </p>
 
-      {error ? (
+      {displayError ? (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{displayError}</AlertDescription>
         </Alert>
       ) : null}
       {success ? (
@@ -239,19 +245,19 @@ export function PageEntryAdmin({
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? props.savingLabel : props.saveLabel}
           </Button>
           <a
             href="/admin/pages"
             className="inline-flex items-center text-sm text-primary hover:underline"
           >
-            ← All pages
+            {props.allPagesLinkLabel}
           </a>
           <a
             href="/admin/pages/tree"
             className="inline-flex items-center text-sm text-primary hover:underline"
           >
-            URL tree
+            {props.urlTreeLinkLabel}
           </a>
         </div>
       </form>

@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { storeSlugFromHostname } from "../../auth/org";
 import { Alert, AlertDescription } from "../../components/ui/alert";
@@ -12,7 +13,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { Separator } from "../../components/ui/separator";
-import { executeAction } from "../../platform/registry";
+import type { CoreActionName } from "../actions";
 import { SocialLoginButtons } from "./SocialLoginButtons";
 import type { ComponentCtx } from "./types";
 
@@ -44,6 +45,7 @@ export function LoginForm({
   footerText: string | null;
   providers: AuthProvider[];
 }>) {
+  const { execute } = useActions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -117,12 +119,12 @@ export function LoginForm({
   const showSocial = enabledProviders.length > 0 && view === "login";
   const showPasswordForm = allowPassword && (view === "login" || view === "signup");
 
-  async function runAction(action: string, payload: Record<string, unknown>) {
+  async function runAction(action: CoreActionName, payload: Record<string, unknown>) {
     setError(null);
     setInfo(null);
     setLoading(true);
     try {
-      await executeAction(action, payload, () => {});
+      await execute({ action, params: payload });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setLoading(false);
@@ -141,7 +143,7 @@ export function LoginForm({
     setLoading(true);
     setError(null);
     try {
-      await executeAction("requestPasswordReset", { email }, () => {});
+      await runAction("requestPasswordReset", { email });
       setInfo("If an account exists for that email, we sent reset instructions.");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -156,15 +158,11 @@ export function LoginForm({
     setLoading(true);
     setError(null);
     try {
-      await executeAction(
-        "confirmPasswordReset",
-        {
-          userId: resetUserId,
-          verificationCode: resetCode,
-          newPassword,
-        },
-        () => {},
-      );
+      await runAction("confirmPasswordReset", {
+        userId: resetUserId,
+        verificationCode: resetCode,
+        newPassword,
+      });
       setInfo("Password updated. You can sign in now.");
       setView("login");
       window.history.replaceState({}, "", `/login?redirect=${encodeURIComponent(redirectPath)}`);

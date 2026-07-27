@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
 import { type AuthProvider, loadAuthSettings } from "../../auth/auth-settings";
 import { Alert, AlertDescription } from "../../components/ui/alert";
@@ -11,17 +12,9 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { executeAction } from "../../platform/registry";
 import type { ComponentCtx } from "./types";
 
-const PROVIDER_LABELS: Record<AuthProvider, string> = {
-  google: "Google",
-  github: "GitHub",
-  apple: "Apple",
-};
-
 function ClientSecretProviderSection({
-  provider,
   enabled,
   configured,
   clientId,
@@ -31,8 +24,9 @@ function ClientSecretProviderSection({
   onClientSecretChange,
   idPrefix,
   secretPlaceholder,
+  providerLabel,
+  configuredBadgeLabel,
 }: Readonly<{
-  provider: "google" | "github";
   enabled: boolean;
   configured: boolean;
   clientId: string;
@@ -42,6 +36,8 @@ function ClientSecretProviderSection({
   onClientSecretChange: (value: string) => void;
   idPrefix: string;
   secretPlaceholder: string;
+  providerLabel: string;
+  configuredBadgeLabel: string;
 }>) {
   return (
     <div className="flex flex-col gap-2 rounded-md border p-3">
@@ -52,19 +48,17 @@ function ClientSecretProviderSection({
           onChange={onToggle}
           className="size-4 rounded border-input"
         />
-        <span className="text-sm font-medium">{PROVIDER_LABELS[provider]}</span>
+        <span className="text-sm font-medium">{providerLabel}</span>
         {configured && (
           <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-            Configured in ZITADEL
+            {configuredBadgeLabel}
           </span>
         )}
       </label>
       {enabled && (
         <div className="flex flex-col gap-3 pl-6">
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-client-id`}>
-              {PROVIDER_LABELS[provider]} OAuth Client ID
-            </Label>
+            <Label htmlFor={`${idPrefix}-client-id`}>{providerLabel} OAuth Client ID</Label>
             <Input
               id={`${idPrefix}-client-id`}
               value={clientId}
@@ -73,9 +67,7 @@ function ClientSecretProviderSection({
             />
           </div>
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-client-secret`}>
-              {PROVIDER_LABELS[provider]} OAuth Client Secret
-            </Label>
+            <Label htmlFor={`${idPrefix}-client-secret`}>{providerLabel} OAuth Client Secret</Label>
             <Input
               id={`${idPrefix}-client-secret`}
               type="password"
@@ -96,7 +88,36 @@ export function AuthSettingsForm({
 }: ComponentCtx<{
   title: string;
   description: string | null;
+  saveLabel: string;
+  savingLabel: string;
+  loadingLabel: string;
+  successMessage: string;
+  socialProvidersLegend: string;
+  configuredBadgeLabel: string;
+  saveHelperText: string;
+  allowPasswordLabel: string;
+  allowPasswordResetLabel: string;
+  allowSignUpLabel: string;
+  adminSecurityLegend: string;
+  requireMfaLabel: string;
+  mfaHelperText: string;
+  loginAppearanceLinkText: string;
+  googleLabel: string;
+  githubLabel: string;
+  appleLabel: string;
+  googleSecretPlaceholderNew: string;
+  googleSecretPlaceholderExisting: string;
+  githubSecretPlaceholderNew: string;
+  githubSecretPlaceholderExisting: string;
+  appleKeyPlaceholderNew: string;
+  appleKeyPlaceholderExisting: string;
 }>) {
+  const { execute } = useActions();
+  const providerLabels: Record<AuthProvider, string> = {
+    google: props.googleLabel,
+    github: props.githubLabel,
+    apple: props.appleLabel,
+  };
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,9 +210,9 @@ export function AuthSettingsForm({
             }
           : undefined;
 
-      await executeAction(
-        "saveAuthConfig",
-        {
+      await execute({
+        action: "saveAuthConfig",
+        params: {
           providers,
           allowPassword,
           allowSignUp,
@@ -201,8 +222,7 @@ export function AuthSettingsForm({
           githubOAuth,
           appleOAuth,
         },
-        () => {},
-      );
+      });
 
       const data = await loadAuthSettings();
       setProviders(data.providers);
@@ -212,7 +232,7 @@ export function AuthSettingsForm({
       setGoogleClientSecret("");
       setGithubClientSecret("");
       setApplePrivateKey("");
-      setSuccess("Auth settings saved.");
+      setSuccess(props.successMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -221,7 +241,7 @@ export function AuthSettingsForm({
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Loading auth settings…</p>;
+    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   return (
@@ -233,10 +253,9 @@ export function AuthSettingsForm({
       <CardContent>
         <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-6">
           <fieldset className="flex flex-col gap-3">
-            <legend className="text-sm font-medium">Social providers</legend>
+            <legend className="text-sm font-medium">{props.socialProvidersLegend}</legend>
 
             <ClientSecretProviderSection
-              provider="google"
               enabled={providers.includes("google")}
               configured={googleConfigured}
               clientId={googleClientId}
@@ -245,15 +264,16 @@ export function AuthSettingsForm({
               onClientIdChange={setGoogleClientId}
               onClientSecretChange={setGoogleClientSecret}
               idPrefix="google"
+              providerLabel={providerLabels.google}
+              configuredBadgeLabel={props.configuredBadgeLabel}
               secretPlaceholder={
                 googleConfigured
-                  ? "Leave blank to keep existing secret"
-                  : "From Google Cloud Console"
+                  ? props.googleSecretPlaceholderExisting
+                  : props.googleSecretPlaceholderNew
               }
             />
 
             <ClientSecretProviderSection
-              provider="github"
               enabled={providers.includes("github")}
               configured={githubConfigured}
               clientId={githubClientId}
@@ -262,8 +282,12 @@ export function AuthSettingsForm({
               onClientIdChange={setGithubClientId}
               onClientSecretChange={setGithubClientSecret}
               idPrefix="github"
+              providerLabel={providerLabels.github}
+              configuredBadgeLabel={props.configuredBadgeLabel}
               secretPlaceholder={
-                githubConfigured ? "Leave blank to keep existing secret" : "From GitHub OAuth app"
+                githubConfigured
+                  ? props.githubSecretPlaceholderExisting
+                  : props.githubSecretPlaceholderNew
               }
             />
 
@@ -275,10 +299,10 @@ export function AuthSettingsForm({
                   onChange={() => toggleProvider("apple")}
                   className="size-4 rounded border-input"
                 />
-                <span className="text-sm font-medium">{PROVIDER_LABELS.apple}</span>
+                <span className="text-sm font-medium">{providerLabels.apple}</span>
                 {appleConfigured && (
                   <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    Configured in ZITADEL
+                    {props.configuredBadgeLabel}
                   </span>
                 )}
               </label>
@@ -320,8 +344,8 @@ export function AuthSettingsForm({
                       onChange={(e) => setApplePrivateKey(e.target.value)}
                       placeholder={
                         appleConfigured
-                          ? "Leave blank to keep existing key"
-                          : "Paste contents of AuthKey_XXXX.p8"
+                          ? props.appleKeyPlaceholderExisting
+                          : props.appleKeyPlaceholderNew
                       }
                       rows={4}
                       className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -331,10 +355,7 @@ export function AuthSettingsForm({
               )}
             </div>
 
-            <p className="text-xs text-muted-foreground">
-              Save registers providers in ZITADEL for this org and stores IdP references in platform
-              settings. Secrets are never returned to the browser after save.
-            </p>
+            <p className="text-xs text-muted-foreground">{props.saveHelperText}</p>
           </fieldset>
 
           <label className="flex cursor-pointer items-center gap-2">
@@ -347,7 +368,7 @@ export function AuthSettingsForm({
               }}
               className="size-4 rounded border-input"
             />
-            <span className="text-sm">Allow email and password sign-in</span>
+            <span className="text-sm">{props.allowPasswordLabel}</span>
           </label>
 
           {allowPassword && (
@@ -362,7 +383,7 @@ export function AuthSettingsForm({
                   }}
                   className="size-4 rounded border-input"
                 />
-                <span className="text-sm">Allow forgot-password reset emails</span>
+                <span className="text-sm">{props.allowPasswordResetLabel}</span>
               </label>
 
               <label className="flex cursor-pointer items-center gap-2">
@@ -375,13 +396,13 @@ export function AuthSettingsForm({
                   }}
                   className="size-4 rounded border-input"
                 />
-                <span className="text-sm">Allow customers to create accounts on /login</span>
+                <span className="text-sm">{props.allowSignUpLabel}</span>
               </label>
             </>
           )}
 
           <fieldset className="flex flex-col gap-3 rounded-md border p-3">
-            <legend className="px-1 text-sm font-medium">Admin security</legend>
+            <legend className="px-1 text-sm font-medium">{props.adminSecurityLegend}</legend>
             <label className="flex cursor-pointer items-center gap-2">
               <input
                 type="checkbox"
@@ -392,15 +413,9 @@ export function AuthSettingsForm({
                 }}
                 className="size-4 rounded border-input"
               />
-              <span className="text-sm">Require authenticator app (MFA) for admin access</span>
+              <span className="text-sm">{props.requireMfaLabel}</span>
             </label>
-            <p className="text-xs text-muted-foreground">
-              When enabled, team members must enroll at{" "}
-              <a href="/account/security" className="underline underline-offset-2">
-                Account security
-              </a>{" "}
-              before using /admin.
-            </p>
+            <p className="text-xs text-muted-foreground">{props.mfaHelperText}</p>
           </fieldset>
 
           <p className="text-sm text-muted-foreground">
@@ -408,9 +423,8 @@ export function AuthSettingsForm({
               href="/admin/settings/login"
               className="underline underline-offset-2 hover:text-foreground"
             >
-              Edit login appearance
-            </a>{" "}
-            — title, logo, and brand copy on /login.
+              {props.loginAppearanceLinkText}
+            </a>
           </p>
 
           {error && (
@@ -426,7 +440,7 @@ export function AuthSettingsForm({
           )}
 
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save settings"}
+            {saving ? props.savingLabel : props.saveLabel}
           </Button>
         </form>
       </CardContent>

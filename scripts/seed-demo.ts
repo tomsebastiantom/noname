@@ -74,16 +74,202 @@ const demoSpec = {
   },
 };
 
+};
+
+const adminShellNavProps = {
+  sidebarTitle: "Admin",
+  productName: "Noname",
+  navItems: [
+    { id: "home", label: "Overview", href: "/admin" },
+    { id: "pages", label: "Pages", href: "/admin/pages" },
+    { id: "content", label: "Content", href: "/admin/content" },
+    { id: "layout", label: "Layouts", href: "/admin/layout" },
+  ],
+  settingsSectionLabel: "Settings",
+  settingsItems: [
+    { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
+    { id: "users", label: "Team members", href: "/admin/settings/users" },
+    { id: "login", label: "Login appearance", href: "/admin/settings/login" },
+  ],
+  accountSecurityLabel: "Account security",
+  accountSecurityHref: "/account/security",
+  storefrontLabel: "← Storefront",
+  storefrontHref: "/",
+  signOutLabel: "Sign out",
+  signInLabel: "Sign in",
+};
+
+const draftPublishLabels = {
+  saveLabel: "Save draft",
+  savingLabel: "Saving…",
+  publishLabel: "Save & publish",
+  publishingLabel: "Publishing…",
+};
+
+const mediaFieldLabels = {
+  uploadFileLabel: "Upload file",
+  uploadingLabel: "Uploading…",
+  pickExistingLabel: "Pick existing",
+  loadingAssetsLabel: "Loading…",
+  clearLabel: "Clear",
+};
+
+const authSettingsLabels = {
+  saveLabel: "Save settings",
+  savingLabel: "Saving…",
+  loadingLabel: "Loading auth settings…",
+  successMessage: "Auth settings saved.",
+  socialProvidersLegend: "Social providers",
+  configuredBadgeLabel: "Configured in ZITADEL",
+  saveHelperText:
+    "Save registers providers in ZITADEL for this org and stores IdP references in platform settings. Secrets are never returned to the browser after save.",
+  allowPasswordLabel: "Allow email and password sign-in",
+  allowPasswordResetLabel: "Allow forgot-password reset emails",
+  allowSignUpLabel: "Allow customers to create accounts on /login",
+  adminSecurityLegend: "Admin security",
+  requireMfaLabel: "Require authenticator app (MFA) for admin access",
+  mfaHelperText:
+    "When enabled, team members must enroll at Account security before using /admin.",
+  loginAppearanceLinkText: "Edit login appearance — title, logo, and brand copy on /login.",
+  googleLabel: "Google",
+  githubLabel: "GitHub",
+  appleLabel: "Apple",
+  googleSecretPlaceholderNew: "From Google Cloud Console",
+  googleSecretPlaceholderExisting: "Leave blank to keep existing secret",
+  githubSecretPlaceholderNew: "From GitHub OAuth app",
+  githubSecretPlaceholderExisting: "Leave blank to keep existing secret",
+  appleKeyPlaceholderNew: "Paste contents of AuthKey_XXXX.p8",
+  appleKeyPlaceholderExisting: "Leave blank to keep existing key",
+};
+
+const usersAdminLabels = {
+  loadingLabel: "Loading team members…",
+  inviteSectionTitle: "Invite team member",
+  inviteSectionDescription:
+    "Creates a ZITADEL user in this org and emails them a link to set their password.",
+  inviteLabel: "Send invite",
+  invitingLabel: "Sending invite…",
+  inviteSuccessMessage: "Invite sent — they will receive an email to set their password.",
+  roleUpdatedMessage: "Role updated.",
+  emptyTableMessage: "No team members yet.",
+  emailColumnHeader: "Email",
+  roleColumnHeader: "Role",
+  mfaColumnHeader: "MFA",
+  statusColumnHeader: "Status",
+  mfaEnabledLabel: "Enabled",
+  mfaOffLabel: "Off",
+};
+
+const loginBrandingLabels = {
+  ...draftPublishLabels,
+  previewLoginLabel: "Preview login",
+  draftSavedMessage: "Login appearance saved as draft.",
+  publishedMessage: "Login appearance published.",
+  loadingLabel: "Loading login layout…",
+};
+
+const contentAdminLabels = {
+  ...draftPublishLabels,
+  ...mediaFieldLabels,
+  deleteLabel: "Delete",
+  deletingLabel: "Deleting…",
+  createDraftLabel: "Create draft",
+  creatingLabel: "Creating…",
+  loadingLabel: "Loading content…",
+  entryCreatedMessage: "Entry created as draft.",
+  entrySavedMessage: "Entry saved as draft.",
+  entryPublishedMessage: "Entry published.",
+  entryDeletedMessage: "Entry deleted.",
+  deleteConfirmMessage: "Delete this entry? This cannot be undone.",
+};
+
+const layoutAdminLabels = {
+  ...draftPublishLabels,
+  loadingLabel: "Loading layouts…",
+  draftSavedMessage: "Layout saved as draft.",
+  publishedMessage: "Layout published. Storefront/login will use the new spec on next load.",
+};
+
+const pagesAdminLabels = {
+  saveLabel: "Save",
+  savingLabel: "Saving…",
+  pageSavedMessage: "Page document saved.",
+  createLabel: "Create",
+  creatingLabel: "Creating…",
+  loadingLabel: "Loading pages…",
+  editUrlTreeLabel: "Edit URL tree →",
+  allPagesLinkLabel: "← All pages",
+  urlTreeLinkLabel: "URL tree",
+  saveTreeLabel: "Save page tree",
+  savingTreeLabel: "Saving…",
+  treeSavedMessage: "Page tree saved.",
+  addEntryLabel: "Add entry",
+  removeEntryLabel: "Remove entry",
+  pageDocumentsLinkLabel: "← Page documents",
+  treeLoadingLabel: "Loading page tree…",
+};
+
+const adminHomeLinks = [
+  {
+    href: "/admin/pages",
+    label: "Pages",
+    description: "Storefront URL tree and routing page documents",
+  },
+  {
+    href: "/admin/content/auth_provider",
+    label: "Identity providers",
+    description: "Custom OAuth/OIDC providers (schema-driven CMS entries)",
+  },
+  {
+    href: "/admin/layout",
+    label: "Layouts",
+    description: "Edit json-render templates (home, login, …)",
+  },
+  {
+    href: "/admin/settings/users",
+    label: "Team members",
+    description: "Invite staff, assign admin/editor roles, view MFA status",
+  },
+  {
+    href: "/admin/settings/auth",
+    label: "Auth settings",
+    description: "Social login (Google, GitHub, Apple) and password toggle",
+  },
+  {
+    href: "/account/security",
+    label: "Account security",
+    description: "Set up authenticator app (two-factor sign-in)",
+  },
+  {
+    href: "/admin/settings/login",
+    label: "Login appearance",
+    description: "Title, logo, and brand copy on /login",
+  },
+];
+
+function adminShellProps(
+  activeNav: string,
+  title: string,
+  description?: string,
+): Record<string, unknown> {
+  return {
+    ...adminShellNavProps,
+    activeNav,
+    title,
+    ...(description !== undefined ? { description } : {}),
+  };
+}
+
 const adminDashboardSpec = {
   root: "shell",
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Auth settings",
-        description: "Social providers, password login, sign-up, MFA policy, and reset flags.",
-        activeNav: "auth",
-      },
+      props: adminShellProps(
+        "auth",
+        "Auth settings",
+        "Social providers, password login, sign-up, MFA policy, and reset flags.",
+      ),
       children: ["authSettings"],
     },
     authSettings: {
@@ -92,6 +278,7 @@ const adminDashboardSpec = {
         title: "Sign-in methods",
         description:
           "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
+        ...authSettingsLabels,
       },
     },
   },
@@ -102,11 +289,11 @@ const adminUsersSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Team members",
-        description: "Invite staff and assign roles for this store.",
-        activeNav: "users",
-      },
+      props: adminShellProps(
+        "users",
+        "Team members",
+        "Invite staff and assign roles for this store.",
+      ),
       children: ["usersAdmin"],
     },
     usersAdmin: {
@@ -115,6 +302,7 @@ const adminUsersSpec = {
         title: "Team members",
         description:
           "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
+        ...usersAdminLabels,
       },
     },
   },
@@ -125,11 +313,11 @@ const adminLoginBrandingSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Login appearance",
-        description: "Title, logo, and brand copy on the sign-in page.",
-        activeNav: "login",
-      },
+      props: adminShellProps(
+        "login",
+        "Login appearance",
+        "Title, logo, and brand copy on the sign-in page.",
+      ),
       children: ["loginBranding"],
     },
     loginBranding: {
@@ -139,6 +327,7 @@ const adminLoginBrandingSpec = {
         description:
           "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
         segment: "default",
+        ...loginBrandingLabels,
       },
     },
   },
@@ -171,10 +360,7 @@ const adminContentSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Content",
-        activeNav: "content",
-      },
+      props: adminShellProps("content", "Content"),
       children: ["contentAdmin"],
     },
     contentAdmin: {
@@ -184,6 +370,7 @@ const adminContentSpec = {
         description:
           "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
         locale: "en-US",
+        ...contentAdminLabels,
       },
     },
   },
@@ -194,10 +381,7 @@ const adminLayoutSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Layouts",
-        activeNav: "layout",
-      },
+      props: adminShellProps("layout", "Layouts"),
       children: ["layoutAdmin"],
     },
     layoutAdmin: {
@@ -207,6 +391,7 @@ const adminLayoutSpec = {
         description:
           "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
         segment: "default",
+        ...layoutAdminLabels,
       },
     },
   },
@@ -217,10 +402,7 @@ const adminHomeSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Dashboard",
-        activeNav: "home",
-      },
+      props: adminShellProps("home", "Dashboard"),
       children: ["home"],
     },
     home: {
@@ -228,6 +410,7 @@ const adminHomeSpec = {
       props: {
         title: "Dashboard",
         description: "Manage content, layouts, and auth without re-seeding.",
+        links: adminHomeLinks,
       },
     },
   },
@@ -238,10 +421,7 @@ const adminPagesSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: {
-        title: "Pages",
-        activeNav: "pages",
-      },
+      props: adminShellProps("pages", "Pages"),
       children: ["pagesAdmin"],
     },
     pagesAdmin: {
@@ -251,6 +431,7 @@ const adminPagesSpec = {
         description:
           "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
         locale: "en-US",
+        ...pagesAdminLabels,
       },
     },
   },

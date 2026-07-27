@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
 import { getLayoutForTemplate, specToJson } from "../../admin/layout-entries";
 import {
@@ -10,7 +11,6 @@ import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { executeAction } from "../../platform/registry";
 import type { ComponentCtx } from "./types";
 
 export function LoginBrandingForm({
@@ -19,7 +19,16 @@ export function LoginBrandingForm({
   title: string;
   description: string | null;
   segment: string;
+  saveLabel: string;
+  savingLabel: string;
+  publishLabel: string;
+  publishingLabel: string;
+  previewLoginLabel: string;
+  draftSavedMessage: string;
+  publishedMessage: string;
+  loadingLabel: string;
 }>) {
+  const { execute } = useActions();
   const segment = props.segment || "default";
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -80,17 +89,16 @@ export function LoginBrandingForm({
 
     try {
       const spec = applyLoginBranding(baseSpec, values);
-      await executeAction(
-        "saveLayoutEntry",
-        { id: layoutId, specJson: specToJson(spec) },
-        () => {},
-      );
+      await execute({
+        action: "saveLayoutEntry",
+        params: { id: layoutId, specJson: specToJson(spec) },
+      });
       setBaseSpec(spec);
       if (publish) {
-        await executeAction("publishLayoutEntry", { id: layoutId }, () => {});
-        setSuccess("Login appearance published.");
+        await execute({ action: "publishLayoutEntry", params: { id: layoutId } });
+        setSuccess(props.publishedMessage);
       } else {
-        setSuccess("Login appearance saved as draft.");
+        setSuccess(props.draftSavedMessage);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -106,15 +114,14 @@ export function LoginBrandingForm({
   }
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading login layout…</p>;
+    return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   return (
     <div className="max-w-lg">
-      <p className="mb-6 text-sm text-muted-foreground">
-        {props.description ??
-          "Edit copy and branding on /login. Changes apply to the login layout spec — no re-seed."}
-      </p>
+      {props.description ? (
+        <p className="mb-6 text-sm text-muted-foreground">{props.description}</p>
+      ) : null}
 
       <form className="flex flex-col gap-4" onSubmit={(e) => void onSave(e)}>
         <div className="flex flex-col gap-1.5">
@@ -207,7 +214,7 @@ export function LoginBrandingForm({
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={saving || publishing}>
-            {saving ? "Saving…" : "Save draft"}
+            {saving ? props.savingLabel : props.saveLabel}
           </Button>
           {canPublish && (
             <Button
@@ -216,12 +223,12 @@ export function LoginBrandingForm({
               disabled={saving || publishing}
               onClick={() => void save(true)}
             >
-              {publishing ? "Publishing…" : "Save & publish"}
+              {publishing ? props.publishingLabel : props.publishLabel}
             </Button>
           )}
           <Button type="button" variant="ghost" asChild>
             <a href="/login" target="_blank" rel="noreferrer">
-              Preview login
+              {props.previewLoginLabel}
             </a>
           </Button>
         </div>

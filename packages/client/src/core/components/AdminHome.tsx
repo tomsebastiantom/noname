@@ -1,56 +1,19 @@
 import type { ComponentCtx } from "./types";
 
-const LINKS = [
-  {
-    href: "/admin/pages",
-    label: "Pages",
-    description: "Storefront URL tree and routing page documents",
-  },
-  {
-    href: "/admin/content/auth_provider",
-    label: "Identity providers",
-    description: "Custom OAuth/OIDC providers (schema-driven CMS entries)",
-  },
-  {
-    href: "/admin/layout",
-    label: "Layouts",
-    description: "Edit json-render templates (home, login, …)",
-  },
-  {
-    href: "/admin/settings/users",
-    label: "Team members",
-    description: "Invite staff, assign admin/editor roles, view MFA status",
-  },
-  {
-    href: "/admin/settings/auth",
-    label: "Auth settings",
-    description: "Social login (Google, GitHub, Apple) and password toggle",
-  },
-  {
-    href: "/account/security",
-    label: "Account security",
-    description: "Set up authenticator app (two-factor sign-in)",
-  },
-  {
-    href: "/admin/settings/login",
-    label: "Login appearance",
-    description: "Title, logo, and brand copy on /login",
-  },
-] as const;
-
 export function AdminHome({
   props,
 }: ComponentCtx<{
   title: string;
   description: string | null;
+  links: { href: string; label: string; description: string }[];
 }>) {
   return (
     <div className="max-w-2xl">
-      <p className="mb-6 text-sm text-muted-foreground">
-        {props.description ?? "Manage your store without re-seeding."}
-      </p>
+      {props.description ? (
+        <p className="mb-6 text-sm text-muted-foreground">{props.description}</p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        {LINKS.map((link) => (
+        {props.links.map((link) => (
           <a
             key={link.href}
             href={link.href}

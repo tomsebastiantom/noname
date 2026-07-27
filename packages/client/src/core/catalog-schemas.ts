@@ -1,5 +1,46 @@
 import { z } from "zod";
 
+const adminNavItemSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  href: z.string(),
+});
+
+const adminLinkSchema = z.object({
+  href: z.string(),
+  label: z.string(),
+  description: z.string(),
+});
+
+const draftPublishLabelsSchema = z.object({
+  saveLabel: z.string(),
+  savingLabel: z.string(),
+  publishLabel: z.string(),
+  publishingLabel: z.string(),
+});
+
+const mediaFieldLabelsSchema = z.object({
+  uploadFileLabel: z.string(),
+  uploadingLabel: z.string(),
+  pickExistingLabel: z.string(),
+  loadingAssetsLabel: z.string(),
+  clearLabel: z.string(),
+});
+
+const adminShellNavSchema = z.object({
+  sidebarTitle: z.string(),
+  productName: z.string(),
+  navItems: z.array(adminNavItemSchema),
+  settingsSectionLabel: z.string(),
+  settingsItems: z.array(adminNavItemSchema),
+  accountSecurityLabel: z.string(),
+  accountSecurityHref: z.string(),
+  storefrontLabel: z.string(),
+  storefrontHref: z.string(),
+  signOutLabel: z.string(),
+  signInLabel: z.string(),
+});
+
 /** Platform core — layout + navigation. Every extension uses these. */
 export const coreComponentSchemas = {
   Grid: {
@@ -67,35 +108,58 @@ export const coreComponentSchemas = {
     description: "Login page chrome — centered card or split brand panel",
   },
   AdminShell: {
-    props: z.object({
-      title: z.string(),
-      description: z.string().nullable().optional(),
-      activeNav: z.string().default("auth"),
-    }),
+    props: z
+      .object({
+        title: z.string(),
+        description: z.string().nullable().optional(),
+        activeNav: z.string(),
+      })
+      .merge(adminShellNavSchema),
     slots: ["default"],
     description: "Admin dashboard shell with sidebar navigation",
   },
   AuthSettingsForm: {
     props: z.object({
-      title: z.string().default("Sign-in methods"),
-      description: z
-        .string()
-        .nullable()
-        .default(
-          "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
-        ),
+      title: z.string(),
+      description: z.string().nullable(),
+      saveLabel: z.string(),
+      savingLabel: z.string(),
+      loadingLabel: z.string(),
+      successMessage: z.string(),
+      socialProvidersLegend: z.string(),
+      configuredBadgeLabel: z.string(),
+      saveHelperText: z.string(),
+      allowPasswordLabel: z.string(),
+      allowPasswordResetLabel: z.string(),
+      allowSignUpLabel: z.string(),
+      adminSecurityLegend: z.string(),
+      requireMfaLabel: z.string(),
+      mfaHelperText: z.string(),
+      loginAppearanceLinkText: z.string(),
+      googleLabel: z.string(),
+      githubLabel: z.string(),
+      appleLabel: z.string(),
+      googleSecretPlaceholderNew: z.string(),
+      googleSecretPlaceholderExisting: z.string(),
+      githubSecretPlaceholderNew: z.string(),
+      githubSecretPlaceholderExisting: z.string(),
+      appleKeyPlaceholderNew: z.string(),
+      appleKeyPlaceholderExisting: z.string(),
     }),
     description: "Per-org auth provider toggles and ZITADEL IdP configuration",
   },
   LoginBrandingForm: {
-    props: z.object({
-      title: z.string().default("Login appearance"),
-      description: z
-        .string()
-        .nullable()
-        .default("Edit title, logo, and brand copy on /login without editing raw JSON."),
-      segment: z.string().default("default"),
-    }),
+    props: z
+      .object({
+        title: z.string(),
+        description: z.string().nullable(),
+        segment: z.string(),
+        previewLoginLabel: z.string(),
+        draftSavedMessage: z.string(),
+        publishedMessage: z.string(),
+        loadingLabel: z.string(),
+      })
+      .merge(draftPublishLabelsSchema),
     description: "Structured editor for login layout branding props",
   },
   AccountSecurityForm: {
@@ -110,72 +174,119 @@ export const coreComponentSchemas = {
   },
   UsersAdminForm: {
     props: z.object({
-      title: z.string().default("Team members"),
-      description: z
-        .string()
-        .nullable()
-        .default("Invite staff and assign admin or editor roles for this store."),
+      title: z.string(),
+      description: z.string().nullable(),
+      loadingLabel: z.string(),
+      inviteSectionTitle: z.string(),
+      inviteSectionDescription: z.string(),
+      inviteLabel: z.string(),
+      invitingLabel: z.string(),
+      inviteSuccessMessage: z.string(),
+      roleUpdatedMessage: z.string(),
+      emptyTableMessage: z.string(),
+      emailColumnHeader: z.string(),
+      roleColumnHeader: z.string(),
+      mfaColumnHeader: z.string(),
+      statusColumnHeader: z.string(),
+      mfaEnabledLabel: z.string(),
+      mfaOffLabel: z.string(),
     }),
     description: "List and invite ZITADEL users for this org",
   },
   ContentEntryAdmin: {
-    props: z.object({
-      title: z.string().default("Content"),
-      description: z
-        .string()
-        .nullable()
-        .default("Edit CMS entries by content type — schema-driven, not extension-specific."),
-      locale: z.string().default("en-US"),
-    }),
+    props: z
+      .object({
+        title: z.string(),
+        description: z.string().nullable(),
+        locale: z.string(),
+        deleteLabel: z.string(),
+        deletingLabel: z.string(),
+        createDraftLabel: z.string(),
+        creatingLabel: z.string(),
+        loadingLabel: z.string(),
+        entryCreatedMessage: z.string(),
+        entrySavedMessage: z.string(),
+        entryPublishedMessage: z.string(),
+        entryDeletedMessage: z.string(),
+        deleteConfirmMessage: z.string(),
+      })
+      .merge(draftPublishLabelsSchema)
+      .merge(mediaFieldLabelsSchema),
     description: "Generic CMS entry list and form driven by content type schema",
   },
   LayoutEntryAdmin: {
-    props: z.object({
-      title: z.string().default("Layouts"),
-      description: z
-        .string()
-        .nullable()
-        .default("Edit json-render layout templates — home, login, and other page specs."),
-      segment: z.string().default("default"),
-    }),
+    props: z
+      .object({
+        title: z.string(),
+        description: z.string().nullable(),
+        segment: z.string(),
+        loadingLabel: z.string(),
+        draftSavedMessage: z.string(),
+        publishedMessage: z.string(),
+      })
+      .merge(draftPublishLabelsSchema),
     description: "Layout template list and JSON spec editor with publish",
   },
   AdminHome: {
     props: z.object({
-      title: z.string().default("Dashboard"),
-      description: z
-        .string()
-        .nullable()
-        .default("Manage content, layouts, and auth without re-seeding."),
+      title: z.string(),
+      description: z.string().nullable(),
+      links: z.array(adminLinkSchema),
     }),
     description: "Admin overview with links to platform settings",
   },
   PageRoutingAdmin: {
     props: z.object({
-      title: z.string().default("Pages"),
-      description: z
-        .string()
-        .nullable()
-        .default("Storefront routing — page documents and URL tree."),
-      locale: z.string().default("en-US"),
+      title: z.string(),
+      description: z.string().nullable(),
+      locale: z.string(),
+      saveLabel: z.string(),
+      savingLabel: z.string(),
+      pageSavedMessage: z.string(),
+      createLabel: z.string(),
+      creatingLabel: z.string(),
+      loadingLabel: z.string(),
+      editUrlTreeLabel: z.string(),
+      allPagesLinkLabel: z.string(),
+      urlTreeLinkLabel: z.string(),
+      saveTreeLabel: z.string(),
+      savingTreeLabel: z.string(),
+      treeSavedMessage: z.string(),
+      addEntryLabel: z.string(),
+      removeEntryLabel: z.string(),
+      pageDocumentsLinkLabel: z.string(),
+      treeLoadingLabel: z.string(),
     }),
     description: "Routing page list/editor and page_tree URL map",
   },
   PageTreeAdmin: {
     props: z.object({
-      title: z.string().default("URL tree"),
-      description: z.string().nullable().default("Map storefront paths to page document keys."),
-      locale: z.string().default("en-US"),
+      title: z.string(),
+      description: z.string().nullable(),
+      locale: z.string(),
+      saveTreeLabel: z.string(),
+      savingTreeLabel: z.string(),
+      treeSavedMessage: z.string(),
+      addEntryLabel: z.string(),
+      removeEntryLabel: z.string(),
+      pageDocumentsLinkLabel: z.string(),
+      treeLoadingLabel: z.string(),
     }),
     description: "Edit page_tree slug → pageId mappings",
   },
   PageEntryAdmin: {
     props: z.object({
-      title: z.string().default("Page documents"),
-      description: z
-        .string()
-        .nullable()
-        .default("Layout template + contentRef for each routing page."),
+      title: z.string(),
+      description: z.string().nullable(),
+      saveLabel: z.string(),
+      savingLabel: z.string(),
+      pageSavedMessage: z.string(),
+      createLabel: z.string(),
+      creatingLabel: z.string(),
+      loadingLabel: z.string(),
+      editUrlTreeLabel: z.string(),
+      allPagesLinkLabel: z.string(),
+      urlTreeLinkLabel: z.string(),
     }),
     description: "Edit routing page documents (layoutRef, contentRef)",
   },
@@ -333,5 +444,56 @@ export const coreActionSchemas = {
       id: z.string().min(1),
     }),
     description: "Publish a layout template",
+  },
+  listTeamUsers: {
+    description: "List ZITADEL team members for this org",
+  },
+  inviteTeamUser: {
+    params: z.object({
+      email: z.string().email(),
+      givenName: z.string().optional(),
+      familyName: z.string().optional(),
+      role: z.enum(["admin", "editor"]),
+    }),
+    description: "Invite a team member and assign a role",
+  },
+  updateTeamUserRole: {
+    params: z.object({
+      userId: z.string().min(1),
+      role: z.enum(["admin", "editor"]),
+    }),
+    description: "Update a team member role",
+  },
+  listRoutingPages: {
+    description: "List routing page documents",
+  },
+  loadRoutingPage: {
+    params: z.object({
+      pageKey: z.string().min(1),
+    }),
+    description: "Load one routing page document by key",
+  },
+  saveRoutingPage: {
+    params: z.object({
+      pageKey: z.string().min(1),
+      layoutRef: z.string().min(1),
+      contentRef: z.string().nullable().optional(),
+    }),
+    description: "Save a routing page document draft",
+  },
+  loadMainTree: {
+    description: "Load the storefront URL page tree",
+  },
+  saveMainTree: {
+    params: z.object({
+      pages: z.array(
+        z.object({
+          id: z.string().min(1),
+          pageId: z.string().min(1),
+          slug: z.record(z.string(), z.string()),
+        }),
+      ),
+    }),
+    description: "Save the storefront URL page tree",
   },
 };

@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
 import {
   CONTENT_DEFAULT_LOCALE,
@@ -28,9 +29,8 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { executeAction } from "../../platform/registry";
 import { DataTable } from "./DataTable";
-import { MediaFieldInput } from "./MediaFieldInput";
+import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
 import { ReferenceFieldInput } from "./ReferenceFieldInput";
 import type { ComponentCtx } from "./types";
 
@@ -48,11 +48,13 @@ function FieldInput({
   value,
   onChange,
   locale,
+  mediaLabels,
 }: {
   field: ContentFieldSchema;
   value: string;
   onChange: (value: string) => void;
   locale: string;
+  mediaLabels: MediaFieldLabels;
 }) {
   if (field.type === "boolean") {
     return (
@@ -75,6 +77,7 @@ function FieldInput({
         required={field.required}
         value={value}
         onChange={onChange}
+        labels={mediaLabels}
       />
     );
   }
@@ -136,8 +139,35 @@ export function ContentEntryAdmin({
   title: string;
   description: string | null;
   locale: string;
+  saveLabel: string;
+  savingLabel: string;
+  publishLabel: string;
+  publishingLabel: string;
+  deleteLabel: string;
+  deletingLabel: string;
+  createDraftLabel: string;
+  creatingLabel: string;
+  loadingLabel: string;
+  entryCreatedMessage: string;
+  entrySavedMessage: string;
+  entryPublishedMessage: string;
+  entryDeletedMessage: string;
+  deleteConfirmMessage: string;
+  uploadFileLabel: string;
+  uploadingLabel: string;
+  pickExistingLabel: string;
+  loadingAssetsLabel: string;
+  clearLabel: string;
 }>) {
+  const { execute } = useActions();
   const locale = props.locale || CONTENT_DEFAULT_LOCALE;
+  const mediaLabels: MediaFieldLabels = {
+    uploadFileLabel: props.uploadFileLabel,
+    uploadingLabel: props.uploadingLabel,
+    pickExistingLabel: props.pickExistingLabel,
+    loadingAssetsLabel: props.loadingAssetsLabel,
+    clearLabel: props.clearLabel,
+  };
   const contentType = contentTypeFromPath(window.location.pathname);
 
   const [loading, setLoading] = useState(true);
@@ -245,7 +275,7 @@ export function ContentEntryAdmin({
       setEntries(rows);
       setSelectedId(id);
       setStatus("draft");
-      setSuccess("Entry created as draft.");
+      setSuccess(props.entryCreatedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -261,13 +291,18 @@ export function ContentEntryAdmin({
     setError(null);
     setSuccess(null);
     try {
-      await executeAction(
-        "saveContentEntry",
-        { contentType, id: selectedId, schema, values, locale },
-        () => {},
-      );
+      await execute({
+        action: "saveContentEntry",
+        params: {
+          contentType,
+          id: selectedId,
+          schema,
+          values,
+          locale,
+        },
+      });
       setStatus("draft");
-      setSuccess("Entry saved as draft.");
+      setSuccess(props.entrySavedMessage);
       setEntries(await listEntries(contentType));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -283,14 +318,19 @@ export function ContentEntryAdmin({
     setError(null);
     setSuccess(null);
     try {
-      await executeAction(
-        "saveContentEntry",
-        { contentType, id: selectedId, schema, values, locale },
-        () => {},
-      );
-      await executeAction("publishContentEntry", { contentType, id: selectedId }, () => {});
+      await execute({
+        action: "saveContentEntry",
+        params: {
+          contentType,
+          id: selectedId,
+          schema,
+          values,
+          locale,
+        },
+      });
+      await execute({ action: "publishContentEntry", params: { contentType, id: selectedId } });
       setStatus("published");
-      setSuccess("Entry published.");
+      setSuccess(props.entryPublishedMessage);
       setEntries(await listEntries(contentType));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -307,7 +347,7 @@ export function ContentEntryAdmin({
     setSuccess(null);
     try {
       const backrefs = await fetchRefBackrefs(selectedId);
-      let message = "Delete this entry? This cannot be undone.";
+      let message = props.deleteConfirmMessage;
       if (backrefs.length > 0) {
         const lines = backrefs
           .slice(0, 8)
@@ -329,7 +369,7 @@ export function ContentEntryAdmin({
         setSelectedId(null);
         if (schema) setValues(emptyValuesForSchema(schema));
       }
-      setSuccess("Entry deleted.");
+      setSuccess(props.entryDeletedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -338,7 +378,7 @@ export function ContentEntryAdmin({
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Loading content…</p>;
+    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   if (!contentType) {
@@ -423,6 +463,7 @@ export function ContentEntryAdmin({
                   locale={locale}
                   value={values[field.key] ?? ""}
                   onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
+                  mediaLabels={mediaLabels}
                 />
               ))}
 
@@ -440,7 +481,7 @@ export function ContentEntryAdmin({
 
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={creating}>
-                  {creating ? "Creating…" : "Create draft"}
+                  {creating ? props.creatingLabel : props.createDraftLabel}
                 </Button>
                 {isNewEntry && entries.length > 0 && (
                   <Button
@@ -516,6 +557,7 @@ export function ContentEntryAdmin({
                   locale={locale}
                   value={values[field.key] ?? ""}
                   onChange={(v) => setValues((prev) => ({ ...prev, [field.key]: v }))}
+                  mediaLabels={mediaLabels}
                 />
               ))}
 
@@ -539,7 +581,7 @@ export function ContentEntryAdmin({
 
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={saving || publishing || deleting}>
-                  {saving ? "Saving…" : "Save draft"}
+                  {saving ? props.savingLabel : props.saveLabel}
                 </Button>
                 {canPublish && (
                   <Button
@@ -548,7 +590,7 @@ export function ContentEntryAdmin({
                     disabled={saving || publishing || deleting}
                     onClick={() => void onPublish()}
                   >
-                    {publishing ? "Publishing…" : "Save & publish"}
+                    {publishing ? props.publishingLabel : props.publishLabel}
                   </Button>
                 )}
                 <Button
@@ -557,7 +599,7 @@ export function ContentEntryAdmin({
                   disabled={saving || publishing || deleting || isNewEntry}
                   onClick={() => void onDelete()}
                 >
-                  {deleting ? "Deleting…" : "Delete"}
+                  {deleting ? props.deletingLabel : props.deleteLabel}
                 </Button>
               </div>
             </form>

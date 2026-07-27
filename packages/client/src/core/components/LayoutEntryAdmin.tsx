@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
 import {
   getLayoutForTemplate,
@@ -20,7 +21,6 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { executeAction } from "../../platform/registry";
 import { DataTable } from "./DataTable";
 import type { ComponentCtx } from "./types";
 
@@ -30,7 +30,15 @@ export function LayoutEntryAdmin({
   title: string;
   description: string | null;
   segment: string;
+  saveLabel: string;
+  savingLabel: string;
+  publishLabel: string;
+  publishingLabel: string;
+  loadingLabel: string;
+  draftSavedMessage: string;
+  publishedMessage: string;
 }>) {
+  const { execute } = useActions();
   const segment = props.segment || "default";
   const templateName = layoutTemplateFromPath(window.location.pathname);
 
@@ -97,13 +105,16 @@ export function LayoutEntryAdmin({
     setSuccess(null);
     try {
       parseSpecJson(specJson);
-      await executeAction(
-        "saveLayoutEntry",
-        { id: layoutId, specJson, contentRef: contentRef || null },
-        () => {},
-      );
+      await execute({
+        action: "saveLayoutEntry",
+        params: {
+          id: layoutId,
+          specJson,
+          contentRef: contentRef || null,
+        },
+      });
       setStatus("draft");
-      setSuccess("Layout saved as draft.");
+      setSuccess(props.draftSavedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -119,14 +130,17 @@ export function LayoutEntryAdmin({
     setSuccess(null);
     try {
       parseSpecJson(specJson);
-      await executeAction(
-        "saveLayoutEntry",
-        { id: layoutId, specJson, contentRef: contentRef || null },
-        () => {},
-      );
-      await executeAction("publishLayoutEntry", { id: layoutId }, () => {});
+      await execute({
+        action: "saveLayoutEntry",
+        params: {
+          id: layoutId,
+          specJson,
+          contentRef: contentRef || null,
+        },
+      });
+      await execute({ action: "publishLayoutEntry", params: { id: layoutId } });
       setStatus("published");
-      setSuccess("Layout published. Storefront/login will use the new spec on next load.");
+      setSuccess(props.publishedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -135,7 +149,7 @@ export function LayoutEntryAdmin({
   }
 
   if (loading) {
-    return <p className="text-muted-foreground">Loading layouts…</p>;
+    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   if (!templateName) {
@@ -256,7 +270,7 @@ export function LayoutEntryAdmin({
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={saving || publishing}>
-                {saving ? "Saving…" : "Save draft"}
+                {saving ? props.savingLabel : props.saveLabel}
               </Button>
               {canPublish && (
                 <Button
@@ -265,7 +279,7 @@ export function LayoutEntryAdmin({
                   disabled={saving || publishing}
                   onClick={() => void onPublish()}
                 >
-                  {publishing ? "Publishing…" : "Save & publish"}
+                  {publishing ? props.publishingLabel : props.publishLabel}
                 </Button>
               )}
             </div>

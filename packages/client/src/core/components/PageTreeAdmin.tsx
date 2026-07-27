@@ -1,10 +1,6 @@
+import { useActions, useStateValue } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
-import {
-  loadMainTree,
-  type PageTreeEntry,
-  ROUTING_DEFAULT_LOCALE,
-  saveMainTree,
-} from "../../admin/routing-entries";
+import { type PageTreeEntry, ROUTING_DEFAULT_LOCALE } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -16,6 +12,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { ADMIN_STATE } from "../admin-state";
 import type { ComponentCtx } from "./types";
 
 function emptyEntry(): PageTreeEntry {
@@ -32,39 +29,36 @@ export function PageTreeAdmin({
   title: string;
   description: string | null;
   locale: string;
+  saveTreeLabel: string;
+  savingTreeLabel: string;
+  treeSavedMessage: string;
+  addEntryLabel: string;
+  removeEntryLabel: string;
+  pageDocumentsLinkLabel: string;
+  treeLoadingLabel: string;
 }>) {
   const locale = props.locale || ROUTING_DEFAULT_LOCALE;
-  const [loading, setLoading] = useState(true);
+  const { execute } = useActions();
+
+  const treePages = useStateValue(ADMIN_STATE.routing.treePages) as PageTreeEntry[] | undefined;
+  const treeStatus = useStateValue(ADMIN_STATE.routing.treeStatus) as string | null | undefined;
+  const loading = (useStateValue(ADMIN_STATE.routing.treeLoading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(ADMIN_STATE.routing.treeError) as string | null | undefined;
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [entries, setEntries] = useState<PageTreeEntry[]>([]);
-  const [treeStatus, setTreeStatus] = useState<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    void execute({ action: "loadMainTree" });
+  }, [execute]);
 
-    async function load() {
-      setLoading(true);
-      setError(null);
-      try {
-        const tree = await loadMainTree();
-        if (!cancelled) {
-          setEntries(tree?.pages ?? []);
-          setTreeStatus(tree?.status ?? null);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : String(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+  useEffect(() => {
+    if (treePages) {
+      setEntries(treePages);
     }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [treePages]);
 
   async function handleSave(e: FormEvent) {
     e.preventDefault();
@@ -72,10 +66,8 @@ export function PageTreeAdmin({
     setError(null);
     setSuccess(null);
     try {
-      await saveMainTree(entries);
-      setSuccess("Page tree saved.");
-      const tree = await loadMainTree();
-      setTreeStatus(tree?.status ?? null);
+      await execute({ action: "saveMainTree", params: { pages: entries } });
+      setSuccess(props.treeSavedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -93,24 +85,25 @@ export function PageTreeAdmin({
     );
   }
 
+  const displayError = error ?? loadError ?? null;
+
   if (loading) {
-    return <p className="text-sm text-muted-foreground">Loading page tree…</p>;
+    return <p className="text-sm text-muted-foreground">{props.treeLoadingLabel}</p>;
   }
 
   return (
     <div className="max-w-3xl">
-      <p className="mb-4 text-sm text-muted-foreground">
-        {props.description ??
-          "Map storefront URLs to routing page documents. Slugs are locale-aware."}
-      </p>
+      {props.description ? (
+        <p className="mb-4 text-sm text-muted-foreground">{props.description}</p>
+      ) : null}
 
       {treeStatus ? (
         <p className="mb-4 text-xs text-muted-foreground">Tree status: {treeStatus}</p>
       ) : null}
 
-      {error ? (
+      {displayError ? (
         <Alert variant="destructive" className="mb-4">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{displayError}</AlertDescription>
         </Alert>
       ) : null}
       {success ? (
@@ -170,7 +163,7 @@ export function PageTreeAdmin({
                     size="sm"
                     onClick={() => setEntries((rows) => rows.filter((_, i) => i !== index))}
                   >
-                    Remove entry
+                    {props.removeEntryLabel}
                   </Button>
                 </div>
               </CardContent>
@@ -184,16 +177,16 @@ export function PageTreeAdmin({
             variant="outline"
             onClick={() => setEntries((rows) => [...rows, emptyEntry()])}
           >
-            Add entry
+            {props.addEntryLabel}
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save page tree"}
+            {saving ? props.savingTreeLabel : props.saveTreeLabel}
           </Button>
           <a
             href="/admin/pages"
             className="inline-flex items-center text-sm text-primary hover:underline"
           >
-            ← Page documents
+            {props.pageDocumentsLinkLabel}
           </a>
         </div>
       </form>

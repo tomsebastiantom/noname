@@ -17,16 +17,26 @@ function documentIdFromFieldValue(value: string): string | null {
   return null;
 }
 
+export type MediaFieldLabels = {
+  uploadFileLabel: string;
+  uploadingLabel: string;
+  pickExistingLabel: string;
+  loadingAssetsLabel: string;
+  clearLabel: string;
+};
+
 export function MediaFieldInput({
   label,
   required,
   value,
   onChange,
+  labels,
 }: Readonly<{
   label: string;
   required: boolean;
   value: string;
   onChange: (value: string) => void;
+  labels: MediaFieldLabels;
 }>) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<AssetSummary | null>(null);
@@ -102,7 +112,7 @@ export function MediaFieldInput({
           disabled={uploading}
           onClick={() => fileRef.current?.click()}
         >
-          {uploading ? "Uploading…" : "Upload file"}
+          {uploading ? labels.uploadingLabel : labels.uploadFileLabel}
         </Button>
         <Button
           type="button"
@@ -111,11 +121,11 @@ export function MediaFieldInput({
           disabled={loadingAssets}
           onClick={() => void loadAssetLibrary()}
         >
-          {loadingAssets ? "Loading…" : "Pick existing"}
+          {loadingAssets ? labels.loadingAssetsLabel : labels.pickExistingLabel}
         </Button>
         {selectedDocumentId && (
           <Button type="button" variant="ghost" size="sm" onClick={() => onChange("")}>
-            Clear
+            {labels.clearLabel}
           </Button>
         )}
       </div>

@@ -1,11 +1,6 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
-import {
-  fetchTeamUsers,
-  inviteTeamUser,
-  type TeamMemberRole,
-  type TeamUser,
-  updateTeamUserRole,
-} from "../../auth/team-users";
+import { useActions, useStateValue } from "@json-render/react";
+import { type FormEvent, useEffect, useState } from "react";
+import type { TeamMemberRole, TeamUser } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -18,6 +13,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { ADMIN_STATE } from "../admin-state";
 import { DataTable, type DataTableColumn } from "./DataTable";
 import type { ComponentCtx } from "./types";
 
@@ -28,9 +24,26 @@ export function UsersAdminForm({
 }: ComponentCtx<{
   title: string;
   description: string | null;
+  loadingLabel: string;
+  inviteSectionTitle: string;
+  inviteSectionDescription: string;
+  inviteLabel: string;
+  invitingLabel: string;
+  inviteSuccessMessage: string;
+  roleUpdatedMessage: string;
+  emptyTableMessage: string;
+  emailColumnHeader: string;
+  roleColumnHeader: string;
+  mfaColumnHeader: string;
+  statusColumnHeader: string;
+  mfaEnabledLabel: string;
+  mfaOffLabel: string;
 }>) {
-  const [users, setUsers] = useState<TeamUser[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { execute } = useActions();
+  const users = (useStateValue(ADMIN_STATE.team.users) as TeamUser[] | undefined) ?? [];
+  const loading = (useStateValue(ADMIN_STATE.team.loading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(ADMIN_STATE.team.error) as string | null | undefined;
+
   const [inviting, setInviting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -39,21 +52,9 @@ export function UsersAdminForm({
   const [familyName, setFamilyName] = useState("");
   const [role, setRole] = useState<TeamMemberRole>("editor");
 
-  const loadUsers = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setUsers(await fetchTeamUsers());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
   useEffect(() => {
-    void loadUsers();
-  }, [loadUsers]);
+    void execute({ action: "listTeamUsers" });
+  }, [execute]);
 
   async function handleInvite(e: FormEvent) {
     e.preventDefault();
@@ -61,18 +62,20 @@ export function UsersAdminForm({
     setError(null);
     setSuccess(null);
     try {
-      await inviteTeamUser({
-        email: email.trim(),
-        givenName: givenName.trim() || undefined,
-        familyName: familyName.trim() || undefined,
-        role,
+      await execute({
+        action: "inviteTeamUser",
+        params: {
+          email: email.trim(),
+          givenName: givenName.trim() || undefined,
+          familyName: familyName.trim() || undefined,
+          role,
+        },
       });
       setEmail("");
       setGivenName("");
       setFamilyName("");
       setRole("editor");
-      setSuccess("Invite sent — they will receive an email to set their password.");
-      await loadUsers();
+      setSuccess(props.inviteSuccessMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -84,9 +87,8 @@ export function UsersAdminForm({
     setError(null);
     setSuccess(null);
     try {
-      await updateTeamUserRole(userId, nextRole);
-      setUsers((prev) => prev.map((u) => (u.userId === userId ? { ...u, role: nextRole } : u)));
-      setSuccess("Role updated.");
+      await execute({ action: "updateTeamUserRole", params: { userId, role: nextRole } });
+      setSuccess(props.roleUpdatedMessage);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -95,7 +97,7 @@ export function UsersAdminForm({
   const columns: DataTableColumn<TeamUser>[] = [
     {
       key: "email",
-      header: "Email",
+      header: props.emailColumnHeader,
       cell: (row) => (
         <div>
           <p className="font-medium">{row.email}</p>
@@ -107,7 +109,7 @@ export function UsersAdminForm({
     },
     {
       key: "role",
-      header: "Role",
+      header: props.roleColumnHeader,
       cell: (row) => (
         <select
           className="rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -125,16 +127,16 @@ export function UsersAdminForm({
     },
     {
       key: "mfa",
-      header: "MFA",
+      header: props.mfaColumnHeader,
       cell: (row) => (
         <Badge variant={row.mfaEnrolled ? "default" : "outline"}>
-          {row.mfaEnrolled ? "Enabled" : "Off"}
+          {row.mfaEnrolled ? props.mfaEnabledLabel : props.mfaOffLabel}
         </Badge>
       ),
     },
     {
       key: "state",
-      header: "Status",
+      header: props.statusColumnHeader,
       cell: (row) => (
         <span className="text-sm text-muted-foreground">
           {row.state.replace(/^USER_STATE_/, "").toLowerCase() || "active"}
@@ -143,8 +145,10 @@ export function UsersAdminForm({
     },
   ];
 
+  const displayError = error ?? loadError ?? null;
+
   if (loading) {
-    return <p className="text-muted-foreground">Loading team members…</p>;
+    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
   }
 
   return (
@@ -159,17 +163,15 @@ export function UsersAdminForm({
             columns={columns}
             rows={users}
             rowKey={(row) => row.userId}
-            emptyMessage="No team members yet."
+            emptyMessage={props.emptyTableMessage}
           />
         </CardContent>
       </Card>
 
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>Invite team member</CardTitle>
-          <CardDescription>
-            Creates a ZITADEL user in this org and emails them a link to set their password.
-          </CardDescription>
+          <CardTitle>{props.inviteSectionTitle}</CardTitle>
+          <CardDescription>{props.inviteSectionDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={(e) => void handleInvite(e)} className="flex flex-col gap-4">
@@ -220,15 +222,15 @@ export function UsersAdminForm({
               </select>
             </div>
             <Button type="submit" disabled={inviting}>
-              {inviting ? "Sending invite…" : "Send invite"}
+              {inviting ? props.invitingLabel : props.inviteLabel}
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {error && (
+      {displayError && (
         <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
+          <AlertDescription>{displayError}</AlertDescription>
         </Alert>
       )}
       {success && (

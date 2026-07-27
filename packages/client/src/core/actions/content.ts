@@ -4,9 +4,10 @@ import {
   publishContentEntry,
   saveContentEntry,
 } from "../../admin/content-entries";
+import type { CatalogActionHandler } from "./types";
 
 export const contentActions = {
-  saveContentEntry: async (params: unknown) => {
+  saveContentEntry: (async (params) => {
     const { contentType, id, schema, values, locale } = params as {
       contentType: string;
       id: string;
@@ -15,14 +16,14 @@ export const contentActions = {
       locale?: string;
     };
     await saveContentEntry({ contentType, id, schema, values, locale });
-  },
+  }) satisfies CatalogActionHandler,
 
-  publishContentEntry: async (params: unknown) => {
+  publishContentEntry: (async (params) => {
     const { contentType, id } = params as { contentType: string; id: string };
     await publishContentEntry(contentType, id);
-  },
+  }) satisfies CatalogActionHandler,
 
-  createContentEntry: async (params: unknown) => {
+  createContentEntry: (async (params) => {
     const { contentType, schema, values, locale } = params as {
       contentType: string;
       schema: ContentTypeSchema;
@@ -30,5 +31,5 @@ export const contentActions = {
       locale?: string;
     };
     await createContentEntry({ contentType, schema, values, locale });
-  },
+  }) satisfies CatalogActionHandler,
 };

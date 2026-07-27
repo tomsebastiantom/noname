@@ -2,18 +2,26 @@ import { clearSession, isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
 
-export const ADMIN_NAV_ITEMS = [
-  { id: "home", label: "Overview", href: "/admin" },
-  { id: "pages", label: "Pages", href: "/admin/pages" },
-  { id: "content", label: "Content", href: "/admin/content" },
-  { id: "layout", label: "Layouts", href: "/admin/layout" },
-] as const;
+export type AdminNavItem = {
+  id: string;
+  label: string;
+  href: string;
+};
 
-export const ADMIN_SETTINGS_ITEMS = [
-  { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
-  { id: "users", label: "Team members", href: "/admin/settings/users" },
-  { id: "login", label: "Login appearance", href: "/admin/settings/login" },
-] as const;
+export type AdminNavProps = {
+  activeNav: string;
+  sidebarTitle: string;
+  productName: string;
+  navItems: AdminNavItem[];
+  settingsSectionLabel: string;
+  settingsItems: AdminNavItem[];
+  accountSecurityLabel: string;
+  accountSecurityHref: string;
+  storefrontLabel: string;
+  storefrontHref: string;
+  signOutLabel: string;
+  signInLabel: string;
+};
 
 function navLinkClass(active: boolean): string {
   return active
@@ -21,40 +29,42 @@ function navLinkClass(active: boolean): string {
     : "rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground";
 }
 
-export function AdminNav({ activeNav }: { activeNav: string }) {
+export function AdminNav(props: AdminNavProps) {
   const loggedIn = isLoggedIn();
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
       <div className="px-4 py-5">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Admin</p>
-        <h1 className="mt-1 text-lg font-semibold">Noname</h1>
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          {props.sidebarTitle}
+        </p>
+        <h1 className="mt-1 text-lg font-semibold">{props.productName}</h1>
       </div>
       <Separator />
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {ADMIN_NAV_ITEMS.map((item) => (
-          <a key={item.id} href={item.href} className={navLinkClass(activeNav === item.id)}>
+        {props.navItems.map((item) => (
+          <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
             {item.label}
           </a>
         ))}
 
         <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          Settings
+          {props.settingsSectionLabel}
         </p>
-        {ADMIN_SETTINGS_ITEMS.map((item) => (
-          <a key={item.id} href={item.href} className={navLinkClass(activeNav === item.id)}>
+        {props.settingsItems.map((item) => (
+          <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
             {item.label}
           </a>
         ))}
 
-        <a href="/account/security" className={navLinkClass(false)}>
-          Account security
+        <a href={props.accountSecurityHref} className={navLinkClass(false)}>
+          {props.accountSecurityLabel}
         </a>
         <a
-          href="/"
+          href={props.storefrontHref}
           className="mt-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground"
         >
-          ← Storefront
+          {props.storefrontLabel}
         </a>
       </nav>
       <Separator />
@@ -70,14 +80,14 @@ export function AdminNav({ activeNav }: { activeNav: string }) {
               window.location.href = "/login";
             }}
           >
-            Sign out
+            {props.signOutLabel}
           </Button>
         ) : (
           <a
             href="/login"
             className="block rounded-md px-3 py-2 text-sm font-medium text-primary hover:underline"
           >
-            Sign in
+            {props.signInLabel}
           </a>
         )}
       </div>

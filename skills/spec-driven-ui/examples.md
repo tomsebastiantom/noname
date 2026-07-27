@@ -13,8 +13,8 @@ Shipped references in this repo. Copy the pattern, not the commerce-specific fie
 ```
 AdminShell (activeNav: "auth")
   └── AuthSettingsForm (title, description from layout props)
-        └── executeAction("saveAuthConfig", { providers, allowPassword, googleOAuth })
-              └── core/actions/auth.ts → server auth domain → ZITADEL + Postgres
+        └── useActions().execute({ action: "saveAuthConfig", params: { … } })
+              └── ActionProvider → handlers() → core/actions/auth.ts → server → ZITADEL + Postgres
 ```
 
 **Route:** `/admin/settings/auth` → template `admin_dashboard` (no extra main.tsx line — `/admin*` matches).
@@ -23,6 +23,8 @@ AdminShell (activeNav: "auth")
 - `packages/client/src/core/catalog-schemas.ts` — `AuthSettingsForm`, `saveAuthConfig`
 - `packages/client/src/core/components/AuthSettingsForm.tsx`
 - `packages/client/src/core/actions/auth.ts`
+- `packages/client/src/platform/registry.ts` — `defineRegistry` + `handlers`
+- `packages/client/src/platform/catalog-action-bridge.tsx` — refs + `registerHandler`
 - `scripts/seed-demo.ts` — `adminDashboardSpec`
 
 ---
@@ -37,7 +39,7 @@ AdminShell (activeNav: "auth")
 AdminShell (activeNav: "content")
   └── ContentEntryAdmin (locale from layout props)
         └── loads content types + entries via admin helpers (inside component)
-        └── executeAction("saveContentEntry" | "publishContentEntry", …)
+        └── useActions().execute({ action: "saveContentEntry" | "publishContentEntry", params: { … } })
 ```
 
 **Route:** `/admin/content`, `/admin/content/:type` → template `admin_content`.
@@ -127,6 +129,19 @@ const adminMySpec = {
   },
 };
 ```
+
+### component (action call)
+
+```typescript
+const { execute } = useActions();
+
+await execute({
+  action: "saveMySettings",
+  params: { enabled: true },
+});
+```
+
+Handler lives in `core/actions/…`, registered via `coreActionHandlers` → `platform/registry.ts`. Runtime wiring is automatic through `CatalogActionBridge` — do not call `executeAction` from components.
 
 ### main.tsx (only if new template name)
 

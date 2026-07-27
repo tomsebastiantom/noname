@@ -9,6 +9,7 @@ import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
+import { CatalogActionBridge } from "./platform/catalog-action-bridge";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
@@ -164,6 +165,7 @@ function App() {
       )}
       {!adminRoute && !editMode && <AuthBar onAuthChange={() => void loadPage()} />}
       <JSONUIProvider registry={registry}>
+        <CatalogActionBridge />
         <Renderer spec={spec} registry={registry} />
       </JSONUIProvider>
     </AppShell>

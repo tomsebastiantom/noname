@@ -1,3 +1,4 @@
+import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
 import { startTotpEnrollment } from "../../auth/account-flows";
 import { isLoggedIn } from "../../auth/session";
@@ -14,7 +15,6 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { executeAction } from "../../platform/registry";
 import type { ComponentCtx } from "./types";
 
 type Step = "idle" | "setup" | "enabled";
@@ -25,6 +25,7 @@ export function AccountSecurityForm({
   title: string;
   description: string | null;
 }>) {
+  const { execute } = useActions();
   const [step, setStep] = useState<Step>("idle");
   const [sessionLoading, setSessionLoading] = useState(true);
   const [uri, setUri] = useState("");
@@ -91,7 +92,7 @@ export function AccountSecurityForm({
     setError(null);
     setSuccess(null);
     try {
-      await executeAction("confirmMfaEnrollment", { code }, () => {});
+      await execute({ action: "confirmMfaEnrollment", params: { code } });
       setStep("enabled");
       setCode("");
 
