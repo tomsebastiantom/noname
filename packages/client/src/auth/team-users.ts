@@ -16,6 +16,16 @@ export interface AuthSessionStatus {
   userId: string;
   requireMfaForAdmin: boolean;
   mfaEnrolled: boolean;
+  roles: string[];
+  permissions: string[];
+  teamRole?: "admin" | "editor" | null;
+}
+
+export function sessionHasPermission(
+  session: AuthSessionStatus | null | undefined,
+  permission: string,
+): boolean {
+  return session?.permissions.includes(permission) === true;
 }
 
 export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
@@ -29,7 +39,11 @@ export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
   if (!body.data?.userId) {
     throw new Error("Invalid session response");
   }
-  return body.data;
+  return {
+    ...body.data,
+    roles: body.data.roles ?? [],
+    permissions: body.data.permissions ?? [],
+  };
 }
 
 export async function fetchTeamUsers(): Promise<TeamUser[]> {

@@ -7,6 +7,7 @@ import {
   parseSpecJson,
   specToJson,
 } from "../../admin/layout-entries";
+import { fetchAuthSessionStatus, sessionHasPermission } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -43,6 +44,13 @@ export function LayoutEntryAdmin({
   const [status, setStatus] = useState("draft");
   const [specJson, setSpecJson] = useState("");
   const [contentRef, setContentRef] = useState("");
+  const [canPublish, setCanPublish] = useState(false);
+
+  useEffect(() => {
+    void fetchAuthSessionStatus()
+      .then((session) => setCanPublish(sessionHasPermission(session, "layout:publish")))
+      .catch(() => setCanPublish(false));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,14 +258,16 @@ export function LayoutEntryAdmin({
               <Button type="submit" disabled={saving || publishing}>
                 {saving ? "Saving…" : "Save draft"}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={saving || publishing}
-                onClick={() => void onPublish()}
-              >
-                {publishing ? "Publishing…" : "Save & publish"}
-              </Button>
+              {canPublish && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={saving || publishing}
+                  onClick={() => void onPublish()}
+                >
+                  {publishing ? "Publishing…" : "Save & publish"}
+                </Button>
+              )}
             </div>
           </form>
         </CardContent>

@@ -2,6 +2,7 @@ export interface EdgeContext {
   orgId: string;
   userId: string;
   role: string;
+  roles?: string[];
   segment?: string;
 }
 
@@ -11,5 +12,6 @@ export interface Env {
   API_ORIGIN: string;
   ZITADEL_ISSUER: string;
   ZITADEL_CLIENT_ID: string;
+  ZITADEL_PROJECT_ID?: string;
   WORKER_SERVER_SECRET: string;
 }

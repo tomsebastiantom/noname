@@ -320,11 +320,78 @@ const authProviderContentType = {
   ],
 };
 
+let seedAdminToken: string | null = null;
+
 function orgHeaders(): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-org-id": DEMO_ORG_ID,
   };
+  if (seedAdminToken) {
+    headers.Authorization = `Bearer ${seedAdminToken}`;
+  }
+  return headers;
+}
+
+async function ensureDemoAdminRole(): Promise<void> {
+  const projectId = process.env.ZITADEL_PROJECT_ID?.trim();
+  if (!projectId) {
+    console.warn("ZITADEL_PROJECT_ID not set — skip admin role grant (run pnpm init:zitadel)");
+    return;
+  }
+
+  const adminEmail = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  const { findUserIdByEmail } = await import(
+    "../packages/server/src/domains/auth/zitadel-users.ts"
+  );
+  const { upsertUserTeamRole } = await import(
+    "../packages/server/src/domains/auth/zitadel-authorizations.ts"
+  );
+
+  const userId = await findUserIdByEmail(DEMO_ORG_ID, adminEmail);
+  if (!userId) {
+    console.warn(`Demo admin user ${adminEmail} not found in org — skip role grant`);
+    return;
+  }
+
+  await upsertUserTeamRole(DEMO_ORG_ID, projectId, userId, "admin");
+  console.log(`Granted ZITADEL admin role to ${adminEmail}`);
+}
+
+async function obtainSeedAdminToken(): Promise<void> {
+  const clientId = process.env.ZITADEL_CLIENT_ID?.trim();
+  if (!clientId) {
+    console.warn("ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)");
+    return;
+  }
+
+  const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
+  const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
+  const { randomBytes } = await import("node:crypto");
+  const { loginWithCredentials } = await import(
+    "../packages/server/src/domains/auth/zitadel-client.ts"
+  );
+
+  try {
+    const result = await loginWithCredentials({
+      orgId: DEMO_ORG_ID,
+      email,
+      password,
+      clientId,
+      redirectUri,
+      codeVerifier: randomBytes(32).toString("base64url"),
+    });
+    if (result.status !== "success") {
+      console.warn("Seed admin login requires MFA — complete MFA manually or disable for seed user");
+      return;
+    }
+    seedAdminToken = result.accessToken;
+    console.log(`Seed admin JWT obtained for ${email}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`Could not obtain seed admin JWT: ${message}`);
+  }
 }
 
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -390,6 +457,9 @@ async function main() {
   if (!health.ok) {
     throw new Error("API server not reachable — start with: pnpm dev");
   }
+
+  await ensureDemoAdminRole();
+  await obtainSeedAdminToken();
 
   await api("PUT", "/api/documents/tenant_settings/default", {
     slug: "yogastore",

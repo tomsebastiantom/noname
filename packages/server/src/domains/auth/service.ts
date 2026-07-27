@@ -5,7 +5,6 @@ import {
   idpIdForProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
-  teamRoleForUser,
 } from "./auth-config";
 import {
   IDP_PROVIDER_IDS,
@@ -14,6 +13,7 @@ import {
   resolveIdpUpdate,
 } from "./idp-registry";
 import type { AuthConfig, AuthService } from "./ports";
+import { teamRoleAssignments, upsertUserTeamRole } from "./zitadel-authorizations";
 import {
   buildOAuthAuthorizeUrl,
   completeLoginWithTotp,
@@ -22,6 +22,7 @@ import {
 } from "./zitadel-client";
 import { upsertZitadelIdp } from "./zitadel-management";
 import { startTotpRegistration, userHasTotpFactor, verifyTotpRegistration } from "./zitadel-mfa";
+import { zitadelProjectId } from "./zitadel-project-id";
 import {
   findUserIdByEmail,
   inviteHumanUser,
@@ -205,18 +206,21 @@ export function createAuthService(deps: {
     },
 
     async listTeamUsers(orgId) {
-      const auth = await loadAuth(orgId);
+      const projectId = zitadelProjectId();
+      const roleMap = await teamRoleAssignments(orgId, projectId);
       const users = await listOrgUsers(orgId);
 
       return Promise.all(
-        users.map(async (user) => ({
-          userId: user.userId,
-          email: user.email,
-          displayName: user.displayName,
-          state: user.state,
-          role: teamRoleForUser(auth, user.userId),
-          mfaEnrolled: await userHasTotpFactor(orgId, user.userId),
-        })),
+        users
+          .filter((user) => roleMap.has(user.userId))
+          .map(async (user) => ({
+            userId: user.userId,
+            email: user.email,
+            displayName: user.displayName,
+            state: user.state,
+            role: roleMap.get(user.userId) ?? "editor",
+            mfaEnrolled: await userHasTotpFactor(orgId, user.userId),
+          })),
       );
     },
 
@@ -228,34 +232,15 @@ export function createAuthService(deps: {
       }
 
       const { userId } = await inviteHumanUser(orgId, slug, input);
-      const current = normalizeAuthConfig(settings.auth);
-      const teamRoles = { ...(current.teamRoles ?? {}), [userId]: input.role };
-
-      await tenantSettings.upsert(orgId, {
-        slug: settings.slug,
-        locales: settings.locales,
-        defaultLocale: settings.defaultLocale,
-        seo: settings.seo,
-        integrations: settings.integrations,
-        auth: mergeAuthConfig(current, { teamRoles }),
-      });
+      const projectId = zitadelProjectId();
+      await upsertUserTeamRole(orgId, projectId, userId, input.role);
 
       return { userId };
     },
 
     async updateTeamUserRole(orgId, userId, role) {
-      const settings = await tenantSettings.get(orgId);
-      const current = normalizeAuthConfig(settings.auth);
-      const teamRoles = { ...(current.teamRoles ?? {}), [userId]: role };
-
-      await tenantSettings.upsert(orgId, {
-        slug: settings.slug,
-        locales: settings.locales,
-        defaultLocale: settings.defaultLocale,
-        seo: settings.seo,
-        integrations: settings.integrations,
-        auth: mergeAuthConfig(current, { teamRoles }),
-      });
+      const projectId = zitadelProjectId();
+      await upsertUserTeamRole(orgId, projectId, userId, role);
     },
 
     async startIdpLogin(input) {

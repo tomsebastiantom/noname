@@ -89,7 +89,7 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgre
 | `title`, `subtitle`, `footerText`, `logoUrl` | Layout spec | Yes — `/admin/settings/login` (`LoginBrandingForm`) |
 | `providers` | Layout spec (intent) | Yes |
 | `redirectPath`, `showPasswordToggle` | Layout spec | Yes |
-| `"Continue with Google"` button text | `SocialLoginButtons` | No — platform default |
+| OAuth button text (`Continue with Google`, …) | `tenant_settings.auth.providerLabels` from `GET auth/config` | Yes per org — admin / seed; component must not own copy |
 
 ---
 

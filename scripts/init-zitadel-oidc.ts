@@ -14,6 +14,11 @@ import { fileURLToPath } from "node:url";
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PROJECT_NAME = "noname-dev";
 const APP_NAME = "noname-client";
+const PLATFORM_PROJECT_ROLES = [
+  { roleKey: "admin", displayName: "Administrator", group: "Team" },
+  { roleKey: "editor", displayName: "Editor", group: "Team" },
+  { roleKey: "customer", displayName: "Customer", group: "Shopper" },
+] as const;
 const REDIRECT_URI = "http://localhost:5173/auth/callback";
 const ACCESS_TOKEN_TYPE = "OIDC_TOKEN_TYPE_JWT";
 const POST_LOGOUT_URI = "http://localhost:5173";
@@ -135,6 +140,7 @@ async function zitadelPost<T>(token: string, path: string, body: unknown): Promi
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      "Connect-Protocol-Version": "1",
     },
     body: JSON.stringify(body),
   });
@@ -176,7 +182,7 @@ async function ensureProject(token: string, organizationId: string): Promise<str
     {
       name: PROJECT_NAME,
       organizationId,
-      projectRoleAssertion: false,
+      projectRoleAssertion: true,
       authorizationRequired: false,
       projectAccessRequired: false,
     },
@@ -186,6 +192,26 @@ async function ensureProject(token: string, organizationId: string): Promise<str
     throw new Error("CreateProject succeeded but returned no projectId");
   }
   return created.projectId;
+}
+
+async function ensureProjectRoleAssertion(token: string, projectId: string): Promise<void> {
+  await zitadelPost(token, "/zitadel.project.v2.ProjectService/UpdateProject", {
+    projectId,
+    projectRoleAssertion: true,
+  });
+  console.log("Project role assertion enabled (roles in JWT).");
+}
+
+async function ensurePlatformProjectRoles(token: string, projectId: string): Promise<void> {
+  for (const role of PLATFORM_PROJECT_ROLES) {
+    await zitadelPost(token, "/zitadel.project.v2.ProjectService/AddProjectRole", {
+      projectId,
+      roleKey: role.roleKey,
+      displayName: role.displayName,
+      group: role.group,
+    });
+  }
+  console.log(`Platform roles ensured: ${PLATFORM_PROJECT_ROLES.map((r) => r.roleKey).join(", ")}`);
 }
 
 async function findApp(
@@ -313,6 +339,8 @@ async function main(): Promise<void> {
   }
 
   const projectId = await ensureProject(token, organizationId);
+  await ensureProjectRoleAssertion(token, projectId);
+  await ensurePlatformProjectRoles(token, projectId);
   const existingApp = await findApp(token, projectId);
   let clientId = existingApp?.clientId ?? null;
 
@@ -326,6 +354,7 @@ async function main(): Promise<void> {
 
   upsertEnvVar(ENV_FILE, "ZITADEL_ISSUER", ZITADEL_ISSUER);
   upsertEnvVar(ENV_FILE, "ZITADEL_CLIENT_ID", clientId);
+  upsertEnvVar(ENV_FILE, "ZITADEL_PROJECT_ID", projectId);
 
   const wranglerPath = join(ROOT, "packages/workers/wrangler.toml");
   if (existsSync(wranglerPath)) {

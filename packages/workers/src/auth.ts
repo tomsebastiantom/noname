@@ -1,4 +1,5 @@
 import { getKey, parseJwt } from "@cfworker/jwt";
+import { primaryRoleFromKeys, rolesFromZitadelJwt } from "./jwt-roles";
 import type { EdgeContext, Env } from "./types";
 
 function orgIdFromPayload(payload: Record<string, unknown>): string {
@@ -29,10 +30,13 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
     if (!result.valid) return null;
 
     const payload = result.payload as unknown as Record<string, unknown>;
+    const projectId = env.ZITADEL_PROJECT_ID?.trim() || undefined;
+    const roles = rolesFromZitadelJwt(payload, projectId);
     return {
       orgId: orgIdFromPayload(payload),
       userId: (payload.sub as string) || "",
-      role: (payload.role as string) || "customer",
+      role: primaryRoleFromKeys(roles),
+      roles,
     };
   } catch {
     return null;

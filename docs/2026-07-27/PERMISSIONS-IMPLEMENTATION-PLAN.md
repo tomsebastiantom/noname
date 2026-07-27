@@ -89,17 +89,17 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 
 ## Implementation slices
 
-### Slice 1 — Permission module (no ZITADEL change)
+### Slice 1 — Permission module (no ZITADEL change) ✅
 
 **Goal:** Pure functions; no behavior change yet.
 
-| Task | File / area |
-|------|-------------|
-| Add `permissions.ts` — keys, `ROLE_PERMISSIONS`, `expandPermissions`, `hasPermission` | `packages/server/src/domains/auth/` |
-| Add `roles-from-jwt.ts` — parse ZITADEL project roles claim | same |
-| Tests | `permissions.test.ts`, `roles-from-jwt.test.ts` |
+| Task | File / area | Status |
+|------|-------------|--------|
+| Add `permissions.ts` — keys, `ROLE_PERMISSIONS`, `expandPermissions`, `hasPermission` | `packages/server/src/domains/auth/` | ✅ |
+| Add `roles-from-jwt.ts` — parse ZITADEL project roles claim | same | ✅ |
+| Tests | `permissions.test.ts`, `roles-from-jwt.test.ts` | ✅ |
 
-**Ship criteria:** `pnpm test` green; nothing wired to routes yet.
+**Ship criteria:** `pnpm test` green; nothing wired to routes yet. **Done 2026-07-27.**
 
 ---
 

@@ -218,6 +218,46 @@ export function resetManagementTokenCache(): void {
 
 export { getManagementToken };
 
+/** Connect/gRPC-style ZITADEL APIs (project roles, authorizations, etc.). */
+export async function connectRequest<T>(
+  orgId: string,
+  path: string,
+  body?: unknown,
+  method = "POST",
+): Promise<T> {
+  const token = await getManagementToken();
+  const res = await fetch(`${ISSUER}${path}`, {
+    method,
+    headers: {
+      ...orgHeaders(orgId, token),
+      "Connect-Protocol-Version": "1",
+    },
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await res.text();
+  let parsed: unknown = {};
+  if (text) {
+    try {
+      parsed = JSON.parse(text) as unknown;
+    } catch {
+      parsed = { message: text };
+    }
+  }
+
+  const err = parsed as { code?: number | string; message?: string };
+  const alreadyExists =
+    err.code === 6 ||
+    err.code === "already_exists" ||
+    err.message?.toLowerCase().includes("already");
+
+  if (!res.ok && !alreadyExists) {
+    throw new Error(`ZITADEL connect ${path} → ${res.status}: ${err.message ?? text}`);
+  }
+
+  return parsed as T;
+}
+
 export async function v2Request<T>(
   orgId: string,
   method: string,

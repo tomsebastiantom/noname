@@ -134,13 +134,15 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 |------|---------|-------------------|
 | CMS entry fields (any content type) | `content` document | Admin → Content (`ContentEntryAdmin`, DataTable + delete warnings) |
 | Page structure (Hero, ProductCard) | `layout` document | Admin → Layouts or visual editor ([`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md)) |
-| Login welcome text | `layout` login template props | Admin → Login appearance |
+| Login welcome text, admin panel titles | `layout` template **props** | Admin → Login appearance / layout editor |
+| OAuth / save / publish button labels | `layout` props + `tenant_settings.auth.providerLabels` | Admin / layout seed — **not** React TSX |
 | Google on/off, sign-up, reset flags | `tenant_settings.auth` + ZITADEL IdP | Admin → Auth settings |
 | TOTP enrollment (user) | ZITADEL user MFA | `/account/security` (`AccountSecurityForm`) |
-| `"Continue with Google"` label | Platform component | Not merchant CMS |
 | Extension components | `@noname/extensions` | Platform ships; manifest enables |
 | Tenant custom components | R2 + CDN (planned) | Rebuild per [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md); Git later [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |
 | Side effects (login, cart) | `core/actions` + `auth/*` | Code — one path only |
+
+**Copy rule (platform vs merchant):** Merchants and stores customize **text** via layout JSON props and `tenant_settings` — never by editing React. Platform ships **components + catalog schema**; stores own **documents**. See [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) · `skills/spec-driven-ui/`.
 
 ---
 

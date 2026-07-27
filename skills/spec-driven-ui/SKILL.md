@@ -73,6 +73,7 @@ Add Zod props for the component and params for any new actions.
 - Implement in `core/components/{Name}.tsx`
 - Export from `components.tsx` and register in `coreComponents` map
 - Forms call **`executeAction("actionName", params)`** — not raw `fetch` to API paths
+- **Do not hardcode user-visible strings** — labels, titles, button text come from **props** (layout spec) or CMS/`$state`
 
 ### 3. Action handler
 
@@ -115,12 +116,20 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 
 ### 6. Where copy lives
 
-| UI kind | Text source |
-|---------|-------------|
-| Login / admin chrome | Layout spec **props** |
-| Product / page body | CMS **content** → `$state` (storefront only) |
-| Auth toggles | `tenant_settings.auth` via API |
-| Side effects | **Actions** only |
+**No user-visible text in React.** Components render `props` and resolved CMS/`$state` — they do not own copy.
+
+| UI kind | Text source | Example |
+|---------|-------------|---------|
+| Admin / login chrome (titles, descriptions, **button labels**) | Layout spec **props** | `title`, `saveLabel`, `publishLabel` on `LayoutEntryAdmin` |
+| Storefront body | CMS **content** → `$state` | Product title, hero text |
+| Auth behavior labels | `tenant_settings.auth` + layout props | Provider toggles |
+| Locale / language | `tenant_settings.locales` + layout props (v1) or i18n catalog (later) | Same spec tree, per-locale layout or translated props |
+| Side effects | **Actions** only — no copy | `executeAction("publishLayoutEntry", …)` |
+
+**v1 today:** some admin widgets still have hardcoded strings (`"Save & publish"`) — **legacy debt**. Do not add new literals; add props to `catalog-schemas.ts` and pass labels from the layout seed.
+
+**Wrong:** `"Save & publish"` inside `LayoutEntryAdmin.tsx`  
+**Right:** `props.publishLabel` from layout JSON (merchant- or locale-specific without code changes)
 
 ---
 

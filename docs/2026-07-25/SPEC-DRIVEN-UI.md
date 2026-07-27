@@ -1,21 +1,37 @@
 # Spec-Driven UI — How to Build Without Drift
 
 > **Date:** 2026-07-25  
-> **Status:** Active — **read this before adding any merchant-facing UI**  
+> **Status:** Active — **read this before adding any org-facing UI (admin, login, public site)**  
 > **Related:** [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)
+
+---
+
+## Terminology (platform-neutral)
+
+Noname is **not** an e-commerce product. Commerce is one vertical; docs use neutral terms by default.
+
+| Term | Meaning | Avoid assuming |
+|------|---------|----------------|
+| **Org** (tenant) | Isolated site — own URLs, layouts, content, auth (`org_id` in Postgres) | “Store”, “shop” |
+| **Org operator** | Person with team role (`admin` / `editor`) managing the org via `/admin` | “Merchant” |
+| **Public site** | Visitor-facing pages resolved via `page_tree` + CMS | “Storefront” (ok only in commerce examples) |
+| **End user** | Signed-in visitor on the public site | “Customer” (except ZITADEL role key `customer` — literal string, means *not team*) |
+| **Platform** | Shared code: catalog, components, actions, permissions catalog | Per-org config |
+
+Demo org `yogastore` is a **sample tenant**, not proof the platform is retail-only.
 
 ---
 
 ## Rule (non-negotiable)
 
-**Every page the merchant sees is loaded from a layout spec + catalog — not a hand-written React route.**
+**Every org-facing page (admin, login, public site) loads from a layout spec + catalog — not a hand-written React route.**
 
 ```
-URL path  →  page_tree (storefront) OR platform template (admin/login)
+URL path  →  page_tree (public site) OR platform template (admin/login)
          →  layout document  →  json-render <Renderer>
 ```
 
-Storefront routing plan: [`PAGE-ROUTING.md`](./PAGE-ROUTING.md). Today storefront still uses `templateFromPath("home")` — temporary.
+Public-site routing plan: [`PAGE-ROUTING.md`](./PAGE-ROUTING.md). Today the public site still uses `templateFromPath("home")` — temporary.
 
 If you add a new `/admin/foo` page as a standalone React component with its own form, it will **drift** from the platform: no edge cache, no visual editor, no seed/publish flow, no action schema validation.
 
@@ -23,10 +39,10 @@ The only exceptions today:
 
 | Exception | Why |
 |-----------|-----|
-| `/auth/callback` | OAuth redirect handler — not a merchant page |
+| `/auth/callback` | OAuth redirect handler — not an org UI page |
 | `main.tsx` shell | Loading state, auth gate, `AuthBar` — host chrome only |
 
-Everything else — login, storefront, admin — goes through the same pipeline.
+Everything else — login, public site, admin — goes through the same pipeline.
 
 ---
 
@@ -48,7 +64,7 @@ platform/registry.ts     ← defineRegistry(catalog, components, actions)
 
 Extensions follow the same four files under `packages/extensions/src/{name}/`.
 
-**Do not** create `packages/client/src/pages/AdminFoo.tsx` or wire react-router for merchant UI.
+**Do not** create `packages/client/src/pages/AdminFoo.tsx` or wire react-router for org-facing UI.
 
 ---
 
@@ -84,11 +100,14 @@ Pick **one** source per kind of data — mixing them causes drift and wrong cach
 | What | Storage | Example | Resolved on |
 |------|---------|---------|-------------|
 | **Page structure** (which components, order) | `layout` document | `AdminShell` → `ContentEntryAdmin` | Edge returns spec as-is (login/admin) or after content merge (storefront) |
-| **Layout chrome copy** (titles, descriptions in spec props) | Layout spec **props** | `LoginForm.title`, `AdminShell.title` | Edge — no CMS |
+| **Layout chrome copy** (titles, descriptions, button labels in spec props) | Layout spec **props** | `LoginForm.title`, `LayoutEntryAdmin.publishLabel` | Edge — no CMS |
 | **Merchant content** (product title, page body) | `content` document | `page` entry fields | Edge `$state` + `resolveElementProps` |
 | **Auth behavior** (providers on/off) | `tenant_settings.auth` | `providers: ["google"]` | Client merges into `LoginForm` / `AuthSettingsForm` via API |
-| **Button labels in platform** | Component code | `"Continue with Google"` | Not merchant-editable |
 | **Side effects** | Action handlers | `saveAuthConfig`, `addToCart` | `executeAction` → `core/actions` or extension |
+
+**No user-visible text in React.** Components receive copy via props (from layout JSON) or CMS/`$state`. Language/locale changes = different layout props or per-locale layout documents — not edits to `.tsx`.
+
+**v1 debt:** Some admin widgets still hardcode platform strings (e.g. `"Save & publish"`). New work must use spec props; migrate when touching those components.
 
 See [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) § “Two page types”.
 
@@ -190,6 +209,7 @@ Both render with `<Renderer spec={…} />`. Admin is not a separate SPA.
 | Direct `fetch("/api/…")` in buttons | `executeAction("…")` with Zod params |
 | Duplicate login UI outside `LoginForm` | Login layout spec + `LoginForm` in core catalog |
 | Building `/admin` in a new package | Stay in `packages/client` — one bundle, one renderer |
+| User-visible strings in `.tsx` | Layout spec props, `tenant_settings`, or CMS — see copy table above |
 
 ---
 

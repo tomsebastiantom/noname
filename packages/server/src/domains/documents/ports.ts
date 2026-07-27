@@ -120,8 +120,6 @@ export interface TenantAuthConfig {
   allowSignUp?: boolean;
   allowPasswordReset?: boolean;
   requireMfaForAdmin?: boolean;
-  /** userId → role for store team (ZITADEL users in this org). */
-  teamRoles?: Record<string, TeamMemberRole>;
   providerLabels?: Record<string, string>;
   /** Media refs — same shape as content `icon` / SEO `ogImage` fields. URLs resolved at read time. */
   providerIconAssets?: Record<string, MediaRef>;

@@ -31,13 +31,15 @@ main.tsx
 
 ## Data sources (do not mix)
 
-| What | Storage | Edge |
-|------|---------|------|
+| What | Storage | Edge / client |
+|------|---------|---------------|
 | Page structure | `layout` document | Spec tree |
-| Login/admin titles | Layout props | As-is |
+| Login/admin copy (titles, descriptions, **buttons**) | Layout **props** | Passed into component — not hardcoded in React |
 | Merchant copy on storefront | `content` document | `$state` + resolve |
 | Provider toggles | `tenant_settings.auth` | Client merge |
-| Platform button labels | Component code | N/A |
+| Locale | `tenant_settings.locales` + layout props | Per-store language without TSX changes |
+
+**Rule:** If the user can read it on screen, it is **not** a string literal in `.tsx` (except loading/error fallbacks in `main.tsx` host shell).
 
 ---
 
@@ -62,6 +64,8 @@ main.tsx
 | `fetch("/api/…")` in button | `executeAction` |
 | Per-org config in `.env` | `tenant_settings` or layout |
 | Separate admin SPA package | Same `packages/client` Renderer |
+| `"Save & publish"` in component TSX | `publishLabel` (and peers) in layout spec props |
+| English-only strings in React | Props from layout JSON; locale via `tenant_settings.locales` |
 
 ---
 

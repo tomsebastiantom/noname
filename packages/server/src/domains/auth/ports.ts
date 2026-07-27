@@ -88,6 +88,9 @@ export interface AuthSessionStatus {
   requireMfaForAdmin: boolean;
   mfaEnrolled: boolean;
   userId: string;
+  roles?: string[];
+  permissions?: string[];
+  teamRole?: "admin" | "editor" | null;
 }
 
 export type TeamMemberRole = "admin" | "editor";

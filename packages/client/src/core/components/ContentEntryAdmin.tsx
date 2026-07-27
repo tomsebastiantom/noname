@@ -15,6 +15,7 @@ import {
   listEntries,
   loadEntryFields,
 } from "../../admin/content-entries";
+import { fetchAuthSessionStatus, sessionHasPermission } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -152,6 +153,13 @@ export function ContentEntryAdmin({
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [values, setValues] = useState<Record<string, string>>({});
   const [status, setStatus] = useState("draft");
+  const [canPublish, setCanPublish] = useState(false);
+
+  useEffect(() => {
+    void fetchAuthSessionStatus()
+      .then((session) => setCanPublish(sessionHasPermission(session, "content:publish")))
+      .catch(() => setCanPublish(false));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -533,14 +541,16 @@ export function ContentEntryAdmin({
                 <Button type="submit" disabled={saving || publishing || deleting}>
                   {saving ? "Saving…" : "Save draft"}
                 </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={saving || publishing || deleting}
-                  onClick={() => void onPublish()}
-                >
-                  {publishing ? "Publishing…" : "Save & publish"}
-                </Button>
+                {canPublish && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={saving || publishing || deleting}
+                    onClick={() => void onPublish()}
+                  >
+                    {publishing ? "Publishing…" : "Save & publish"}
+                  </Button>
+                )}
                 <Button
                   type="button"
                   variant="destructive"

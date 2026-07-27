@@ -17,9 +17,10 @@
 | IdP credentials | ZITADEL Management API per org (secrets server-only) | Admin Save → ZITADEL (Google/GitHub/Apple) | ✅ |
 | Merchant toggles | Admin **Auth settings** UI | `/admin/settings/auth` | ✅ Google/GitHub/Apple + password |
 | Provider icons | `providerIconAssets` as `{ documentId }` → resolved URLs on config | Same | ✅ Yes |
-| Button labels (`Continue with Google`) | Platform defaults in `SocialLoginButtons` | Hardcoded | ✅ Yes (optional overrides in `tenant_settings.auth` later) |
+| Provider / OAuth button labels | Layout spec props + `tenant_settings.auth.providerLabels` | Fallback literal in component (debt) | ✅ Per org via auth config; target: zero TSX copy |
 
-**Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.
+**Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.  
+**Copy rule:** No merchant-visible strings in React — see [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) and `skills/spec-driven-ui/`.
 
 ## Build order (must complete in this order)
 
@@ -81,23 +82,26 @@ Each **org (store)** should configure auth **in UI**, without code deploys — s
 |-------|-----------------|-----------------|---------|
 | ZITADEL org | ✅ IdP client secrets | Via our admin (proxy to ZITADEL) | Google OAuth client ID |
 | `tenant_settings.auth` | ❌ flags + public URLs only | Admin UI | `providers: ["google"]` |
-| Login layout spec | ❌ | Admin / editor | `"title": "Welcome back"` |
-| Platform component | ❌ | No — platform owns | `"Continue with Google"` default label |
+| Login layout spec | ❌ | Admin / editor (layout JSON) | `"title": "Welcome back"`, `saveLabel`, `publishLabel` |
+| `tenant_settings.auth.providerLabels` | ❌ | Admin → Auth settings | `"google": "Continue with Google"` per org |
 
 **Never** put OAuth secrets in layout spec or client bundle.  
-**Never** use `.env` IdP ids as the per-org source of truth — env is dev bootstrap only until step 6 above.
+**Never** use `.env` IdP ids as the per-org source of truth — env is dev bootstrap only until step 6 above.  
+**Never** bake merchant- or locale-specific copy into React — pass via layout props or `tenant_settings`.
 
 ### Where login “content” lives (not one CMS)
 
 | Content type | Source | Merchant-editable? |
 |--------------|--------|-------------------|
 | Welcome title, subtitle, footer, logo URL | Login **layout spec** props | Yes (admin / editor) |
+| Admin button labels (`Save draft`, `Save & publish`, …) | Layout spec props on admin panels | Yes — seed defaults; per-locale via layout variants |
 | Which providers merchant *wants* | Layout spec `providers[]` | Yes |
 | Which providers *work* for this org | `tenant_settings.auth` + ZITADEL IdP | Yes (admin toggles + OAuth setup) |
-| Standard OAuth button text, dividers, loading copy | Core components (`SocialLoginButtons`, `LoginForm`) | No — platform UX |
+| OAuth button text per provider | `tenant_settings.auth.providerLabels` (+ layout props) | Yes per org |
+| Loading / divider chrome | Props from spec or i18n keys (target) | Platform seed defaults only |
 | Products, pages, blog | Documents **content** types | Yes — separate from auth |
 
-Login page merchant copy uses the **same layout-spec pipeline** as the storefront, not Contentful and not hardcoded strings in components (except platform chrome like “Continue with Google”).
+Login and admin copy use the **layout-spec pipeline** — same as storefront structure, different data source than CMS body fields. **No user-visible literals in React components** (v1 debt: some admin widgets still hardcode strings; migrate to props).
 
 ---
 

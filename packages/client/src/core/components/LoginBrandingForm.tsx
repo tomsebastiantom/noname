@@ -10,6 +10,7 @@ import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { executeAction } from "../../platform/registry";
+import { fetchAuthSessionStatus, sessionHasPermission } from "../../auth/team-users";
 import type { ComponentCtx } from "./types";
 
 export function LoginBrandingForm({
@@ -36,6 +37,13 @@ export function LoginBrandingForm({
     logoUrl: "",
     footerText: "",
   });
+  const [canPublish, setCanPublish] = useState(false);
+
+  useEffect(() => {
+    void fetchAuthSessionStatus()
+      .then((session) => setCanPublish(sessionHasPermission(session, "layout:publish")))
+      .catch(() => setCanPublish(false));
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -201,14 +209,16 @@ export function LoginBrandingForm({
           <Button type="submit" disabled={saving || publishing}>
             {saving ? "Saving…" : "Save draft"}
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={saving || publishing}
-            onClick={() => void save(true)}
-          >
-            {publishing ? "Publishing…" : "Save & publish"}
-          </Button>
+          {canPublish && (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={saving || publishing}
+              onClick={() => void save(true)}
+            >
+              {publishing ? "Publishing…" : "Save & publish"}
+            </Button>
+          )}
           <Button type="button" variant="ghost" asChild>
             <a href="/login" target="_blank" rel="noreferrer">
               Preview login

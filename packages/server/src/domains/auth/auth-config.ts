@@ -11,7 +11,6 @@ export const DEFAULT_TENANT_AUTH: TenantAuthConfig = {
   allowSignUp: false,
   allowPasswordReset: true,
   requireMfaForAdmin: false,
-  teamRoles: {},
   providerLabels: {},
   providerIconAssets: {},
 };
@@ -63,18 +62,6 @@ export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
       if (ref) providerIconAssets[key] = ref;
     }
   }
-  const teamRoles: Record<string, "admin" | "editor"> = {};
-  if (
-    record.teamRoles &&
-    typeof record.teamRoles === "object" &&
-    !Array.isArray(record.teamRoles)
-  ) {
-    for (const [key, value] of Object.entries(record.teamRoles as Record<string, unknown>)) {
-      if (value === "admin" || value === "editor") {
-        teamRoles[key] = value;
-      }
-    }
-  }
   return {
     providers,
     idpIds,
@@ -82,7 +69,6 @@ export function normalizeAuthConfig(raw: unknown): TenantAuthConfig {
     allowSignUp: record.allowSignUp === true,
     allowPasswordReset: record.allowPasswordReset !== false,
     requireMfaForAdmin: record.requireMfaForAdmin === true,
-    teamRoles,
     providerLabels,
     providerIconAssets,
   };
@@ -111,8 +97,6 @@ export function mergeAuthConfig(
     allowSignUp: patch.allowSignUp ?? current.allowSignUp ?? false,
     allowPasswordReset: patch.allowPasswordReset ?? current.allowPasswordReset ?? true,
     requireMfaForAdmin: patch.requireMfaForAdmin ?? current.requireMfaForAdmin ?? false,
-    teamRoles:
-      patch.teamRoles !== undefined ? { ...patch.teamRoles } : { ...(current.teamRoles ?? {}) },
     idpIds: patch.idpIds !== undefined ? { ...patch.idpIds } : { ...current.idpIds },
     providerLabels:
       patch.providerLabels !== undefined
@@ -123,17 +107,4 @@ export function mergeAuthConfig(
         ? { ...patch.providerIconAssets }
         : { ...(current.providerIconAssets ?? {}) },
   };
-}
-
-/** Effective team role; bootstrap orgs with no roles configured treat everyone as admin. */
-export function teamRoleForUser(auth: TenantAuthConfig, userId: string): "admin" | "editor" {
-  const roles = auth.teamRoles ?? {};
-  const assigned = roles[userId];
-  if (assigned) return assigned;
-  if (Object.keys(roles).length === 0) return "admin";
-  return "editor";
-}
-
-export function isTeamAdmin(auth: TenantAuthConfig, userId: string): boolean {
-  return teamRoleForUser(auth, userId) === "admin";
 }

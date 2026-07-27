@@ -93,6 +93,8 @@ MySettingsPanel: {
   props: z.object({
     title: z.string(),
     description: z.string().nullable(),
+    saveLabel: z.string().optional(),
+    publishLabel: z.string().optional(),
   }),
   description: "Example settings panel",
 },
@@ -115,7 +117,12 @@ const adminMySpec = {
     },
     panel: {
       type: "MySettingsPanel",
-      props: { title: "My settings", description: null },
+      props: {
+        title: "My settings",
+        description: null,
+        saveLabel: "Save draft",
+        publishLabel: "Save & publish",
+      },
     },
   },
 };
