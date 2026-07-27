@@ -1,5 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useState } from "react";
 import type { TeamMemberRole, TeamUser } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -51,10 +51,6 @@ export function UsersAdminForm({
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
   const [role, setRole] = useState<TeamMemberRole>("editor");
-
-  useEffect(() => {
-    void execute({ action: "listTeamUsers" });
-  }, [execute]);
 
   async function handleInvite(e: FormEvent) {
     e.preventDefault();

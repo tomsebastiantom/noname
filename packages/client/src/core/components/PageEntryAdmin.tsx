@@ -1,5 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { type RoutingPageView, routingPageKeyFromPath } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -15,6 +15,7 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { ADMIN_STATE } from "../admin-state";
 import { DataTable } from "./DataTable";
+import { useMountAction } from "./MountAction";
 import type { ComponentCtx } from "./types";
 
 export function PageEntryAdmin({
@@ -34,6 +35,8 @@ export function PageEntryAdmin({
 }>) {
   const pageKey = routingPageKeyFromPath(window.location.pathname);
   const { execute } = useActions();
+  const loadAction = pageKey ? "loadRoutingPage" : "listRoutingPages";
+  const loadParams = useMemo(() => (pageKey ? { pageKey } : null), [pageKey]);
 
   const pages = (useStateValue(ADMIN_STATE.routing.pages) as RoutingPageView[] | undefined) ?? [];
   const currentPage = useStateValue(ADMIN_STATE.routing.currentPage) as RoutingPageView | undefined;
@@ -48,14 +51,6 @@ export function PageEntryAdmin({
   const [contentRef, setContentRef] = useState("");
   const [status, setStatus] = useState("draft");
   const [newPageKey, setNewPageKey] = useState("");
-
-  useEffect(() => {
-    if (!pageKey) {
-      void execute({ action: "listRoutingPages" });
-    } else {
-      void execute({ action: "loadRoutingPage", params: { pageKey } });
-    }
-  }, [pageKey, execute]);
 
   useEffect(() => {
     if (currentPage) {
@@ -111,6 +106,8 @@ export function PageEntryAdmin({
   }
 
   const displayError = error ?? loadError ?? null;
+
+  useMountAction(loadAction, loadParams);
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;

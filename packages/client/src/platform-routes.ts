@@ -59,3 +59,16 @@ export function resolveRoute(pathname: string): AppRoute {
     requiresAuth: requiresAuthPath(pathname),
   };
 }
+
+/** Sidebar highlight for AdminNav — derived from URL so SPA nav stays correct between spec swaps. */
+export function adminActiveNavFromPath(pathname: string): string {
+  if (pathname.startsWith("/admin/content")) return "content";
+  if (pathname.startsWith("/admin/layout")) return "layout";
+  if (pathname.startsWith("/admin/pages")) return "pages";
+  if (pathname === "/admin/settings/auth") return "auth";
+  if (pathname === "/admin/settings/users") return "users";
+  if (pathname === "/admin/settings/login") return "login";
+  if (pathname === "/admin" || pathname === "/admin/") return "home";
+  if (pathname.startsWith("/admin")) return "home";
+  return "";
+}

@@ -1,6 +1,9 @@
+import type { MouseEvent, ReactNode } from "react";
 import { clearSession, isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
+import { navigateApp } from "../../platform/app-navigation";
+import { isPlatformPath } from "../../platform-routes";
 
 export type AdminNavItem = {
   id: string;
@@ -29,6 +32,41 @@ function navLinkClass(active: boolean): string {
     : "rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground";
 }
 
+/** In-app platform routes use history.pushState; storefront/login use full navigation. */
+function useSpaNav(href: string): { onClick?: (e: MouseEvent) => void } {
+  const spa =
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    isPlatformPath(href) &&
+    !href.startsWith("/login") &&
+    !href.startsWith("/auth/");
+  if (!spa) return {};
+  return {
+    onClick: (e: MouseEvent) => {
+      e.preventDefault();
+      navigateApp(href);
+    },
+  };
+}
+
+function AdminNavLink({
+  href,
+  active,
+  children,
+  className,
+}: {
+  href: string;
+  active: boolean;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <a href={href} className={className ?? navLinkClass(active)} {...useSpaNav(href)}>
+      {children}
+    </a>
+  );
+}
+
 export function AdminNav(props: AdminNavProps) {
   const loggedIn = isLoggedIn();
 
@@ -43,29 +81,30 @@ export function AdminNav(props: AdminNavProps) {
       <Separator />
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {props.navItems.map((item) => (
-          <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
+          <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
             {item.label}
-          </a>
+          </AdminNavLink>
         ))}
 
         <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {props.settingsSectionLabel}
         </p>
         {props.settingsItems.map((item) => (
-          <a key={item.id} href={item.href} className={navLinkClass(props.activeNav === item.id)}>
+          <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
             {item.label}
-          </a>
+          </AdminNavLink>
         ))}
 
-        <a href={props.accountSecurityHref} className={navLinkClass(false)}>
+        <AdminNavLink href={props.accountSecurityHref} active={false}>
           {props.accountSecurityLabel}
-        </a>
-        <a
+        </AdminNavLink>
+        <AdminNavLink
           href={props.storefrontHref}
+          active={false}
           className="mt-2 rounded-md px-3 py-2 text-sm text-muted-foreground hover:bg-background/60 hover:text-foreground"
         >
           {props.storefrontLabel}
-        </a>
+        </AdminNavLink>
       </nav>
       <Separator />
       <div className="p-3">

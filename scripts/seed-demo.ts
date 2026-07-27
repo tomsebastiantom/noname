@@ -23,7 +23,7 @@ const loginSpec = {
       props: {
         layout: "centered",
         brandTitle: "Noname",
-        brandSubtitle: "AI-native storefront platform",
+        brandSubtitle: "Platform demo",
       },
       children: ["form"],
     },
@@ -31,7 +31,7 @@ const loginSpec = {
       type: "LoginForm",
       props: {
         title: "Welcome back",
-        subtitle: "Sign in to manage your store",
+        subtitle: "Sign in to continue",
         redirectPath: "/",
         logoUrl: null,
         showPasswordToggle: true,
@@ -74,8 +74,6 @@ const demoSpec = {
   },
 };
 
-};
-
 const adminShellNavProps = {
   sidebarTitle: "Admin",
   productName: "Noname",
@@ -93,7 +91,7 @@ const adminShellNavProps = {
   ],
   accountSecurityLabel: "Account security",
   accountSecurityHref: "/account/security",
-  storefrontLabel: "← Storefront",
+  storefrontLabel: "← Site",
   storefrontHref: "/",
   signOutLabel: "Sign out",
   signInLabel: "Sign in",
@@ -187,7 +185,7 @@ const layoutAdminLabels = {
   ...draftPublishLabels,
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
-  publishedMessage: "Layout published. Storefront/login will use the new spec on next load.",
+  publishedMessage: "Layout published. Site and login will use the new spec on next load.",
 };
 
 const pagesAdminLabels = {
@@ -213,7 +211,7 @@ const adminHomeLinks = [
   {
     href: "/admin/pages",
     label: "Pages",
-    description: "Storefront URL tree and routing page documents",
+    description: "URL tree and routing page documents",
   },
   {
     href: "/admin/content/auth_provider",
@@ -292,9 +290,13 @@ const adminUsersSpec = {
       props: adminShellProps(
         "users",
         "Team members",
-        "Invite staff and assign roles for this store.",
+        "Invite staff and assign roles for this org.",
       ),
-      children: ["usersAdmin"],
+      children: ["loadTeam", "usersAdmin"],
+    },
+    loadTeam: {
+      type: "MountAction",
+      props: { action: "listTeamUsers" },
     },
     usersAdmin: {
       type: "UsersAdminForm",
@@ -341,7 +343,7 @@ const accountSecuritySpec = {
       props: {
         layout: "centered",
         brandTitle: "Account security",
-        brandSubtitle: "Protect your store account",
+        brandSubtitle: "Protect your account",
       },
       children: ["security"],
     },
@@ -422,12 +424,16 @@ const adminPagesSpec = {
     shell: {
       type: "AdminShell",
       props: adminShellProps("pages", "Pages"),
-      children: ["pagesAdmin"],
+      children: ["loadPages", "pagesAdmin"],
+    },
+    loadPages: {
+      type: "MountAction",
+      props: { action: "listRoutingPages" },
     },
     pagesAdmin: {
       type: "PageRoutingAdmin",
       props: {
-        title: "Storefront pages",
+        title: "Pages",
         description:
           "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
         locale: "en-US",
@@ -745,9 +751,14 @@ async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
   const form = new FormData();
   form.append("file", new Blob([bytes], { type: "image/svg+xml" }), fileName);
 
+  const headers: Record<string, string> = { "x-org-id": DEMO_ORG_ID };
+  if (seedAdminToken) {
+    headers.Authorization = `Bearer ${seedAdminToken}`;
+  }
+
   const res = await fetch(`${API_BASE}/api/documents/assets/upload`, {
     method: "POST",
-    headers: { "x-org-id": DEMO_ORG_ID },
+    headers,
     body: form,
   });
   if (!res.ok) {

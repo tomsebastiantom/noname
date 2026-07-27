@@ -118,6 +118,13 @@ export const coreComponentSchemas = {
     slots: ["default"],
     description: "Admin dashboard shell with sidebar navigation",
   },
+  MountAction: {
+    props: z.object({
+      action: z.string().min(1),
+      params: z.record(z.string(), z.unknown()).nullable().optional(),
+    }),
+    description: "Run a catalog action on mount (layout-declared data load)",
+  },
   AuthSettingsForm: {
     props: z.object({
       title: z.string(),

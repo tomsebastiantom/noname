@@ -48,7 +48,7 @@ main.tsx
 | Change | Files |
 |--------|-------|
 | Platform component | `core/catalog-schemas.ts`, `core/components*.tsx`, `platform/registry.ts` |
-| Platform action | `core/actions/*.ts`, `platform/registry.ts`, `platform/catalog-action-bridge.tsx`, server domain |
+| Platform action | `core/actions/*.ts`, `platform/registry.ts`, `platform/catalog-ui-shell.tsx`, server domain |
 | Admin layout | `scripts/seed-demo.ts`, optional `main.tsx` |
 | Extension widget | `packages/extensions/src/{name}/` (4 files + index loader) |
 | Public auth config | `packages/workers/src/routes/proxy.ts` if new public GET |
@@ -59,18 +59,16 @@ main.tsx
 
 See [SKILL.md — json-render patterns](SKILL.md#json-render-patterns-target-architecture) and [SKILL.md — action wiring](SKILL.md#action-wiring-follow-json-render-official-pattern).
 
-**Official reference:** [json-render/examples](https://github.com/vercel-labs/json-render/tree/main/examples) · [no-ai registry](https://github.com/vercel-labs/json-render/blob/main/examples/no-ai/lib/render/registry.tsx) · [dashboard renderer](https://github.com/vercel-labs/json-render/blob/main/examples/dashboard/lib/render/renderer.tsx)
+**Official reference:** [json-render/examples](https://github.com/vercel-labs/json-render/tree/main/examples) · [dashboard renderer](https://github.com/vercel-labs/json-render/blob/main/examples/dashboard/lib/render/renderer.tsx) · [devtools](https://github.com/vercel-labs/json-render/tree/main/examples/devtools) (state/actions inspector)
 
-**Runtime wiring (Noname — matches dashboard refs + `handlers()` factory):**
+**Runtime wiring (Noname — sync handlers, dashboard pattern):**
 
 ```
 platform/registry.ts
-  defineRegistry(catalog, { components, actions: coreActionHandlers })
-  → { registry, handlers, executeAction }
+  defineRegistry → handlers(getSetState, getState)
 
-platform/catalog-action-bridge.tsx  (inside JSONUIProvider)
-  refs → handlers(() => setRef.current, () => getStateRef.current)
-  → registerHandler(name, fn) for each bound handler
+platform/catalog-ui-shell.tsx
+  createStateStore + handlers() → JSONUIProvider handlers={…}
 
 components
   useActions().execute({ action, params })
@@ -79,10 +77,11 @@ components
 
 | Piece | File | Notes |
 |-------|------|-------|
-| Handler impl | `core/actions/*.ts` | `(params, setState, state)` — may call `auth/*`, `admin/*` |
-| Registry | `platform/registry.ts` | `defineRegistry` — do not skip `handlers` export |
-| Bridge | `platform/catalog-action-bridge.tsx` | Refs + `handlers()` — do not re-wrap handlers manually |
-| Mount | `main.tsx` | `<CatalogActionBridge />` as child of `JSONUIProvider` |
+| Handler impl | `core/actions/*.ts` | `(params, setState, state)` |
+| Registry | `platform/registry.ts` | export `handlers` from `defineRegistry` |
+| Shell | `platform/catalog-ui-shell.tsx` | **sync** `handlers` prop — not `registerHandler` in `useEffect` |
+| Load on mount | `MountAction.tsx` | `MountAction` in spec or `useMountAction()` |
+| Host | `main.tsx` | `<CatalogUiShell spec={…} registry={…} />` |
 
 - Components — `useActions().execute({ action, params })` and `useStateValue(path)`
 - Action handlers — may call `auth/*`, `admin/*` helpers; **components may not**
@@ -99,7 +98,8 @@ components
 | react-router merchant routes | `templateFromPath` + layout doc |
 | `fetch("/api/…")` in component | `useActions().execute({ action, params })` |
 | `executeAction()` in component | `useActions().execute()` |
-| Manual `registerHandler` wrapping `coreActionHandlers` | Use `handlers()` factory from `defineRegistry` |
+| Manual `registerHandler` in `useEffect` for catalog handlers | Sync `handlers={createHandlers(…)}` on `JSONUIProvider` |
+| `useEffect(..., [execute])` to load on mount | `MountAction` in layout spec or `useMountAction(action, params)` — see [SKILL.md — load on mount](SKILL.md#load-on-mount--json-render-has-no-built-in-hook) |
 | Per-org config in `.env` | `tenant_settings` or layout |
 | Separate admin SPA package | Same `packages/client` Renderer |
 | `"Save & publish"` in component TSX | `publishLabel` (and peers) in layout spec props |

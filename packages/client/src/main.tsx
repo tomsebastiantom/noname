@@ -1,16 +1,23 @@
 import "./index.css";
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
-import { JSONUIProvider, Renderer } from "@json-render/react";
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { createRoot } from "react-dom/client";
 import { storeSlugFromHostname } from "./auth/org";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
-import { CatalogActionBridge } from "./platform/catalog-action-bridge";
-import { isLoginTemplate, resolveRoute } from "./platform-routes";
+import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
+import { CatalogUiShell } from "./platform/catalog-ui-shell";
+import { isAdminTemplate, isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
 interface EdgeSchemaResponse {
@@ -36,12 +43,17 @@ function AppShell({ children, template }: Readonly<{ children: ReactNode; templa
 
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
+  const [routeKey, setRouteKey] = useState("");
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [navigating, setNavigating] = useState(false);
+  const specRef = useRef<Spec | null>(null);
+  specRef.current = spec;
+  const loadSeqRef = useRef(0);
   const storeSlug = storeSlugFromHostname(window.location.hostname);
 
-  const pathname = window.location.pathname;
+  const pathname = useSyncExternalStore(subscribeAppLocation, getPathname, getPathname);
   const route = resolveRoute(pathname);
   const platformRoute = route.kind === "platform";
   const template = platformRoute ? route.template : "storefront";
@@ -49,11 +61,15 @@ function App() {
   const editMode = new URLSearchParams(window.location.search).get("edit") === "true";
 
   const loadPage = useCallback(async () => {
+    const loadSeq = ++loadSeqRef.current;
+    const isStale = () => loadSeq !== loadSeqRef.current;
+
     hydrateTokenFromCookie();
 
     if (!storeSlug) {
       setError("Use {slug}.localhost:5173 — e.g. yogastore.localhost:5173 (run pnpm seed:demo)");
       setLoading(false);
+      setNavigating(false);
       return;
     }
 
@@ -83,7 +99,12 @@ function App() {
       }
     }
 
-    setLoading(true);
+    const softAdminNav = specRef.current !== null && isAdminTemplate(template);
+    if (softAdminNav) {
+      setNavigating(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
 
     const headers = apiHeaders();
@@ -106,19 +127,27 @@ function App() {
 
     try {
       const [manifest, body] = await Promise.all([manifestPromise, specPromise]);
+      if (isStale()) return;
+
       const tree = body?.data?.layout as Spec | undefined;
       if (!tree) throw new Error("No layout spec returned");
 
       if (manifest) {
         const loaded = await loadCatalogs(manifest);
+        if (isStale()) return;
         setRegistry(loaded.registry);
       }
 
       setSpec(tree);
+      setRouteKey(`${template}:${pathname}`);
     } catch (err) {
+      if (isStale()) return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setLoading(false);
+      if (!isStale()) {
+        setLoading(false);
+        setNavigating(false);
+      }
     }
   }, [storeSlug, template, adminRoute, editMode, platformRoute, pathname]);
 
@@ -126,7 +155,7 @@ function App() {
     void loadPage();
   }, [loadPage]);
 
-  if (loading) {
+  if (loading && !spec) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
@@ -136,7 +165,7 @@ function App() {
     );
   }
 
-  if (error) {
+  if (error && !spec) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-destructive">
@@ -164,10 +193,19 @@ function App() {
         </div>
       )}
       {!adminRoute && !editMode && <AuthBar onAuthChange={() => void loadPage()} />}
-      <JSONUIProvider registry={registry}>
-        <CatalogActionBridge />
-        <Renderer spec={spec} registry={registry} />
-      </JSONUIProvider>
+      {navigating ? (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center bg-background/40 pt-24">
+          <p className="rounded-md border bg-background px-4 py-2 text-sm text-muted-foreground shadow-sm">
+            Loading…
+          </p>
+        </div>
+      ) : null}
+      {error ? (
+        <div className="border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+          {error}
+        </div>
+      ) : null}
+      <CatalogUiShell key={routeKey || `${template}:${pathname}`} spec={spec} registry={registry} />
     </AppShell>
   );
 }

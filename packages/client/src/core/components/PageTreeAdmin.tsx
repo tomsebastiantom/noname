@@ -13,6 +13,7 @@ import {
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import { ADMIN_STATE } from "../admin-state";
+import { useMountAction } from "./MountAction";
 import type { ComponentCtx } from "./types";
 
 function emptyEntry(): PageTreeEntry {
@@ -51,10 +52,6 @@ export function PageTreeAdmin({
   const [entries, setEntries] = useState<PageTreeEntry[]>([]);
 
   useEffect(() => {
-    void execute({ action: "loadMainTree" });
-  }, [execute]);
-
-  useEffect(() => {
     if (treePages) {
       setEntries(treePages);
     }
@@ -86,6 +83,8 @@ export function PageTreeAdmin({
   }
 
   const displayError = error ?? loadError ?? null;
+
+  useMountAction("loadMainTree");
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{props.treeLoadingLabel}</p>;

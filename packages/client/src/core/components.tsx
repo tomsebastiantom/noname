@@ -7,6 +7,7 @@ import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 import { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 import { LoginBrandingForm } from "./components/LoginBrandingForm";
 import { LoginForm } from "./components/LoginForm";
+import { MountAction } from "./components/MountAction";
 import { PageEntryAdmin } from "./components/PageEntryAdmin";
 import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 import { PageTreeAdmin } from "./components/PageTreeAdmin";
@@ -24,6 +25,7 @@ export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
 export { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 export { LoginBrandingForm } from "./components/LoginBrandingForm";
 export { LoginForm } from "./components/LoginForm";
+export { MountAction } from "./components/MountAction";
 export { PageEntryAdmin } from "./components/PageEntryAdmin";
 export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 export { PageTreeAdmin } from "./components/PageTreeAdmin";
@@ -166,6 +168,7 @@ export const coreComponents = {
   LoginForm,
   AuthLayout,
   AdminShell,
+  MountAction,
   AuthSettingsForm,
   LoginBrandingForm,
   AccountSecurityForm,

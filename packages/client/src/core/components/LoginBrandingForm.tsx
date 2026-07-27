@@ -158,7 +158,7 @@ export function LoginBrandingForm({
             id="brand-subtitle"
             value={values.brandSubtitle}
             onChange={(e) => setValues((v) => ({ ...v, brandSubtitle: e.target.value }))}
-            placeholder="AI-native storefront platform"
+            placeholder="Platform demo"
           />
         </div>
 

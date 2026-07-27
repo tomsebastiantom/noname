@@ -1,4 +1,23 @@
+import type { MouseEvent } from "react";
+import { navigateApp } from "../../platform/app-navigation";
+import { isPlatformPath } from "../../platform-routes";
 import type { ComponentCtx } from "./types";
+
+function adminHomeLinkProps(href: string): { href: string; onClick?: (e: MouseEvent) => void } {
+  const spa =
+    href.startsWith("/") &&
+    !href.startsWith("//") &&
+    isPlatformPath(href) &&
+    !href.startsWith("/login");
+  if (!spa) return { href };
+  return {
+    href,
+    onClick: (e: MouseEvent) => {
+      e.preventDefault();
+      navigateApp(href);
+    },
+  };
+}
 
 export function AdminHome({
   props,
@@ -16,7 +35,7 @@ export function AdminHome({
         {props.links.map((link) => (
           <a
             key={link.href}
-            href={link.href}
+            {...adminHomeLinkProps(link.href)}
             className="rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-muted/40"
           >
             <p className="font-medium">{link.label}</p>

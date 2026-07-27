@@ -39,10 +39,11 @@ packages/client/src/core/
 ├── catalog-schemas.ts    # Zod component props + action params
 ├── components.tsx        # exports + small components
 ├── components/*.tsx      # larger panels (AuthSettingsForm, ContentEntryAdmin)
+├── components/MountAction.tsx  # useMountAction + spec-declarable load trigger
 ├── admin-state.ts        # $state path constants for admin data
 └── actions/*.ts          # executeAction handlers
          ↓
-platform/catalog.ts + platform/registry.ts + platform/catalog-action-bridge.tsx
+platform/catalog.ts + platform/registry.ts + platform/catalog-ui-shell.tsx
 ```
 
 Extensions: same four files under `packages/extensions/src/{name}/`.
@@ -120,7 +121,7 @@ Use watchers to replace `useEffect` load triggers where the spec owns lifecycle.
 |---------|----------------------|---------------------------|
 | Copy (titles, labels) | Layout **props** | — |
 | Tab/nav highlight | `$state` + `$cond` on props | — |
-| Load list on mount | `watch` or child with `action: setState` | `useEffect` + `useActions().execute` (legacy admin panels) |
+| Load list on mount | `MountAction` in layout spec or `useMountAction()` | `useEffect` + `execute` in panel (avoid) |
 | Form field state | `$bindState` | Local `useState` (complex editors) |
 | API calls | Action handlers | Handlers only — components call `execute`, never `fetch` |
 
@@ -138,7 +139,7 @@ Follow json-render as closely as possible. Noname adds one small bridge because 
 |-------|-------|----------------|
 | **Catalog schema** | `catalog-schemas.ts` | Zod params per action — validates spec + `execute` calls |
 | **Handler impl** | `core/actions/*.ts` | `(params, setState, state) => Promise<void>` — fetch, then `setState(path, value)` |
-| **Runtime wiring** | `platform/registry.ts` + `catalog-action-bridge.tsx` | `defineRegistry` → `handlers()` factory → `ActionProvider` |
+| **Runtime wiring** | `platform/registry.ts` + `catalog-ui-shell.tsx` | `defineRegistry` → `handlers()` → `JSONUIProvider handlers={…}` |
 
 ```typescript
 // platform/registry.ts — same as json-render docs
@@ -148,46 +149,80 @@ export const { registry, handlers, executeAction } = defineRegistry(catalog, {
 });
 ```
 
-### Why `CatalogActionBridge` exists
+### Action handlers (sync via `JSONUIProvider`)
 
-json-render's `handlers(getSetState, getState)` factory needs live **`set`** from the state store. That store only exists **inside** `JSONUIProvider`.
+json-render's `handlers(getSetState, getState)` factory must be available **on first render** — not via `registerHandler` in `useEffect`. Child components that call `useActions().execute` in `useEffect` run in the same tick; async handler registration loses the race.
 
-| json-render example | Pattern | When |
-|---------------------|---------|------|
-| **no-ai** | `handlers={actionHandlers}` on `JSONUIProvider` | Actions don't touch `$state` (e.g. confetti) |
-| **dashboard** | `handlers(() => setStateRef.current, () => stateRef.current)` on `ActionProvider` | External React state via refs |
-| **Noname** | `handlers()` factory + **refs** + `registerHandler` inside `JSONUIProvider` | Path-based `$state` via json-render store |
-
-Our bridge is the [dashboard example](https://github.com/vercel-labs/json-render/blob/main/examples/dashboard/lib/render/renderer.tsx) pattern — refs so handler closures always read the latest store — adapted because `set` only exists inside `JSONUIProvider`.
-
-```tsx
-// platform/catalog-action-bridge.tsx (follow dashboard refs pattern)
-const { set, getSnapshot } = useStateStore();
-const setRef = useRef(set);
-const getStateRef = useRef(getSnapshot);
-setRef.current = set;
-getStateRef.current = getSnapshot;
-
-useEffect(() => {
-  const bound = createHandlers(
-    () => setRef.current as unknown as SetState, // types say React updater; runtime is path-based
-    () => getStateRef.current(),
-  );
-  for (const [name, fn] of Object.entries(bound)) {
-    registerHandler(name, fn);
-  }
-}, [registerHandler]);
-```
-
-Do **not** manually wrap `coreActionHandlers` in `registerHandler` — always go through `handlers()` from `defineRegistry`.
+| json-render example | Pattern |
+|---------------------|---------|
+| **no-ai** | Static `handlers={…}` on `JSONUIProvider` (no `$state`) |
+| **dashboard** | `handlers()` factory + refs on `ActionProvider` |
+| **devtools** | Shared store + `$state` paths; inspect via `@json-render/devtools` |
+| **Noname** | `createStateStore` + `handlers()` passed to `JSONUIProvider` in `catalog-ui-shell.tsx` |
 
 ```tsx
-// main.tsx
-<JSONUIProvider registry={registry}>
-  <CatalogActionBridge />   {/* handlers() + refs → ActionProvider */}
+// platform/catalog-ui-shell.tsx (dashboard pattern — handlers ready before children mount)
+const store = createStateStore({});
+const actionHandlers = useMemo(
+  () => createHandlers(() => store.set.bind(store) as SetState, () => store.getSnapshot()),
+  [store],
+);
+
+<JSONUIProvider registry={registry} store={store} handlers={actionHandlers}>
   <Renderer spec={spec} registry={registry} />
 </JSONUIProvider>
 ```
+
+Do **not** use `registerHandler` in `useEffect` for initial catalog handlers.
+
+```tsx
+// main.tsx
+<CatalogUiShell spec={spec} registry={registry} />
+```
+
+### Load on mount — json-render has no built-in hook
+
+Official json-render examples **do not** load remote data inside catalog components on mount:
+
+| Example | How data appears |
+|---------|------------------|
+| **no-ai** | User clicks buttons → `action` in spec |
+| **dashboard** | Parent React state passed in; handlers update via user actions |
+| **devtools** | AI streams spec + **`spec.state` seeded** into store (no fetch in components) |
+| **`watch`** | Fires only when a watched path **changes** — not on first render |
+
+So hybrid admin panels (fetch → `$state`) are **outside** what the stock examples cover. json-render's own `useAction()` still lists `execute` in deps — same infinite-loop risk if misused.
+
+**Noname pattern — `MountAction` + `useMountAction`:**
+
+| Use | When |
+|-----|------|
+| **`MountAction` in layout spec** | Static load (e.g. team members list) |
+| **`useMountAction(action, params?)` in panel** | Load depends on URL or other React state |
+
+Implementation: `packages/client/src/core/components/MountAction.tsx`
+
+- `execute` stays on a **ref** — never in the effect deps (json-render recreates it when `loadingActions` updates → infinite loop)
+- Effect deps: **`[action, params]`** only
+- Inline `params` objects must be **`useMemo`**-stable at the call site (e.g. `{ pageKey }` in `PageEntryAdmin`)
+
+**Layout spec (team members):**
+
+```json
+"shell": { "children": ["loadTeam", "usersAdmin"] },
+"loadTeam": { "type": "MountAction", "props": { "action": "listTeamUsers" } }
+```
+
+**Panel with dynamic params:**
+
+```tsx
+const loadParams = useMemo(() => (pageKey ? { pageKey } : null), [pageKey]);
+useMountAction(pageKey ? "loadRoutingPage" : "listRoutingPages", loadParams);
+```
+
+**Wrong:** `useEffect(..., [execute])` in admin forms.  
+**Also wrong:** expecting `watch` to run on mount.  
+**Best long-term:** edge preloads admin data into `spec.state` (devtools model) — components only read `$state`.
 
 ### What to call from components
 
@@ -209,6 +244,7 @@ Do **not** manually wrap `coreActionHandlers` in `registerHandler` — always go
 - [ ] Component calls useActions().execute — not fetch, not executeAction
 - [ ] Load actions write $state; reads use useStateValue(path)
 - [ ] Prefer layout watch/$bindState over useEffect where feasible
+- [ ] Mount loads: `MountAction` in spec or `useMountAction` — **never** `[execute]` in deps
 ```
 
 ---
@@ -246,14 +282,14 @@ Follow [Action wiring](#action-wiring-follow-json-render-official-pattern) above
 
 - Add handler in `core/actions/{domain}.ts` — signature `(params, setState, state) => Promise<void>`
 - Load actions **write results to `$state`** via `setState(path, value)`; components read with `useStateValue(path)`
-- Merge in `platform/registry.ts` via `coreActionHandlers`; `CatalogActionBridge` binds `handlers()` to the live store
+- Merge in `platform/registry.ts` via `coreActionHandlers`; `CatalogUiShell` passes sync handlers to `JSONUIProvider`
 - Components use **`useActions().execute({ action, params })`** — no wrapper hook, no direct `fetch`
 - **`executeAction`** from `registry.ts` only outside the React tree (tests/scripts)
 
 Admin `$state` paths live in `core/admin-state.ts` (e.g. `/admin/team/users`).
 
 ```
-mount → execute({ action: "listTeamUsers" })
+MountAction / useMountAction → execute({ action: "listTeamUsers" })
       → ActionProvider → handler(params, setState) → fetch → setState("/admin/team/users", rows)
       → useStateValue("/admin/team/users") re-renders component
 ```

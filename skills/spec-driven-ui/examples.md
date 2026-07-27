@@ -24,7 +24,7 @@ AdminShell (activeNav: "auth")
 - `packages/client/src/core/components/AuthSettingsForm.tsx`
 - `packages/client/src/core/actions/auth.ts`
 - `packages/client/src/platform/registry.ts` — `defineRegistry` + `handlers`
-- `packages/client/src/platform/catalog-action-bridge.tsx` — refs + `registerHandler`
+- `packages/client/src/platform/catalog-ui-shell.tsx` — sync handlers + store
 - `scripts/seed-demo.ts` — `adminDashboardSpec`
 
 ---
@@ -63,6 +63,35 @@ AdminShell (activeNav: "content")
 Copy (title, subtitle, logo) in **layout spec props**. Provider list merged from `GET /api/tenants/:orgId/auth/config`.
 
 **Not CMS content** — see `docs/2026-07-25/ARCHITECTURE-MAP.md` § two page types.
+
+---
+
+## Example 3b: Admin list load on mount (team members)
+
+**Components:** `MountAction` (spec) + `UsersAdminForm` (display only)  
+**Action:** `listTeamUsers` → writes `$state` at `/admin/team/users`  
+**Layout:** `admin_users` in `scripts/seed-demo.ts`
+
+```json
+"shell": { "children": ["loadTeam", "usersAdmin"] },
+"loadTeam": { "type": "MountAction", "props": { "action": "listTeamUsers" } },
+"usersAdmin": { "type": "UsersAdminForm", "props": { … } }
+```
+
+```
+MountAction → useMountAction → listTeamUsers handler → setState("/admin/team/users", rows)
+UsersAdminForm → useStateValue("/admin/team/users") → table
+```
+
+**Dynamic loads** (URL-dependent): `useMountAction` inside the panel — see `PageEntryAdmin.tsx` (`useMemo` for params).
+
+**Anti-pattern:** `useEffect(..., [execute])` — infinite re-render and API spam.
+
+**Files:**
+- `packages/client/src/core/components/MountAction.tsx`
+- `packages/client/src/core/components/UsersAdminForm.tsx`
+- `packages/client/src/core/actions/team.ts`
+- `scripts/seed-demo.ts` — `adminUsersSpec`
 
 ---
 
@@ -141,7 +170,7 @@ await execute({
 });
 ```
 
-Handler lives in `core/actions/…`, registered via `coreActionHandlers` → `platform/registry.ts`. Runtime wiring is automatic through `CatalogActionBridge` — do not call `executeAction` from components.
+Handler lives in `core/actions/…`, registered via `coreActionHandlers` → `platform/registry.ts`. Runtime wiring via `CatalogUiShell` — do not call `executeAction` from components.
 
 ### main.tsx (only if new template name)
 
