@@ -4,7 +4,6 @@ import { eventBus } from "../../shared/event-bus";
 import { assertValidStoreSlug, normalizeStoreSlug } from "../../shared/store-slug";
 import { ContentDocument, LayoutDocument } from "./entity";
 import { LayoutEvents } from "./events";
-import { findInboundRefs as collectInboundRefs } from "./find-inbound-refs";
 import { applyOverrides, deepClone } from "./merge";
 import type {
   AssetDocumentService,
@@ -25,8 +24,9 @@ import type {
   UploadAssetInput,
 } from "./ports";
 import { documentIdFromRef } from "./refs";
-import { resolveDocumentRefs } from "./resolve-refs";
-import { contentValidator } from "./validator";
+import { findInboundRefs as collectInboundRefs } from "./refs/inbound";
+import { resolveDocumentRefs } from "./refs/resolve";
+import { contentValidator } from "./validation/validator";
 
 const DEFAULT_LOCALES = ["en-US"];
 const DEFAULT_DEFAULT_LOCALE = "en-US";

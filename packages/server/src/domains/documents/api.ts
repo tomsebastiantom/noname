@@ -1,9 +1,8 @@
+import { PERMISSIONS, type PermissionKey } from "@noname/auth";
 import { type Context, Hono } from "hono";
 import { getOrgId } from "../../shared/org";
 import { created, deleted, notFound, ok } from "../../shared/respond";
-import { mergeAuthConfig, normalizeAuthConfig } from "../auth/auth-config";
 import { requirePermission } from "../auth/guards";
-import { PERMISSIONS, type PermissionKey } from "../auth/permissions";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { createAssetStorage, processImage, sha256 } from "./assets/binary";
 import type {
@@ -15,9 +14,10 @@ import type {
   TenantAuthConfig,
   UploadAssetInput,
 } from "./ports";
+import { mergeAuthConfig, normalizeAuthConfig } from "./tenant/auth-config";
 
-function denyUnless(c: Context, permission: PermissionKey): Response | null {
-  const auth = requirePermission(c, permission);
+async function denyUnless(c: Context, permission: PermissionKey): Promise<Response | null> {
+  const auth = await requirePermission(c, permission);
   return auth instanceof Response ? auth : null;
 }
 
@@ -39,7 +39,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   // Content type schema management.
   // -------------------------------------------------------------------------
   routes.post("/content-types", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.AUTH_MANAGE);
+    const denied = await denyUnless(c, PERMISSIONS.AUTH_MANAGE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { name, schema } = await c.req.json<{ name: string; schema: Record<string, unknown> }>();
@@ -59,7 +59,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/content-types/:name", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.AUTH_MANAGE);
+    const denied = await denyUnless(c, PERMISSIONS.AUTH_MANAGE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { schema } = await c.req.json<{ schema: Record<string, unknown> }>();
@@ -76,7 +76,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/tenant_settings/default", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.AUTH_MANAGE);
+    const denied = await denyUnless(c, PERMISSIONS.AUTH_MANAGE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<{
@@ -111,7 +111,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   // Assets — media upload + metadata (binary in R2 / pluggable storage).
   // -------------------------------------------------------------------------
   routes.post("/assets/upload", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const form = await c.req.parseBody({ all: true });
@@ -172,7 +172,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/assets/:assetId", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<{
@@ -185,7 +185,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.delete("/assets/:assetId", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     await assets.delete(orgId, c.req.param("assetId"));
@@ -193,7 +193,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/assets/:assetId/publish", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_PUBLISH);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_PUBLISH);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const published = await assets.publish(orgId, c.req.param("assetId"));
@@ -204,7 +204,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   // Layout — json-render templates with per-segment override variants.
   // -------------------------------------------------------------------------
   routes.post("/layout", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<CreateLayoutInput>();
@@ -228,7 +228,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/layout/:id", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<{ spec: Record<string, unknown>; contentRef?: string | null }>();
@@ -240,7 +240,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/layout/:id/publish", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.LAYOUT_PUBLISH);
+    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_PUBLISH);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const published = await layout.publish(orgId, c.req.param("id"));
@@ -248,7 +248,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/layout/:id/archive", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const archived = await layout.archive(orgId, c.req.param("id"));
@@ -256,7 +256,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/layout/:id/variants", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { segment, overrides } = await c.req.json<{
@@ -296,7 +296,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/page_tree/main", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.PAGE_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.PAGE_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<{ pages: PageTreePageRef[] }>();
@@ -304,7 +304,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/page/:pageKey", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.PAGE_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.PAGE_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json<{ layoutRef: string; contentRef?: string | null }>();
@@ -355,7 +355,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   // (product, page, blog, faq, ... — any registered content type.)
   // -------------------------------------------------------------------------
   routes.post("/:type", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const type = c.req.param("type");
@@ -389,7 +389,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/:type/:id", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { type, id } = c.req.param();
@@ -402,7 +402,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.delete("/:type/:id", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { type, id } = c.req.param();
@@ -411,7 +411,7 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
   });
 
   routes.put("/:type/:id/publish", async (c) => {
-    const denied = denyUnless(c, PERMISSIONS.CONTENT_PUBLISH);
+    const denied = await denyUnless(c, PERMISSIONS.CONTENT_PUBLISH);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { type, id } = c.req.param();

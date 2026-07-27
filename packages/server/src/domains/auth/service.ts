@@ -1,28 +1,32 @@
-import type { AssetDocumentService, TenantSettingsService } from "../documents/ports";
-import { resolveProviderIconUrls } from "./asset-url";
 import {
-  enabledProviders,
+  listPublishedCustomAuthProviders,
+  resolveLoginProviders,
+} from "../documents/content-types/auth-provider";
+import type {
+  AssetDocumentService,
+  ContentDocumentService,
+  MediaRef,
+  TenantSettingsService,
+} from "../documents/ports";
+import {
   idpIdForProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
-} from "./auth-config";
-import {
-  IDP_PROVIDER_IDS,
-  IDP_PROVIDER_REGISTRY,
-  publicProviderLabels,
-  resolveIdpUpdate,
-} from "./idp-registry";
-import type { AuthConfig, AuthService } from "./ports";
-import { teamRoleAssignments, upsertUserTeamRole } from "./zitadel-authorizations";
+} from "../documents/tenant/auth-config";
+import { teamRoleAssignments, upsertUserTeamRole } from "./adapters/zitadel/authorizations";
 import {
   buildOAuthAuthorizeUrl,
   completeLoginWithTotp,
   exchangeAuthorizationCode,
   loginWithCredentials,
-} from "./zitadel-client";
-import { upsertZitadelIdp } from "./zitadel-management";
-import { startTotpRegistration, userHasTotpFactor, verifyTotpRegistration } from "./zitadel-mfa";
-import { zitadelProjectId } from "./zitadel-project-id";
+} from "./adapters/zitadel/client";
+import { upsertZitadelIdp } from "./adapters/zitadel/management";
+import {
+  startTotpRegistration,
+  userHasTotpFactor,
+  verifyTotpRegistration,
+} from "./adapters/zitadel/mfa";
+import { zitadelProjectId } from "./adapters/zitadel/project-id";
 import {
   findUserIdByEmail,
   inviteHumanUser,
@@ -31,13 +35,22 @@ import {
   registerHumanUser,
   requestPasswordResetEmail,
   setPasswordWithVerificationCode,
-} from "./zitadel-users";
+} from "./adapters/zitadel/users";
+import { resolveProviderIconUrls } from "./asset-url";
+import {
+  IDP_PROVIDER_IDS,
+  IDP_PROVIDER_REGISTRY,
+  publicProviderLabels,
+  resolveIdpUpdate,
+} from "./idp-registry";
+import type { AuthConfig, AuthService } from "./ports";
 
 export function createAuthService(deps: {
   tenantSettings: TenantSettingsService;
   assets: AssetDocumentService;
+  content: Pick<ContentDocumentService, "findByType">;
 }): AuthService {
-  const { tenantSettings, assets } = deps;
+  const { tenantSettings, assets, content } = deps;
 
   async function loadAuth(orgId: string) {
     const settings = await tenantSettings.get(orgId);
@@ -46,21 +59,28 @@ export function createAuthService(deps: {
 
   async function publicConfig(orgId: string): Promise<AuthConfig> {
     const auth = await loadAuth(orgId);
-    const providers = enabledProviders(auth);
+    const customProviders = await listPublishedCustomAuthProviders(content, orgId);
+    const providers = resolveLoginProviders(auth, customProviders);
     const allowPassword = auth.allowPassword;
+
+    const providerLabels = { ...(auth.providerLabels ?? {}) };
+    const providerIconAssets: Record<string, MediaRef> = { ...(auth.providerIconAssets ?? {}) };
+    for (const provider of customProviders) {
+      if (!providers.includes(provider.providerId)) continue;
+      providerLabels[provider.providerId] = provider.name;
+      if (provider.iconDocumentId) {
+        providerIconAssets[provider.providerId] = { documentId: provider.iconDocumentId };
+      }
+    }
+
     return {
       providers,
       allowPassword,
       allowSignUp: auth.allowSignUp === true,
       allowPasswordReset: allowPassword && auth.allowPasswordReset !== false,
       requireMfaForAdmin: auth.requireMfaForAdmin === true,
-      providerLabels: publicProviderLabels(providers, auth.providerLabels ?? {}),
-      providerIcons: await resolveProviderIconUrls(
-        orgId,
-        providers,
-        auth.providerIconAssets ?? {},
-        assets,
-      ),
+      providerLabels: publicProviderLabels(providers, providerLabels),
+      providerIcons: await resolveProviderIconUrls(orgId, providers, providerIconAssets, assets),
     };
   }
 
@@ -265,4 +285,8 @@ export function createAuthService(deps: {
   };
 }
 
-export { DEFAULT_TENANT_AUTH, enabledProviders, normalizeAuthConfig } from "./auth-config";
+export {
+  DEFAULT_TENANT_AUTH,
+  enabledProviders,
+  normalizeAuthConfig,
+} from "../documents/tenant/auth-config";

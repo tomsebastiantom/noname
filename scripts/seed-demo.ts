@@ -342,10 +342,10 @@ async function ensureDemoAdminRole(): Promise<void> {
 
   const adminEmail = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
   const { findUserIdByEmail } = await import(
-    "../packages/server/src/domains/auth/zitadel-users.ts"
+    "../packages/server/src/domains/auth/adapters/zitadel/users.ts"
   );
   const { upsertUserTeamRole } = await import(
-    "../packages/server/src/domains/auth/zitadel-authorizations.ts"
+    "../packages/server/src/domains/auth/adapters/zitadel/authorizations.ts"
   );
 
   const userId = await findUserIdByEmail(DEMO_ORG_ID, adminEmail);
@@ -370,7 +370,7 @@ async function obtainSeedAdminToken(): Promise<void> {
   const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
   const { randomBytes } = await import("node:crypto");
   const { loginWithCredentials } = await import(
-    "../packages/server/src/domains/auth/zitadel-client.ts"
+    "../packages/server/src/domains/auth/adapters/zitadel/client.ts"
   );
 
   try {

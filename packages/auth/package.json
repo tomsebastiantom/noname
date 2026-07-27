@@ -1,0 +1,17 @@
+{
+  "name": "@noname/auth",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint",
+    "format": "biome format --write"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0"
+  }
+}

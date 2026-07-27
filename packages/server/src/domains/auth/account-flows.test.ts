@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAuthConfig } from "./auth-config";
-import { passwordResetUrlTemplate } from "./zitadel-users";
+import { normalizeAuthConfig } from "../documents/tenant/auth-config";
+import { passwordResetUrlTemplate } from "./adapters/zitadel/users";
 
 describe("account flow auth config", () => {
   it("defaults allowSignUp off and allowPasswordReset on", () => {

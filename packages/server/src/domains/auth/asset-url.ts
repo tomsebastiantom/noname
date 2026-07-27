@@ -1,4 +1,4 @@
-import type { AssetDocumentService, AssetDTO } from "../documents/ports";
+import type { AssetDocumentService, AssetDTO, MediaRef } from "../documents/ports";
 
 export function iconUrlFromAsset(asset: AssetDTO | null): string | null {
   if (!asset) return null;
@@ -21,7 +21,7 @@ export function iconUrlFromAsset(asset: AssetDTO | null): string | null {
 export async function resolveProviderIconUrls(
   orgId: string,
   providers: string[],
-  iconAssets: Record<string, { documentId: string }>,
+  iconAssets: Record<string, MediaRef>,
   assets: AssetDocumentService,
 ): Promise<Record<string, string>> {
   const icons: Record<string, string> = {};

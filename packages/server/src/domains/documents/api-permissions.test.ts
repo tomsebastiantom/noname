@@ -1,11 +1,11 @@
+import { zitadelProjectRolesClaimKey } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
-import { zitadelProjectRolesClaimKey } from "../auth/roles-from-jwt";
 import { createDocumentsRoutes } from "./api";
 import type { DocumentService } from "./ports";
 
-vi.mock("../auth/zitadel-project-id", () => ({
+vi.mock("../auth/adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: vi.fn(() => "proj-123"),
 }));
 

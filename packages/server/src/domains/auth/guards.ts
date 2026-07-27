@@ -1,9 +1,14 @@
+import {
+  hasPermission,
+  type PermissionKey,
+  resolveAuthContextFromAccessToken,
+  userIdFromAccessToken,
+} from "@noname/auth";
 import type { Context } from "hono";
 import { getUserId } from "../../shared/org";
-import { decodeAccessTokenPayload, userIdFromAccessToken } from "./jwt-user";
-import { hasPermission, type PermissionKey } from "./permissions";
-import { permissionsFromJwt } from "./roles-from-jwt";
-import { zitadelProjectIdOrNull } from "./zitadel-project-id";
+import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
+
+const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 export function bearerToken(c: Context): string | null {
   const auth = c.req.header("Authorization") ?? "";
@@ -25,20 +30,18 @@ export function requireAuthenticatedUser(
   return { userId, userToken };
 }
 
-export function requirePermission(
+export async function requirePermission(
   c: Context,
   permission: PermissionKey,
-): { userId: string; userToken: string; permissions: PermissionKey[] } | Response {
+): Promise<{ userId: string; userToken: string; permissions: PermissionKey[] } | Response> {
   const auth = requireAuthenticatedUser(c);
   if (auth instanceof Response) return auth;
 
-  const payload = decodeAccessTokenPayload(auth.userToken);
-  if (!payload) {
-    return c.json({ error: "Authentication required" }, 401);
-  }
-
   const projectId = zitadelProjectIdOrNull() ?? undefined;
-  const permissions = permissionsFromJwt(payload, { projectId });
+  const { permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
+    projectId,
+    issuer: ZITADEL_ISSUER,
+  });
   if (!hasPermission(permissions, permission)) {
     return c.json({ error: "Forbidden" }, 403);
   }

@@ -4,7 +4,7 @@ import { createDocumentsRoutes } from "./api";
 import type { AssetBinaryStorage } from "./assets/binary";
 import type { ContentValidator, DocumentStorage } from "./ports";
 import { createDocumentsService } from "./service";
-import { contentValidator } from "./validator";
+import { contentValidator } from "./validation/validator";
 
 export interface DocumentsDomainDeps {
   db: Database;

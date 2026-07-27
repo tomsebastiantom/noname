@@ -28,6 +28,14 @@ export function sessionHasPermission(
   return session?.permissions.includes(permission) === true;
 }
 
+/** Draft access for visual editor (?edit=true) — layout or content draft_write. */
+export function sessionCanDraft(session: AuthSessionStatus | null | undefined): boolean {
+  return (
+    sessionHasPermission(session, "layout:draft_write") ||
+    sessionHasPermission(session, "content:draft_write")
+  );
+}
+
 export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
   const storeSlug = requireStoreSlug();
   const res = await fetch(`/api/tenants/${storeSlug}/auth/session`, { headers: apiHeaders() });

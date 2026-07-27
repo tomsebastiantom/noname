@@ -6,7 +6,7 @@ import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { storeSlugFromHostname } from "./auth/org";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
-import { fetchAuthSessionStatus } from "./auth/team-users";
+import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
@@ -45,6 +45,7 @@ function App() {
   const platformRoute = route.kind === "platform";
   const template = platformRoute ? route.template : "storefront";
   const adminRoute = platformRoute && route.requiresAuth;
+  const editMode = new URLSearchParams(window.location.search).get("edit") === "true";
 
   const loadPage = useCallback(async () => {
     hydrateTokenFromCookie();
@@ -55,22 +56,29 @@ function App() {
       return;
     }
 
-    if (adminRoute && !isLoggedIn()) {
-      const redirect = encodeURIComponent(window.location.pathname);
+    if ((adminRoute || editMode) && !isLoggedIn()) {
+      const redirect = encodeURIComponent(window.location.pathname + window.location.search);
       window.location.href = `/login?redirect=${redirect}`;
       return;
     }
 
-    if (adminRoute && pathname.startsWith("/admin") && isLoggedIn()) {
+    if ((adminRoute || editMode) && isLoggedIn()) {
       try {
         const session = await fetchAuthSessionStatus();
-        if (session.requireMfaForAdmin && !session.mfaEnrolled) {
-          const redirect = encodeURIComponent(pathname);
+        if (editMode && !sessionCanDraft(session)) {
+          const url = new URL(window.location.href);
+          url.searchParams.delete("edit");
+          window.location.replace(url.pathname + url.search + url.hash);
+          return;
+        }
+        const needsMfaGate = editMode || pathname.startsWith("/admin");
+        if (needsMfaGate && session.requireMfaForAdmin && !session.mfaEnrolled) {
+          const redirect = encodeURIComponent(pathname + window.location.search);
           window.location.href = `/account/security?redirect=${redirect}&mfaRequired=1`;
           return;
         }
       } catch {
-        // Session check failed — still load admin; API calls will 401 if needed.
+        // Session check failed — still load page; API calls will 401 if needed.
       }
     }
 
@@ -111,7 +119,7 @@ function App() {
     } finally {
       setLoading(false);
     }
-  }, [storeSlug, template, adminRoute, platformRoute, pathname]);
+  }, [storeSlug, template, adminRoute, editMode, platformRoute, pathname]);
 
   useEffect(() => {
     void loadPage();
@@ -149,7 +157,12 @@ function App() {
 
   return (
     <AppShell template={template}>
-      {!adminRoute && <AuthBar onAuthChange={() => void loadPage()} />}
+      {editMode && (
+        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950">
+          Edit mode active — component overlay and save bar ship in the next editor slice.
+        </div>
+      )}
+      {!adminRoute && !editMode && <AuthBar onAuthChange={() => void loadPage()} />}
       <JSONUIProvider registry={registry}>
         <Renderer spec={spec} registry={registry} />
       </JSONUIProvider>

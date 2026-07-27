@@ -1,6 +1,5 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
-import { normalizeAuthConfig } from "../../auth/auth-config";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
@@ -10,6 +9,7 @@ import type {
 } from "../ports";
 import { parseDocumentRef } from "../refs";
 import { documents, documentTypes } from "../schema";
+import { normalizeAuthConfig } from "../tenant/auth-config";
 
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
   return {

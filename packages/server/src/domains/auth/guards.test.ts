@@ -1,10 +1,9 @@
+import { PERMISSIONS, zitadelProjectRolesClaimKey } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requirePermission } from "./guards";
-import { PERMISSIONS } from "./permissions";
-import { zitadelProjectRolesClaimKey } from "./roles-from-jwt";
 
-vi.mock("./zitadel-project-id", () => ({
+vi.mock("./adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: vi.fn(() => "proj-123"),
 }));
 
@@ -15,8 +14,8 @@ function jwt(payload: Record<string, unknown>): string {
 
 function appWithGuard() {
   const app = new Hono();
-  app.get("/protected", (c) => {
-    const auth = requirePermission(c, PERMISSIONS.AUTH_MANAGE);
+  app.get("/protected", async (c) => {
+    const auth = await requirePermission(c, PERMISSIONS.AUTH_MANAGE);
     if (auth instanceof Response) return auth;
     return c.json({ ok: true, userId: auth.userId });
   });

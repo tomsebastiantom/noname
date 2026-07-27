@@ -415,8 +415,8 @@ export interface PageTreeService {
   upsertPage(orgId: string, pageKey: string, input: UpsertPageInput): Promise<PageDTO>;
 }
 
-import type { InboundRefHit } from "./find-inbound-refs";
-import type { ResolvedDocumentRef } from "./resolve-refs";
+import type { InboundRefHit } from "./refs/inbound";
+import type { ResolvedDocumentRef } from "./refs/resolve";
 
 export interface DocumentService {
   contentTypes: ContentTypeDocumentService;

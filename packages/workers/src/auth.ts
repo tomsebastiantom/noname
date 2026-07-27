@@ -1,22 +1,10 @@
 import { getKey, parseJwt } from "@cfworker/jwt";
-import { primaryRoleFromKeys, rolesFromZitadelJwt } from "./jwt-roles";
+import { accessTokenFromRequest, resolveIdentityFromTokenPayload } from "@noname/auth";
 import type { EdgeContext, Env } from "./types";
-
-function orgIdFromPayload(payload: Record<string, unknown>): string {
-  return (
-    (payload["urn:zitadel:iam:org:id"] as string) ||
-    (payload.org_id as string) ||
-    (payload.tenant_id as string) ||
-    ""
-  );
-}
 
 /** Returns identity from JWT, or null when no/invalid token (no redirect). */
 export async function tryParseJwt(request: Request, env: Env): Promise<EdgeContext | null> {
-  const cookie = request.headers.get("Cookie") || "";
-  const authHeader = request.headers.get("Authorization") || "";
-  const token = authHeader.replace(/^Bearer\s+/i, "") || cookie.match(/access_token=([^;]+)/)?.[1];
-
+  const token = accessTokenFromRequest(request);
   if (!token) return null;
 
   try {
@@ -31,13 +19,10 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
 
     const payload = result.payload as unknown as Record<string, unknown>;
     const projectId = env.ZITADEL_PROJECT_ID?.trim() || undefined;
-    const roles = rolesFromZitadelJwt(payload, projectId);
-    return {
-      orgId: orgIdFromPayload(payload),
-      userId: (payload.sub as string) || "",
-      role: primaryRoleFromKeys(roles),
-      roles,
-    };
+    return resolveIdentityFromTokenPayload(token, payload, {
+      projectId,
+      issuer: env.ZITADEL_ISSUER,
+    });
   } catch {
     return null;
   }

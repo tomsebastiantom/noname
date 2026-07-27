@@ -1,3 +1,4 @@
+import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "@noname/auth";
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
@@ -55,6 +56,19 @@ export function createApiProxyRoutes() {
     const target = `${c.env.API_ORIGIN}${pathname}${incoming.search}`;
 
     const jwt = await tryParseJwt(c.req.raw, c.env);
+
+    if (isEditModeUrl(incoming)) {
+      let editCtx = jwt;
+      if (!editCtx) {
+        const auth = await validateJwt(c.req.raw, c.env);
+        if (auth instanceof Response) return auth;
+        editCtx = auth;
+      }
+      if (!canDraft(editCtx.roles ?? [])) {
+        return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
+      }
+    }
+
     let orgId = jwt?.orgId || "";
 
     if (!orgId) {

@@ -1,15 +1,15 @@
+import { PERMISSIONS, resolveAuthContextFromAccessToken } from "@noname/auth";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
 import { notFound } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
 import type { TenantSettingsService } from "../documents/ports";
+import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import { requireAuthenticatedUser, requirePermission } from "./guards";
-import { decodeAccessTokenPayload } from "./jwt-user";
-import { PERMISSIONS } from "./permissions";
 import type { AuthService } from "./ports";
-import { permissionsFromJwt, rolesFromJwt, teamRoleFromJwt } from "./roles-from-jwt";
-import { zitadelProjectIdOrNull } from "./zitadel-project-id";
+
+const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 const loginBodySchema = z.object({
   email: z.email(),
@@ -32,7 +32,7 @@ const oauthCallbackBodySchema = z.object({
   redirectUri: z.url(),
 });
 
-import { isSupportedLoginProvider } from "./auth-provider-content";
+import { isSupportedLoginProvider } from "../documents/content-types/auth-provider";
 
 const authConfigUpdateSchema = z.object({
   providers: z.array(z.enum(["google", "github", "apple"])).optional(),
@@ -105,7 +105,9 @@ const teamRoleUpdateSchema = z.object({
   role: z.enum(["admin", "editor"]),
 });
 
-function requireAuthManage(c: Context): ReturnType<typeof requireAuthenticatedUser> {
+async function requireAuthManage(
+  c: Context,
+): Promise<Awaited<ReturnType<typeof requirePermission>>> {
   return requirePermission(c, PERMISSIONS.AUTH_MANAGE);
 }
 
@@ -127,7 +129,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.put("/:orgId/auth/config", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthManage(c);
+    const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
     const parsed = authConfigUpdateSchema.safeParse(await c.req.json());
@@ -373,11 +375,16 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
 
     try {
       const status = await service.getSessionStatus(orgId, auth.userId);
-      const payload = decodeAccessTokenPayload(auth.userToken);
       const projectId = zitadelProjectIdOrNull() ?? undefined;
-      const roles = payload ? rolesFromJwt(payload, { projectId }) : [];
-      const permissions = payload ? permissionsFromJwt(payload, { projectId }) : [];
-      const teamRole = payload ? teamRoleFromJwt(payload, { projectId }) : null;
+      const { roles, permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
+        projectId,
+        issuer: ZITADEL_ISSUER,
+      });
+      const teamRole = roles.includes("admin")
+        ? "admin"
+        : roles.includes("editor")
+          ? "editor"
+          : null;
       return c.json({
         data: {
           ...status,
@@ -395,7 +402,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.get("/:orgId/auth/users", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthManage(c);
+    const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
     try {
@@ -410,7 +417,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.post("/:orgId/auth/users/invite", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthManage(c);
+    const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
     const parsed = teamInviteSchema.safeParse(await c.req.json());
@@ -431,7 +438,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
   routes.put("/:orgId/auth/users/:userId/role", async (c) => {
     const orgId = await orgFromParam(c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthManage(c);
+    const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
     const parsed = teamRoleUpdateSchema.safeParse(await c.req.json());

@@ -156,7 +156,11 @@ async function zitadelPost<T>(token: string, path: string, body: unknown): Promi
   }
 
   const err = parsed as { code?: string; message?: string };
-  if (!res.ok && err.code !== "already_exists") {
+  const noOp =
+    err.message?.includes("No changes") ||
+    err.code === "COMMAND-1m88i" ||
+    err.code === "already_exists";
+  if (!res.ok && !noOp) {
     throw new Error(`${path} → ${res.status}: ${err.message ?? text}`);
   }
 
