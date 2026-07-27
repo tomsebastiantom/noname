@@ -30,7 +30,7 @@ Merchant dashboard inside `packages/client` (no separate package):
 - **Login appearance** — title, logo, brand copy via `LoginBrandingForm` ✅
 - **Layout templates** — `admin_dashboard`, `admin_content`, `admin_login` in documents domain ✅
 - **Layout editor (JSON)** — `LayoutEntryAdmin` edit/publish layout specs ✅
-- **Visual editor** — `?edit=true` on live storefront 📋
+- **Visual editor** — `?edit=true` on live storefront — plan: [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) (permissions before UI)
 - **Page-specific JS** — Module Federation remotes 📋
 
 ---

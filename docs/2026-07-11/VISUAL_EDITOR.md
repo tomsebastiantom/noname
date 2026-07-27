@@ -10,7 +10,7 @@ An **inline visual editing mode** deployed as part of the client bundle (`packag
 
 **This is NOT a separate admin dashboard.** The merchant edits the exact page visitors see. Same URL. Same components. Same catalog. Same deployment (R2 + CDN).
 
-Modeled after: Shopify Theme Editor (inline click-to-edit), Webflow (visual canvas), builder.io (inline prop panels).
+Modeled after: **Google Docs** (click what you see; see [`VISUAL-EDITOR-UX.md`](../2026-07-25/VISUAL-EDITOR-UX.md)), Shopify Theme Editor, Notion blocks, builder.io prop panels.
 
 ---
 

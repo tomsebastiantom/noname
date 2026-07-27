@@ -206,7 +206,7 @@ Shipped in Phase C ([`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)) — **Auth setti
 | **Login appearance** | Title, subtitle, logo, layout | Login layout spec via `LoginBrandingForm` | ✅ |
 | **Account security** | TOTP enrollment (authenticator app) | ZITADEL user TOTP API via broker | ✅ |
 | **Security (org policy)** | MFA required for admins | `tenant_settings.auth.requireMfaForAdmin` | ✅ |
-| **Users** | List users, invite, roles | ZITADEL + `tenant_settings.auth.teamRoles` | ✅ |
+| **Users** | List users, invite, roles | ZITADEL Role Assignments (remove Postgres `teamRoles`) | 📋 migrate |
 
 See [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) for issues found during hardening, test steps, and remaining gaps.
 

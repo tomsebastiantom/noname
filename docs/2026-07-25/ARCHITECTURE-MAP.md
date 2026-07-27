@@ -17,7 +17,9 @@
 ✅ A2   Per-org auth config         → tenant_settings.auth in Postgres
 ✅ C    Admin UI                    → shell, CMS, auth, pages, polish (DataTable, delete warnings)
 ✅ 3    Store slug                  → yogastore.localhost → org on edge (KV + resolve API)
-📋 D    Scale                       → visual editor, custom domains
+📋 D    Permissions + visual editor → permissions first, then editor UI
+         → code: PERMISSIONS-IMPLEMENTATION-PLAN.md (Slices 1→4)
+         → model: PERMISSIONS-MASTER-PLAN.md
 ```
 
 | Step | Doc | Validates when |
@@ -106,6 +108,10 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) | Forgot password, sign-up, MFA verify + enrollment |
 | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Per-org providers — **no env shortcuts** |
 | [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) | Auth hardening: issues, fixes, test checklist |
+| [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) | **Team RBAC** — ZITADEL only; Postgres for field ACLs + store config |
+| [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) | **Zanzibar-style** doc ACL, editor capabilities, op log, consistency model |
+| [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](./VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) | **Build order 0→10** — OpenFGA design, ZITADEL, editor, Automerge, Hocuspocus |
+| [`SPEC-STORAGE-MERGE.md`](./SPEC-STORAGE-MERGE.md) | **Layout spec** — catalog Zod validation, partial storage, merge on read |
 | [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) | `yogastore.localhost` slug routing (slug-only URLs) |
 
 ### Admin
@@ -113,6 +119,12 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Doc | What it covers |
 |-----|----------------|
 | [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) | `/admin` shell, DataTable lists, CMS, auth settings |
+| [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) | **Permissions master plan** — start here; Phase 0→3, gaps, validation |
+| [`PERMISSIONS-IMPLEMENTATION-PLAN.md`](../2026-07-27/PERMISSIONS-IMPLEMENTATION-PLAN.md) | **Coding checklist** — Slices 1→4, files, validate |
+| [`PERMISSIONS-IDP-COMPARISON.md`](../2026-07-27/PERMISSIONS-IDP-COMPARISON.md) | ZITADEL vs Auth0/Keycloak/Logto; token refresh |
+| [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) | **Visual editor next steps** — permissions model, gaps, build order before `?edit=true` |
+| [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) | **Merchant UX** — Google Docs–style click-to-edit, spec binding, save bar |
+| [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) | Inline edit implementation, PropsPanel, save/publish flow |
 
 ---
 
@@ -121,7 +133,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | Data | Storage | Merchant edits via |
 |------|---------|-------------------|
 | CMS entry fields (any content type) | `content` document | Admin → Content (`ContentEntryAdmin`, DataTable + delete warnings) |
-| Page structure (Hero, ProductCard) | `layout` document | Admin → Layouts (`LayoutEntryAdmin`) or visual editor (Phase D) |
+| Page structure (Hero, ProductCard) | `layout` document | Admin → Layouts or visual editor ([`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md)) |
 | Login welcome text | `layout` login template props | Admin → Login appearance |
 | Google on/off, sign-up, reset flags | `tenant_settings.auth` + ZITADEL IdP | Admin → Auth settings |
 | TOTP enrollment (user) | ZITADEL user MFA | `/account/security` (`AccountSecurityForm`) |

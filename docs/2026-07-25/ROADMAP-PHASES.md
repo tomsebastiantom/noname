@@ -138,7 +138,7 @@ Merchant manages content, layouts, pages, auth settings without re-seeding.
 
 | Item | Doc |
 |------|-----|
-| Visual editor `?edit=true` | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
+| Visual editor `?edit=true` | [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](./VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) · [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) · [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) |
 | Tenant MF remotes (CDN) | 📋 Rebuild — [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md) (code reverted) |
 | Tenant catalog Git source | 📋 [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) |

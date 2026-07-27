@@ -104,7 +104,7 @@ Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant UR
 
 | Item | Why it matters | Doc |
 |------|----------------|-----|
-| Visual editor `?edit=true` | Click-to-edit storefront | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
+| Visual editor `?edit=true` | Click-to-edit — **start:** [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](./VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) | [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) |
 | Custom domains | `shop.example.com` → org | Phase D |
 | Published-only refs | Stricter ref validation on publish | [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) § Future |
 
