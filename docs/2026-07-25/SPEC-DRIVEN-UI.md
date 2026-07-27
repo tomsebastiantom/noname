@@ -101,7 +101,7 @@ Pick **one** source per kind of data — mixing them causes drift and wrong cach
 |------|---------|---------|-------------|
 | **Page structure** (which components, order) | `layout` document | `AdminShell` → `ContentEntryAdmin` | Edge returns spec as-is (login/admin) or after content merge (storefront) |
 | **Layout chrome copy** (titles, descriptions, button labels in spec props) | Layout spec **props** | `LoginForm.title`, `LayoutEntryAdmin.publishLabel` | Edge — no CMS |
-| **Merchant content** (product title, page body) | `content` document | `page` entry fields | Edge `$state` + `resolveElementProps` |
+| **Org content** (entries, page body, any content type) | `content` document | `page`, `product`, … entry fields | Edge `$state` + `resolveElementProps` |
 | **Auth behavior** (providers on/off) | `tenant_settings.auth` | `providers: ["google"]` | Client merges into `LoginForm` / `AuthSettingsForm` via API |
 | **Side effects** | Action handlers | `saveAuthConfig`, `addToCart` | `executeAction` → `core/actions` or extension |
 
@@ -112,7 +112,7 @@ Pick **one** source per kind of data — mixing them causes drift and wrong cach
 See [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) § “Two page types”.
 
 **Login / admin:** copy in layout props or settings — **not** CMS content entries.  
-**Storefront:** copy in CMS — **not** baked into layout JSON.
+**Public site:** copy in CMS — **not** baked into layout JSON.
 
 ---
 

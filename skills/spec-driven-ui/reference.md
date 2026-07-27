@@ -35,9 +35,9 @@ main.tsx
 |------|---------|---------------|
 | Page structure | `layout` document | Spec tree |
 | Login/admin copy (titles, descriptions, **buttons**) | Layout **props** | Passed into component — not hardcoded in React |
-| Merchant copy on storefront | `content` document | `$state` + resolve |
+| Org content on public site | `content` document | `$state` + resolve |
 | Provider toggles | `tenant_settings.auth` | Client merge |
-| Locale | `tenant_settings.locales` + layout props | Per-store language without TSX changes |
+| Locale | `tenant_settings.locales` + layout props | Per-org language without TSX changes |
 
 **Rule:** If the user can read it on screen, it is **not** a string literal in `.tsx` (except loading/error fallbacks in `main.tsx` host shell).
 

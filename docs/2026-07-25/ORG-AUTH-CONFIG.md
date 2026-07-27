@@ -20,7 +20,7 @@
 | Provider / OAuth button labels | Layout spec props + `tenant_settings.auth.providerLabels` | Fallback literal in component (debt) | ✅ Per org via auth config; target: zero TSX copy |
 
 **Rule:** Runtime never reads `ZITADEL_GOOGLE_IDP_ID`. Seed may use it once to populate Postgres for local dev.  
-**Copy rule:** No merchant-visible strings in React — see [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) and `skills/spec-driven-ui/`.
+**Copy rule:** No org-visible strings in React — see [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) and `skills/spec-driven-ui/`.
 
 ## Build order (must complete in this order)
 
@@ -42,9 +42,9 @@ Do **not** move to Phase C admin or “production auth” until steps 1–4 exis
 
 ## Vision
 
-Each **org (store)** should configure auth **in UI**, without code deploys — similar to Clerk Organizations:
+Each **org** configures auth **in UI**, without code deploys — similar to Clerk Organizations:
 
-| Merchant configures in admin | Customer sees on `/login` |
+| Org operator configures in admin | End user sees on `/login` |
 |------------------------------|---------------------------|
 | Enable Google / Apple / GitHub | Matching social buttons |
 | Require MFA for admins | MFA step when needed |
@@ -52,7 +52,7 @@ Each **org (store)** should configure auth **in UI**, without code deploys — s
 | Allow sign-up vs invite-only | Register link or hidden |
 | Password + social mix | “Continue with Google” + email form |
 
-**We do not add Clerk.** ZITADEL is the IdP; we build the **merchant settings UI** + **storefront login UI** + **server broker**.
+**We do not add Clerk.** ZITADEL is the IdP; we build the **org admin settings UI** + **public login UI** + **server broker**.
 
 ---
 
@@ -87,7 +87,7 @@ Each **org (store)** should configure auth **in UI**, without code deploys — s
 
 **Never** put OAuth secrets in layout spec or client bundle.  
 **Never** use `.env` IdP ids as the per-org source of truth — env is dev bootstrap only until step 6 above.  
-**Never** bake merchant- or locale-specific copy into React — pass via layout props or `tenant_settings`.
+**Never** bake org- or locale-specific copy into React — pass via layout props or `tenant_settings`.
 
 ### Where login “content” lives (not one CMS)
 

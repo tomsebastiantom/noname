@@ -1,15 +1,17 @@
 ---
 name: spec-driven-ui
 description: >-
-  Builds merchant-facing UI through the Noname spec pipeline (layout document →
+  Builds org-facing UI through the Noname spec pipeline (layout document →
   edge schema → json-render Renderer). Use when adding admin pages, login screens,
-  storefront components, catalog schemas, executeAction handlers, layout seeds,
+  public-site components, catalog schemas, executeAction handlers, layout seeds,
   or any UI in packages/client. Prevents drift from ad-hoc React routes.
 ---
 
 # Spec-Driven UI
 
-**Rule:** Every merchant page loads from **layout spec + catalog** — not a hand-written React route.
+**Platform note:** Noname is identity-agnostic — not e-commerce-only. Use **org** / **org operator** / **public site** in docs and code comments; avoid defaulting to “merchant” or “store” unless the example is commerce.
+
+**Rule:** Every org-facing page loads from **layout spec + catalog** — not a hand-written React route.
 
 ```
 URL → templateFromPath → layout document → GET /api/edge/schema → <Renderer spec={…} />
@@ -21,7 +23,7 @@ Read [reference.md](reference.md) for data-source rules and anti-patterns. See [
 
 ## When to use this skill
 
-- Adding `/admin/*`, `/login`, or storefront UI
+- Adding `/admin/*`, `/login`, or public-site UI
 - Creating a new catalog component or action
 - Seeding or publishing layout documents
 - User asks for "admin page", "settings form", "CMS editor", or "new screen"
@@ -121,15 +123,15 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 | UI kind | Text source | Example |
 |---------|-------------|---------|
 | Admin / login chrome (titles, descriptions, **button labels**) | Layout spec **props** | `title`, `saveLabel`, `publishLabel` on `LayoutEntryAdmin` |
-| Storefront body | CMS **content** → `$state` | Product title, hero text |
+| Storefront body | CMS **content** → `$state` | Product title, hero text (commerce examples) |
 | Auth behavior labels | `tenant_settings.auth` + layout props | Provider toggles |
-| Locale / language | `tenant_settings.locales` + layout props (v1) or i18n catalog (later) | Same spec tree, per-locale layout or translated props |
+| Locale / language | `tenant_settings.locales` + layout props (v1) or i18n catalog (later) | Per-org language without TSX changes |
 | Side effects | **Actions** only — no copy | `executeAction("publishLayoutEntry", …)` |
 
 **v1 today:** some admin widgets still have hardcoded strings (`"Save & publish"`) — **legacy debt**. Do not add new literals; add props to `catalog-schemas.ts` and pass labels from the layout seed.
 
 **Wrong:** `"Save & publish"` inside `LayoutEntryAdmin.tsx`  
-**Right:** `props.publishLabel` from layout JSON (merchant- or locale-specific without code changes)
+**Right:** `props.publishLabel` from layout JSON (org- or locale-specific without code changes)
 
 ---
 
