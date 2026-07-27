@@ -1,8 +1,10 @@
 import type { MouseEvent, ReactNode } from "react";
+import { useAnalyticsViewPermission } from "../../auth/analytics-access";
 import { clearSession, isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
 import { navigateApp } from "../../platform/app-navigation";
+import { clearObservabilityUser } from "../../platform/browser-observability";
 import { isPlatformPath } from "../../platform-routes";
 
 export type AdminNavItem = {
@@ -69,6 +71,11 @@ function AdminNavLink({
 
 export function AdminNav(props: AdminNavProps) {
   const loggedIn = isLoggedIn();
+  const canViewReplay = useAnalyticsViewPermission();
+
+  const settingsItems = props.settingsItems.filter(
+    (item) => item.id !== "replay" || canViewReplay === true,
+  );
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
@@ -89,7 +96,7 @@ export function AdminNav(props: AdminNavProps) {
         <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {props.settingsSectionLabel}
         </p>
-        {props.settingsItems.map((item) => (
+        {settingsItems.map((item) => (
           <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
             {item.label}
           </AdminNavLink>
@@ -115,6 +122,7 @@ export function AdminNav(props: AdminNavProps) {
             size="sm"
             className="w-full"
             onClick={() => {
+              clearObservabilityUser();
               clearSession();
               window.location.href = "/login";
             }}

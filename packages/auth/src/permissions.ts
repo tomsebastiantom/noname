@@ -21,6 +21,8 @@ export const PERMISSIONS = {
   PAGE_DRAFT_WRITE: "page:draft_write",
   PAGE_PUBLISH: "page:publish",
   AUTH_MANAGE: "auth:manage",
+  /** Session replay + analytics dashboards — admin only (PII / DOM content). */
+  ANALYTICS_VIEW: "analytics:view",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

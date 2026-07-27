@@ -11,6 +11,7 @@ import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
+import { clearObservabilityUser } from "../../platform/browser-observability";
 import type { CatalogActionHandler } from "./types";
 
 export const authActions = {
@@ -127,6 +128,7 @@ export const authActions = {
   }) satisfies CatalogActionHandler,
 
   logout: (async () => {
+    clearObservabilityUser();
     clearSession();
     sessionStorage.removeItem("noname_mfa_login");
     window.location.href = "/login";

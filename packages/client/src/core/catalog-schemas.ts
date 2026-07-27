@@ -200,6 +200,37 @@ export const coreComponentSchemas = {
     }),
     description: "List and invite ZITADEL users for this org",
   },
+  FeatureFlagsAdmin: {
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      onLabel: z.string(),
+      offLabel: z.string(),
+      togglingLabel: z.string(),
+    }),
+    description: "List and toggle feature flags for this org",
+  },
+  SessionReplayAdmin: {
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      sessionColumnHeader: z.string(),
+      chunksColumnHeader: z.string(),
+      lastSeenColumnHeader: z.string(),
+      previewTitle: z.string(),
+      previewLoadingLabel: z.string(),
+      loadChunkLabel: z.string(),
+      playSessionLabel: z.string(),
+      playerLoadingLabel: z.string(),
+      forbiddenLabel: z.string(),
+      noChunksLabel: z.string(),
+    }),
+    description: "List session replay chunks for this org (admin only)",
+  },
   ContentEntryAdmin: {
     props: z
       .object({
@@ -502,5 +533,22 @@ export const coreActionSchemas = {
       ),
     }),
     description: "Save the storefront URL page tree",
+  },
+  listReplaySessions: {
+    description: "List session replay summaries for this org (admin only)",
+  },
+  loadReplayChunk: {
+    params: z.object({
+      storageKey: z.string().min(1),
+      sessionId: z.string().optional(),
+    }),
+    description: "Load one rrweb replay chunk by storage key",
+  },
+  playReplaySession: {
+    params: z.object({
+      sessionId: z.string().min(1),
+      storageKeys: z.array(z.string().min(1)).min(1),
+    }),
+    description: "Load and merge all replay chunks for playback",
   },
 };

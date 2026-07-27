@@ -1,7 +1,15 @@
 import { onUnload } from "../core/lifecycle";
 import { touchSession } from "../core/session";
 import { Batcher, sendBeacon, sendWithRetry } from "../core/transport";
-import type { AnalyticsEvent, AnalyticsModule } from "../types";
+import type { AnalyticsEvent, AnalyticsModule, ObservabilityUser } from "../types";
+
+function userMeta(user: ObservabilityUser | null): Record<string, unknown> {
+  if (!user) return {};
+  const meta: Record<string, unknown> = { userId: user.id };
+  if (user.email) meta.userEmail = user.email;
+  if (user.name) meta.userName = user.name;
+  return meta;
+}
 
 interface AnalyticsContext {
   sessionId: string;
@@ -12,9 +20,9 @@ interface AnalyticsContext {
 
 export function createAnalyticsModule(
   endpoint: string,
-  orgId: string,
   getContext: () => AnalyticsContext,
   getHeaders: () => Record<string, string>,
+  getUser: () => ObservabilityUser | null,
   batchSize = 50,
   flushIntervalMs = 5000,
 ): AnalyticsModule {
@@ -38,7 +46,7 @@ export function createAnalyticsModule(
   onUnload(() => {
     const batch = batcher.drainForBeacon();
     if (batch.length > 0) {
-      sendBeacon(endpoint, JSON.stringify({ orgId, events: toPayload(batch) }));
+      sendBeacon(endpoint, JSON.stringify(toPayload(batch)));
     }
   });
 
@@ -52,7 +60,7 @@ export function createAnalyticsModule(
         schemaId: ctx.schemaId,
         variantId: ctx.variantId,
         contextHash: ctx.contextHash,
-        meta,
+        meta: { ...meta, ...userMeta(getUser()) },
         timestamp: Date.now(),
       });
     },

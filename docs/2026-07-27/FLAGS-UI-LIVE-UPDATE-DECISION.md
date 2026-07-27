@@ -1,6 +1,6 @@
 # Flags → Live UI — Decision & Analysis
 
-> **Status:** Proposal — **no code until approved**  
+> **Status:** **Implemented** (2026-07-27) — hybrid Phases 1–2 shipped. See [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md).  
 > **Date:** 2026-07-27  
 > **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`flags-domain.md`](../2026-07-04/flags-domain.md), [`BROWSER_SDK.md`](../2026-07-11/BROWSER_SDK.md)
 
@@ -308,12 +308,10 @@ Pass `sdk.flags.get()` into json-render; components react via conditions.
 
 ## Approval
 
-- [ ] Approve Phase 1 (debounced re-fetch on flag change)  
-- [ ] Approve Phase 2 (`$flags` in json-render)  
-- [ ] Approve optional SDK `onAnyUpdate` helper  
+- [x] Approve Phase 1 (debounced re-fetch on layout-bound flag change)  
+- [x] Approve Phase 2 (`$flags` via `/flags/{key}` json-render state)  
+- [x] Approve SDK `onAnyUpdate` + `getAll` + `seed` helpers  
 - [ ] Defer Phase 3 until flag volume / layout-bound metadata needed  
-
-**Approved by:** _______________ **Date:** _______________
 
 ---
 

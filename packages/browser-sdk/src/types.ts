@@ -39,6 +39,12 @@ export interface WebVitalMetric {
   delta?: number;
 }
 
+export interface ObservabilityUser {
+  id: string;
+  email?: string;
+  name?: string;
+}
+
 export interface AnalyticsModule {
   track(eventType: string, meta?: Record<string, unknown>): void;
   pageView(): void;
@@ -50,7 +56,7 @@ export interface AnalyticsModule {
 export interface ErrorsModule {
   capture(error: Error, context?: Record<string, unknown>): void;
   breadcrumb(message: string, data?: Record<string, unknown>): void;
-  setUser(user: { id: string; email?: string; name?: string }): void;
+  setUser(user: ObservabilityUser | null): void;
 }
 
 export interface TraceModule {
@@ -65,7 +71,10 @@ export interface PerformanceModule {
 
 export interface FlagsModule {
   get(key: string): unknown;
+  getAll(): Record<string, unknown>;
+  seed(values: Record<string, unknown>): void;
   onUpdate(key: string, callback: (value: unknown) => void): () => void;
+  onAnyUpdate(callback: (key: string, value: unknown) => void): () => void;
   evaluate(context?: Record<string, unknown>): Promise<void>;
   isReady(): boolean;
 }
@@ -85,11 +94,14 @@ export interface BrowserSDK {
   performance: PerformanceModule;
   flags: FlagsModule;
   replay: ReplayModule;
+  /** Attach auth account to subsequent events + errors. Emits `user_identified` once. */
+  setUser(user: ObservabilityUser): void;
+  /** Clear account attribution (logout). */
+  clearUser(): void;
   destroy(): void;
 }
 
 export interface BrowserSDKOptions {
-  orgId: string;
   analytics?: {
     enabled?: boolean;
     endpoint?: string;
@@ -129,7 +141,7 @@ export interface BrowserSDKOptions {
     respectDNT?: boolean;
     respectGPC?: boolean;
   };
-  /** Merged into every SDK fetch (e.g. x-org-id, Authorization). Not sent via sendBeacon. */
+  /** Merged into SDK fetch calls (e.g. x-org-id, Authorization). sendBeacon uses edge Host org only. */
   getHeaders?: () => Record<string, string>;
   debug?: boolean;
 }

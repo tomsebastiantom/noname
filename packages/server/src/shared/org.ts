@@ -15,6 +15,10 @@ declare module "hono" {
 
 const secret = process.env.WORKER_SERVER_SECRET || "";
 
+function edgeHmacRequired(): boolean {
+  return process.env.REQUIRE_EDGE_HMAC === "true";
+}
+
 function verifyHmac(orgId: string, userId: string, role: string, providedHmac: string): boolean {
   if (!secret) return false;
   const payload = `${orgId}:${userId}:${role}`;
@@ -41,6 +45,8 @@ export const orgMiddleware: MiddlewareHandler = async (c, next) => {
     if (!verifyHmac(orgId, userId, role, hmac)) {
       return c.json({ error: "Invalid auth signature" }, 401);
     }
+  } else if (edgeHmacRequired()) {
+    return c.json({ error: "Request must come through edge worker" }, 401);
   } else if (secret && c.req.path !== "/health") {
     console.warn("No HMAC on request — may bypass edge worker");
   }
@@ -66,4 +72,13 @@ export function getUserId(c: Context): string {
 
 export function getRole(c: Context): string {
   return c.get(ROLE_KEY);
+}
+
+/** Org from edge-signed x-org-id only — never from body or query. */
+export function requireHeaderOrgId(c: Context): string | Response {
+  const orgId = getOrgId(c);
+  if (!orgId) {
+    return c.json({ error: "org id required" }, 400);
+  }
+  return orgId;
 }

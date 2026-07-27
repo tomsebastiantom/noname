@@ -37,10 +37,9 @@ export function broadcast(orgId: OrgId, data: Record<string, unknown>): void {
   const orgClients = clients.get(orgId);
   if (!orgClients) return;
 
-  const payload = `data: ${JSON.stringify(data)}\n\n`;
   for (const stream of orgClients.values()) {
     try {
-      stream.write(payload);
+      stream.writeSSE({ data: JSON.stringify(data) });
     } catch {
       // Stream closed — cleanup handled by onAbort
     }

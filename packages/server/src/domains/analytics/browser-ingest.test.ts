@@ -2,9 +2,9 @@ import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
 import { createAnalyticsRoutes } from "./api";
-import { parseErrorIngest, parseTrackIngest } from "./browser-ingest";
-import type { ReplayBlobStorage } from "./replay-storage";
+import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "./browser-ingest";
 import type { AnalyticsService } from "./ports";
+import type { ReplayBlobStorage } from "./replay-storage";
 
 function testApp(service: AnalyticsService, replayStorage: ReplayBlobStorage | null = null) {
   const app = new Hono();
@@ -19,9 +19,8 @@ describe("parseTrackIngest", () => {
     expect(parseTrackIngest(events)).toEqual({ events });
   });
 
-  it("accepts beacon wrapper with orgId", () => {
+  it("accepts beacon wrapper with events array", () => {
     const body = {
-      orgId: "org-1",
       events: [{ eventType: "page_view", sessionId: "s1" }],
     };
     expect(parseTrackIngest(body)).toEqual(body);
@@ -31,9 +30,34 @@ describe("parseTrackIngest", () => {
 describe("parseErrorIngest", () => {
   it("accepts single report wrapper", () => {
     const report = { sessionId: "s1", message: "boom" };
-    expect(parseErrorIngest({ orgId: "org-1", report })).toEqual({
-      orgId: "org-1",
+    expect(parseErrorIngest({ report })).toEqual({
       reports: [report],
+    });
+  });
+});
+
+describe("enrichEventMeta", () => {
+  it("prefers x-user-id header over client meta", () => {
+    expect(enrichEventMeta("user-trusted", { userId: "user-spoofed", url: "/" })).toEqual({
+      userId: "user-trusted",
+      url: "/",
+    });
+  });
+
+  it("keeps SDK meta userId when no header", () => {
+    expect(enrichEventMeta("", { userId: "user-beacon", url: "/" })).toEqual({
+      userId: "user-beacon",
+      url: "/",
+    });
+  });
+
+  it("extracts userId from error report user object", () => {
+    expect(
+      enrichEventMeta("", { message: "boom", user: { id: "user-1", email: "a@b.c" } }),
+    ).toEqual({
+      message: "boom",
+      user: { id: "user-1", email: "a@b.c" },
+      userId: "user-1",
     });
   });
 });
@@ -47,9 +71,7 @@ describe("analytics browser ingest routes", () => {
     const res = await app.request("/api/analytics/track", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-org-id": "org-1" },
-      body: JSON.stringify([
-        { eventType: "page_view", sessionId: "s1", meta: { url: "/" } },
-      ]),
+      body: JSON.stringify([{ eventType: "page_view", sessionId: "s1", meta: { url: "/" } }]),
     });
 
     expect(res.status).toBe(201);
@@ -87,9 +109,8 @@ describe("analytics browser ingest routes", () => {
 
     const res = await app.request("/api/analytics/replay", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-org-id": "org-1" },
       body: JSON.stringify({
-        orgId: "org-1",
         sessionId: "s1",
         events: [{ type: 1 }, { type: 2 }],
       }),
@@ -109,13 +130,15 @@ describe("analytics browser ingest routes", () => {
   it("POST /replay uploads blob when R2 storage is configured", async () => {
     const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
     const putChunk = vi.fn(async () => "replays/org-1/s1/chunk.json");
-    const app = testApp({ track } as unknown as AnalyticsService, { putChunk });
+    const app = testApp({ track } as unknown as AnalyticsService, {
+      putChunk,
+      getChunk: vi.fn(async () => null),
+    });
 
     const res = await app.request("/api/analytics/replay", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "x-org-id": "org-1" },
       body: JSON.stringify({
-        orgId: "org-1",
         sessionId: "s1",
         events: [{ type: 1 }],
       }),
@@ -129,5 +152,66 @@ describe("analytics browser ingest routes", () => {
         meta: expect.objectContaining({ storageKey: "replays/org-1/s1/chunk.json" }),
       }),
     );
+  });
+
+  it("POST /track ignores body orgId and uses x-org-id header", async () => {
+    const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
+    const app = testApp({ track } as unknown as AnalyticsService);
+
+    const res = await app.request("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-org-id": "org-trusted" },
+      body: JSON.stringify({
+        orgId: "org-spoofed",
+        events: [{ eventType: "page_view", sessionId: "s1" }],
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(track).toHaveBeenCalledWith(
+      "org-trusted",
+      expect.objectContaining({ eventType: "page_view" }),
+    );
+  });
+
+  it("POST /track merges x-user-id into event meta", async () => {
+    const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
+    const app = new Hono();
+    app.use("*", orgMiddleware);
+    app.route("/api/analytics", createAnalyticsRoutes({ track } as unknown as AnalyticsService));
+
+    const res = await app.request("/api/analytics/track", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-org-id": "org-1",
+        "x-user-id": "user-42",
+      },
+      body: JSON.stringify([{ eventType: "page_view", sessionId: "s1", meta: { url: "/" } }]),
+    });
+
+    expect(res.status).toBe(201);
+    expect(track).toHaveBeenCalledWith("org-1", {
+      eventType: "page_view",
+      sessionId: "s1",
+      meta: { url: "/", userId: "user-42" },
+    });
+  });
+
+  it("POST /track returns 400 without x-org-id header", async () => {
+    const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
+    const app = testApp({ track } as unknown as AnalyticsService);
+
+    const res = await app.request("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        orgId: "org-1",
+        events: [{ eventType: "page_view", sessionId: "s1" }],
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    expect(track).not.toHaveBeenCalled();
   });
 });

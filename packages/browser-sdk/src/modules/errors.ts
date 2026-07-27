@@ -26,7 +26,6 @@ interface ErrorDedupEntry {
 
 export function createErrorsModule(
   endpoint: string,
-  orgId: string,
   getSessionId: () => string,
   getTraceContext: () => { traceId: string; spanId: string },
   getHeaders: () => Record<string, string>,
@@ -97,7 +96,7 @@ export function createErrorsModule(
     fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...getHeaders() },
-      body: JSON.stringify({ orgId, report }),
+      body: JSON.stringify({ report }),
       keepalive: true,
     }).catch(() => {
       // Error reporting failure — queue for retry on unload
@@ -106,7 +105,7 @@ export function createErrorsModule(
 
   onUnload(() => {
     if (queuedErrors.length > 0) {
-      sendBeacon(endpoint, JSON.stringify({ orgId, reports: queuedErrors }));
+      sendBeacon(endpoint, JSON.stringify({ reports: queuedErrors }));
     }
   });
 
@@ -125,7 +124,7 @@ export function createErrorsModule(
     },
 
     setUser(u) {
-      user = u;
+      user = u ?? undefined;
     },
   };
 

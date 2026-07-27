@@ -1,9 +1,16 @@
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { getOrgId } from "../../shared/org";
+import { getOrgId, requireHeaderOrgId } from "../../shared/org";
 import { created, notFound, ok } from "../../shared/respond";
 import { addClient } from "../../shared/sse-manager";
-import type { CreateFlagInput, FlagEvaluationContext, FlagService, UpdateFlagInput } from "./ports";
+// Re-export needed for route file only.
+import type {
+  CreateFlagInput,
+  FlagEvaluationContext,
+  FlagFilters,
+  FlagService,
+  UpdateFlagInput,
+} from "./ports";
 
 export function createFlagRoutes(service: FlagService) {
   const routes = new Hono();
@@ -28,35 +35,14 @@ export function createFlagRoutes(service: FlagService) {
     return ok(c, flags);
   });
 
-  routes.get("/:id", async (c) => {
-    const orgId = getOrgId(c);
-    const flag = await service.get(orgId, c.req.param("id"));
-    return flag ? ok(c, flag) : notFound(c);
-  });
-
-  routes.put("/:id", async (c) => {
-    const orgId = getOrgId(c);
-    const body = await c.req.json<UpdateFlagInput>();
-    const flag = await service.update(orgId, c.req.param("id"), body);
-    return ok(c, flag);
-  });
-
-  routes.delete("/:id", async (c) => {
-    const orgId = getOrgId(c);
-    const flag = await service.archive(orgId, c.req.param("id"));
-    return ok(c, flag);
-  });
-
   routes.post("/evaluate", async (c) => {
     const { context, flagKeys } = await c.req.json<{
       context: FlagEvaluationContext;
       flagKeys?: string[];
     }>();
-    const orgId = getOrgId(c) || context.orgId || "";
-    if (!orgId) {
-      return c.json({ error: "org id required" }, 400);
-    }
-    const evaluations = await service.evaluate(orgId, context, flagKeys);
+    const orgId = requireHeaderOrgId(c);
+    if (orgId instanceof Response) return orgId;
+    const evaluations = await service.evaluate(orgId, { ...context, orgId }, flagKeys);
     return ok(c, { evaluations });
   });
 
@@ -70,21 +56,9 @@ export function createFlagRoutes(service: FlagService) {
     return ok(c, { results });
   });
 
-  routes.get("/:id/evaluations", async (c) => {
-    const orgId = getOrgId(c);
-    const from = c.req.query("from");
-    const to = c.req.query("to");
-    const contextHash = c.req.query("contextHash");
-    const evaluationRecords = await service.listEvaluations(orgId, c.req.param("id"), {
-      from: from ? new Date(from) : undefined,
-      to: to ? new Date(to) : undefined,
-      contextHash: contextHash || undefined,
-    });
-    return ok(c, evaluationRecords);
-  });
-
   routes.get("/stream", (c) => {
-    const orgId = c.req.query("orgId") || getOrgId(c);
+    const orgId = requireHeaderOrgId(c);
+    if (orgId instanceof Response) return orgId;
 
     return streamSSE(c, async (stream) => {
       addClient(orgId, stream);
@@ -107,8 +81,37 @@ export function createFlagRoutes(service: FlagService) {
     });
   });
 
+  routes.get("/:id", async (c) => {
+    const orgId = getOrgId(c);
+    const flag = await service.get(orgId, c.req.param("id"));
+    return flag ? ok(c, flag) : notFound(c);
+  });
+
+  routes.put("/:id", async (c) => {
+    const orgId = getOrgId(c);
+    const body = await c.req.json<UpdateFlagInput>();
+    const flag = await service.update(orgId, c.req.param("id"), body);
+    return ok(c, flag);
+  });
+
+  routes.delete("/:id", async (c) => {
+    const orgId = getOrgId(c);
+    const flag = await service.archive(orgId, c.req.param("id"));
+    return ok(c, flag);
+  });
+
+  routes.get("/:id/evaluations", async (c) => {
+    const orgId = getOrgId(c);
+    const from = c.req.query("from");
+    const to = c.req.query("to");
+    const contextHash = c.req.query("contextHash");
+    const evaluationRecords = await service.listEvaluations(orgId, c.req.param("id"), {
+      from: from ? new Date(from) : undefined,
+      to: to ? new Date(to) : undefined,
+      contextHash: contextHash || undefined,
+    });
+    return ok(c, evaluationRecords);
+  });
+
   return routes;
 }
-
-// Re-export needed for route file only.
-import type { FlagFilters } from "./ports";

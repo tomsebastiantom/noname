@@ -4,6 +4,7 @@ import { AdminShell } from "./components/AdminShell";
 import { AuthLayout } from "./components/AuthLayout";
 import { AuthSettingsForm } from "./components/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
+import { FeatureFlagsAdmin } from "./components/FeatureFlagsAdmin";
 import { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 import { LoginBrandingForm } from "./components/LoginBrandingForm";
 import { LoginForm } from "./components/LoginForm";
@@ -11,6 +12,7 @@ import { MountAction } from "./components/MountAction";
 import { PageEntryAdmin } from "./components/PageEntryAdmin";
 import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 import { PageTreeAdmin } from "./components/PageTreeAdmin";
+import { SessionReplayAdmin } from "./components/SessionReplayAdmin";
 import type { ComponentCtx } from "./components/types";
 import { UsersAdminForm } from "./components/UsersAdminForm";
 
@@ -22,6 +24,7 @@ export { AdminShell } from "./components/AdminShell";
 export { AuthLayout } from "./components/AuthLayout";
 export { AuthSettingsForm } from "./components/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
+export { FeatureFlagsAdmin } from "./components/FeatureFlagsAdmin";
 export { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
 export { LoginBrandingForm } from "./components/LoginBrandingForm";
 export { LoginForm } from "./components/LoginForm";
@@ -29,6 +32,7 @@ export { MountAction } from "./components/MountAction";
 export { PageEntryAdmin } from "./components/PageEntryAdmin";
 export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
 export { PageTreeAdmin } from "./components/PageTreeAdmin";
+export { SessionReplayAdmin } from "./components/SessionReplayAdmin";
 export type { ComponentCtx } from "./components/types";
 export { UsersAdminForm } from "./components/UsersAdminForm";
 
@@ -173,10 +177,12 @@ export const coreComponents = {
   LoginBrandingForm,
   AccountSecurityForm,
   UsersAdminForm,
+  FeatureFlagsAdmin,
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,
   PageRoutingAdmin,
   PageTreeAdmin,
   AdminHome,
+  SessionReplayAdmin,
 };

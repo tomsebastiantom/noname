@@ -7,7 +7,7 @@ import { createFlagsModule } from "./modules/flags";
 import { createPerformanceModule } from "./modules/performance";
 import { createReplayModule } from "./modules/replay";
 import { createTraceModule, getCurrentTraceContext } from "./modules/trace";
-import type { BrowserSDK, BrowserSDKOptions } from "./types";
+import type { BrowserSDK, BrowserSDKOptions, ObservabilityUser } from "./types";
 
 const DEFAULT_ANALYTICS_ENDPOINT = "/api/analytics/track";
 const DEFAULT_ERRORS_ENDPOINT = "/api/analytics/error";
@@ -34,6 +34,8 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
   let schemaId: string | null = null;
   let variantId: string | null = null;
   let contextHash: string | null = null;
+  let currentUser: ObservabilityUser | null = null;
+  let userIdentified = false;
 
   const getAnalyticsContext = () => ({
     sessionId: session.id,
@@ -52,16 +54,15 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const analytics = createAnalyticsModule(
     options.analytics?.endpoint ?? DEFAULT_ANALYTICS_ENDPOINT,
-    options.orgId,
     getAnalyticsContext,
     getHeaders,
+    () => currentUser,
     options.analytics?.batchSize,
     options.analytics?.flushIntervalMs,
   );
 
   const errors = createErrorsModule(
     options.errors?.endpoint ?? DEFAULT_ERRORS_ENDPOINT,
-    options.orgId,
     () => session.id,
     () => getCurrentTraceContext(),
     getHeaders,
@@ -78,18 +79,17 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const flags = createFlagsModule(
     options.flags?.endpoint ?? DEFAULT_FLAGS_ENDPOINT,
-    options.orgId,
     () => ({
       contextHash: contextHash ?? "",
       schemaId,
       variantId,
       contextProperties: {},
     }),
+    getHeaders,
   );
 
   const replay = await createReplayModule(
     options.replay?.endpoint ?? DEFAULT_REPLAY_ENDPOINT,
-    options.orgId,
     session.id,
     options.replay?.sampleRate ?? 0.05,
     options.replay?.maskAllInputs ?? true,
@@ -125,7 +125,10 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
     },
     flags: {
       get: flags.get.bind(flags),
+      getAll: flags.getAll.bind(flags),
+      seed: flags.seed.bind(flags),
       onUpdate: flags.onUpdate.bind(flags),
+      onAnyUpdate: flags.onAnyUpdate.bind(flags),
       evaluate: flags.evaluate.bind(flags),
       isReady: flags.isReady.bind(flags),
     },
@@ -135,6 +138,20 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
       mask: replay.mask.bind(replay),
       unmask: replay.unmask.bind(replay),
       getSessionId: replay.getSessionId.bind(replay),
+    },
+    setUser(user: ObservabilityUser) {
+      if (currentUser?.id === user.id) return;
+      currentUser = user;
+      errors.setUser(user);
+      if (!userIdentified) {
+        userIdentified = true;
+        analytics.track("user_identified");
+      }
+    },
+    clearUser() {
+      currentUser = null;
+      userIdentified = false;
+      errors.setUser(null);
     },
     destroy() {
       // No persistent cleanup needed — sessionStorage is auto-cleaned

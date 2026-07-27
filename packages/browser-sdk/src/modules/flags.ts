@@ -4,19 +4,21 @@ type FlagValue = unknown;
 type FlagMap = Map<string, FlagValue>;
 type Callback = (value: FlagValue) => void;
 type ChangeCallback = Array<{ key: string; cb: Callback }>;
+type AnyChangeCallback = Array<(key: string, value: FlagValue) => void>;
 
 export function createFlagsModule(
   endpoint: string,
-  orgId: string,
   getContext: () => {
     contextHash: string;
     schemaId: string | null;
     variantId: string | null;
     contextProperties: Record<string, string | number | boolean>;
   },
+  getHeaders: () => Record<string, string> = () => ({}),
 ): FlagsModule {
   const cache: FlagMap = new Map();
   const listeners: ChangeCallback = [];
+  const anyListeners: AnyChangeCallback = [];
   let es: EventSource | null = null;
   let ready = false;
 
@@ -25,10 +27,9 @@ export function createFlagsModule(
     try {
       const res = await fetch(endpoint, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...getHeaders() },
         body: JSON.stringify({
           context: {
-            orgId,
             contextHash: ctx.contextHash,
             schemaId: ctx.schemaId,
             variantId: ctx.variantId,
@@ -40,10 +41,12 @@ export function createFlagsModule(
 
       if (!res.ok) return;
 
-      const data = (await res.json()) as {
-        evaluations: Array<{ flagKey: string; value: unknown }>;
+      const body = (await res.json()) as {
+        data?: { evaluations: Array<{ flagKey: string; value: unknown }> };
+        evaluations?: Array<{ flagKey: string; value: unknown }>;
       };
-      for (const ev of data.evaluations) {
+      const evaluations = body.data?.evaluations ?? body.evaluations ?? [];
+      for (const ev of evaluations) {
         const old = cache.get(ev.flagKey);
         cache.set(ev.flagKey, ev.value);
         if (old !== ev.value) {
@@ -65,13 +68,20 @@ export function createFlagsModule(
         }
       }
     }
+    for (const cb of anyListeners) {
+      try {
+        cb(key, value);
+      } catch {
+        // Don't break other listeners
+      }
+    }
   }
 
   function connectSSE(): void {
     if (typeof EventSource === "undefined") return;
 
     try {
-      es = new EventSource(`/api/flags/stream?orgId=${encodeURIComponent(orgId)}`);
+      es = new EventSource("/api/flags/stream");
 
       es.onmessage = (event) => {
         try {
@@ -100,11 +110,29 @@ export function createFlagsModule(
       return cache.get(key);
     },
 
+    getAll() {
+      return Object.fromEntries(cache);
+    },
+
+    seed(values) {
+      for (const [key, value] of Object.entries(values)) {
+        cache.set(key, value);
+      }
+    },
+
     onUpdate(key, cb) {
       listeners.push({ key, cb });
       return () => {
         const idx = listeners.findIndex((l) => l.key === key && l.cb === cb);
         if (idx >= 0) listeners.splice(idx, 1);
+      };
+    },
+
+    onAnyUpdate(cb) {
+      anyListeners.push(cb);
+      return () => {
+        const idx = anyListeners.indexOf(cb);
+        if (idx >= 0) anyListeners.splice(idx, 1);
       };
     },
 

@@ -15,15 +15,17 @@ describe("permissions", () => {
     expect(perms).toContain(PERMISSIONS.CONTENT_PUBLISH);
     expect(perms).toContain(PERMISSIONS.LAYOUT_PUBLISH);
     expect(perms).toContain(PERMISSIONS.AUTH_MANAGE);
+    expect(perms).toContain(PERMISSIONS.ANALYTICS_VIEW);
   });
 
-  it("editor role includes draft keys but not publish", () => {
+  it("editor role includes draft keys but not publish or analytics view", () => {
     const perms = expandPermissions(["editor"]);
     expect(perms).toContain(PERMISSIONS.CONTENT_DRAFT_WRITE);
     expect(perms).toContain(PERMISSIONS.LAYOUT_DRAFT_WRITE);
     expect(perms).not.toContain(PERMISSIONS.CONTENT_PUBLISH);
     expect(perms).not.toContain(PERMISSIONS.LAYOUT_PUBLISH);
     expect(perms).not.toContain(PERMISSIONS.AUTH_MANAGE);
+    expect(perms).not.toContain(PERMISSIONS.ANALYTICS_VIEW);
   });
 
   it("customer role is storefront view only", () => {

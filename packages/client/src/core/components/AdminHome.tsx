@@ -1,4 +1,5 @@
 import type { MouseEvent } from "react";
+import { isReplayAdminLink, useAnalyticsViewPermission } from "../../auth/analytics-access";
 import { navigateApp } from "../../platform/app-navigation";
 import { isPlatformPath } from "../../platform-routes";
 import type { ComponentCtx } from "./types";
@@ -26,13 +27,19 @@ export function AdminHome({
   description: string | null;
   links: { href: string; label: string; description: string }[];
 }>) {
+  const canViewReplay = useAnalyticsViewPermission();
+
+  const links = props.links.filter(
+    (link) => !isReplayAdminLink(link.href) || canViewReplay === true,
+  );
+
   return (
     <div className="max-w-2xl">
       {props.description ? (
         <p className="mb-6 text-sm text-muted-foreground">{props.description}</p>
       ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
-        {props.links.map((link) => (
+        {links.map((link) => (
           <a
             key={link.href}
             {...adminHomeLinkProps(link.href)}

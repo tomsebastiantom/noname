@@ -4,32 +4,12 @@ import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
 import { resolveOrgIdFromHost, resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
-
-const PUBLIC_GET = [
-  /^\/api\/edge\/schema\/[^/]+$/,
-  /^\/api\/tenants\/resolve\/[^/]+$/,
-  /^\/api\/tenants\/[^/]+\/catalog$/,
-  /^\/api\/tenants\/[^/]+\/auth\/config$/,
-  /^\/api\/tenants\/[^/]+\/auth\/idp\/[^/]+\/start$/,
-  /^\/health$/,
-];
-
-const PUBLIC_POST = [
-  /^\/api\/tenants\/[^/]+\/auth\/login$/,
-  /^\/api\/tenants\/[^/]+\/auth\/register$/,
-  /^\/api\/tenants\/[^/]+\/auth\/password-reset\/request$/,
-  /^\/api\/tenants\/[^/]+\/auth\/password-reset\/confirm$/,
-  /^\/api\/tenants\/[^/]+\/auth\/mfa\/verify$/,
-  /^\/api\/tenants\/[^/]+\/auth\/callback$/,
-];
-
-function isPublicGet(method: string, pathname: string): boolean {
-  return method === "GET" && PUBLIC_GET.some((re) => re.test(pathname));
-}
-
-function isPublicPost(method: string, pathname: string): boolean {
-  return method === "POST" && PUBLIC_POST.some((re) => re.test(pathname));
-}
+import { isPublicGet, isPublicPost } from "./public-routes";
+import {
+  shouldStripBodyOrg,
+  stripOrgFromPublicJsonBody,
+  stripOrgFromSearch,
+} from "./strip-public-org";
 
 /** /api/edge/schema/:siteId or /api/tenants/:siteId/... */
 function siteIdFromPath(pathname: string): string {
@@ -53,7 +33,8 @@ export function createApiProxyRoutes() {
   routes.all("/*", async (c) => {
     const incoming = new URL(c.req.url);
     const pathname = incoming.pathname;
-    const target = `${c.env.API_ORIGIN}${pathname}${incoming.search}`;
+    const search = stripOrgFromSearch(pathname, incoming.search);
+    const target = `${c.env.API_ORIGIN}${pathname}${search}`;
 
     const jwt = await tryParseJwt(c.req.raw, c.env);
 
@@ -111,7 +92,11 @@ export function createApiProxyRoutes() {
       headers,
     };
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
-      init.body = await c.req.raw.clone().arrayBuffer();
+      let body = await c.req.raw.clone().text();
+      if (shouldStripBodyOrg(pathname, c.req.method)) {
+        body = stripOrgFromPublicJsonBody(pathname, body);
+      }
+      init.body = body;
     }
 
     const response = await fetch(target, init);

@@ -16,11 +16,13 @@ import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
-import { CatalogUiShell } from "./platform/catalog-ui-shell";
 import {
   initBrowserObservability,
+  subscribeFlagLayoutRefresh,
   syncBrowserObservabilityContext,
+  syncObservabilityUserFromSession,
 } from "./platform/browser-observability";
+import { CatalogUiShell } from "./platform/catalog-ui-shell";
 import { isAdminTemplate, isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
@@ -69,6 +71,7 @@ function App() {
     const isStale = () => loadSeq !== loadSeqRef.current;
 
     hydrateTokenFromCookie();
+    syncObservabilityUserFromSession();
 
     if (!storeSlug) {
       setError("Use {slug}.localhost:5173 — e.g. yogastore.localhost:5173 (run pnpm seed:demo)");
@@ -145,9 +148,10 @@ function App() {
       setSpec(tree);
       setRouteKey(`${template}:${pathname}`);
 
-      void syncBrowserObservabilityContext({
-        contextHash: body?.data?.segment ?? "default",
-      });
+      void syncBrowserObservabilityContext(
+        { contextHash: body?.data?.segment ?? "default" },
+        body?.data?.flags,
+      );
     } catch (err) {
       if (isStale()) return;
       setError(err instanceof Error ? err.message : String(err));
@@ -161,6 +165,12 @@ function App() {
 
   useEffect(() => {
     void loadPage();
+  }, [loadPage]);
+
+  useEffect(() => {
+    return subscribeFlagLayoutRefresh(() => {
+      void loadPage();
+    });
   }, [loadPage]);
 
   if (loading && !spec) {

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { loadOidcConfig } from "../../auth/config";
 import { clearSession, hydrateTokenFromCookie, isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
+import { clearObservabilityUser } from "../../platform/browser-observability";
 
 function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
@@ -34,6 +35,7 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
             variant="outline"
             size="sm"
             onClick={() => {
+              clearObservabilityUser();
               clearSession();
               setLoggedIn(false);
               onAuthChange();

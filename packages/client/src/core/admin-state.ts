@@ -15,4 +15,14 @@ export const ADMIN_STATE = {
     treeLoading: "/admin/routing/tree/loading",
     treeError: "/admin/routing/tree/error",
   },
+  replay: {
+    sessions: "/admin/replay/sessions",
+    loading: "/admin/replay/loading",
+    error: "/admin/replay/error",
+    selectedSessionId: "/admin/replay/selectedSessionId",
+    chunkPreview: "/admin/replay/chunkPreview",
+    chunkLoading: "/admin/replay/chunkLoading",
+    playerEvents: "/admin/replay/playerEvents",
+    playerLoading: "/admin/replay/playerLoading",
+  },
 } as const;

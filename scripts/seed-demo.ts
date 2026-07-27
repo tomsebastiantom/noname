@@ -48,7 +48,16 @@ const demoSpec = {
     main: {
       type: "Stack",
       props: { direction: "column", gap: 24, align: "stretch" },
-      children: ["header", "intro", "actions"],
+      children: ["header", "promo", "intro", "actions"],
+    },
+    promo: {
+      type: "Text",
+      visible: { $state: "/flags/show_summer_sale" },
+      props: {
+        value: "Summer sale — 20% off yoga mats this week!",
+        variant: "h3",
+        align: "center",
+      },
     },
     header: {
       type: "Text",
@@ -87,6 +96,8 @@ const adminShellNavProps = {
   settingsItems: [
     { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
     { id: "users", label: "Team members", href: "/admin/settings/users" },
+    { id: "flags", label: "Feature flags", href: "/admin/settings/flags" },
+    { id: "replay", label: "Session replay", href: "/admin/settings/replay" },
     { id: "login", label: "Login appearance", href: "/admin/settings/login" },
   ],
   accountSecurityLabel: "Account security",
@@ -156,6 +167,21 @@ const usersAdminLabels = {
   statusColumnHeader: "Status",
   mfaEnabledLabel: "Enabled",
   mfaOffLabel: "Off",
+};
+
+const sessionReplayAdminLabels = {
+  loadingLabel: "Loading replay sessions…",
+  emptyLabel: "No replay sessions yet. Browse the storefront with replay enabled to record sessions.",
+  sessionColumnHeader: "Session",
+  chunksColumnHeader: "Chunks",
+  lastSeenColumnHeader: "Last activity",
+  previewTitle: "Session detail",
+  previewLoadingLabel: "Loading chunk…",
+  loadChunkLabel: "Load chunk",
+  playSessionLabel: "Play session",
+  playerLoadingLabel: "Loading replay…",
+  forbiddenLabel: "Session replay is available to org admins only.",
+  noChunksLabel: "No stored chunks for this session.",
 };
 
 const loginBrandingLabels = {
@@ -229,6 +255,16 @@ const adminHomeLinks = [
     description: "Invite staff, assign admin/editor roles, view MFA status",
   },
   {
+    href: "/admin/settings/flags",
+    label: "Feature flags",
+    description: "Toggle storefront features live (SSE + json-render)",
+  },
+  {
+    href: "/admin/settings/replay",
+    label: "Session replay",
+    description: "Browse recorded browser sessions for this org (admin only)",
+  },
+  {
     href: "/admin/settings/auth",
     label: "Auth settings",
     description: "Social login (Google, GitHub, Apple) and password toggle",
@@ -277,6 +313,65 @@ const adminDashboardSpec = {
         description:
           "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
         ...authSettingsLabels,
+      },
+    },
+  },
+};
+
+const featureFlagsAdminLabels = {
+  loadingLabel: "Loading flags…",
+  emptyLabel: "No flags yet.",
+  onLabel: "On",
+  offLabel: "Off",
+  togglingLabel: "Saving…",
+};
+
+const adminFlagsSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: adminShellProps(
+        "flags",
+        "Feature flags",
+        "Toggle flags live on the storefront — changes push via SSE.",
+      ),
+      children: ["flagsAdmin"],
+    },
+    flagsAdmin: {
+      type: "FeatureFlagsAdmin",
+      props: {
+        title: "Feature flags",
+        description: "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
+        ...featureFlagsAdminLabels,
+      },
+    },
+  },
+};
+
+const adminReplaySpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: adminShellProps(
+        "replay",
+        "Session replay",
+        "Recorded browser sessions for this org. Requires admin role — enforced by the API.",
+      ),
+      children: ["loadReplay", "replayAdmin"],
+    },
+    loadReplay: {
+      type: "MountAction",
+      props: { action: "listReplaySessions" },
+    },
+    replayAdmin: {
+      type: "SessionReplayAdmin",
+      props: {
+        title: "Session replay",
+        description:
+          "Sessions are grouped from analytics chunks. Select a row to inspect stored rrweb events.",
+        ...sessionReplayAdminLabels,
       },
     },
   },
@@ -633,6 +728,21 @@ async function upsertLayout(
   console.log(`${templateName} layout created and published.`);
 }
 
+async function ensureDemoFlag(): Promise<void> {
+  const { data: flags } = await api<{ data: Array<{ key: string }> }>("GET", "/api/flags");
+  if (flags.some((f) => f.key === "show_summer_sale")) {
+    console.log("show_summer_sale flag already exists — skipping create.");
+    return;
+  }
+  await api("POST", "/api/flags", {
+    key: "show_summer_sale",
+    type: "boolean",
+    description: "Show summer sale banner on storefront home",
+    defaultValue: true,
+  });
+  console.log("show_summer_sale flag created.");
+}
+
 async function main() {
   if (!DEMO_ORG_ID) {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
@@ -647,6 +757,7 @@ async function main() {
 
   await ensureDemoAdminRole();
   await obtainSeedAdminToken();
+  await ensureDemoFlag();
 
   await api("PUT", "/api/documents/tenant_settings/default", {
     slug: "yogastore",
@@ -671,9 +782,11 @@ async function main() {
     extensions: [],
   });
 
-  await upsertLayout("home", demoSpec, { skipIfExists: true });
+  await upsertLayout("home", demoSpec);
   await upsertLayout("login", loginSpec);
   await upsertLayout("admin_dashboard", adminDashboardSpec);
+  await upsertLayout("admin_flags", adminFlagsSpec);
+  await upsertLayout("admin_replay", adminReplaySpec);
   await upsertLayout("admin_users", adminUsersSpec);
   await upsertLayout("admin_login", adminLoginBrandingSpec);
   await upsertLayout("admin_content", adminContentSpec);
@@ -700,7 +813,7 @@ async function main() {
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
   console.log(`  Slug:    yogastore`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_dashboard`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_dashboard + admin_replay`);
   console.log(`  Client:  http://yogastore.localhost:5173`);
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);
