@@ -12,23 +12,25 @@ interface AnalyticsContext {
 
 export function createAnalyticsModule(
   endpoint: string,
+  orgId: string,
   getContext: () => AnalyticsContext,
+  getHeaders: () => Record<string, string>,
   batchSize = 50,
   flushIntervalMs = 5000,
 ): AnalyticsModule {
+  const toPayload = (batch: AnalyticsEvent[]) =>
+    batch.map((e) => ({
+      eventType: e.eventType,
+      sessionId: e.sessionId,
+      schemaId: e.schemaId,
+      variantId: e.variantId,
+      contextHash: e.contextHash,
+      meta: e.meta,
+    }));
+
   const batcher = new Batcher<AnalyticsEvent>(
     async (batch) => {
-      const body = JSON.stringify(
-        batch.map((e) => ({
-          eventType: e.eventType,
-          sessionId: e.sessionId,
-          schemaId: e.schemaId,
-          variantId: e.variantId,
-          contextHash: e.contextHash,
-          meta: e.meta,
-        })),
-      );
-      await sendWithRetry(endpoint, body, 1);
+      await sendWithRetry(endpoint, JSON.stringify(toPayload(batch)), 1, getHeaders());
     },
     { batchSize, flushIntervalMs },
   );
@@ -36,19 +38,7 @@ export function createAnalyticsModule(
   onUnload(() => {
     const batch = batcher.drainForBeacon();
     if (batch.length > 0) {
-      sendBeacon(
-        endpoint,
-        JSON.stringify(
-          batch.map((e) => ({
-            eventType: e.eventType,
-            sessionId: e.sessionId,
-            schemaId: e.schemaId,
-            variantId: e.variantId,
-            contextHash: e.contextHash,
-            meta: e.meta,
-          })),
-        ),
-      );
+      sendBeacon(endpoint, JSON.stringify({ orgId, events: toPayload(batch) }));
     }
   });
 

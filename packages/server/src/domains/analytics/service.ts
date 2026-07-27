@@ -27,6 +27,14 @@ export function createAnalyticsService(
       return { eventId, accepted: true };
     },
 
+    async trackBatch(orgId, inputs) {
+      const results: Array<{ eventId: string; accepted: boolean }> = [];
+      for (const input of inputs) {
+        results.push(await this.track(orgId, input));
+      }
+      return results;
+    },
+
     async ingestServerEvent(eventType, data) {
       const orgId = (data as any).orgId || "";
       if (!orgId) return;

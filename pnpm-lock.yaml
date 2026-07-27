@@ -82,6 +82,9 @@ importers:
       '@module-federation/runtime':
         specifier: ^2.7.0
         version: 2.7.0
+      '@noname/browser-sdk':
+        specifier: workspace:*
+        version: link:../browser-sdk
       '@noname/extensions':
         specifier: workspace:*
         version: link:../extensions

@@ -8,6 +8,7 @@ const FULL_SNAPSHOT_MS = 4 * 60 * 1000;
 
 export async function createReplayModule(
   endpoint: string,
+  orgId: string,
   sessionId: string,
   sampleRate: number,
   maskAllInputs: boolean,
@@ -45,6 +46,7 @@ export async function createReplayModule(
     sendBeacon(
       endpoint,
       JSON.stringify({
+        orgId,
         sessionId,
         timestamp: Date.now(),
         events: chunk,

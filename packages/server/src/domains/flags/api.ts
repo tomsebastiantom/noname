@@ -48,11 +48,14 @@ export function createFlagRoutes(service: FlagService) {
   });
 
   routes.post("/evaluate", async (c) => {
-    const orgId = getOrgId(c);
     const { context, flagKeys } = await c.req.json<{
       context: FlagEvaluationContext;
       flagKeys?: string[];
     }>();
+    const orgId = getOrgId(c) || context.orgId || "";
+    if (!orgId) {
+      return c.json({ error: "org id required" }, 400);
+    }
     const evaluations = await service.evaluate(orgId, context, flagKeys);
     return ok(c, { evaluations });
   });

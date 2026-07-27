@@ -42,6 +42,8 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
     contextHash,
   });
 
+  const getHeaders = options.getHeaders ?? (() => ({}));
+
   const trace = createTraceModule({
     enabled: options.trace?.enabled ?? true,
     serviceName: options.trace?.serviceName,
@@ -50,15 +52,19 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const analytics = createAnalyticsModule(
     options.analytics?.endpoint ?? DEFAULT_ANALYTICS_ENDPOINT,
+    options.orgId,
     getAnalyticsContext,
+    getHeaders,
     options.analytics?.batchSize,
     options.analytics?.flushIntervalMs,
   );
 
   const errors = createErrorsModule(
     options.errors?.endpoint ?? DEFAULT_ERRORS_ENDPOINT,
+    options.orgId,
     () => session.id,
     () => getCurrentTraceContext(),
+    getHeaders,
     options.errors?.dedupWindowMs,
     options.errors?.captureConsoleError ?? true,
   );
@@ -83,6 +89,7 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const replay = await createReplayModule(
     options.replay?.endpoint ?? DEFAULT_REPLAY_ENDPOINT,
+    options.orgId,
     session.id,
     options.replay?.sampleRate ?? 0.05,
     options.replay?.maskAllInputs ?? true,

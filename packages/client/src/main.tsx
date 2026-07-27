@@ -17,6 +17,10 @@ import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
+import {
+  initBrowserObservability,
+  syncBrowserObservabilityContext,
+} from "./platform/browser-observability";
 import { isAdminTemplate, isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
@@ -140,6 +144,10 @@ function App() {
 
       setSpec(tree);
       setRouteKey(`${template}:${pathname}`);
+
+      void syncBrowserObservabilityContext({
+        contextHash: body?.data?.segment ?? "default",
+      });
     } catch (err) {
       if (isStale()) return;
       setError(err instanceof Error ? err.message : String(err));
@@ -217,6 +225,7 @@ if (root) {
       createRoot(root).render(<AuthCallbackPage />);
     });
   } else {
+    void initBrowserObservability();
     createRoot(root).render(<App />);
   }
 }

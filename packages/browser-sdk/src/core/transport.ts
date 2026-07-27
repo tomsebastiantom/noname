@@ -64,24 +64,35 @@ export class Batcher<T> {
   }
 }
 
-export function sendWithRetry(url: string, body: string, maxRetries: number = 1): Promise<void> {
-  return attempt(url, body, 0, maxRetries);
+export function sendWithRetry(
+  url: string,
+  body: string,
+  maxRetries: number = 1,
+  headers: Record<string, string> = {},
+): Promise<void> {
+  return attempt(url, body, 0, maxRetries, headers);
 }
 
-async function attempt(url: string, body: string, n: number, max: number): Promise<void> {
+async function attempt(
+  url: string,
+  body: string,
+  n: number,
+  max: number,
+  headers: Record<string, string>,
+): Promise<void> {
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...headers },
       body,
       keepalive: true,
     });
     if (!res.ok && n < max) {
-      await attempt(url, body, n + 1, max);
+      await attempt(url, body, n + 1, max, headers);
     }
   } catch {
     if (n < max) {
-      await attempt(url, body, n + 1, max);
+      await attempt(url, body, n + 1, max, headers);
     }
   }
 }

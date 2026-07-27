@@ -129,5 +129,7 @@ export interface BrowserSDKOptions {
     respectDNT?: boolean;
     respectGPC?: boolean;
   };
+  /** Merged into every SDK fetch (e.g. x-org-id, Authorization). Not sent via sendBeacon. */
+  getHeaders?: () => Record<string, string>;
   debug?: boolean;
 }
