@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
 import { completeOAuthCallback } from "./idp-login";
+import {
+  initBrowserObservability,
+  syncObservabilityUserFromSession,
+} from "../platform/browser-observability";
 
 export function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);
@@ -20,7 +24,9 @@ export function AuthCallbackPage() {
     }
 
     void completeOAuthCallback(code)
-      .then((redirectPath) => {
+      .then(async (redirectPath) => {
+        await initBrowserObservability();
+        syncObservabilityUserFromSession();
         window.location.href = redirectPath || "/";
       })
       .catch((err: unknown) => {

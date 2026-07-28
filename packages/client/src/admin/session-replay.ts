@@ -25,7 +25,8 @@ export async function fetchReplaySessions(): Promise<ReplaySessionSummary[]> {
 }
 
 export async function fetchReplayChunk(storageKey: string): Promise<unknown[]> {
-  const res = await fetch(`/api/analytics/replay/chunks/${storageKey}`, {
+  const encodedKey = storageKey.split("/").map(encodeURIComponent).join("/");
+  const res = await fetch(`/api/analytics/replay/chunks/${encodedKey}`, {
     headers: apiHeaders(),
   });
   if (!res.ok) await parseApiError(res, "Failed to load replay chunk");

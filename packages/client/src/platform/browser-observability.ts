@@ -18,6 +18,12 @@ let layoutRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 const LAYOUT_REFRESH_DEBOUNCE_MS = 400;
 
+function isLocalDevHost(): boolean {
+  if (typeof window === "undefined") return false;
+  const host = window.location.hostname;
+  return host === "localhost" || host.endsWith(".localhost") || host === "127.0.0.1";
+}
+
 export interface ObservabilityContext {
   schemaId?: string | null;
   variantId?: string | null;
@@ -80,30 +86,38 @@ async function loadLayoutFlagKeys(orgId: string): Promise<void> {
 }
 
 /** Wire @noname/browser-sdk once per page load (host concern — not json-render catalog). */
-export async function initBrowserObservability(): Promise<void> {
-  if (sdk || typeof window === "undefined") return;
+let initPromise: Promise<void> | null = null;
 
-  const orgId = await resolveOrgIdFromHostname(window.location.hostname);
-  if (!orgId) return;
+export function initBrowserObservability(): Promise<void> {
+  if (initPromise) return initPromise;
 
-  const getHeaders = (): Record<string, string> => {
-    const auth = apiHeaders() as Record<string, string>;
-    return { "x-org-id": orgId, ...auth };
-  };
+  initPromise = (async () => {
+    if (sdk || typeof window === "undefined") return;
 
-  try {
-    sdk = await init({
-      getHeaders,
-      privacy: { respectDNT: false },
-      replay: { sampleRate: 0 },
-      trace: { propagateFetch: true },
-    });
-    installFlagBridge();
-    void loadLayoutFlagKeys(orgId);
-    syncObservabilityUserFromSession();
-  } catch {
-    // Unavailable in SSR, bots, or when privacy blocks init.
-  }
+    const orgId = await resolveOrgIdFromHostname(window.location.hostname);
+    if (!orgId) return;
+
+    const getHeaders = (): Record<string, string> => {
+      const auth = apiHeaders() as Record<string, string>;
+      return { "x-org-id": orgId, ...auth };
+    };
+
+    try {
+      sdk = await init({
+        getHeaders,
+        privacy: { respectDNT: false },
+        replay: { sampleRate: isLocalDevHost() ? 1 : 0 },
+        trace: { propagateFetch: true },
+      });
+      installFlagBridge();
+      void loadLayoutFlagKeys(orgId);
+      syncObservabilityUserFromSession();
+    } catch {
+      // Unavailable in SSR, bots, or when privacy blocks init.
+    }
+  })();
+
+  return initPromise;
 }
 
 /** Link JWT account to SDK events/errors after login or on page load. */

@@ -23,7 +23,7 @@ import {
   syncObservabilityUserFromSession,
 } from "./platform/browser-observability";
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
-import { isAdminTemplate, isLoginTemplate, resolveRoute } from "./platform-routes";
+import { isLoginTemplate, resolveRoute } from "./platform-routes";
 import { registry as platformRegistry } from "./registry";
 
 interface EdgeSchemaResponse {
@@ -31,6 +31,33 @@ interface EdgeSchemaResponse {
   layout?: Spec;
   flags?: Record<string, unknown>;
   segment?: string;
+}
+
+const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  timeoutMs = SCHEMA_FETCH_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function redirectTo(url: string, setLoading: (v: boolean) => void, setNavigating: (v: boolean) => void): void {
+  setLoading(false);
+  setNavigating(false);
+  window.location.href = url;
 }
 
 function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
@@ -49,7 +76,6 @@ function AppShell({ children, template }: Readonly<{ children: ReactNode; templa
 
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
-  const [routeKey, setRouteKey] = useState("");
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,6 +97,7 @@ function App() {
     const isStale = () => loadSeq !== loadSeqRef.current;
 
     hydrateTokenFromCookie();
+    await initBrowserObservability();
     syncObservabilityUserFromSession();
 
     if (!storeSlug) {
@@ -82,7 +109,7 @@ function App() {
 
     if ((adminRoute || editMode) && !isLoggedIn()) {
       const redirect = encodeURIComponent(window.location.pathname + window.location.search);
-      window.location.href = `/login?redirect=${redirect}`;
+      redirectTo(`/login?redirect=${redirect}`, setLoading, setNavigating);
       return;
     }
 
@@ -92,13 +119,19 @@ function App() {
         if (editMode && !sessionCanDraft(session)) {
           const url = new URL(window.location.href);
           url.searchParams.delete("edit");
+          setLoading(false);
+          setNavigating(false);
           window.location.replace(url.pathname + url.search + url.hash);
           return;
         }
         const needsMfaGate = editMode || pathname.startsWith("/admin");
         if (needsMfaGate && session.requireMfaForAdmin && !session.mfaEnrolled) {
           const redirect = encodeURIComponent(pathname + window.location.search);
-          window.location.href = `/account/security?redirect=${redirect}&mfaRequired=1`;
+          redirectTo(
+            `/account/security?redirect=${redirect}&mfaRequired=1`,
+            setLoading,
+            setNavigating,
+          );
           return;
         }
       } catch {
@@ -106,8 +139,7 @@ function App() {
       }
     }
 
-    const softAdminNav = specRef.current !== null && isAdminTemplate(template);
-    if (softAdminNav) {
+    if (specRef.current !== null) {
       setNavigating(true);
     } else {
       setLoading(true);
@@ -116,7 +148,7 @@ function App() {
 
     const headers = apiHeaders();
 
-    const manifestPromise = fetch(`/api/tenants/${storeSlug}/catalog`, { headers })
+    const manifestPromise = fetchWithTimeout(`/api/tenants/${storeSlug}/catalog`, { headers })
       .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
       .then((body) => body?.data ?? null)
       .catch(() => null);
@@ -125,12 +157,13 @@ function App() {
       ? `segment=default&template=${encodeURIComponent(template)}`
       : `segment=default&url=${encodeURIComponent(pathname)}`;
 
-    const specPromise = fetch(`/api/edge/schema/${storeSlug}?${schemaQuery}`, { headers }).then(
-      (res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
-      },
-    );
+    const specPromise = fetchWithTimeout(
+      `/api/edge/schema/${storeSlug}?${schemaQuery}`,
+      { headers },
+    ).then((res) => {
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
+    });
 
     try {
       const [manifest, body] = await Promise.all([manifestPromise, specPromise]);
@@ -146,7 +179,6 @@ function App() {
       }
 
       setSpec(tree);
-      setRouteKey(`${template}:${pathname}`);
 
       void syncBrowserObservabilityContext(
         { contextHash: body?.data?.segment ?? "default" },
@@ -203,6 +235,8 @@ function App() {
     );
   }
 
+  const shellKey = `${template}:${pathname}`;
+
   return (
     <AppShell template={template}>
       {editMode && (
@@ -211,19 +245,18 @@ function App() {
         </div>
       )}
       {!adminRoute && !editMode && <AuthBar onAuthChange={() => void loadPage()} />}
-      {navigating ? (
-        <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center bg-background/40 pt-24">
-          <p className="rounded-md border bg-background px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            Loading…
-          </p>
-        </div>
-      ) : null}
       {error ? (
         <div className="border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : null}
-      <CatalogUiShell key={routeKey || `${template}:${pathname}`} spec={spec} registry={registry} />
+      {navigating ? (
+        <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
+          Loading…
+        </div>
+      ) : (
+        <CatalogUiShell key={shellKey} spec={spec} registry={registry} />
+      )}
     </AppShell>
   );
 }
