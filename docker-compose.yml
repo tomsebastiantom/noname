@@ -20,8 +20,11 @@ services:
     image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
     ports:
       - "6379:6379"
-    # Podman/local dev: default thread count needs ~1.75GiB RAM; limit to 1 thread.
-    command: ["--proactor_threads=1"]
+    # Podman/local dev: 1 thread for low RAM. BullMQ needs emulated cluster + hashtag locks.
+    command:
+      - "--proactor_threads=1"
+      - "--cluster_mode=emulated"
+      - "--lock_on_hashtags"
     healthcheck:
       test: ["CMD-SHELL", "redis-cli -h localhost ping"]
       interval: 5s

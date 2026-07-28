@@ -1,4 +1,5 @@
 import { Worker } from "bullmq";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import type { AnalyticsStorage } from "./ports";
 import type { AnalyticsJobData } from "./queue";
@@ -26,7 +27,7 @@ export function startAnalyticsWorker(storage: AnalyticsStorage): Worker<Analytic
   }
 
   const worker = new Worker<AnalyticsJobData>(
-    "analytics-events",
+    BULLMQ_QUEUES.ANALYTICS,
     async (job) => {
       batch.push(job.data);
 

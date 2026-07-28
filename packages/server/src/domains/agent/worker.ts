@@ -1,5 +1,6 @@
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import type { AgentTaskStorage } from "./ports";
 import type { AgentJobData } from "./queue";
@@ -12,7 +13,7 @@ export function startAgentWorker(
   executor: AgentExecutor,
 ): Worker<AgentJobData> {
   const worker = new Worker<AgentJobData>(
-    "agent-tasks",
+    BULLMQ_QUEUES.AGENT,
     async (job) => {
       const { taskId, orgId, type, prompt, input, traceparent, tracestate } = job.data;
 

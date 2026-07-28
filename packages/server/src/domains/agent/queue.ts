@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 
 export interface AgentJobData {
@@ -15,7 +16,7 @@ let agentQueue: Queue<AgentJobData> | null = null;
 
 export function getAgentQueue(): Queue<AgentJobData> {
   if (!agentQueue) {
-    agentQueue = new Queue<AgentJobData>("agent-tasks", { connection: getRedisConnection() });
+    agentQueue = new Queue<AgentJobData>(BULLMQ_QUEUES.AGENT, { connection: getRedisConnection() });
   }
   return agentQueue;
 }

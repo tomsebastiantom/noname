@@ -1,4 +1,5 @@
 import { Worker } from "bullmq";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import { bundleCatalog } from "./adapters/bundler";
 import type { ManifestStore } from "./adapters/manifest-store";
@@ -10,7 +11,7 @@ export function startCatalogBuildWorker(
   manifestStore: ManifestStore,
 ): Worker<CatalogBuildJobData> {
   const worker = new Worker<CatalogBuildJobData>(
-    "catalog-builds",
+    BULLMQ_QUEUES.CATALOG,
     async (job) => {
       const { buildId, orgId, name, source } = job.data;
 

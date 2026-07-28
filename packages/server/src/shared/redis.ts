@@ -5,5 +5,7 @@ export function getRedisConnection() {
     host: parsed.hostname || "localhost",
     port: Number(parsed.port) || 6379,
     password: parsed.password || undefined,
+    /** Required by BullMQ — ioredis default blocks workers. */
+    maxRetriesPerRequest: null,
   };
 }

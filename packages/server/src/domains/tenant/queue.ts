@@ -1,4 +1,5 @@
 import { Queue } from "bullmq";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 
 export interface CatalogBuildJobData {
@@ -14,7 +15,7 @@ let catalogBuildQueue: Queue<CatalogBuildJobData> | null = null;
 
 export function getCatalogBuildQueue(): Queue<CatalogBuildJobData> {
   if (!catalogBuildQueue) {
-    catalogBuildQueue = new Queue<CatalogBuildJobData>("catalog-builds", {
+    catalogBuildQueue = new Queue<CatalogBuildJobData>(BULLMQ_QUEUES.CATALOG, {
       connection: getRedisConnection(),
     });
   }

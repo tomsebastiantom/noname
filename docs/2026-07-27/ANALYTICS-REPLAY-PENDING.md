@@ -1,7 +1,7 @@
 # Analytics & replay — pending work
 
 > **Status:** P0–P2 + **P3 replay player + flags public ingest + editor nav UX shipped** (2026-07-27).  
-> **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md)
+> **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`ANALYTICS-REPLAY-TEST-RUN.md`](./ANALYTICS-REPLAY-TEST-RUN.md)
 
 ---
 
