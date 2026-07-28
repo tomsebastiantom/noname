@@ -44,17 +44,32 @@ export async function ensureClickHouseTable(): Promise<void> {
   await client.command({ query: DDL });
 }
 
+function toClickHouseTimestamp(value: Date | string): string {
+  const date = value instanceof Date ? value : new Date(value);
+  return date.toISOString().replace("T", " ").replace("Z", "");
+}
+
+function uuidOrNull(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  return value;
+}
+
+/** ClickHouse `session_id` is non-nullable UUID — use nil UUID when absent. */
+function sessionIdForRow(value: string | null | undefined): string {
+  return uuidOrNull(value) ?? "00000000-0000-0000-0000-000000000000";
+}
+
 function toRow(e: AnalyticsEventDTO) {
   return {
     event_id: e.eventId,
     org_id: e.orgId,
     event_type: e.eventType,
     event_source: e.eventSource,
-    timestamp: e.timestamp.toISOString().replace("T", " ").replace("Z", ""),
-    session_id: e.sessionId,
-    schema_id: e.schemaId ?? null,
-    variant_id: e.variantId ?? null,
-    context_hash: e.contextHash ?? null,
+    timestamp: toClickHouseTimestamp(e.timestamp),
+    session_id: sessionIdForRow(e.sessionId),
+    schema_id: uuidOrNull(e.schemaId),
+    variant_id: uuidOrNull(e.variantId),
+    context_hash: e.contextHash?.trim() ? e.contextHash : null,
     meta: JSON.stringify(e.meta),
   };
 }

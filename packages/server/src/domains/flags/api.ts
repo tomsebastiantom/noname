@@ -36,13 +36,15 @@ export function createFlagRoutes(service: FlagService) {
   });
 
   routes.post("/evaluate", async (c) => {
-    const { context, flagKeys } = await c.req.json<{
-      context: FlagEvaluationContext;
+    const body = await c.req.json<{
+      context?: Partial<FlagEvaluationContext>;
       flagKeys?: string[];
+      keys?: string[];
     }>();
     const orgId = requireHeaderOrgId(c);
     if (orgId instanceof Response) return orgId;
-    const evaluations = await service.evaluate(orgId, { ...context, orgId }, flagKeys);
+    const flagKeys = body.flagKeys ?? body.keys;
+    const evaluations = await service.evaluate(orgId, body.context ?? {}, flagKeys);
     return ok(c, { evaluations });
   });
 

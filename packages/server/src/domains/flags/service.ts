@@ -15,6 +15,28 @@ import type {
   TargetingRule,
 } from "./ports";
 
+const DEFAULT_CONTEXT_HASH = "default";
+
+function optionalUuid(value: string | null | undefined): string | null {
+  if (!value?.trim()) return null;
+  return value;
+}
+
+/** Public evaluate may omit context before SDK setContext — never persist null context_hash. */
+function normalizeEvaluationContext(
+  orgId: string,
+  context?: Partial<FlagEvaluationContext> | null,
+): FlagEvaluationContext {
+  const hash = context?.contextHash?.trim();
+  return {
+    orgId,
+    contextHash: hash || DEFAULT_CONTEXT_HASH,
+    contextProperties: context?.contextProperties ?? {},
+    schemaId: optionalUuid(context?.schemaId ?? null),
+    variantId: optionalUuid(context?.variantId ?? null),
+  };
+}
+
 export function createFlagService(storage: FlagStorage): FlagService {
   return {
     async create(orgId, input) {
@@ -123,13 +145,14 @@ export function createFlagService(storage: FlagStorage): FlagService {
     },
 
     async evaluate(orgId, context, flagKeys) {
+      const ctx = normalizeEvaluationContext(orgId, context);
       const flags = await storage.list(orgId, { status: "active" });
       const toEvaluate = flagKeys ? flags.filter((f) => flagKeys.includes(f.key)) : flags;
 
       const results = await Promise.all(
         toEvaluate.map(async (flag) => {
-          const result = evaluateFlag(flag, context);
-          await record(storage, flag, context, result);
+          const result = evaluateFlag(flag, ctx);
+          await record(storage, flag, ctx, result);
           return result;
         }),
       );
@@ -139,10 +162,13 @@ export function createFlagService(storage: FlagStorage): FlagService {
 
     async evaluateBatch(orgId, contexts, flagKeys) {
       const batch = await Promise.all(
-        contexts.map(async (ctx) => ({
-          contextHash: ctx.contextHash,
-          evaluations: await this.evaluate(orgId, ctx, flagKeys),
-        })),
+        contexts.map(async (rawCtx) => {
+          const ctx = normalizeEvaluationContext(orgId, rawCtx);
+          return {
+            contextHash: ctx.contextHash,
+            evaluations: await this.evaluate(orgId, ctx, flagKeys),
+          };
+        }),
       );
       return batch;
     },
