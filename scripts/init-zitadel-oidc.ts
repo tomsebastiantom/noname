@@ -7,7 +7,7 @@
 import "dotenv/config";
 import { createSign } from "node:crypto";
 import { execSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -25,10 +25,11 @@ const POST_LOGOUT_URI = "http://localhost:5173";
 
 const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 const ENV_FILE = process.env.ENV_FILE ?? join(ROOT, ".env");
-const KEY_CANDIDATES = [
-  process.env.ZITADEL_MACHINE_KEY_PATH,
-  join(ROOT, "zitadel_keys", "noname-backend-sa.json"),
-].filter((p): p is string => Boolean(p));
+const LOCAL_KEY_PATH = join(ROOT, "zitadel_keys", "noname-backend-sa.json");
+const LOCAL_PAT_PATH = join(ROOT, "zitadel_keys/login-client.pat");
+const KEY_CANDIDATES = [process.env.ZITADEL_MACHINE_KEY_PATH, LOCAL_KEY_PATH].filter(
+  (p): p is string => Boolean(p),
+);
 
 interface ServiceAccountKey {
   keyId: string;
@@ -81,19 +82,57 @@ function readKeyFromVolume(): ServiceAccountKey {
   );
 }
 
-function loadServiceAccountKey(): ServiceAccountKey {
+function cacheKeyLocally(key: ServiceAccountKey): void {
+  mkdirSync(dirname(LOCAL_KEY_PATH), { recursive: true });
+  writeFileSync(LOCAL_KEY_PATH, JSON.stringify(key, null, 2));
+}
+
+function clearStaleLoginPat(): void {
+  if (existsSync(LOCAL_PAT_PATH)) {
+    unlinkSync(LOCAL_PAT_PATH);
+    console.log("Removed stale login-client.pat (will recreate).");
+  }
+}
+
+async function keyWorks(key: ServiceAccountKey): Promise<boolean> {
+  try {
+    await getAccessToken(key);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Prefer a working key. After `compose down -v`, local cache is stale — refresh from volume. */
+async function loadServiceAccountKey(): Promise<ServiceAccountKey> {
+  const volumeKey = readKeyFromVolume();
+
   for (const path of KEY_CANDIDATES) {
-    if (existsSync(path)) {
-      return JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
+    if (!existsSync(path)) continue;
+    const cached = JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
+    if (await keyWorks(cached)) {
+      if (cached.keyId === volumeKey.keyId) {
+        return cached;
+      }
+      console.warn("Local machine key does not match compose volume — refreshing cache.");
+      clearStaleLoginPat();
+      cacheKeyLocally(volumeKey);
+      console.log(`Cached machine key → ${LOCAL_KEY_PATH}`);
+      return volumeKey;
     }
+    console.warn(`Stale ZITADEL machine key at ${path} — trying compose volume...`);
   }
 
-  const key = readKeyFromVolume();
-  const localPath = join(ROOT, "zitadel_keys", "noname-backend-sa.json");
-  mkdirSync(dirname(localPath), { recursive: true });
-  writeFileSync(localPath, JSON.stringify(key, null, 2));
-  console.log(`Cached machine key → ${localPath}`);
-  return key;
+  if (!(await keyWorks(volumeKey))) {
+    throw new Error(
+      "ZITADEL machine key from compose volume is not accepted yet — wait for ZITADEL (curl http://localhost:8080/.well-known/openid-configuration) then retry",
+    );
+  }
+
+  clearStaleLoginPat();
+  cacheKeyLocally(volumeKey);
+  console.log(`Cached machine key → ${LOCAL_KEY_PATH}`);
+  return volumeKey;
 }
 
 function signAssertion(sa: ServiceAccountKey): string {
@@ -293,7 +332,7 @@ async function ensureLoginClient(token: string, sa: ServiceAccountKey): Promise<
     body: JSON.stringify({ roles: ["IAM_OWNER", "IAM_LOGIN_CLIENT"] }),
   });
 
-  const patPath = join(ROOT, "zitadel_keys/login-client.pat");
+  const patPath = LOCAL_PAT_PATH;
   if (existsSync(patPath)) {
     console.log("Login client PAT already exists.");
     return;
@@ -333,7 +372,7 @@ async function main(): Promise<void> {
   console.log(`Initializing ZITADEL OIDC app via ${ZITADEL_ISSUER} ...`);
   await waitForZitadel();
 
-  const sa = loadServiceAccountKey();
+  const sa = await loadServiceAccountKey();
   const token = await getAccessToken(sa);
 
   const projects = await listProjects(token);

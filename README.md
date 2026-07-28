@@ -65,7 +65,20 @@ Optional commerce extension demo: `pnpm seed:demo:commerce` (after `pnpm seed:de
 
 **Sign in:** open `/login` on the org subdomain → email/password → server brokers ZITADEL Session API → token stored → Bearer on API calls. See [`EMBEDDED-LOGIN.md`](./docs/2026-07-25/EMBEDDED-LOGIN.md).
 
-**Fresh database:** `podman compose down -v && podman compose up -d` then repeat one-time setup (steps 4–6).
+**Fresh database:** wipe volumes and re-bootstrap auth — local `zitadel_keys/` is **not** removed by compose and will break `init:zitadel` if left behind.
+
+```bash
+podman compose down -v && podman compose up -d
+# Wait for ZITADEL HTTP (Podman health may lag — prefer curl):
+curl -sf http://localhost:8080/.well-known/openid-configuration >/dev/null
+
+pnpm init:zitadel          # auto-refreshes stale machine key from compose volume
+pnpm --filter @noname/server db:push
+pnpm dev                   # terminal 1 — restart so API loads new .env
+pnpm seed:demo             # terminal 1 still running, or re-run after API up
+```
+
+`init:zitadel` validates the cached machine key against ZITADEL; if it fails (common after `down -v`), it pulls the fresh key from the `zitadel_keys` compose volume and recreates `login-client.pat`. **Restart the API server** after init so it picks up the new `ZITADEL_DEMO_ORG_ID` / `ZITADEL_CLIENT_ID`.
 
 ```bash
 # All three app processes (copy into separate terminals):
