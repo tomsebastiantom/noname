@@ -1,5 +1,6 @@
-import { getKey, parseJwt } from "@cfworker/jwt";
+import { parseJwt } from "@cfworker/jwt";
 import { accessTokenFromRequest, resolveIdentityFromTokenPayload } from "@noname/auth";
+import { createCachedGetKey } from "./jwks-cache";
 import type { EdgeContext, Env } from "./types";
 
 /** Returns identity from JWT, or null when no/invalid token (no redirect). */
@@ -12,7 +13,7 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
       jwt: token,
       issuer: env.ZITADEL_ISSUER,
       audience: env.ZITADEL_CLIENT_ID,
-      resolveKey: getKey,
+      resolveKey: createCachedGetKey(env),
     });
 
     if (!result.valid) return null;

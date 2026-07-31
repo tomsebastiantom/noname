@@ -1,8 +1,8 @@
 # Flags → Live UI — Decision & Analysis
 
-> **Status:** **Implemented** (2026-07-27) — hybrid Phases 1–2 shipped. See [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md).  
-> **Date:** 2026-07-27  
-> **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`flags-domain.md`](../2026-07-04/flags-domain.md), [`BROWSER_SDK.md`](../2026-07-11/BROWSER_SDK.md)
+> **Status:** **Implemented** (2026-07-27) — hybrid Phases 1–2 shipped. Type B layout swap **deferred** (2026-07-30) — use segments + admin preview instead. See [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md).  
+> **Date:** 2026-07-27 (updated 2026-07-30)  
+> **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`flags-domain.md`](../2026-07-04/flags-domain.md), [`BROWSER_SDK.md`](../2026-07-11/BROWSER_SDK.md), [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md)
 
 ---
 
@@ -312,6 +312,7 @@ Pass `sdk.flags.get()` into json-render; components react via conditions.
 - [x] Approve Phase 2 (`$flags` via `/flags/{key}` json-render state)  
 - [x] Approve SDK `onAnyUpdate` + `getAll` + `seed` helpers  
 - [ ] Defer Phase 3 until flag volume / layout-bound metadata needed  
+- [x] **2026-07-30:** Defer Type B product path — layout swap = segments; admin QA = preview mode ([`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md))
 
 ---
 
@@ -320,3 +321,4 @@ Pass `sdk.flags.get()` into json-render; components react via conditions.
 - [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md) — current wiring status  
 - [`flags-domain.md`](../2026-07-04/flags-domain.md) — evaluation, SSE, `$flags` spec  
 - [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md) — native flags, no LaunchDarkly  
+- [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md) — Type B deferred; segment preview + impersonation plan  

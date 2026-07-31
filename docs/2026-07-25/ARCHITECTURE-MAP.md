@@ -150,5 +150,9 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 
 | Old file | Use instead |
 |----------|-------------|
-| `LOGIN-UI-PLAN.md` | [`LOGIN-UI.md`](./LOGIN-UI.md) |
-| `LOGIN-UI-MODERN-PLAN.md` | [`LOGIN-UI.md`](./LOGIN-UI.md) |
+| `docs/2026-07-11/AUTH.md` | [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md) (ZITADEL) |
+| `docs/2026-07-04/*-domain.md` (Scaffolding sections) | [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md) + [`STATUS.md`](../2026-07-11/STATUS.md) — banners added 2026-07-30 |
+| `docs/2026-07-25/PERMISSIONS-REBAC.md` | Read [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) first |
+| `docs/archive/2026-05-23/*` | [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md), `PLATFORM-STATUS.md` |
+| ~~`LOGIN-UI-PLAN.md`~~ | Deleted — use [`LOGIN-UI.md`](./LOGIN-UI.md) |
+| ~~`LOGIN-UI-MODERN-PLAN.md`~~ | Deleted — use [`LOGIN-UI.md`](./LOGIN-UI.md) |

@@ -1,5 +1,7 @@
 # External Execution Layer Consideration
 
+> ⚠️ **Decision record (2026-07-04)** — external FaaS/Lambda was **deferred**. Current async work uses BullMQ. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md).
+
 ## Date: 2026-07-04
 
 ---

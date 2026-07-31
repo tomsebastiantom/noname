@@ -1,5 +1,7 @@
 # Agent Domain
 
+> ⚠️ **Historical plan (2026-07-04)** — this domain is **implemented** today. Sections marked "Scaffolding" are outdated. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) and [`../2026-07-11/STATUS.md`](../2026-07-11/STATUS.md).
+
 ## Purpose
 
 The agent domain is the platform's **public API for the master-agent framework**. Any authenticated user — store owners, admins, platform operators — can create tasks, approve/reject agent outputs, and trigger work on the platform through standard HTTP endpoints.

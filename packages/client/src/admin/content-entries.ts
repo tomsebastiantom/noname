@@ -1,4 +1,9 @@
-import { apiHeaders } from "../auth/session";
+import {
+  apiFetch,
+  apiFetchDataOptional,
+  apiFetchOptional,
+  apiFetchVoid,
+} from "../lib/api";
 
 export interface ContentFieldSchema {
   key: string;
@@ -131,28 +136,20 @@ export function isEditableField(type: string): boolean {
 }
 
 export async function listContentTypes(): Promise<ContentTypeSummary[]> {
-  const res = await fetch("/api/documents/content-types", { headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to load content types (${res.status})`);
-  const body = (await res.json()) as { data?: ContentTypeSummary[] };
+  const body = await apiFetch<{ data?: ContentTypeSummary[] }>("/api/documents/content-types");
   return body.data ?? [];
 }
 
 export async function getContentType(name: string): Promise<ContentTypeSummary | null> {
-  const res = await fetch(`/api/documents/content-types/${encodeURIComponent(name)}`, {
-    headers: apiHeaders(),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load content type (${res.status})`);
-  const body = (await res.json()) as { data?: ContentTypeSummary };
-  return body.data ?? null;
+  return apiFetchDataOptional<ContentTypeSummary>(
+    `/api/documents/content-types/${encodeURIComponent(name)}`,
+  );
 }
 
 export async function listEntries(contentType: string): Promise<ContentEntryRow[]> {
-  const res = await fetch(`/api/documents/${encodeURIComponent(contentType)}`, {
-    headers: apiHeaders(),
-  });
-  if (!res.ok) throw new Error(`Failed to load entries (${res.status})`);
-  const body = (await res.json()) as { data?: ContentEntryRow[] };
+  const body = await apiFetch<{ data?: ContentEntryRow[] }>(
+    `/api/documents/${encodeURIComponent(contentType)}`,
+  );
   return body.data ?? [];
 }
 
@@ -161,12 +158,9 @@ export async function loadEntryFields(
   id: string,
   locale = DEFAULT_LOCALE,
 ): Promise<Record<string, string>> {
-  const res = await fetch(
+  const body = await apiFetch<{ data?: Record<string, unknown> }>(
     `/api/documents/${encodeURIComponent(contentType)}/${id}/resolve?locale=${encodeURIComponent(locale)}`,
-    { headers: apiHeaders() },
   );
-  if (!res.ok) throw new Error(`Failed to load entry (${res.status})`);
-  const body = (await res.json()) as { data?: Record<string, unknown> };
   return fieldsFromResolved(body.data ?? {});
 }
 
@@ -178,42 +172,29 @@ export async function saveContentEntry(input: {
   locale?: string;
 }): Promise<void> {
   const locale = input.locale ?? DEFAULT_LOCALE;
-  const headers = { ...apiHeaders(), "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json" };
   const { localizable, global } = splitSavePayload(input.values, input.schema);
 
   if (Object.keys(localizable).length > 0) {
-    const res = await fetch(
+    await apiFetchVoid(
       `/api/documents/${encodeURIComponent(input.contentType)}/${input.id}?locale=${encodeURIComponent(locale)}`,
       { method: "PUT", headers, body: JSON.stringify(localizable) },
     );
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? `Save failed (${res.status})`);
-    }
   }
 
   if (Object.keys(global).length > 0) {
-    const res = await fetch(`/api/documents/${encodeURIComponent(input.contentType)}/${input.id}`, {
+    await apiFetchVoid(`/api/documents/${encodeURIComponent(input.contentType)}/${input.id}`, {
       method: "PUT",
       headers,
       body: JSON.stringify(global),
     });
-    if (!res.ok) {
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
-      throw new Error(body.error ?? `Save failed (${res.status})`);
-    }
   }
 }
 
 export async function publishContentEntry(contentType: string, id: string): Promise<void> {
-  const res = await fetch(`/api/documents/${encodeURIComponent(contentType)}/${id}/publish`, {
+  await apiFetchVoid(`/api/documents/${encodeURIComponent(contentType)}/${id}/publish`, {
     method: "PUT",
-    headers: apiHeaders(),
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Publish failed (${res.status})`);
-  }
 }
 
 export async function createContentEntry(input: {
@@ -223,19 +204,14 @@ export async function createContentEntry(input: {
   locale?: string;
 }): Promise<string> {
   const locale = input.locale ?? DEFAULT_LOCALE;
-  const headers = { ...apiHeaders(), "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json" };
   const { localizable, global } = splitSavePayload(input.values, input.schema);
   const body = { ...global, ...localizable };
 
-  const res = await fetch(
+  const created = await apiFetch<{ data?: { id: string } }>(
     `/api/documents/${encodeURIComponent(input.contentType)}?locale=${encodeURIComponent(locale)}`,
     { method: "POST", headers, body: JSON.stringify(body) },
   );
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Create failed (${res.status})`);
-  }
-  const created = (await res.json()) as { data?: { id: string } };
   if (!created.data?.id) throw new Error("Create succeeded but no entry id returned");
   return created.data.id;
 }
@@ -272,43 +248,30 @@ function assetUrlFromData(data: Record<string, unknown>): string | null {
 }
 
 export async function listAssets(): Promise<AssetSummary[]> {
-  const res = await fetch("/api/documents/assets", { headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to load assets (${res.status})`);
-  const body = (await res.json()) as {
+  const body = await apiFetch<{
     data?: { id: string; key: string; data?: Record<string, unknown> }[];
-  };
+  }>("/api/documents/assets");
   return (body.data ?? []).map((row) => assetFromRow({ ...row, data: row.data ?? {} }));
 }
 
 export async function uploadAsset(file: File): Promise<AssetSummary> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/documents/assets/upload", {
+  const body = await apiFetch<{
+    data?: { id: string; key: string; data?: Record<string, unknown> };
+  }>("/api/documents/assets/upload", {
     method: "POST",
-    headers: apiHeaders(),
     body: form,
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Upload failed (${res.status})`);
-  }
-  const body = (await res.json()) as {
-    data?: { id: string; key: string; data?: Record<string, unknown> };
-  };
   if (!body.data) throw new Error("Upload succeeded but no asset returned");
   return assetFromRow(body.data);
 }
 
 export async function getAsset(assetId: string): Promise<AssetSummary | null> {
-  const res = await fetch(`/api/documents/assets/${encodeURIComponent(assetId)}`, {
-    headers: apiHeaders(),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load asset (${res.status})`);
-  const body = (await res.json()) as {
+  const body = await apiFetchOptional<{
     data?: { id: string; key: string; data?: Record<string, unknown> };
-  };
-  if (!body.data) return null;
+  }>(`/api/documents/assets/${encodeURIComponent(assetId)}`);
+  if (!body?.data) return null;
   return assetFromRow(body.data);
 }
 
@@ -321,25 +284,15 @@ export interface InboundRefHit {
 }
 
 export async function fetchRefBackrefs(documentId: string): Promise<InboundRefHit[]> {
-  const res = await fetch(
+  const body = await apiFetch<{ data?: InboundRefHit[] }>(
     `/api/documents/ref-backrefs?documentId=${encodeURIComponent(documentId)}`,
-    { headers: apiHeaders() },
   );
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Failed to load references (${res.status})`);
-  }
-  const body = (await res.json()) as { data?: InboundRefHit[] };
   return body.data ?? [];
 }
 
 export async function deleteContentEntry(contentType: string, id: string): Promise<void> {
-  const res = await fetch(
+  await apiFetchVoid(
     `/api/documents/${encodeURIComponent(contentType)}/${encodeURIComponent(id)}`,
-    { method: "DELETE", headers: apiHeaders() },
+    { method: "DELETE" },
   );
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Delete failed (${res.status})`);
-  }
 }

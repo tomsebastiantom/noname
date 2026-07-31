@@ -1,4 +1,5 @@
 import { type BrowserSDK, init } from "@noname/browser-sdk";
+import { apiFetchData } from "../lib/api";
 import { resolveOrgIdFromHostname } from "../auth/org";
 import {
   apiHeaders,
@@ -64,17 +65,11 @@ function installFlagBridge(): void {
 
 async function loadLayoutFlagKeys(orgId: string): Promise<void> {
   try {
-    const auth = apiHeaders() as Record<string, string>;
-    const res = await fetch("/api/flags", {
-      headers: { "x-org-id": orgId, ...auth },
-    });
-    if (!res.ok) return;
-
-    const body = (await res.json()) as {
-      data?: Array<{ key: string; schemaId: string | null; variantId: string | null }>;
-    };
+    const flags = await apiFetchData<
+      Array<{ key: string; schemaId: string | null; variantId: string | null }>
+    >("/api/flags");
     const keys = new Set<string>();
-    for (const flag of body.data ?? []) {
+    for (const flag of flags) {
       if (flag.schemaId || flag.variantId) {
         keys.add(flag.key);
       }

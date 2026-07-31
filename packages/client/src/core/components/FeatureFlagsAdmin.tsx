@@ -1,5 +1,5 @@
+import { listFlags, updateBooleanFlag, type FlagRow } from "../../admin/flags";
 import { useCallback, useEffect, useState } from "react";
-import { apiHeaders } from "../../auth/session";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -11,16 +11,6 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import type { ComponentCtx } from "./types";
-
-interface FlagRow {
-  id: string;
-  key: string;
-  type: string;
-  description: string;
-  defaultValue: unknown;
-  targeting: Array<{ priority: number; condition: unknown; value: unknown }>;
-  status: string;
-}
 
 function flagValue(flag: FlagRow): unknown {
   const rule = flag.targeting.find((r) => r.priority === 0) ?? flag.targeting[0];
@@ -47,10 +37,7 @@ export function FeatureFlagsAdmin({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/flags", { headers: apiHeaders() });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const body = (await res.json()) as { data?: FlagRow[] };
-      setFlags(body.data ?? []);
+      setFlags(await listFlags());
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -68,15 +55,7 @@ export function FeatureFlagsAdmin({
     setToggling(flag.id);
     setError(null);
     try {
-      const res = await fetch(`/api/flags/${flag.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json", ...apiHeaders() },
-        body: JSON.stringify({
-          defaultValue: next,
-          targeting: [{ priority: 0, condition: { type: "always" }, value: next }],
-        }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await updateBooleanFlag(flag, next === true);
       await loadFlags();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));

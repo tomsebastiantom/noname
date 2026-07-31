@@ -1,5 +1,5 @@
+import { apiFetch, apiFetchVoid } from "../lib/api";
 import { requireStoreSlug } from "./org";
-import { apiHeaders } from "./session";
 
 export type AuthProvider = "google" | "github" | "apple";
 
@@ -25,26 +25,21 @@ function idpConfigured(
 
 export async function loadAuthSettings(): Promise<AuthSettingsState> {
   const storeSlug = requireStoreSlug();
-  const headers = apiHeaders();
 
-  const [configRes, settingsRes] = await Promise.all([
-    fetch(`/api/tenants/${storeSlug}/auth/config`, { headers }),
-    fetch("/api/documents/tenant_settings/default", { headers }),
+  const [configBody, settingsBody] = await Promise.all([
+    apiFetch<{
+      data?: {
+        providers?: string[];
+        allowPassword?: boolean;
+        allowSignUp?: boolean;
+        allowPasswordReset?: boolean;
+        requireMfaForAdmin?: boolean;
+      };
+    }>(`/api/tenants/${storeSlug}/auth/config`),
+    apiFetch<{ data?: { auth?: { idpIds?: Record<string, string>; providers?: string[] } } }>(
+      "/api/documents/tenant_settings/default",
+    ).catch(() => ({ data: undefined } as { data?: undefined })),
   ]);
-
-  if (!configRes.ok) {
-    throw new Error(`Failed to load auth config (${configRes.status})`);
-  }
-
-  const configBody = (await configRes.json()) as {
-    data?: {
-      providers?: string[];
-      allowPassword?: boolean;
-      allowSignUp?: boolean;
-      allowPasswordReset?: boolean;
-      requireMfaForAdmin?: boolean;
-    };
-  };
 
   let providers = (configBody.data?.providers ?? []).filter((p): p is AuthProvider =>
     ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
@@ -52,12 +47,9 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
 
   let idpIds: Record<string, string> = {};
 
-  if (settingsRes.ok) {
-    const settingsBody = (await settingsRes.json()) as {
-      data?: { auth?: { idpIds?: Record<string, string>; providers?: string[] } };
-    };
-    idpIds = settingsBody.data?.auth?.idpIds ?? {};
-    if (providers.length === 0 && settingsBody.data?.auth?.providers) {
+  if (settingsBody.data?.auth) {
+    idpIds = settingsBody.data.auth.idpIds ?? {};
+    if (providers.length === 0 && settingsBody.data.auth.providers) {
       providers = settingsBody.data.auth.providers.filter((p): p is AuthProvider =>
         ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
       );
@@ -88,18 +80,15 @@ export async function saveAuthConfig(input: {
 }): Promise<AuthProvider[]> {
   const storeSlug = requireStoreSlug();
 
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/config`, {
-    method: "PUT",
-    headers: { ...apiHeaders(), "Content-Type": "application/json" },
-    body: JSON.stringify(input),
-  });
+  const body = await apiFetch<{ data?: { providers?: string[] } }>(
+    `/api/tenants/${storeSlug}/auth/config`,
+    {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    },
+  );
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Save failed (${res.status})`);
-  }
-
-  const body = (await res.json()) as { data?: { providers?: string[] } };
   return (body.data?.providers ?? []).filter((p): p is AuthProvider =>
     ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
   );

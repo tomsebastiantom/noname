@@ -1,5 +1,7 @@
 # Nango Domain — Integration Layer
 
+> ⚠️ **Plan doc (2026-07-04)** — Docker service exists; integration scripts are **Phase 2+**. Current platform status: [`../2026-07-11/STATUS.md`](../2026-07-11/STATUS.md).
+
 > **Framing — "commerce" is an example vertical, not the product.** The booking/checkout/Stripe examples below illustrate the general pattern. The platform is **identity-agnostic** and the same Nango + XState pattern powers any vertical (booking, membership, SaaS, content).
 
 ## Purpose

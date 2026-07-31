@@ -1,8 +1,6 @@
 import type { Env } from "./types";
 
 const DEFAULT_CACHE_TTL = 60;
-const _PERSONALIZED_CACHE_TTL = 60;
-const _STATIC_CACHE_TTL = 300;
 
 export async function getCached<T>(env: Env, key: string): Promise<T | null> {
   const cached = await env.KV.get(key, "json");
@@ -26,6 +24,3 @@ export function cacheKey(orgId: string, segment: string, path: string): string {
   return `${orgId}:${segment}:${path}`;
 }
 
-export function staticCacheKey(path: string): string {
-  return `static:${path}`;
-}

@@ -1,4 +1,4 @@
-import { apiHeaders } from "../auth/session";
+import { apiFetch, apiFetchVoid } from "../lib/api";
 
 export interface LayoutRow {
   id: string;
@@ -25,11 +25,9 @@ export function layoutTemplateFromPath(pathname: string): string {
 }
 
 export async function listLayouts(segment = "default"): Promise<LayoutSummary[]> {
-  const res = await fetch(`/api/documents/layout?segment=${encodeURIComponent(segment)}`, {
-    headers: apiHeaders(),
-  });
-  if (!res.ok) throw new Error(`Failed to load layouts (${res.status})`);
-  const body = (await res.json()) as { data?: LayoutRow[] };
+  const body = await apiFetch<{ data?: LayoutRow[] }>(
+    `/api/documents/layout?segment=${encodeURIComponent(segment)}`,
+  );
   const rows = body.data ?? [];
 
   const byKey = new Map<string, LayoutRow>();
@@ -59,12 +57,9 @@ export async function getLayoutForTemplate(
   templateName: string,
   segment = "default",
 ): Promise<LayoutRow | null> {
-  const res = await fetch(
+  const body = await apiFetch<{ data?: LayoutRow[] }>(
     `/api/documents/layout?segment=${encodeURIComponent(segment)}&templateName=${encodeURIComponent(templateName)}`,
-    { headers: apiHeaders() },
   );
-  if (!res.ok) throw new Error(`Failed to load layout (${res.status})`);
-  const body = (await res.json()) as { data?: LayoutRow[] };
   const rows = body.data ?? [];
   const draft = rows.find((r) => r.status === "draft");
   const published = rows.find((r) => r.status === "published");
@@ -88,7 +83,6 @@ export async function saveLayout(input: {
   spec: Record<string, unknown>;
   contentRef?: string | null;
 }): Promise<void> {
-  const headers = { ...apiHeaders(), "Content-Type": "application/json" };
   const body: { spec: Record<string, unknown>; contentRef?: string | null } = {
     spec: input.spec,
   };
@@ -96,24 +90,13 @@ export async function saveLayout(input: {
     body.contentRef = input.contentRef === "" ? null : input.contentRef;
   }
 
-  const res = await fetch(`/api/documents/layout/${input.id}`, {
+  await apiFetchVoid(`/api/documents/layout/${input.id}`, {
     method: "PUT",
-    headers,
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Save failed (${res.status})`);
-  }
 }
 
 export async function publishLayout(id: string): Promise<void> {
-  const res = await fetch(`/api/documents/layout/${id}/publish`, {
-    method: "PUT",
-    headers: apiHeaders(),
-  });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Publish failed (${res.status})`);
-  }
+  await apiFetchVoid(`/api/documents/layout/${id}/publish`, { method: "PUT" });
 }

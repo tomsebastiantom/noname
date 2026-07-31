@@ -13,10 +13,7 @@
   "dependencies": {
     "@noname/auth": "workspace:*",
     "@cfworker/jwt": "^6.0.0",
-    "hono": "^4.0.0",
-    "@json-render/core": "^0.19.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "hono": "^4.0.0"
   },
   "devDependencies": {
     "wrangler": "^4.0.0",

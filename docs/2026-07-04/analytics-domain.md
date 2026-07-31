@@ -1,5 +1,7 @@
 # Analytics Domain — Implementation Plan
 
+> ⚠️ **Historical plan (2026-07-04)** — analytics is **implemented** (ClickHouse + BullMQ). Sections marked "Scaffolding" are outdated. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) and [`../2026-07-27/BROWSER-SDK-INTEGRATION.md`](../2026-07-27/BROWSER-SDK-INTEGRATION.md).
+
 > **Framing — "commerce" is an example vertical, not the product.** The checkout/booking examples illustrate the general event/attribution model. The platform is **identity-agnostic** and the same analytics pipeline powers any vertical (booking, membership, SaaS, content).
 
 ## Purpose

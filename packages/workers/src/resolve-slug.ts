@@ -1,4 +1,5 @@
 import { getCached, setCache, slugCacheKey } from "./cache";
+import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
 
 const SLUG_CACHE_TTL = 300;
@@ -18,7 +19,9 @@ export async function resolveSiteId(env: Env, siteId: string): Promise<string | 
   const cached = await getCached<{ orgId: string }>(env, slugCacheKey(slug));
   if (cached?.orgId) return cached.orgId;
 
-  const res = await fetch(`${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`);
+  const res = await fetchWithTimeout(
+    `${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`,
+  );
   if (!res.ok) return null;
 
   const body = (await res.json()) as { data?: { orgId?: string } };

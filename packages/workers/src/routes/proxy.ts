@@ -1,6 +1,7 @@
 import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "@noname/auth";
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
+import { fetchWithTimeout } from "../fetch-with-timeout";
 import { hmacHeaders } from "../hmac";
 import { resolveOrgIdFromHost, resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
@@ -27,6 +28,10 @@ function isResolveSlugPath(pathname: string): boolean {
   return /^\/api\/tenants\/resolve\/[^/]+$/.test(pathname);
 }
 
+function routeIsPublic(method: string, pathname: string): boolean {
+  return isPublicGet(method, pathname) || isPublicPost(method, pathname);
+}
+
 export function createApiProxyRoutes() {
   const routes = new Hono<{ Bindings: Env }>();
 
@@ -35,18 +40,27 @@ export function createApiProxyRoutes() {
     const pathname = incoming.pathname;
     const search = stripOrgFromSearch(pathname, incoming.search);
     const target = `${c.env.API_ORIGIN}${pathname}${search}`;
+    const isPublic = routeIsPublic(c.req.method, pathname);
+    const editMode = isEditModeUrl(incoming);
 
-    const jwt = await tryParseJwt(c.req.raw, c.env);
+    let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
-    if (isEditModeUrl(incoming)) {
-      let editCtx = jwt;
-      if (!editCtx) {
+    if (editMode) {
+      jwt = await tryParseJwt(c.req.raw, c.env);
+      if (!jwt) {
         const auth = await validateJwt(c.req.raw, c.env);
         if (auth instanceof Response) return auth;
-        editCtx = auth;
+        jwt = auth;
       }
-      if (!canDraft(editCtx.roles ?? [])) {
+      if (!canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
+      }
+    } else if (!isPublic) {
+      jwt = await tryParseJwt(c.req.raw, c.env);
+      if (!jwt) {
+        const auth = await validateJwt(c.req.raw, c.env);
+        if (auth instanceof Response) return auth;
+        jwt = auth;
       }
     }
 
@@ -71,11 +85,6 @@ export function createApiProxyRoutes() {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 
-    if (!isPublicGet(c.req.method, pathname) && !isPublicPost(c.req.method, pathname) && !jwt) {
-      const auth = await validateJwt(c.req.raw, c.env);
-      if (auth instanceof Response) return auth;
-    }
-
     const signed = await hmacHeaders(orgId, jwt?.userId ?? "", jwt?.role ?? "", c.env);
 
     const headers = new Headers();
@@ -92,14 +101,17 @@ export function createApiProxyRoutes() {
       headers,
     };
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
-      let body = await c.req.raw.clone().text();
-      if (shouldStripBodyOrg(pathname, c.req.method)) {
+      const stripOrg = shouldStripBodyOrg(pathname, c.req.method);
+      if (stripOrg) {
+        let body = await c.req.raw.clone().text();
         body = stripOrgFromPublicJsonBody(pathname, body);
+        init.body = body;
+      } else {
+        init.body = c.req.raw.body;
       }
-      init.body = body;
     }
 
-    const response = await fetch(target, init);
+    const response = await fetchWithTimeout(target, init);
     return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,

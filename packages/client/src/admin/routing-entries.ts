@@ -1,4 +1,4 @@
-import { apiHeaders } from "../auth/session";
+import { apiFetch, apiFetchDataOptional, apiFetchVoid } from "../lib/api";
 
 export interface PageTreeEntry {
   id: string;
@@ -34,40 +34,26 @@ export function routingPageKeyFromPath(pathname: string): string {
 }
 
 export async function loadMainTree(): Promise<MainTreeView | null> {
-  const res = await fetch("/api/documents/page_tree/main", { headers: apiHeaders() });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load page tree (${res.status})`);
-  const body = (await res.json()) as { data?: MainTreeView };
-  return body.data ?? null;
+  return apiFetchDataOptional<MainTreeView>("/api/documents/page_tree/main");
 }
 
 export async function saveMainTree(pages: PageTreeEntry[]): Promise<void> {
-  const res = await fetch("/api/documents/page_tree/main", {
+  await apiFetchVoid("/api/documents/page_tree/main", {
     method: "PUT",
-    headers: { ...apiHeaders(), "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ pages }),
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Save failed (${res.status})`);
-  }
 }
 
 export async function listRoutingPages(): Promise<RoutingPageView[]> {
-  const res = await fetch("/api/documents/routing/pages", { headers: apiHeaders() });
-  if (!res.ok) throw new Error(`Failed to load routing pages (${res.status})`);
-  const body = (await res.json()) as { data?: RoutingPageView[] };
+  const body = await apiFetch<{ data?: RoutingPageView[] }>("/api/documents/routing/pages");
   return body.data ?? [];
 }
 
 export async function loadRoutingPage(pageKey: string): Promise<RoutingPageView | null> {
-  const res = await fetch(`/api/documents/routing/pages/${encodeURIComponent(pageKey)}`, {
-    headers: apiHeaders(),
-  });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Failed to load page (${res.status})`);
-  const body = (await res.json()) as { data?: RoutingPageView };
-  return body.data ?? null;
+  return apiFetchDataOptional<RoutingPageView>(
+    `/api/documents/routing/pages/${encodeURIComponent(pageKey)}`,
+  );
 }
 
 export async function saveRoutingPage(input: {
@@ -75,16 +61,12 @@ export async function saveRoutingPage(input: {
   layoutRef: string;
   contentRef?: string | null;
 }): Promise<void> {
-  const res = await fetch(`/api/documents/page/${encodeURIComponent(input.pageKey)}`, {
+  await apiFetchVoid(`/api/documents/page/${encodeURIComponent(input.pageKey)}`, {
     method: "PUT",
-    headers: { ...apiHeaders(), "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       layoutRef: input.layoutRef,
       contentRef: input.contentRef ?? "",
     }),
   });
-  if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(err.error ?? `Save failed (${res.status})`);
-  }
 }
