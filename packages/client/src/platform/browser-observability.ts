@@ -1,5 +1,4 @@
 import { type BrowserSDK, init } from "@noname/browser-sdk";
-import { apiFetchData } from "../lib/api";
 import { resolveOrgIdFromHostname } from "../auth/org";
 import {
   apiHeaders,
@@ -7,6 +6,7 @@ import {
   sessionUserEmail,
   sessionUserId,
 } from "../auth/session";
+import { apiFetchData } from "../lib/api";
 
 let sdk: BrowserSDK | null = null;
 let flagsSnapshot: Record<string, unknown> = {};
@@ -63,11 +63,12 @@ function installFlagBridge(): void {
   });
 }
 
-async function loadLayoutFlagKeys(orgId: string): Promise<void> {
+async function loadLayoutFlagKeys(_orgId: string): Promise<void> {
   try {
-    const flags = await apiFetchData<
-      Array<{ key: string; schemaId: string | null; variantId: string | null }>
-    >("/api/flags");
+    const flags =
+      await apiFetchData<Array<{ key: string; schemaId: string | null; variantId: string | null }>>(
+        "/api/flags",
+      );
     const keys = new Set<string>();
     for (const flag of flags) {
       if (flag.schemaId || flag.variantId) {

@@ -1,11 +1,15 @@
 import {
   AUTH_PROVIDER_CONTENT_TYPE,
   buildGenericOAuthPayload,
-  customProviderId,
+  type DocumentStorage,
+  isBuiltinLoginProvider,
+  mergeAuthConfig,
+  normalizeAuthConfig,
+  parseAuthProviderDisplayData,
   parseAuthProviderEntryData,
-} from "../../documents/content-types/auth-provider";
-import type { DocumentStorage, TenantSettingsService } from "../../documents/ports";
-import { mergeAuthConfig, normalizeAuthConfig } from "../../documents/tenant/auth-config";
+  providerIdFromKey,
+  type TenantSettingsService,
+} from "../../documents";
 import { upsertZitadelIdp } from "../adapters/zitadel/management";
 
 /** On publish: push OAuth config to ZITADEL and store the returned IdP id in tenant settings. */
@@ -18,8 +22,14 @@ export async function publishAuthProviderSideEffect(
   const row = await storage.findDocumentById(documentId);
   if (!row || row.type !== AUTH_PROVIDER_CONTENT_TYPE) return;
 
+  const display = parseAuthProviderDisplayData(row.data);
+  if (!display) return;
+
+  // Built-in rows hold enable/label/icon only — credentials go through PUT /auth/config.
+  if (isBuiltinLoginProvider(display.providerKey)) return;
+
   const entry = parseAuthProviderEntryData(row.data);
-  const providerId = customProviderId(entry.providerKey);
+  const providerId = providerIdFromKey(entry.providerKey);
   const settings = await tenantSettings.get(orgId);
   const current = normalizeAuthConfig(settings.auth);
   const idpIds = { ...current.idpIds };

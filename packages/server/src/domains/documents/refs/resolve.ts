@@ -1,4 +1,4 @@
-import { iconUrlFromAsset } from "../../auth/asset-url";
+import { iconUrlFromAsset } from "../assets/icon-url";
 import type { AssetDTO, ContentTypeSchema, DocumentDTO, DocumentStorage } from "../ports";
 
 export interface ResolvedDocumentRef {

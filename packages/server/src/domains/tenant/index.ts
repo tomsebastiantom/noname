@@ -1,4 +1,4 @@
-import type { TenantSettingsService } from "../documents/ports";
+import type { TenantSettingsService } from "../documents";
 import { createInMemoryManifestStore } from "./adapters/manifest-store";
 import { createCatalogBundleStorage, r2ConfigFromEnv } from "./adapters/r2";
 import { createTenantRoutes } from "./api";

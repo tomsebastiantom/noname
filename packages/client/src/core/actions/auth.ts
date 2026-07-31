@@ -7,7 +7,7 @@ import {
   requestPasswordReset,
   verifyMfaAndLogin,
 } from "../../auth/account-flows";
-import { type AuthProvider, saveAuthConfig } from "../../auth/auth-settings";
+import { saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { requireStoreSlug } from "../../auth/org";
 import { clearSession } from "../../auth/session";
@@ -17,7 +17,6 @@ import type { CatalogActionHandler } from "./types";
 export const authActions = {
   saveAuthConfig: (async (params) => {
     const {
-      providers,
       allowPassword,
       allowSignUp,
       allowPasswordReset,
@@ -26,7 +25,6 @@ export const authActions = {
       githubOAuth,
       appleOAuth,
     } = params as {
-      providers: AuthProvider[];
       allowPassword: boolean;
       allowSignUp?: boolean;
       allowPasswordReset?: boolean;
@@ -37,7 +35,6 @@ export const authActions = {
     };
 
     await saveAuthConfig({
-      providers,
       allowPassword,
       allowSignUp,
       allowPasswordReset,

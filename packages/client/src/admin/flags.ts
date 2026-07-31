@@ -1,4 +1,4 @@
-import { apiFetch, apiFetchData, apiFetchVoid } from "../lib/api";
+import { apiFetchData, apiFetchVoid } from "../lib/api";
 
 export interface FlagRow {
   id: string;

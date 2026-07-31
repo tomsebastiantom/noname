@@ -54,7 +54,11 @@ async function fetchWithTimeout(
   }
 }
 
-function redirectTo(url: string, setLoading: (v: boolean) => void, setNavigating: (v: boolean) => void): void {
+function redirectTo(
+  url: string,
+  setLoading: (v: boolean) => void,
+  setNavigating: (v: boolean) => void,
+): void {
   setLoading(false);
   setNavigating(false);
   window.location.href = url;
@@ -157,10 +161,9 @@ function App() {
       ? `segment=default&template=${encodeURIComponent(template)}`
       : `segment=default&url=${encodeURIComponent(pathname)}`;
 
-    const specPromise = fetchWithTimeout(
-      `/api/edge/schema/${storeSlug}?${schemaQuery}`,
-      { headers },
-    ).then((res) => {
+    const specPromise = fetchWithTimeout(`/api/edge/schema/${storeSlug}?${schemaQuery}`, {
+      headers,
+    }).then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
     });

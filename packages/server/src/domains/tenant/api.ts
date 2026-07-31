@@ -1,7 +1,7 @@
 import { Hono } from "hono";
 import { noContent, notFound, ok } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
-import type { TenantSettingsService } from "../documents/ports";
+import type { TenantSettingsService } from "../documents";
 import type { CatalogManifest, TenantCatalogService } from "./ports";
 
 async function resolveTenantOrgId(

@@ -1,4 +1,4 @@
-import { getKey, importKey, type DecodedJwt } from "@cfworker/jwt";
+import { type DecodedJwt, getKey, importKey } from "@cfworker/jwt";
 import { getCached, setCache } from "./cache";
 import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
@@ -36,9 +36,7 @@ export function createCachedGetKey(env: Env) {
     const iss = String(decoded.payload.iss ?? env.ZITADEL_ISSUER);
     if (!warmedIssuers.has(iss)) {
       const jwks = await fetchJwksDocument(env, iss);
-      await Promise.all(
-        jwks.keys.map((jwk) => importKey(iss, jwk as unknown as JsonWebKey)),
-      );
+      await Promise.all(jwks.keys.map((jwk) => importKey(iss, jwk as unknown as JsonWebKey)));
       warmedIssuers.add(iss);
     }
     return getKey(decoded);

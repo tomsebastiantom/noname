@@ -23,4 +23,3 @@ export function slugCacheKey(slug: string): string {
 export function cacheKey(orgId: string, segment: string, path: string): string {
   return `${orgId}:${segment}:${path}`;
 }
-

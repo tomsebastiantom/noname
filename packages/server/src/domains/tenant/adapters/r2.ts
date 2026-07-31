@@ -1,8 +1,7 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import type { R2Config } from "../../documents/assets/r2";
-import { r2ConfigFromEnv } from "../../documents/assets/r2";
+import { type R2Config, r2ConfigFromEnv } from "../../documents";
 
-export { type R2Config, r2ConfigFromEnv } from "../../documents/assets/r2";
+export { type R2Config, r2ConfigFromEnv } from "../../documents";
 
 export interface CatalogBundleStorage {
   put(key: string, bytes: Buffer, contentType: string): Promise<string>;

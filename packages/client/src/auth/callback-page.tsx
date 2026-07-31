@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
-import { completeOAuthCallback } from "./idp-login";
 import {
   initBrowserObservability,
   syncObservabilityUserFromSession,
 } from "../platform/browser-observability";
+import { completeOAuthCallback } from "./idp-login";
 
 export function AuthCallbackPage() {
   const [error, setError] = useState<string | null>(null);

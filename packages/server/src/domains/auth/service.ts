@@ -1,18 +1,15 @@
 import {
-  listPublishedCustomAuthProviders,
-  resolveLoginProviders,
-} from "../documents/content-types/auth-provider";
-import type {
-  AssetDocumentService,
-  ContentDocumentService,
-  MediaRef,
-  TenantSettingsService,
-} from "../documents/ports";
-import {
+  type AssetDocumentService,
+  type ContentDocumentService,
   idpIdForProvider,
+  isBuiltinLoginProvider,
+  listPublishedAuthProviders,
+  type MediaRef,
   mergeAuthConfig,
   normalizeAuthConfig,
-} from "../documents/tenant/auth-config";
+  resolveLoginProviders,
+  type TenantSettingsService,
+} from "../documents";
 import { teamRoleAssignments, upsertUserTeamRole } from "./adapters/zitadel/authorizations";
 import {
   buildOAuthAuthorizeUrl,
@@ -38,8 +35,10 @@ import {
 } from "./adapters/zitadel/users";
 import { resolveProviderIconUrls } from "./asset-url";
 import {
+  credentialsFromPatch,
   IDP_PROVIDER_IDS,
   IDP_PROVIDER_REGISTRY,
+  type IdpProviderId,
   publicProviderLabels,
   resolveIdpUpdate,
 } from "./idp-registry";
@@ -59,13 +58,13 @@ export function createAuthService(deps: {
 
   async function publicConfig(orgId: string): Promise<AuthConfig> {
     const auth = await loadAuth(orgId);
-    const customProviders = await listPublishedCustomAuthProviders(content, orgId);
-    const providers = resolveLoginProviders(auth, customProviders);
+    const publishedProviders = await listPublishedAuthProviders(content, orgId);
+    const providers = resolveLoginProviders(auth, publishedProviders);
     const allowPassword = auth.allowPassword;
 
-    const providerLabels = { ...(auth.providerLabels ?? {}) };
+    const providerLabels: Record<string, string> = { ...(auth.providerLabels ?? {}) };
     const providerIconAssets: Record<string, MediaRef> = { ...(auth.providerIconAssets ?? {}) };
-    for (const provider of customProviders) {
+    for (const provider of publishedProviders) {
       if (!providers.includes(provider.providerId)) continue;
       providerLabels[provider.providerId] = provider.name;
       if (provider.iconDocumentId) {
@@ -157,11 +156,34 @@ export function createAuthService(deps: {
       const settings = await tenantSettings.get(orgId);
       const current = normalizeAuthConfig(settings.auth);
       let idpIds = patch.idpIds ? { ...current.idpIds, ...patch.idpIds } : { ...current.idpIds };
-      const providers = patch.providers ?? current.providers;
+
+      const publishedProviders = await listPublishedAuthProviders(content, orgId);
+      const cmsEnabledIds = publishedProviders.filter((p) => p.enabled).map((p) => p.providerId);
+
+      const providersForUpdate = new Set<IdpProviderId>(
+        cmsEnabledIds.filter((id): id is IdpProviderId => isBuiltinLoginProvider(id)),
+      );
+      for (const providerId of IDP_PROVIDER_IDS) {
+        if (credentialsFromPatch(providerId, patch)) {
+          providersForUpdate.add(providerId);
+        }
+      }
+      if (patch.providers) {
+        for (const providerId of patch.providers) {
+          if (isBuiltinLoginProvider(providerId)) {
+            providersForUpdate.add(providerId as IdpProviderId);
+          }
+        }
+      }
+
+      const patchWithProviders = {
+        ...patch,
+        providers: [...providersForUpdate],
+      };
 
       for (const providerId of IDP_PROVIDER_IDS) {
         const definition = IDP_PROVIDER_REGISTRY[providerId];
-        const resolved = resolveIdpUpdate(providerId, current, patch);
+        const resolved = resolveIdpUpdate(providerId, current, patchWithProviders);
 
         if (resolved.required && !resolved.credentials && !resolved.existingIdpId) {
           throw new Error(definition.missingCredentialsError);
@@ -180,26 +202,19 @@ export function createAuthService(deps: {
       }
 
       for (const provider of Object.keys(idpIds)) {
-        if (!providers.includes(provider)) {
+        if (!cmsEnabledIds.includes(provider)) {
           delete idpIds[provider];
         }
       }
 
       const next = mergeAuthConfig(current, {
-        providers,
+        providers: cmsEnabledIds.filter((id) => isBuiltinLoginProvider(id)),
         allowPassword: patch.allowPassword,
         allowSignUp: patch.allowSignUp,
         allowPasswordReset: patch.allowPasswordReset,
         requireMfaForAdmin: patch.requireMfaForAdmin,
         idpIds,
-        providerLabels: {
-          ...(current.providerLabels ?? {}),
-          ...Object.fromEntries(
-            providers
-              .filter((id): id is keyof typeof IDP_PROVIDER_REGISTRY => id in IDP_PROVIDER_REGISTRY)
-              .map((id) => [id, IDP_PROVIDER_REGISTRY[id].label]),
-          ),
-        },
+        providerLabels: { ...(current.providerLabels ?? {}) },
         providerIconAssets: { ...(current.providerIconAssets ?? {}) },
       });
 
@@ -289,4 +304,4 @@ export {
   DEFAULT_TENANT_AUTH,
   enabledProviders,
   normalizeAuthConfig,
-} from "../documents/tenant/auth-config";
+} from "../documents";

@@ -1,4 +1,4 @@
-import type { TenantSettingsService } from "../domains/documents/ports";
+import type { TenantSettingsService } from "../domains/documents";
 import { normalizeStoreSlug } from "./store-slug";
 
 /** Resolve API path segment (store slug) to org id. */

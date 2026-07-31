@@ -1,57 +1,71 @@
 import type { ContentDocumentService, TenantAuthConfig } from "../../ports";
 import {
   AUTH_PROVIDER_CONTENT_TYPE,
-  customProviderId,
   isBuiltinLoginProvider,
+  parseAuthProviderDisplayData,
   parseAuthProviderEntryData,
   parseIconAssetId,
+  providerIdFromKey,
 } from "./content";
 
-export interface PublishedCustomAuthProvider {
+export interface PublishedAuthProvider {
   providerId: string;
   name: string;
   iconDocumentId: string | null;
   enabled: boolean;
 }
 
-/** Published auth_provider documents — source of truth for custom login providers. */
-export async function listPublishedCustomAuthProviders(
+/** @deprecated Use listPublishedAuthProviders */
+export type PublishedCustomAuthProvider = PublishedAuthProvider;
+
+/** Published auth_provider documents — enable, label, and icon for all login providers. */
+export async function listPublishedAuthProviders(
   content: Pick<ContentDocumentService, "findByType">,
   orgId: string,
-): Promise<PublishedCustomAuthProvider[]> {
+): Promise<PublishedAuthProvider[]> {
   const rows = await content.findByType(orgId, AUTH_PROVIDER_CONTENT_TYPE);
-  const providers: PublishedCustomAuthProvider[] = [];
+  const providers: PublishedAuthProvider[] = [];
 
   for (const row of rows) {
     if (row.status !== "published") continue;
-    try {
-      const entry = parseAuthProviderEntryData(row.data);
-      providers.push({
-        providerId: customProviderId(entry.providerKey),
-        name: entry.name,
-        iconDocumentId: parseIconAssetId(row.data),
-        enabled: entry.enabled,
-      });
-    } catch {
-      // Skip invalid rows until the merchant fixes them.
+
+    const display = parseAuthProviderDisplayData(row.data);
+    if (!display) continue;
+
+    if (!isBuiltinLoginProvider(display.providerKey)) {
+      try {
+        parseAuthProviderEntryData(row.data);
+      } catch {
+        continue;
+      }
     }
+
+    providers.push({
+      providerId: providerIdFromKey(display.providerKey),
+      name: display.name,
+      iconDocumentId: parseIconAssetId(row.data),
+      enabled: display.enabled,
+    });
   }
 
   return providers;
 }
 
-/** Built-in providers from settings plus enabled custom providers with ZITADEL IdP ids. */
+/** @deprecated Use listPublishedAuthProviders */
+export async function listPublishedCustomAuthProviders(
+  content: Pick<ContentDocumentService, "findByType">,
+  orgId: string,
+): Promise<PublishedAuthProvider[]> {
+  const all = await listPublishedAuthProviders(content, orgId);
+  return all.filter((provider) => !isBuiltinLoginProvider(provider.providerId));
+}
+
+/** Enabled published providers that also have a ZITADEL IdP id for this org. */
 export function resolveLoginProviders(
   auth: TenantAuthConfig,
-  customProviders: PublishedCustomAuthProvider[],
+  publishedProviders: PublishedAuthProvider[],
 ): string[] {
-  const builtIn = auth.providers.filter(
-    (provider) => isBuiltinLoginProvider(provider) && Boolean(auth.idpIds[provider]?.trim()),
-  );
-
-  const custom = customProviders
+  return publishedProviders
     .filter((provider) => provider.enabled && Boolean(auth.idpIds[provider.providerId]?.trim()))
     .map((provider) => provider.providerId);
-
-  return [...builtIn, ...custom];
 }

@@ -136,6 +136,7 @@ export const coreComponentSchemas = {
       socialProvidersLegend: z.string(),
       configuredBadgeLabel: z.string(),
       saveHelperText: z.string(),
+      authProvidersLinkText: z.string(),
       allowPasswordLabel: z.string(),
       allowPasswordResetLabel: z.string(),
       allowSignUpLabel: z.string(),
@@ -357,7 +358,6 @@ export const coreActionSchemas = {
   },
   saveAuthConfig: {
     params: z.object({
-      providers: z.array(z.enum(["google", "github", "apple"])),
       allowPassword: z.boolean(),
       allowSignUp: z.boolean().optional(),
       allowPasswordReset: z.boolean().optional(),

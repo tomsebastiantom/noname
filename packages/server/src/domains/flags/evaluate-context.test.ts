@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { createFlagService } from "./service";
 import type { FlagDTO, FlagStorage } from "./ports";
+import { createFlagService } from "./service";
 
 function mockFlag(overrides: Partial<FlagDTO> = {}): FlagDTO {
   return {

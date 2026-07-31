@@ -1,9 +1,4 @@
-import {
-  apiFetch,
-  apiFetchDataOptional,
-  apiFetchOptional,
-  apiFetchVoid,
-} from "../lib/api";
+import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
 
 export interface ContentFieldSchema {
   key: string;

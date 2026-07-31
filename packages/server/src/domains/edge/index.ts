@@ -4,7 +4,7 @@ import type {
   LayoutDocumentService,
   PageTreeService,
   TenantSettingsService,
-} from "../documents/ports";
+} from "../documents";
 import type { FlagService } from "../flags/ports";
 import { createEdgeRoutes } from "./api";
 import { createEdgeService } from "./service";

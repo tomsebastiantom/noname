@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeAuthConfig } from "../documents/tenant/auth-config";
+import { normalizeAuthConfig } from "../documents";
 import { passwordResetUrlTemplate } from "./adapters/zitadel/users";
 
 describe("account flow auth config", () => {

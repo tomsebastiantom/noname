@@ -1,5 +1,5 @@
-import { listFlags, updateBooleanFlag, type FlagRow } from "../../admin/flags";
 import { useCallback, useEffect, useState } from "react";
+import { type FlagRow, listFlags, updateBooleanFlag } from "../../admin/flags";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";

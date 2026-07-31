@@ -14,12 +14,26 @@ import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 import type { ComponentCtx } from "./types";
 
-function ClientSecretProviderSection({
-  enabled,
+function cmsProviderEnabled(
+  authProviders: Array<{ providerKey: AuthProvider; enabled: boolean }>,
+  provider: AuthProvider,
+): boolean {
+  return authProviders.find((entry) => entry.providerKey === provider)?.enabled ?? false;
+}
+
+function cmsProviderName(
+  authProviders: Array<{ providerKey: AuthProvider; name: string }>,
+  provider: AuthProvider,
+  fallback: string,
+): string {
+  return authProviders.find((entry) => entry.providerKey === provider)?.name ?? fallback;
+}
+
+function CredentialProviderSection({
+  visible,
   configured,
   clientId,
   clientSecret,
-  onToggle,
   onClientIdChange,
   onClientSecretChange,
   idPrefix,
@@ -27,11 +41,10 @@ function ClientSecretProviderSection({
   providerLabel,
   configuredBadgeLabel,
 }: Readonly<{
-  enabled: boolean;
+  visible: boolean;
   configured: boolean;
   clientId: string;
   clientSecret: string;
-  onToggle: () => void;
   onClientIdChange: (value: string) => void;
   onClientSecretChange: (value: string) => void;
   idPrefix: string;
@@ -39,46 +52,38 @@ function ClientSecretProviderSection({
   providerLabel: string;
   configuredBadgeLabel: string;
 }>) {
+  if (!visible) return null;
+
   return (
-    <div className="flex flex-col gap-2 rounded-md border p-3">
-      <label className="flex cursor-pointer items-center gap-2">
-        <input
-          type="checkbox"
-          checked={enabled}
-          onChange={onToggle}
-          className="size-4 rounded border-input"
-        />
+    <div className="flex flex-col gap-3 rounded-md border p-3">
+      <div className="flex items-center gap-2">
         <span className="text-sm font-medium">{providerLabel}</span>
         {configured && (
           <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
             {configuredBadgeLabel}
           </span>
         )}
-      </label>
-      {enabled && (
-        <div className="flex flex-col gap-3 pl-6">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-client-id`}>{providerLabel} OAuth Client ID</Label>
-            <Input
-              id={`${idPrefix}-client-id`}
-              value={clientId}
-              onChange={(e) => onClientIdChange(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor={`${idPrefix}-client-secret`}>{providerLabel} OAuth Client Secret</Label>
-            <Input
-              id={`${idPrefix}-client-secret`}
-              type="password"
-              value={clientSecret}
-              onChange={(e) => onClientSecretChange(e.target.value)}
-              placeholder={secretPlaceholder}
-              autoComplete="new-password"
-            />
-          </div>
-        </div>
-      )}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${idPrefix}-client-id`}>{providerLabel} OAuth Client ID</Label>
+        <Input
+          id={`${idPrefix}-client-id`}
+          value={clientId}
+          onChange={(e) => onClientIdChange(e.target.value)}
+          autoComplete="off"
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={`${idPrefix}-client-secret`}>{providerLabel} OAuth Client Secret</Label>
+        <Input
+          id={`${idPrefix}-client-secret`}
+          type="password"
+          value={clientSecret}
+          onChange={(e) => onClientSecretChange(e.target.value)}
+          placeholder={secretPlaceholder}
+          autoComplete="new-password"
+        />
+      </div>
     </div>
   );
 }
@@ -95,6 +100,7 @@ export function AuthSettingsForm({
   socialProvidersLegend: string;
   configuredBadgeLabel: string;
   saveHelperText: string;
+  authProvidersLinkText: string;
   allowPasswordLabel: string;
   allowPasswordResetLabel: string;
   allowSignUpLabel: string;
@@ -113,7 +119,7 @@ export function AuthSettingsForm({
   appleKeyPlaceholderExisting: string;
 }>) {
   const { execute } = useActions();
-  const providerLabels: Record<AuthProvider, string> = {
+  const fallbackLabels: Record<AuthProvider, string> = {
     google: props.googleLabel,
     github: props.githubLabel,
     apple: props.appleLabel,
@@ -122,7 +128,9 @@ export function AuthSettingsForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [providers, setProviders] = useState<AuthProvider[]>([]);
+  const [authProviders, setAuthProviders] = useState<
+    Array<{ providerKey: AuthProvider; name: string; enabled: boolean }>
+  >([]);
   const [allowPassword, setAllowPassword] = useState(true);
   const [allowSignUp, setAllowSignUp] = useState(false);
   const [allowPasswordReset, setAllowPasswordReset] = useState(true);
@@ -150,7 +158,7 @@ export function AuthSettingsForm({
         const data = await loadAuthSettings();
 
         if (!cancelled) {
-          setProviders(data.providers);
+          setAuthProviders(data.authProviders);
           setAllowPassword(data.allowPassword);
           setAllowSignUp(data.allowSignUp);
           setAllowPasswordReset(data.allowPasswordReset);
@@ -174,13 +182,6 @@ export function AuthSettingsForm({
     };
   }, []);
 
-  function toggleProvider(provider: AuthProvider) {
-    setProviders((current) =>
-      current.includes(provider) ? current.filter((p) => p !== provider) : [...current, provider],
-    );
-    setSuccess(null);
-  }
-
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
@@ -189,15 +190,19 @@ export function AuthSettingsForm({
 
     try {
       const googleOAuth =
-        providers.includes("google") && googleClientId.trim() && googleClientSecret.trim()
+        cmsProviderEnabled(authProviders, "google") &&
+        googleClientId.trim() &&
+        googleClientSecret.trim()
           ? { clientId: googleClientId.trim(), clientSecret: googleClientSecret.trim() }
           : undefined;
       const githubOAuth =
-        providers.includes("github") && githubClientId.trim() && githubClientSecret.trim()
+        cmsProviderEnabled(authProviders, "github") &&
+        githubClientId.trim() &&
+        githubClientSecret.trim()
           ? { clientId: githubClientId.trim(), clientSecret: githubClientSecret.trim() }
           : undefined;
       const appleOAuth =
-        providers.includes("apple") &&
+        cmsProviderEnabled(authProviders, "apple") &&
         appleClientId.trim() &&
         appleTeamId.trim() &&
         appleKeyId.trim() &&
@@ -213,7 +218,6 @@ export function AuthSettingsForm({
       await execute({
         action: "saveAuthConfig",
         params: {
-          providers,
           allowPassword,
           allowSignUp,
           allowPasswordReset,
@@ -225,7 +229,7 @@ export function AuthSettingsForm({
       });
 
       const data = await loadAuthSettings();
-      setProviders(data.providers);
+      setAuthProviders(data.authProviders);
       setGoogleConfigured(data.googleConfigured);
       setGithubConfigured(data.githubConfigured);
       setAppleConfigured(data.appleConfigured);
@@ -255,16 +259,24 @@ export function AuthSettingsForm({
           <fieldset className="flex flex-col gap-3">
             <legend className="text-sm font-medium">{props.socialProvidersLegend}</legend>
 
-            <ClientSecretProviderSection
-              enabled={providers.includes("google")}
+            <p className="text-sm text-muted-foreground">
+              <a
+                href="/admin/content/auth_provider"
+                className="underline underline-offset-2 hover:text-foreground"
+              >
+                {props.authProvidersLinkText}
+              </a>
+            </p>
+
+            <CredentialProviderSection
+              visible={cmsProviderEnabled(authProviders, "google")}
               configured={googleConfigured}
               clientId={googleClientId}
               clientSecret={googleClientSecret}
-              onToggle={() => toggleProvider("google")}
               onClientIdChange={setGoogleClientId}
               onClientSecretChange={setGoogleClientSecret}
               idPrefix="google"
-              providerLabel={providerLabels.google}
+              providerLabel={cmsProviderName(authProviders, "google", fallbackLabels.google)}
               configuredBadgeLabel={props.configuredBadgeLabel}
               secretPlaceholder={
                 googleConfigured
@@ -273,16 +285,15 @@ export function AuthSettingsForm({
               }
             />
 
-            <ClientSecretProviderSection
-              enabled={providers.includes("github")}
+            <CredentialProviderSection
+              visible={cmsProviderEnabled(authProviders, "github")}
               configured={githubConfigured}
               clientId={githubClientId}
               clientSecret={githubClientSecret}
-              onToggle={() => toggleProvider("github")}
               onClientIdChange={setGithubClientId}
               onClientSecretChange={setGithubClientSecret}
               idPrefix="github"
-              providerLabel={providerLabels.github}
+              providerLabel={cmsProviderName(authProviders, "github", fallbackLabels.github)}
               configuredBadgeLabel={props.configuredBadgeLabel}
               secretPlaceholder={
                 githubConfigured
@@ -291,69 +302,63 @@ export function AuthSettingsForm({
               }
             />
 
-            <div className="flex flex-col gap-2 rounded-md border p-3">
-              <label className="flex cursor-pointer items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={providers.includes("apple")}
-                  onChange={() => toggleProvider("apple")}
-                  className="size-4 rounded border-input"
-                />
-                <span className="text-sm font-medium">{providerLabels.apple}</span>
-                {appleConfigured && (
-                  <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                    {props.configuredBadgeLabel}
+            {cmsProviderEnabled(authProviders, "apple") && (
+              <div className="flex flex-col gap-3 rounded-md border p-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium">
+                    {cmsProviderName(authProviders, "apple", fallbackLabels.apple)}
                   </span>
-                )}
-              </label>
-              {providers.includes("apple") && (
-                <div className="flex flex-col gap-3 pl-6">
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="apple-client-id">Apple Services ID</Label>
-                    <Input
-                      id="apple-client-id"
-                      value={appleClientId}
-                      onChange={(e) => setAppleClientId(e.target.value)}
-                      placeholder="com.example.web"
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="apple-team-id">Apple Team ID</Label>
-                    <Input
-                      id="apple-team-id"
-                      value={appleTeamId}
-                      onChange={(e) => setAppleTeamId(e.target.value)}
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="apple-key-id">Apple Key ID</Label>
-                    <Input
-                      id="apple-key-id"
-                      value={appleKeyId}
-                      onChange={(e) => setAppleKeyId(e.target.value)}
-                      autoComplete="off"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <Label htmlFor="apple-private-key">Apple Sign In private key (.p8)</Label>
-                    <textarea
-                      id="apple-private-key"
-                      value={applePrivateKey}
-                      onChange={(e) => setApplePrivateKey(e.target.value)}
-                      placeholder={
-                        appleConfigured
-                          ? props.appleKeyPlaceholderExisting
-                          : props.appleKeyPlaceholderNew
-                      }
-                      rows={4}
-                      className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                    />
-                  </div>
+                  {appleConfigured && (
+                    <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                      {props.configuredBadgeLabel}
+                    </span>
+                  )}
                 </div>
-              )}
-            </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="apple-client-id">Apple Services ID</Label>
+                  <Input
+                    id="apple-client-id"
+                    value={appleClientId}
+                    onChange={(e) => setAppleClientId(e.target.value)}
+                    placeholder="com.example.web"
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="apple-team-id">Apple Team ID</Label>
+                  <Input
+                    id="apple-team-id"
+                    value={appleTeamId}
+                    onChange={(e) => setAppleTeamId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="apple-key-id">Apple Key ID</Label>
+                  <Input
+                    id="apple-key-id"
+                    value={appleKeyId}
+                    onChange={(e) => setAppleKeyId(e.target.value)}
+                    autoComplete="off"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <Label htmlFor="apple-private-key">Apple Sign In private key (.p8)</Label>
+                  <textarea
+                    id="apple-private-key"
+                    value={applePrivateKey}
+                    onChange={(e) => setApplePrivateKey(e.target.value)}
+                    placeholder={
+                      appleConfigured
+                        ? props.appleKeyPlaceholderExisting
+                        : props.appleKeyPlaceholderNew
+                    }
+                    rows={4}
+                    className="min-h-[96px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  />
+                </div>
+              </div>
+            )}
 
             <p className="text-xs text-muted-foreground">{props.saveHelperText}</p>
           </fieldset>

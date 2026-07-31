@@ -132,6 +132,8 @@ const authSettingsLabels = {
   configuredBadgeLabel: "Configured in ZITADEL",
   saveHelperText:
     "Save registers providers in ZITADEL for this org and stores IdP references in platform settings. Secrets are never returned to the browser after save.",
+  authProvidersLinkText:
+    "Manage provider enable, button label, and icon in Content → auth_provider.",
   allowPasswordLabel: "Allow email and password sign-in",
   allowPasswordResetLabel: "Allow forgot-password reset emails",
   allowSignUpLabel: "Allow customers to create accounts on /login",
@@ -553,51 +555,63 @@ const authProviderContentType = {
       type: "text",
       required: true,
       isLocalizable: false,
-      label: "Provider key (slug)",
-    },
-    { key: "client_id", type: "text", required: true, isLocalizable: false, label: "Client ID" },
-    {
-      key: "client_secret",
-      type: "text",
-      required: true,
-      isLocalizable: false,
-      label: "Client secret",
+      label: "Provider key (google, github, apple, or custom slug)",
     },
     {
-      key: "authorization_endpoint",
-      type: "text",
-      required: true,
-      isLocalizable: false,
-      label: "Authorization endpoint",
-    },
-    {
-      key: "token_endpoint",
-      type: "text",
-      required: true,
-      isLocalizable: false,
-      label: "Token endpoint",
-    },
-    {
-      key: "user_endpoint",
-      type: "text",
-      required: true,
-      isLocalizable: false,
-      label: "User info endpoint",
-    },
-    {
-      key: "scopes",
-      type: "text",
+      key: "enabled",
+      type: "boolean",
       required: false,
       isLocalizable: false,
-      label: "Scopes (comma-separated)",
+      label: "Show on login when credentials are configured",
     },
-    { key: "enabled", type: "boolean", required: false, isLocalizable: false, label: "Enabled" },
     {
       key: "icon",
       type: "media",
       required: false,
       isLocalizable: false,
       label: "Login button icon",
+    },
+    {
+      key: "client_id",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Client ID (custom OAuth only)",
+    },
+    {
+      key: "client_secret",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Client secret (custom OAuth only)",
+    },
+    {
+      key: "authorization_endpoint",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Authorization endpoint (custom OAuth only)",
+    },
+    {
+      key: "token_endpoint",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Token endpoint (custom OAuth only)",
+    },
+    {
+      key: "user_endpoint",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "User info endpoint (custom OAuth only)",
+    },
+    {
+      key: "scopes",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Scopes (comma-separated, custom OAuth only)",
     },
   ],
 };
@@ -766,16 +780,6 @@ async function main() {
   });
 
   const googleIdpId = process.env.ZITADEL_GOOGLE_IDP_ID?.trim();
-  if (googleIdpId) {
-    await api("PUT", "/api/documents/tenant_settings/default", {
-      auth: {
-        providers: ["google"],
-        idpIds: { google: googleIdpId },
-        allowPassword: true,
-      },
-    });
-    console.log("Auth config: Google IdP stored in tenant_settings for demo org.");
-  }
 
   await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/catalog`, {
     platform: { version: "1", hash: "demo" },
@@ -797,7 +801,16 @@ async function main() {
 
   await ensurePageContentType();
   await ensureAuthProviderContentType();
-  await ensureBuiltinProviderIcons();
+  await ensureBuiltinAuthProviders({ googleEnabled: Boolean(googleIdpId) });
+  if (googleIdpId) {
+    await api("PUT", "/api/documents/tenant_settings/default", {
+      auth: {
+        idpIds: { google: googleIdpId },
+        allowPassword: true,
+      },
+    });
+    console.log("Auth config: Google IdP id stored in tenant_settings for demo org.");
+  }
   const pageContentId = await ensureDemoPageEntry();
   await ensurePageRouting(pageContentId);
 
@@ -882,36 +895,56 @@ async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
   return body.data;
 }
 
-async function ensureBuiltinProviderIcons(): Promise<void> {
-  const iconFiles = {
-    google: "google.svg",
-    github: "github.svg",
-    apple: "apple.svg",
-  } as const;
+async function ensureBuiltinAuthProviders(options: {
+  googleEnabled: boolean;
+}): Promise<void> {
+  const builtins = [
+    { key: "google", name: "Google", file: "google.svg", enabled: options.googleEnabled },
+    { key: "github", name: "GitHub", file: "github.svg", enabled: false },
+    { key: "apple", name: "Apple", file: "apple.svg", enabled: false },
+  ] as const;
 
-  const providerIconAssets: Record<string, { documentId: string }> = {};
-  for (const [provider, fileName] of Object.entries(iconFiles)) {
-    const asset = await uploadIdpIcon(fileName);
-    if (asset.id) providerIconAssets[provider] = { documentId: asset.id };
-  }
-
-  const { data: settings } = await api<{ data: { auth?: Record<string, unknown> } }>(
+  const { data: existing } = await api<{ data: ContentEntryRow[] }>(
     "GET",
-    "/api/documents/tenant_settings/default",
+    "/api/documents/auth_provider",
   );
 
-  await api("PUT", "/api/documents/tenant_settings/default", {
-    auth: {
-      ...(settings.auth ?? {}),
-      providerIconAssets: {
-        ...((settings.auth?.providerIconAssets as
-          | Record<string, { documentId: string }>
-          | undefined) ?? {}),
-        ...providerIconAssets,
-      },
-    },
-  });
-  console.log("Built-in IdP icon assets linked in tenant auth config.");
+  for (const builtin of builtins) {
+    const icon = await uploadIdpIcon(builtin.file);
+    const payload = {
+      name: builtin.name,
+      provider_key: builtin.key,
+      enabled: builtin.enabled,
+      icon: icon.id ? { documentId: icon.id } : undefined,
+    };
+
+    const row = existing.find(
+      (entry) => String(entry.data.provider_key ?? "").toLowerCase() === builtin.key,
+    );
+
+    if (row) {
+      await api("PUT", `/api/documents/auth_provider/${row.id}`, payload);
+      if (row.status !== "published") {
+        await api("PUT", `/api/documents/auth_provider/${row.id}/publish`);
+      }
+      console.log(`auth_provider/${builtin.key} updated.`);
+      continue;
+    }
+
+    const { data: created } = await api<{ data: { id: string } }>(
+      "POST",
+      "/api/documents/auth_provider",
+      payload,
+    );
+    await api("PUT", `/api/documents/auth_provider/${created.id}/publish`);
+    console.log(`auth_provider/${builtin.key} created and published.`);
+  }
+}
+
+interface ContentEntryRow {
+  id: string;
+  status: string;
+  data: Record<string, unknown>;
 }
 
 async function ensurePageContentType(): Promise<void> {

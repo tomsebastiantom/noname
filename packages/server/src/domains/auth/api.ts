@@ -4,7 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { notFound } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
-import type { TenantSettingsService } from "../documents/ports";
+import { isSupportedLoginProvider, type TenantSettingsService } from "../documents";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import { requireAuthenticatedUser, requirePermission } from "./guards";
 import type { AuthService } from "./ports";
@@ -31,8 +31,6 @@ const oauthCallbackBodySchema = z.object({
   clientId: z.string().min(1),
   redirectUri: z.url(),
 });
-
-import { isSupportedLoginProvider } from "../documents/content-types/auth-provider";
 
 const authConfigUpdateSchema = z.object({
   providers: z.array(z.enum(["google", "github", "apple"])).optional(),

@@ -46,10 +46,7 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
 }
 
 /** Like `apiFetch` but returns `null` on 404 instead of throwing. */
-export async function apiFetchOptional<T>(
-  url: string,
-  init: RequestInit = {},
-): Promise<T | null> {
+export async function apiFetchOptional<T>(url: string, init: RequestInit = {}): Promise<T | null> {
   const res = await fetch(url, {
     ...init,
     headers: mergeHeaders(init),

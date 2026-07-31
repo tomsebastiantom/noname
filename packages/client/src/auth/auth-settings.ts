@@ -5,12 +5,18 @@ export type AuthProvider = "google" | "github" | "apple";
 
 export const ALL_AUTH_PROVIDERS: AuthProvider[] = ["google", "github", "apple"];
 
+export interface AuthProviderEntryState {
+  providerKey: AuthProvider;
+  name: string;
+  enabled: boolean;
+}
+
 export interface AuthSettingsState {
-  providers: AuthProvider[];
   allowPassword: boolean;
   allowSignUp: boolean;
   allowPasswordReset: boolean;
   requireMfaForAdmin: boolean;
+  authProviders: AuthProviderEntryState[];
   googleConfigured: boolean;
   githubConfigured: boolean;
   appleConfigured: boolean;
@@ -23,45 +29,54 @@ function idpConfigured(
   return Boolean(idpIds?.[provider]?.trim());
 }
 
+export async function loadAuthProviderEntries(): Promise<AuthProviderEntryState[]> {
+  const body = await apiFetch<{ data?: Array<{ data?: Record<string, unknown> }> }>(
+    "/api/documents/auth_provider",
+  ).catch(() => ({ data: undefined }));
+
+  const entries: AuthProviderEntryState[] = [];
+  for (const row of body.data ?? []) {
+    const providerKey = String(row.data?.provider_key ?? "")
+      .trim()
+      .toLowerCase();
+    if (!ALL_AUTH_PROVIDERS.includes(providerKey as AuthProvider)) continue;
+
+    entries.push({
+      providerKey: providerKey as AuthProvider,
+      name: String(row.data?.name ?? providerKey).trim(),
+      enabled: row.data?.enabled !== false,
+    });
+  }
+
+  return entries;
+}
+
 export async function loadAuthSettings(): Promise<AuthSettingsState> {
   const storeSlug = requireStoreSlug();
 
-  const [configBody, settingsBody] = await Promise.all([
+  const [configBody, settingsBody, authProviders] = await Promise.all([
     apiFetch<{
       data?: {
-        providers?: string[];
         allowPassword?: boolean;
         allowSignUp?: boolean;
         allowPasswordReset?: boolean;
         requireMfaForAdmin?: boolean;
       };
     }>(`/api/tenants/${storeSlug}/auth/config`),
-    apiFetch<{ data?: { auth?: { idpIds?: Record<string, string>; providers?: string[] } } }>(
+    apiFetch<{ data?: { auth?: { idpIds?: Record<string, string> } } }>(
       "/api/documents/tenant_settings/default",
-    ).catch(() => ({ data: undefined } as { data?: undefined })),
+    ).catch(() => ({ data: undefined }) as { data?: undefined }),
+    loadAuthProviderEntries(),
   ]);
 
-  let providers = (configBody.data?.providers ?? []).filter((p): p is AuthProvider =>
-    ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
-  );
-
-  let idpIds: Record<string, string> = {};
-
-  if (settingsBody.data?.auth) {
-    idpIds = settingsBody.data.auth.idpIds ?? {};
-    if (providers.length === 0 && settingsBody.data.auth.providers) {
-      providers = settingsBody.data.auth.providers.filter((p): p is AuthProvider =>
-        ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
-      );
-    }
-  }
+  const idpIds = settingsBody.data?.auth?.idpIds ?? {};
 
   return {
-    providers,
     allowPassword: configBody.data?.allowPassword !== false,
     allowSignUp: configBody.data?.allowSignUp === true,
     allowPasswordReset: configBody.data?.allowPasswordReset !== false,
     requireMfaForAdmin: configBody.data?.requireMfaForAdmin === true,
+    authProviders,
     googleConfigured: idpConfigured(idpIds, "google"),
     githubConfigured: idpConfigured(idpIds, "github"),
     appleConfigured: idpConfigured(idpIds, "apple"),
@@ -69,7 +84,6 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
 }
 
 export async function saveAuthConfig(input: {
-  providers: AuthProvider[];
   allowPassword: boolean;
   allowSignUp?: boolean;
   allowPasswordReset?: boolean;
@@ -77,19 +91,12 @@ export async function saveAuthConfig(input: {
   googleOAuth?: { clientId: string; clientSecret: string };
   githubOAuth?: { clientId: string; clientSecret: string };
   appleOAuth?: { clientId: string; teamId: string; keyId: string; privateKey: string };
-}): Promise<AuthProvider[]> {
+}): Promise<void> {
   const storeSlug = requireStoreSlug();
 
-  const body = await apiFetch<{ data?: { providers?: string[] } }>(
-    `/api/tenants/${storeSlug}/auth/config`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(input),
-    },
-  );
-
-  return (body.data?.providers ?? []).filter((p): p is AuthProvider =>
-    ALL_AUTH_PROVIDERS.includes(p as AuthProvider),
-  );
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
 }

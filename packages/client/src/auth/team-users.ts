@@ -38,9 +38,7 @@ export function sessionCanDraft(session: AuthSessionStatus | null | undefined): 
 
 export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
   const storeSlug = requireStoreSlug();
-  const data = await apiFetchData<AuthSessionStatus>(
-    `/api/tenants/${storeSlug}/auth/session`,
-  );
+  const data = await apiFetchData<AuthSessionStatus>(`/api/tenants/${storeSlug}/auth/session`);
   if (!data.userId) {
     throw new Error("Invalid session response");
   }
@@ -53,9 +51,7 @@ export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
 
 export async function fetchTeamUsers(): Promise<TeamUser[]> {
   const storeSlug = requireStoreSlug();
-  const body = await apiFetch<{ data?: TeamUser[] }>(
-    `/api/tenants/${storeSlug}/auth/users`,
-  );
+  const body = await apiFetch<{ data?: TeamUser[] }>(`/api/tenants/${storeSlug}/auth/users`);
   return body.data ?? [];
 }
 
@@ -75,12 +71,9 @@ export async function inviteTeamUser(input: {
 
 export async function updateTeamUserRole(userId: string, role: TeamMemberRole): Promise<void> {
   const storeSlug = requireStoreSlug();
-  await apiFetchVoid(
-    `/api/tenants/${storeSlug}/auth/users/${encodeURIComponent(userId)}/role`,
-    {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role }),
-    },
-  );
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/users/${encodeURIComponent(userId)}/role`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
 }

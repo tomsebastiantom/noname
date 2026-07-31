@@ -3,7 +3,7 @@ import type {
   ContentDocumentService,
   DocumentStorage,
   TenantSettingsService,
-} from "../documents/ports";
+} from "../documents";
 import { createAuthRoutes } from "./api";
 import { createAuthProviderPublishHandler } from "./providers/publish";
 import { createAuthService } from "./service";
