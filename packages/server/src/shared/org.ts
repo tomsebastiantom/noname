@@ -15,14 +15,20 @@ declare module "hono" {
 
 const secret = process.env.WORKER_SERVER_SECRET || "";
 
-function edgeHmacRequired(): boolean {
-  return process.env.REQUIRE_EDGE_HMAC === "true";
+function workerSecret(): string {
+  return process.env.WORKER_SERVER_SECRET || secret;
+}
+
+/** Local dev opt-out only — ignored in production. */
+function devHmacBypassAllowed(): boolean {
+  return process.env.NODE_ENV !== "production" && process.env.REQUIRE_EDGE_HMAC === "false";
 }
 
 function verifyHmac(orgId: string, userId: string, role: string, providedHmac: string): boolean {
-  if (!secret) return false;
+  const configuredSecret = workerSecret();
+  if (!configuredSecret) return false;
   const payload = `${orgId}:${userId}:${role}`;
-  const expected = createHmac("sha256", secret).update(payload).digest("base64");
+  const expected = createHmac("sha256", configuredSecret).update(payload).digest("base64");
   try {
     return timingSafeEqual(Buffer.from(expected), Buffer.from(providedHmac));
   } catch {
@@ -40,15 +46,16 @@ export const orgMiddleware: MiddlewareHandler = async (c, next) => {
   const userId = c.req.header("x-user-id") || "";
   const role = c.req.header("x-role") || "";
   const hmac = c.req.header("x-auth-hmac") || "";
+  const configuredSecret = workerSecret();
 
   if (hmac) {
     if (!verifyHmac(orgId, userId, role, hmac)) {
       return c.json({ error: "Invalid auth signature" }, 401);
     }
-  } else if (edgeHmacRequired()) {
+  } else if (configuredSecret && !devHmacBypassAllowed()) {
     return c.json({ error: "Request must come through edge worker" }, 401);
-  } else if (secret && c.req.path !== "/health") {
-    console.warn("No HMAC on request — may bypass edge worker");
+  } else if (configuredSecret) {
+    console.warn("No HMAC on request — dev bypass (REQUIRE_EDGE_HMAC=false)");
   }
 
   c.set(ORG_ID_KEY, orgId);

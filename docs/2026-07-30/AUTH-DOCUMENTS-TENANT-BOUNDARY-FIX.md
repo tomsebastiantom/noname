@@ -3,7 +3,7 @@
 Date: 2026-07-30
 Status: **Implemented** (2026-07-31)
 
-Related: `docs/2026-07-30/CODEBASE-AUDIT-CLEANUP.md` §1.2 ("Domains reaching into each other's internals").
+Related: audit priority 8 — [`CODEBASE-AUDIT-FIXED.md`](../archive/2026-07-30/CODEBASE-AUDIT-FIXED.md).
 
 ## Problem
 

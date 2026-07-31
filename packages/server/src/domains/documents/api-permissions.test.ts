@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
 import { createDocumentsRoutes } from "./api";
+import type { AssetBinaryStorage } from "./assets/binary";
 import type { DocumentService } from "./ports";
 
 vi.mock("../auth/adapters/zitadel/project-id", () => ({
@@ -28,6 +29,11 @@ function adminToken(): string {
   });
 }
 
+const mockAssetBinary: AssetBinaryStorage = {
+  put: vi.fn(async () => "https://cdn.test/asset"),
+  putVariant: vi.fn(async () => "https://cdn.test/variant"),
+};
+
 function testApp() {
   const layout = {
     publish: vi.fn(async () => ({ id: "layout-1", status: "published" })),
@@ -36,7 +42,7 @@ function testApp() {
   const service = { layout } as unknown as DocumentService;
   const app = new Hono();
   app.use("*", orgMiddleware);
-  app.route("/api/documents", createDocumentsRoutes(service));
+  app.route("/api/documents", createDocumentsRoutes(service, mockAssetBinary));
   return { app, layout };
 }
 
