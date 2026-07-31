@@ -1,7 +1,7 @@
 import { type DecodedJwt, getKey, importKey } from "@cfworker/jwt";
+import { fetchWithTimeout } from "@noname/auth";
 import { coerceScalarString } from "@noname/shared";
 import { getCached, setCache } from "./cache";
-import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
 
 const JWKS_CACHE_TTL_SEC = 3600;

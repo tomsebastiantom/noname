@@ -90,14 +90,19 @@ export function hasPermission(
   return false;
 }
 
-/** Visual editor / ?edit=true — any draft_write capability. */
-export function canDraft(roleKeys: Iterable<string>): boolean {
-  const perms = expandPermissionsFromKeys(roleKeys);
+/** Visual editor / ?edit=true — any draft_write capability (from expanded permissions). */
+export function canDraftFromPermissions(permissions: Iterable<string>): boolean {
+  const perms = permissions as PermissionKey[];
   return (
     hasPermission(perms, PERMISSIONS.CONTENT_DRAFT_WRITE) ||
     hasPermission(perms, PERMISSIONS.LAYOUT_DRAFT_WRITE) ||
     hasPermission(perms, PERMISSIONS.PAGE_DRAFT_WRITE)
   );
+}
+
+/** Visual editor / ?edit=true — any draft_write capability. */
+export function canDraft(roleKeys: Iterable<string>): boolean {
+  return canDraftFromPermissions(expandPermissionsFromKeys(roleKeys));
 }
 
 /** Team surfaces: admin beats editor; null when no platform role. */

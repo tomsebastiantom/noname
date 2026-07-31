@@ -1,3 +1,9 @@
+import {
+  canDraftFromPermissions,
+  hasPermission,
+  PERMISSIONS,
+  type PermissionKey,
+} from "@noname/auth";
 import { apiFetch, apiFetchData, apiFetchVoid } from "../lib/api";
 import { requireStoreSlug } from "./org";
 
@@ -23,18 +29,18 @@ export interface AuthSessionStatus {
 
 export function sessionHasPermission(
   session: AuthSessionStatus | null | undefined,
-  permission: string,
+  permission: PermissionKey,
 ): boolean {
-  return session?.permissions.includes(permission) === true;
+  const perms = session?.permissions ?? [];
+  return hasPermission(perms as PermissionKey[], permission);
 }
 
-/** Draft access for visual editor (?edit=true) — layout or content draft_write. */
+/** Draft access for visual editor (?edit=true). */
 export function sessionCanDraft(session: AuthSessionStatus | null | undefined): boolean {
-  return (
-    sessionHasPermission(session, "layout:draft_write") ||
-    sessionHasPermission(session, "content:draft_write")
-  );
+  return canDraftFromPermissions(session?.permissions ?? []);
 }
+
+export { PERMISSIONS };
 
 export async function fetchAuthSessionStatus(): Promise<AuthSessionStatus> {
   const storeSlug = requireStoreSlug();

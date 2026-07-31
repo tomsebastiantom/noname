@@ -12,6 +12,7 @@ export const ADMIN_STATE = {
     error: "/admin/routing/error",
     treePages: "/admin/routing/tree/pages",
     treeStatus: "/admin/routing/tree/status",
+    treeLoadedAt: "/admin/routing/tree/loadedAt",
     treeLoading: "/admin/routing/tree/loading",
     treeError: "/admin/routing/tree/error",
   },
@@ -29,5 +30,25 @@ export const ADMIN_STATE = {
     flags: "/admin/flags/rows",
     loading: "/admin/flags/loading",
     error: "/admin/flags/error",
+  },
+  content: {
+    loaded: "/admin/content/loaded",
+    loading: "/admin/content/loading",
+    error: "/admin/content/error",
+  },
+  layout: {
+    loaded: "/admin/layout/loaded",
+    loading: "/admin/layout/loading",
+    error: "/admin/layout/error",
+  },
+  authSettings: {
+    loaded: "/admin/auth/settings/loaded",
+    loading: "/admin/auth/settings/loading",
+    error: "/admin/auth/settings/error",
+  },
+  loginBranding: {
+    loaded: "/admin/auth/login-branding/loaded",
+    loading: "/admin/auth/login-branding/loading",
+    error: "/admin/auth/login-branding/error",
   },
 } as const;

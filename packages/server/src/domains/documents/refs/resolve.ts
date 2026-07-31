@@ -1,7 +1,7 @@
+import { labelFromContentData } from "@noname/documents";
 import { coerceScalarString } from "@noname/shared";
 import { iconUrlFromAsset } from "../assets/icon-url";
 import type { AssetDTO, ContentTypeSchema, DocumentDTO, DocumentStorage } from "../ports";
-import { labelFromContentData } from "../shared/locale";
 
 export interface ResolvedDocumentRef {
   documentId: string;

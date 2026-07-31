@@ -7,14 +7,34 @@ import {
   requestPasswordReset,
   verifyMfaAndLogin,
 } from "../../auth/account-flows";
-import { saveAuthConfig } from "../../auth/auth-settings";
+import { type AuthSettingsState, loadAuthSettings, saveAuthConfig } from "../../auth/auth-settings";
 import { startIdpLogin } from "../../auth/idp-login";
 import { performLogout } from "../../auth/logout";
 import { requireStoreSlug } from "../../auth/org";
+import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
 
+export type AuthSettingsLoaded = AuthSettingsState & { loadedAt: number };
+
+function withLoadedAt(settings: AuthSettingsState): AuthSettingsLoaded {
+  return { ...settings, loadedAt: Date.now() };
+}
+
 export const authActions = {
-  saveAuthConfig: (async (params) => {
+  loadAuthSettings: (async (_params, setState) => {
+    setState(ADMIN_STATE.authSettings.loading, true);
+    setState(ADMIN_STATE.authSettings.error, null);
+    try {
+      setState(ADMIN_STATE.authSettings.loaded, withLoadedAt(await loadAuthSettings()));
+    } catch (err) {
+      setState(ADMIN_STATE.authSettings.error, err instanceof Error ? err.message : String(err));
+      setState(ADMIN_STATE.authSettings.loaded, null);
+    } finally {
+      setState(ADMIN_STATE.authSettings.loading, false);
+    }
+  }) satisfies CatalogActionHandler,
+
+  saveAuthConfig: (async (params, setState) => {
     const {
       allowPassword,
       allowSignUp,
@@ -42,6 +62,7 @@ export const authActions = {
       githubOAuth,
       appleOAuth,
     });
+    setState(ADMIN_STATE.authSettings.loaded, withLoadedAt(await loadAuthSettings()));
   }) satisfies CatalogActionHandler,
 
   login: (async (params) => {

@@ -1,5 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
-import { ContentEvents } from "./events";
+import { ContentEvents, LayoutEvents } from "./events";
 
 // Content document — extends AggregateRoot so it can collect domain events.
 // Emits content.* events (distinct namespace from layout.*).
@@ -74,7 +74,7 @@ export class LayoutDocument extends AggregateRoot {
       new Date(),
       new Date(),
     );
-    layout.apply("layout.created", {
+    layout.apply(LayoutEvents.CREATED, {
       id: layout.id,
       orgId,
       templateName,
@@ -88,7 +88,7 @@ export class LayoutDocument extends AggregateRoot {
     if (spec !== undefined) this.spec = spec;
     if (status !== undefined) this.status = status;
     this.updatedAt = new Date();
-    this.apply("layout.updated", {
+    this.apply(LayoutEvents.UPDATED, {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
@@ -103,7 +103,7 @@ export class LayoutDocument extends AggregateRoot {
     }
     this.status = "published";
     this.updatedAt = new Date();
-    this.apply("layout.published", {
+    this.apply(LayoutEvents.PUBLISHED, {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
@@ -116,7 +116,7 @@ export class LayoutDocument extends AggregateRoot {
   archive(): void {
     this.status = "archived";
     this.updatedAt = new Date();
-    this.apply("layout.archived", {
+    this.apply(LayoutEvents.ARCHIVED, {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
@@ -126,7 +126,7 @@ export class LayoutDocument extends AggregateRoot {
   }
 
   recordVariantCreated(): void {
-    this.apply("layout.variant_created", {
+    this.apply(LayoutEvents.VARIANT_CREATED, {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,

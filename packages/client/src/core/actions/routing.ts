@@ -3,11 +3,18 @@ import {
   loadMainTree,
   loadRoutingPage,
   type PageTreeEntry,
+  type RoutingPageView,
   saveMainTree,
   saveRoutingPage,
 } from "../../admin/routing-entries";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
+
+export type RoutingPageLoaded = RoutingPageView & { loadedAt: number };
+
+function withPageLoadedAt(page: RoutingPageView): RoutingPageLoaded {
+  return { ...page, loadedAt: Date.now() };
+}
 
 export const routingActions = {
   listRoutingPages: (async (_params, setState) => {
@@ -31,7 +38,7 @@ export const routingActions = {
       if (!row) {
         throw new Error(`Routing page "${pageKey}" not found`);
       }
-      setState(ADMIN_STATE.routing.currentPage, row);
+      setState(ADMIN_STATE.routing.currentPage, withPageLoadedAt(row));
     } catch (err) {
       setState(ADMIN_STATE.routing.error, err instanceof Error ? err.message : String(err));
     } finally {
@@ -48,7 +55,7 @@ export const routingActions = {
     await saveRoutingPage({ pageKey, layoutRef, contentRef });
     const row = await loadRoutingPage(pageKey);
     if (row) {
-      setState(ADMIN_STATE.routing.currentPage, row);
+      setState(ADMIN_STATE.routing.currentPage, withPageLoadedAt(row));
     }
   }) satisfies CatalogActionHandler,
 
@@ -59,6 +66,7 @@ export const routingActions = {
       const tree = await loadMainTree();
       setState(ADMIN_STATE.routing.treePages, tree?.pages ?? []);
       setState(ADMIN_STATE.routing.treeStatus, tree?.status ?? null);
+      setState(ADMIN_STATE.routing.treeLoadedAt, Date.now());
     } catch (err) {
       setState(ADMIN_STATE.routing.treeError, err instanceof Error ? err.message : String(err));
     } finally {
@@ -72,5 +80,6 @@ export const routingActions = {
     const tree = await loadMainTree();
     setState(ADMIN_STATE.routing.treePages, tree?.pages ?? []);
     setState(ADMIN_STATE.routing.treeStatus, tree?.status ?? null);
+    setState(ADMIN_STATE.routing.treeLoadedAt, Date.now());
   }) satisfies CatalogActionHandler,
 };

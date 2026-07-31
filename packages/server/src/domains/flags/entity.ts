@@ -1,4 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
+import { FlagEvents } from "./events";
 import type { FlagDTO, FlagStatus, FlagType, TargetingRule } from "./ports";
 
 export class FeatureFlag extends AggregateRoot {
@@ -43,7 +44,7 @@ export class FeatureFlag extends AggregateRoot {
       new Date(),
       new Date(),
     );
-    flag.apply("flag.created", {
+    flag.apply(FlagEvents.CREATED, {
       flagId: flag.id,
       orgId,
       key,
@@ -84,7 +85,7 @@ export class FeatureFlag extends AggregateRoot {
     if (schemaId !== undefined) this.schemaId = schemaId;
     if (variantId !== undefined) this.variantId = variantId;
     this.updatedAt = new Date();
-    this.apply("flag.updated", {
+    this.apply(FlagEvents.UPDATED, {
       flagId: this.id,
       orgId: this.orgId,
       key: this.key,
@@ -94,7 +95,7 @@ export class FeatureFlag extends AggregateRoot {
   archive(): void {
     this.status = "archived";
     this.updatedAt = new Date();
-    this.apply("flag.archived", {
+    this.apply(FlagEvents.DELETED, {
       flagId: this.id,
       orgId: this.orgId,
       key: this.key,

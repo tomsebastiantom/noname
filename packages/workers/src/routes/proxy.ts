@@ -1,7 +1,6 @@
-import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "@noname/auth";
+import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, fetchWithTimeout, isEditModeUrl } from "@noname/auth";
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
-import { fetchWithTimeout } from "../fetch-with-timeout";
 import { hmacHeaders } from "../hmac";
 import { resolveOrgIdFromHost, resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";

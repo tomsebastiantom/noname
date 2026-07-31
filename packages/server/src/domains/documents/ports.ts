@@ -6,9 +6,9 @@
 // only the storage table is shared. A generic `DocumentStorage` implements every
 // type behind one interface so the shared machinery lives once.
 
-// ---------------------------------------------------------------------------
-// Document envelope — shared by every type.
-// ---------------------------------------------------------------------------
+import type { ContentFieldSchema, ContentTypeSchema, FieldType } from "@noname/documents";
+
+import type { ContentEntryRef, MediaRef } from "./refs";
 
 export type DocumentType =
   | "content"
@@ -42,41 +42,12 @@ export interface DocumentDTO {
 export type ContentEntryDTO = DocumentDTO;
 
 // ---------------------------------------------------------------------------
-// CONTENT TYPE SCHEMA — schema-first content modeling.
+// CONTENT TYPE SCHEMA — schema-first content modeling (@noname/documents).
 // ---------------------------------------------------------------------------
 
-export type FieldType =
-  | "text"
-  | "longText"
-  | "richText"
-  | "number"
-  | "boolean"
-  | "date"
-  | "media"
-  | "mediaList"
-  | "reference"
-  | "array"
-  | "json"
-  | "enum";
-
-export interface FieldDefinition {
-  key: string;
-  type: FieldType;
-  required: boolean;
-  // Per-field locale flag. When true the field's value is a locale-keyed map
-  // ({ "en-US": ..., "fr": ... }); when false it is a plain shared value.
-  isLocalizable: boolean;
-  label: string;
-  constraints?: Record<string, unknown>;
-  items?: { type: FieldType };
-  options?: string[];
-  references?: string;
-  permissions?: { read: string[]; write: string[] };
-}
-
-export interface ContentTypeSchema {
-  fields: FieldDefinition[];
-}
+export type { ContentFieldSchema, ContentTypeSchema, FieldType };
+/** @deprecated Use ContentFieldSchema from @noname/documents */
+export type FieldDefinition = ContentFieldSchema;
 
 export interface ContentTypeDTO {
   id: string;
@@ -90,8 +61,6 @@ export interface ContentTypeDTO {
 // ---------------------------------------------------------------------------
 // TENANT SETTINGS — per-tenant locale + SEO + integrations config.
 // ---------------------------------------------------------------------------
-
-import type { ContentEntryRef, MediaRef } from "./refs";
 
 export type { ContentEntryRef, MediaRef };
 

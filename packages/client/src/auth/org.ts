@@ -2,9 +2,6 @@ import { storeSlugFromHost } from "@noname/shared";
 
 let cached: { key: string; orgId: string } | null = null;
 
-/** @deprecated Prefer `storeSlugFromHost` from `@noname/shared`. */
-export const storeSlugFromHostname = storeSlugFromHost;
-
 export function requireStoreSlug(): string {
   const slug = storeSlugFromHost(window.location.hostname);
   if (!slug) {

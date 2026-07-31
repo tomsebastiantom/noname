@@ -14,6 +14,21 @@ import { MachineEvents } from "./domains/machines/events";
 
 type ValueOf<T> = T[keyof T];
 
+/** Event constant objects wired into analytics auto-subscribe. Add a module here only when every event in it publishes. */
+export const DOMAIN_EVENT_SOURCES = [
+  AgentEvents,
+  ContextEvents,
+  ContentEvents,
+  ContentTypeEvents,
+  LayoutEvents,
+  AssetEvents,
+  PageEvents,
+  PageTreeEvents,
+  TenantSettingsEvents,
+  FlagEvents,
+  MachineEvents,
+] as const;
+
 /** Event names with active publishers — analytics and other subscribers use this list. */
 export type DomainEventName =
   | ValueOf<typeof AgentEvents>
@@ -28,16 +43,6 @@ export type DomainEventName =
   | ValueOf<typeof FlagEvents>
   | ValueOf<typeof MachineEvents>;
 
-export const ALL_DOMAIN_EVENTS: readonly DomainEventName[] = [
-  ...Object.values(AgentEvents),
-  ...Object.values(ContextEvents),
-  ...Object.values(ContentEvents),
-  ...Object.values(ContentTypeEvents),
-  ...Object.values(LayoutEvents),
-  ...Object.values(AssetEvents),
-  ...Object.values(PageEvents),
-  ...Object.values(PageTreeEvents),
-  ...Object.values(TenantSettingsEvents),
-  ...Object.values(FlagEvents),
-  ...Object.values(MachineEvents),
-];
+export const ALL_DOMAIN_EVENTS: readonly DomainEventName[] = DOMAIN_EVENT_SOURCES.flatMap(
+  (events) => Object.values(events),
+);

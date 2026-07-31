@@ -1,13 +1,13 @@
+import { eventBus } from "../../../shared/event-bus";
 import { enrichAssetUrls, validateAssetMime } from "../assets/enrich";
 import { urlFromStorageKey } from "../assets/url";
-import { emitDocumentEvent } from "../emit-event";
 import { AssetEvents } from "../events";
 import type { AssetDocumentService, AssetDTO, DocumentStorage, UploadAssetInput } from "../ports";
 import { requireAssetDocument } from "./document-guards";
 
 function emitAssetProcessed(orgId: string, id: string, mimeType: string): void {
   if (mimeType.startsWith("image/")) {
-    emitDocumentEvent(AssetEvents.PROCESSED, { orgId, id });
+    void eventBus.publish(AssetEvents.PROCESSED, { orgId, id });
   }
 }
 
@@ -41,8 +41,8 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
         status: "draft",
       });
       const dto = saved as unknown as AssetDTO;
-      emitDocumentEvent(AssetEvents.CREATED, { orgId, id: dto.id });
-      emitDocumentEvent(AssetEvents.UPLOADED, { orgId, id: dto.id });
+      void eventBus.publish(AssetEvents.CREATED, { orgId, id: dto.id });
+      void eventBus.publish(AssetEvents.UPLOADED, { orgId, id: dto.id });
       emitAssetProcessed(orgId, dto.id, input.mimeType);
       return dto;
     },
@@ -80,7 +80,7 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
     async archive(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
       const archived = (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
-      emitDocumentEvent(AssetEvents.ARCHIVED, { orgId, id: archived.id });
+      void eventBus.publish(AssetEvents.ARCHIVED, { orgId, id: archived.id });
       return archived;
     },
 
@@ -92,7 +92,7 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
     async publish(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
       const published = (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
-      emitDocumentEvent(AssetEvents.PUBLISHED, { orgId, id: published.id });
+      void eventBus.publish(AssetEvents.PUBLISHED, { orgId, id: published.id });
       return published;
     },
   };

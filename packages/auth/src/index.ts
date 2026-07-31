@@ -1,4 +1,8 @@
 export { EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "./edit-mode";
+export {
+  DEFAULT_FETCH_TIMEOUT_MS,
+  fetchWithTimeout,
+} from "./fetch-with-timeout";
 export { accessTokenFromRequest } from "./http/request-token";
 export { orgIdFromTokenPayload } from "./jwt/claims";
 export { decodeAccessTokenPayload, userIdFromAccessToken } from "./jwt/decode";
@@ -18,6 +22,7 @@ export {
 export { fetchUserinfo, rolesFromUserinfo } from "./oidc/userinfo";
 export {
   canDraft,
+  canDraftFromPermissions,
   expandPermissions,
   expandPermissionsFromKeys,
   hasPermission,

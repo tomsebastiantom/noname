@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { isLoggedIn } from "./session";
-import { fetchAuthSessionStatus, sessionHasPermission } from "./team-users";
+import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "./team-users";
 
 export const REPLAY_ADMIN_PATH = "/admin/settings/replay";
 
@@ -15,7 +15,7 @@ export function useAnalyticsViewPermission(): boolean | null {
       return;
     }
     void fetchAuthSessionStatus()
-      .then((session) => setAllowed(sessionHasPermission(session, "analytics:view")))
+      .then((session) => setAllowed(sessionHasPermission(session, PERMISSIONS.ANALYTICS_VIEW)))
       .catch(() => setAllowed(false));
   }, [loggedIn]);
 

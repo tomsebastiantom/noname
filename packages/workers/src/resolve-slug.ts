@@ -1,6 +1,6 @@
+import { fetchWithTimeout } from "@noname/auth";
 import { storeSlugFromHost } from "@noname/shared";
 import { getCached, setCache, slugCacheKey } from "./cache";
-import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
 
 const SLUG_CACHE_TTL = 300;

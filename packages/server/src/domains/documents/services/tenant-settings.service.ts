@@ -1,6 +1,6 @@
 import { assertValidStoreSlug, normalizeStoreSlug } from "@noname/shared";
 import { ValidationError } from "../../../shared/domain-error";
-import { emitDocumentEvent } from "../emit-event";
+import { eventBus } from "../../../shared/event-bus";
 import { TenantSettingsEvents } from "../events";
 import type { DocumentStorage, TenantSettingsService } from "../ports";
 import { defaultTenantSettings } from "./tenant-defaults";
@@ -25,7 +25,7 @@ export function createTenantSettingsService(storage: DocumentStorage): TenantSet
         }
       }
       const saved = await storage.upsertTenantSettings(orgId, { ...data, slug: nextSlug });
-      emitDocumentEvent(TenantSettingsEvents.UPDATED, { orgId });
+      void eventBus.publish(TenantSettingsEvents.UPDATED, { orgId });
       return saved;
     },
     resolveStoreSlug: (slug) => storage.findOrgIdByStoreSlug(normalizeStoreSlug(slug)),

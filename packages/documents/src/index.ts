@@ -10,4 +10,4 @@ export {
   documentIdFromRef,
   parseDocumentRef,
 } from "./refs";
-export type { ContentFieldSchema, ContentTypeSchema } from "./schema";
+export type { ContentFieldSchema, ContentTypeSchema, FieldType } from "./schema";

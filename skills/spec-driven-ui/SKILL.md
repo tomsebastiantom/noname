@@ -2,9 +2,9 @@
 name: spec-driven-ui
 description: >-
   Builds org-facing UI through the Noname spec pipeline (layout document →
-  edge schema → json-render Renderer). Use when adding admin pages, login screens,
-  public-site components, catalog schemas, executeAction handlers, layout seeds,
-  or any UI in packages/client. Prevents drift from ad-hoc React routes.
+  edge schema → json-render Renderer). Use for any spec-driven surface: login,
+  public storefront, extensions, admin panels, catalog components, actions,
+  and layout seeds — not hand-written React routes.
 ---
 
 # Spec-Driven UI
@@ -17,7 +17,7 @@ description: >-
 URL → templateFromPath → layout document → GET /api/edge/schema → <Renderer spec={…} />
 ```
 
-Read [reference.md](reference.md) for data-source rules and anti-patterns. See [examples.md](examples.md) for shipped patterns.
+Read [reference.md](reference.md) for data-source rules, [json-render example map](reference.md#json-render-examples--noname), and anti-patterns. See [examples.md](examples.md) for shipped patterns.
 
 ---
 
@@ -36,12 +36,17 @@ Read [reference.md](reference.md) for data-source rules and anti-patterns. See [
 
 ```
 packages/client/src/core/
-├── catalog-schemas.ts    # Zod component props + action params
-├── components.tsx        # exports + small components
-├── components/*.tsx      # larger panels (AuthSettingsForm, ContentEntryAdmin)
-├── components/MountAction.tsx  # useMountAction + spec-declarable load trigger
-├── admin-state.ts        # $state path constants for admin data
-└── actions/*.ts          # executeAction handlers
+├── catalog-schemas.ts       # Zod component props + action params
+├── components.tsx             # layout + auth shell only (Grid, LoginForm, MountAction)
+├── components/*.tsx           # login views, AuthBar, MountAction
+├── admin-state.ts           # $state path constants for admin data
+├── use-catalog-submit.ts    # pending/error/success for editable draft panels
+└── actions/*.ts             # executeAction handlers
+
+packages/client/src/admin/
+├── registry.ts                # admin panel components → json-render map
+├── schemas/actions.ts         # admin action Zod schemas
+└── components/                # feature folders (auth-settings/, content/, shell/, …)
          ↓
 platform/catalog.ts + platform/registry.ts + platform/catalog-ui-shell.tsx
 ```
@@ -123,15 +128,17 @@ Use watchers to replace `useEffect` load triggers where the spec owns lifecycle.
 | Tab/nav highlight | `$state` + `$cond` on props | — |
 | Load list on mount | `MountAction` in layout spec or `useMountAction()` | `useEffect` + `execute` in panel (avoid) |
 | Form field state | `$bindState` | Local `useState` (complex editors) |
+| Form submit | Local draft + save via catalog action | `useCatalogSubmit()` — see [Editable draft panels](#editable-draft-panels) |
+| Read-only or single-shot action | Login, toggle, add-to-cart | `execute({ action, params })` directly |
 | API calls | Action handlers | Handlers only — components call `execute`, never `fetch` |
 
 ---
 
 ## Action wiring (follow json-render official pattern)
 
-**Official examples:** [json-render/examples](https://github.com/vercel-labs/json-render/tree/main/examples) · [no-ai](https://github.com/vercel-labs/json-render/blob/main/examples/no-ai/lib/render/registry.tsx) (static handlers) · [dashboard](https://github.com/vercel-labs/json-render/blob/main/examples/dashboard/lib/render/renderer.tsx) (stateful handlers)
+**Official catalog:** [json-render/examples](https://github.com/vercel-labs/json-render/tree/main/examples) — full map in [reference.md — json-render examples → Noname](reference.md#json-render-examples--noname).
 
-Follow json-render as closely as possible. Noname adds one small bridge because our actions write to **`$state`**.
+Follow json-render for catalog, registry, handlers, and expressions. Noname adds layout documents, edge fetch, and a few lifecycle helpers (see map below).
 
 ### The three-layer split (same as json-render)
 
@@ -191,7 +198,7 @@ Official json-render examples **do not** load remote data inside catalog compone
 | **devtools** | AI streams spec + **`spec.state` seeded** into store (no fetch in components) |
 | **`watch`** | Fires only when a watched path **changes** — not on first render |
 
-So hybrid admin panels (fetch → `$state`) are **outside** what the stock examples cover. json-render's own `useAction()` still lists `execute` in deps — same infinite-loop risk if misused.
+So panels that **load remote data into `$state`** are outside what stock json-render examples cover. json-render's own `useAction()` still lists `execute` in deps — same infinite-loop risk if misused.
 
 **Noname pattern — `MountAction` + `useMountAction`:**
 
@@ -220,15 +227,61 @@ const loadParams = useMemo(() => (pageKey ? { pageKey } : null), [pageKey]);
 useMountAction(pageKey ? "loadRoutingPage" : "listRoutingPages", loadParams);
 ```
 
-**Wrong:** `useEffect(..., [execute])` in admin forms.  
-**Also wrong:** expecting `watch` to run on mount.  
-**Best long-term:** edge preloads admin data into `spec.state` (devtools model) — components only read `$state`.
+**Wrong:** `useEffect(..., [execute])` for mount loads. **`watch` alone** does not run on first render.
+
+### Editable draft panels
+
+**When:** load → local draft → save ([examples](examples.md) — auth settings, content CMS).  
+**When not:** read-only list, single-shot action (team list, login, addToCart).
+
+1. **Load** — `useMountAction` → handler writes `$state` with **`loadedAt`**
+2. **Draft** — inner component init from `loaded`; parent **`key={loaded.loadedAt}`** (not `useEffect` sync)
+3. **Save** — **`useCatalogSubmit()`** for pending/error/success around `execute`
+
+Skip steps 2–3 for other shapes.
+
+```tsx
+const { submit, run, executeAction, pending, error, success } = useCatalogSubmit();
+
+await submit({
+  action: "saveAuthConfig",
+  params: { … },
+  successMessage: props.successMessage,
+});
+
+// Multi-step save then publish — use run + executeAction, not nested submit()
+await run(
+  async () => {
+    await executeAction("saveLayoutEntry", { id, specJson });
+    await executeAction("publishLayoutEntry", { id });
+  },
+  { successMessage: props.publishedMessage, onPendingChange: setPublishing },
+);
+
+const displayError = mergeCatalogError(error, loadError);
+```
+
+Load handler attaches `loadedAt`:
+
+```tsx
+function FormFields({ loaded }: { loaded: MyLoaded }) {
+  const [values, setValues] = useState(loaded.values);
+  // …
+}
+
+<FormFields key={loaded.loadedAt} loaded={loaded} … />
+```
+
+**Forms:** inline `onSubmit` with `preventDefault` — no `FormEvent`.
+
+Implementation: `core/use-catalog-submit.ts`.
 
 ### What to call from components
 
 | Call from | Use | Why |
 |-----------|-----|-----|
-| Catalog component (button submit, mount load) | `useActions().execute({ action, params })` | Goes through `ActionProvider` (confirm dialogs, etc.) |
+| Catalog component — single-shot or mount load | `useActions().execute({ action, params })` | Goes through `ActionProvider` |
+| Catalog component — editable draft save | `useCatalogSubmit()` | Pending/error/success around `execute` |
 | Layout spec (`watch`, `action` on Pressable) | Same — resolved by `ActionProvider` | Spec-driven side effects |
 | Outside React tree (tests, one-off scripts) | `executeAction(name, params, set, state)` from `registry.ts` | Imperative, no provider context |
 | **Never** in components | `fetch("/api/…")` directly | Bypasses catalog validation; use action handler that calls `auth/*` or `admin/*` helpers |
@@ -241,7 +294,7 @@ useMountAction(pageKey ? "loadRoutingPage" : "listRoutingPages", loadParams);
 - [ ] Params schema in catalog-schemas.ts
 - [ ] Handler in core/actions/{domain}.ts — (params, setState, state)
 - [ ] Merged into coreActionHandlers → platform/registry.ts
-- [ ] Component calls useActions().execute — not fetch, not executeAction
+- [ ] Component shape: editable draft → `loadedAt` + `key` + `useCatalogSubmit`; else → `execute`
 - [ ] Load actions write $state; reads use useStateValue(path)
 - [ ] Prefer layout watch/$bindState over useEffect where feasible
 - [ ] Mount loads: `MountAction` in spec or `useMountAction` — **never** `[execute]` in deps
@@ -253,7 +306,7 @@ useMountAction(pageKey ? "loadRoutingPage" : "listRoutingPages", loadParams);
 
 ```
 - [ ] 1. Schema — catalog-schemas.ts (component + actions)
-- [ ] 2. Component — core/components/ + export in components.tsx
+- [ ] 2. Component — `core/components/`, `admin/components/`, or `extensions/`; register in the matching registry
 - [ ] 3. Actions — core/actions/*.ts → register in platform/registry.ts
 - [ ] 4. Server — domain route if action needs backend (packages/server)
 - [ ] 5. Layout — json-render tree in seed or documents API
@@ -271,10 +324,11 @@ Add Zod props for the component and params for any new actions.
 
 ### 2. Component
 
-- Implement in `core/components/{Name}.tsx`
-- Export from `components.tsx` and register in `coreComponents` map
-- Side effects: **`useActions().execute({ action, params })`** from `@json-render/react` — not raw `fetch`
-- **Do not hardcode user-visible strings** — labels, titles, button text come from **props** (layout spec) or CMS/`$state`
+- **Platform** (login, layout): `core/components/` → `core/components.tsx`
+- **Operator tools**: `admin/components/{feature}/` → `admin/registry.ts`
+- **Storefront widgets**: `extensions/src/{name}/`
+- **Editable draft:** [Editable draft panels](#editable-draft-panels). **Otherwise:** `execute({ action, params })`
+- Copy in layout **props** or CMS/`$state` — not hardcoded in TSX
 
 ### 3. Action handler
 
@@ -282,9 +336,9 @@ Follow [Action wiring](#action-wiring-follow-json-render-official-pattern) above
 
 - Add handler in `core/actions/{domain}.ts` — signature `(params, setState, state) => Promise<void>`
 - Load actions **write results to `$state`** via `setState(path, value)`; components read with `useStateValue(path)`
-- Merge in `platform/registry.ts` via `coreActionHandlers`; `CatalogUiShell` passes sync handlers to `JSONUIProvider`
-- Components use **`useActions().execute({ action, params })`** — no wrapper hook, no direct `fetch`
-- **`executeAction`** from `registry.ts` only outside the React tree (tests/scripts)
+- Merge in `platform/registry.ts` via `coreActionHandlers`
+- In components: **`useCatalogSubmit`** for editable drafts; **`useActions().execute`** otherwise — never `fetch`
+- **`executeAction`** from `registry.ts` — tests/scripts only
 
 Admin `$state` paths live in `core/admin-state.ts` (e.g. `/admin/team/users`).
 

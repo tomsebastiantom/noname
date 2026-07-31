@@ -1,6 +1,6 @@
 import { useActions } from "@json-render/react";
+import { storeSlugFromHost } from "@noname/shared";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { storeSlugFromHostname } from "../../auth/org";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import {
   Card,
@@ -56,7 +56,7 @@ export function LoginForm({
   const [allowSignUp, setAllowSignUp] = useState(false);
   const [allowPasswordReset, setAllowPasswordReset] = useState(true);
 
-  const storeSlug = storeSlugFromHostname(window.location.hostname);
+  const storeSlug = storeSlugFromHost(window.location.hostname);
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const [view, setView] = useState<LoginView>(() => viewFromSearch(search));
 

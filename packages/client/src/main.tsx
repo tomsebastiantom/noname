@@ -1,6 +1,8 @@
 import "./index.css";
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
+import { fetchWithTimeout } from "@noname/auth";
+import { storeSlugFromHost } from "@noname/shared";
 import {
   type ReactNode,
   useCallback,
@@ -10,7 +12,6 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { storeSlugFromHostname } from "./auth/org";
 import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
@@ -34,25 +35,6 @@ interface EdgeSchemaResponse {
 }
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
-
-async function fetchWithTimeout(
-  input: RequestInfo | URL,
-  init?: RequestInit,
-  timeoutMs = SCHEMA_FETCH_TIMEOUT_MS,
-): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-  try {
-    return await fetch(input, { ...init, signal: controller.signal });
-  } catch (err) {
-    if (err instanceof Error && err.name === "AbortError") {
-      throw new Error(`Request timed out after ${timeoutMs / 1000}s`);
-    }
-    throw err;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 function redirectTo(
   url: string,
@@ -87,7 +69,7 @@ function App() {
   const specRef = useRef<Spec | null>(null);
   specRef.current = spec;
   const loadSeqRef = useRef(0);
-  const storeSlug = storeSlugFromHostname(window.location.hostname);
+  const storeSlug = storeSlugFromHost(window.location.hostname);
 
   const pathname = useSyncExternalStore(subscribeAppLocation, getPathname, getPathname);
   const route = resolveRoute(pathname);
@@ -152,7 +134,11 @@ function App() {
 
     const headers = apiHeaders();
 
-    const manifestPromise = fetchWithTimeout(`/api/tenants/${storeSlug}/catalog`, { headers })
+    const manifestPromise = fetchWithTimeout(
+      `/api/tenants/${storeSlug}/catalog`,
+      { headers },
+      SCHEMA_FETCH_TIMEOUT_MS,
+    )
       .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
       .then((body) => body?.data ?? null)
       .catch(() => null);
@@ -161,9 +147,11 @@ function App() {
       ? `segment=default&template=${encodeURIComponent(template)}`
       : `segment=default&url=${encodeURIComponent(pathname)}`;
 
-    const specPromise = fetchWithTimeout(`/api/edge/schema/${storeSlug}?${schemaQuery}`, {
-      headers,
-    }).then((res) => {
+    const specPromise = fetchWithTimeout(
+      `/api/edge/schema/${storeSlug}?${schemaQuery}`,
+      { headers },
+      SCHEMA_FETCH_TIMEOUT_MS,
+    ).then((res) => {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
     });

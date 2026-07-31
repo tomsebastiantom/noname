@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   canDraft,
+  canDraftFromPermissions,
   expandPermissions,
   hasPermission,
   PERMISSIONS,
@@ -30,6 +31,12 @@ describe("permissions", () => {
 
   it("customer role is storefront view only", () => {
     expect(expandPermissions(["customer"])).toEqual([PERMISSIONS.STOREFRONT_VIEW]);
+  });
+
+  it("canDraftFromPermissions matches expanded editor permissions", () => {
+    expect(canDraftFromPermissions(["content:draft_write"])).toBe(true);
+    expect(canDraftFromPermissions(["page:draft_write"])).toBe(true);
+    expect(canDraftFromPermissions(["storefront:view"])).toBe(false);
   });
 
   it("canDraft follows ROLE_PERMISSIONS not hardcoded role names", () => {
