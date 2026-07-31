@@ -21,7 +21,7 @@ Longer rationale: [`docs/2026-07-31/SHARED-PACKAGES.md`](../../docs/2026-07-31/S
 
 | Do not put here | Use instead |
 |---|---|
-| Domain types, DTOs, event names | Server `domains/{name}/ports.ts` or future `@noname/{domain}-shared` |
+| Domain types, DTOs, event names | Server `domains/{name}/ports.ts` or `@noname/{domain}` (e.g. `@noname/documents`) |
 | Auth, JWT, permissions, edit mode | `@noname/auth` |
 | CMS labels, locale, ref parsing | `@noname/documents` |
 | React components, hooks, actions | `@noname/client` |

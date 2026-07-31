@@ -1,6 +1,6 @@
-# @noname/documents-shared
+# @noname/documents
 
-CMS **wire types** and **pure helpers** shared by `@noname/client` and `@noname/server`.
+Cross-runtime CMS **wire types** and **pure helpers** for `@noname/client` and `@noname/server` — same role as `@noname/auth` for auth.
 
 Not a junk drawer — only document ref parsing, schema shapes, and label/locale rules that must stay in sync across runtimes.
 

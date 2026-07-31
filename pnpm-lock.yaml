@@ -85,9 +85,9 @@ importers:
       '@noname/browser-sdk':
         specifier: workspace:*
         version: link:../browser-sdk
-      '@noname/documents-shared':
+      '@noname/documents':
         specifier: workspace:*
-        version: link:../documents-shared
+        version: link:../documents
       '@noname/extensions':
         specifier: workspace:*
         version: link:../extensions
@@ -156,7 +156,7 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
-  packages/documents-shared:
+  packages/documents:
     dependencies:
       '@noname/shared':
         specifier: workspace:*
@@ -214,9 +214,9 @@ importers:
       '@noname/auth':
         specifier: workspace:*
         version: link:../auth
-      '@noname/documents-shared':
+      '@noname/documents':
         specifier: workspace:*
-        version: link:../documents-shared
+        version: link:../documents
       '@noname/shared':
         specifier: workspace:*
         version: link:../shared
