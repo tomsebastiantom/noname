@@ -2,29 +2,14 @@ import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, fetchWithTimeout, isEditModeUrl } 
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
-import { resolveOrgIdFromHost, resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
 import { isPublicGet, isPublicPost } from "./public-routes";
+import { resolveProxyOrgId } from "./resolve-proxy-org";
 import {
   shouldStripBodyOrg,
   stripOrgFromPublicJsonBody,
   stripOrgFromSearch,
 } from "./strip-public-org";
-
-/** /api/edge/schema/:siteId, /api/tenants/:siteId/..., or /api/auth/:siteId/... */
-function siteIdFromPath(pathname: string): string {
-  const parts = pathname.split("/").filter(Boolean);
-  if (parts[0] === "api" && parts[1] === "edge" && parts[2] === "schema" && parts[3]) {
-    return parts[3];
-  }
-  if (parts[0] === "api" && parts[1] === "tenants" && parts[2] && parts[2] !== "resolve") {
-    return parts[2];
-  }
-  if (parts[0] === "api" && parts[1] === "auth" && parts[2]) {
-    return parts[2];
-  }
-  return "";
-}
 
 function isResolveSlugPath(pathname: string): boolean {
   return /^\/api\/tenants\/resolve\/[^/]+$/.test(pathname);
@@ -69,22 +54,14 @@ export function createApiProxyRoutes() {
       jwt = auth;
     }
 
-    let orgId = jwt?.orgId || "";
-
-    if (!orgId) {
-      const fromPath = siteIdFromPath(pathname);
-      if (fromPath) {
-        orgId = (await resolveSiteId(c.env, fromPath)) ?? "";
-      }
-    }
-
-    if (!orgId) {
-      orgId = (await resolveOrgIdFromHost(c.env, c.req.header("host") ?? "")) ?? "";
-    }
-
-    if (!orgId) {
-      orgId = c.req.header("x-org-id") || "";
-    }
+    const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "";
+    const orgId = await resolveProxyOrgId(
+      c.env,
+      pathname,
+      host,
+      jwt?.orgId,
+      c.req.header("x-org-id") ?? undefined,
+    );
 
     if (!orgId && !isResolveSlugPath(pathname)) {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);

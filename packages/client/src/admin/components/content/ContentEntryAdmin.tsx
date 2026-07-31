@@ -207,7 +207,12 @@ export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
 
   if (!contentType) {
     return (
-      <ContentEntryTypeList title={props.title} description={props.description} types={types} />
+      <ContentEntryTypeList
+        title={props.title}
+        description={props.description}
+        types={types}
+        error={loadError}
+      />
     );
   }
 

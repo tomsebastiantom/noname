@@ -72,6 +72,7 @@ export function adminActiveNavFromPath(pathname: string): string {
   if (pathname === "/admin/settings/flags") return "flags";
   if (pathname === "/admin/settings/replay") return "replay";
   if (pathname === "/admin/settings/login") return "login";
+  if (pathname.startsWith("/account/security")) return "account_security";
   if (pathname === "/admin" || pathname === "/admin/") return "home";
   if (pathname.startsWith("/admin")) return "home";
   return "";

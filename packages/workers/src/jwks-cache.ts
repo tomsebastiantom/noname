@@ -14,12 +14,25 @@ export function jwksCacheKey(issuer: string): string {
   return `jwks:${issuer.replace(/\/$/, "")}`;
 }
 
+/** OIDC discovery `jwks_uri` (ZITADEL uses `/oauth/v2/keys`, not `/.well-known/jwks.json`). */
+export async function resolveJwksUrl(issuer: string): Promise<string> {
+  const base = issuer.replace(/\/$/, "");
+  const discoveryUrl = `${base}/.well-known/openid-configuration`;
+  const discovery = await fetchWithTimeout(discoveryUrl);
+  if (discovery.ok) {
+    const body = (await discovery.json()) as { jwks_uri?: string };
+    const jwksUri = body.jwks_uri?.trim();
+    if (jwksUri) return jwksUri;
+  }
+  return `${base}/.well-known/jwks.json`;
+}
+
 async function fetchJwksDocument(env: Env, issuer: string): Promise<JwksDocument> {
   const cacheKey = jwksCacheKey(issuer);
   const cached = await getCached<JwksDocument>(env, cacheKey);
   if (cached) return cached;
 
-  const url = `${issuer.replace(/\/$/, "")}/.well-known/jwks.json`;
+  const url = await resolveJwksUrl(issuer);
   const response = await fetchWithTimeout(url);
   if (!response.ok) {
     throw new Error(`Error loading jwks at ${url}: ${response.status} ${response.statusText}`);

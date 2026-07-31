@@ -1,3 +1,4 @@
+import { Alert, AlertDescription } from "../../../components/ui/alert";
 import {
   Card,
   CardContent,
@@ -11,10 +12,12 @@ export function ContentEntryTypeList({
   title,
   description,
   types,
+  error,
 }: {
   title: string;
   description: string | null;
   types: { name: string; fieldCount: number }[];
+  error?: string | null;
 }) {
   return (
     <Card className="max-w-2xl">
@@ -22,7 +25,12 @@ export function ContentEntryTypeList({
         <CardTitle>{title}</CardTitle>
         {description && <CardDescription>{description}</CardDescription>}
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
+        {error ? (
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        ) : null}
         <DataTable
           rows={types}
           rowKey={(t) => t.name}

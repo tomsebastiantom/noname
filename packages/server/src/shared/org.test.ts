@@ -33,6 +33,8 @@ describe("orgMiddleware", () => {
   });
 
   it("rejects requests without HMAC when secret is set and bypass is not enabled", async () => {
+    vi.stubEnv("NODE_ENV", "development");
+    vi.stubEnv("REQUIRE_EDGE_HMAC", "true");
     vi.stubEnv("WORKER_SERVER_SECRET", "test-secret");
     const res = await testApp().request("/api/test", {
       headers: { "x-org-id": "org-1" },

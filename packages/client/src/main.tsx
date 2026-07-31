@@ -63,6 +63,7 @@ function AppShell({ children, template }: Readonly<{ children: ReactNode; templa
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
+  const [shellKey, setShellKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [navigating, setNavigating] = useState(false);
@@ -170,6 +171,7 @@ function App() {
       }
 
       setSpec(tree);
+      setShellKey(`${template}:${pathname}`);
 
       void syncBrowserObservabilityContext(
         { contextHash: body?.data?.segment ?? "default" },
@@ -226,7 +228,7 @@ function App() {
     );
   }
 
-  const shellKey = `${template}:${pathname}`;
+  const shellRouteKey = shellKey || `${template}:${pathname}`;
 
   return (
     <AppShell template={template}>
@@ -242,12 +244,13 @@ function App() {
         </div>
       ) : null}
       {navigating ? (
-        <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
-          Loading…
-        </div>
-      ) : (
-        <CatalogUiShell key={shellKey} spec={spec} registry={registry} />
-      )}
+        <div
+          className="h-0.5 w-full shrink-0 animate-pulse bg-primary"
+          role="progressbar"
+          aria-label="Loading page"
+        />
+      ) : null}
+      <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
     </AppShell>
   );
 }

@@ -24,7 +24,14 @@ export default {
     historyApiFallback: true,
     static: { directory: join(dir, "public") },
     // Edge worker (wrangler dev, default :8787) — must match workers/wrangler.toml [dev].port
-    proxy: [{ context: ["/api"], target: `http://localhost:${edgeDevPort}` }],
+    // Preserve browser Host (yogastore.localhost) so edge can resolve org on slug-less /api routes.
+    proxy: [
+      {
+        context: ["/api"],
+        target: `http://localhost:${edgeDevPort}`,
+        changeOrigin: false,
+      },
+    ],
   },
   module: {
     rules: [
@@ -41,7 +48,13 @@ export default {
       },
       {
         test: /\.tsx?$/,
-        include: [join(dir, "src"), extensionsDir],
+        include: [
+          join(dir, "src"),
+          extensionsDir,
+          join(dir, "../auth/src"),
+          join(dir, "../shared/src"),
+          join(dir, "../documents/src"),
+        ],
         use: {
           loader: "builtin:swc-loader",
           options: {

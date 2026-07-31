@@ -852,11 +852,17 @@ async function ensureAuthProviderContentType(): Promise<void> {
       "/api/documents/content-types/auth_provider",
     );
     const hasIcon = typeDef.schema.fields.some((f) => f.key === "icon");
-    if (!hasIcon && iconField) {
+    const oauthOptional = ["client_id", "client_secret", "authorization_endpoint", "token_endpoint", "user_endpoint"].every(
+      (key) => {
+        const field = typeDef.schema.fields.find((f) => f.key === key);
+        return !field || field.required === false;
+      },
+    );
+    if ((!hasIcon && iconField) || !oauthOptional) {
       await api("PUT", "/api/documents/content-types/auth_provider", {
-        schema: { fields: [...typeDef.schema.fields, iconField] },
+        schema: authProviderContentType,
       });
-      console.log("auth_provider content type updated with icon field.");
+      console.log("auth_provider content type schema synced.");
     } else {
       console.log("auth_provider content type already exists.");
     }

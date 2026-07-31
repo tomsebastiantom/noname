@@ -75,7 +75,7 @@ export function AdminNav(props: AdminNavProps) {
   const canViewReplay = useAnalyticsViewPermission();
 
   const settingsItems = props.settingsItems.filter(
-    (item) => item.id !== "replay" || canViewReplay === true,
+    (item) => item.id !== "replay" || canViewReplay !== false,
   );
 
   return (
@@ -103,7 +103,10 @@ export function AdminNav(props: AdminNavProps) {
           </AdminNavLink>
         ))}
 
-        <AdminNavLink href={props.accountSecurityHref} active={false}>
+        <AdminNavLink
+          href={props.accountSecurityHref}
+          active={props.activeNav === "account_security"}
+        >
           {props.accountSecurityLabel}
         </AdminNavLink>
         <AdminNavLink
