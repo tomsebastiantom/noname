@@ -1,10 +1,12 @@
 import { createSign } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { ConflictError } from "../../../../shared/domain-error";
+import { zitadelIssuer } from "./issuer";
 
-const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
-const MANAGEMENT_BASE = `${ISSUER}/management/v1`;
-export const ZITADEL_V2_BASE = `${ISSUER}/v2`;
+const issuer = zitadelIssuer();
+const MANAGEMENT_BASE = `${issuer}/management/v1`;
+export const ZITADEL_V2_BASE = `${issuer}/v2`;
 
 interface ServiceAccountKey {
   keyId: string;
@@ -41,7 +43,7 @@ function signAssertion(sa: ServiceAccountKey): string {
     JSON.stringify({
       iss: sa.userId,
       sub: sa.userId,
-      aud: ISSUER,
+      aud: issuer,
       iat: now,
       exp: now + 300,
     }),
@@ -61,7 +63,7 @@ async function getManagementToken(): Promise<string> {
   }
 
   const sa = loadServiceAccountKey();
-  const res = await fetch(`${ISSUER}/oauth/v2/token`, {
+  const res = await fetch(`${issuer}/oauth/v2/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -226,7 +228,7 @@ export async function connectRequest<T>(
   method = "POST",
 ): Promise<T> {
   const token = await getManagementToken();
-  const res = await fetch(`${ISSUER}${path}`, {
+  const res = await fetch(`${issuer}${path}`, {
     method,
     headers: {
       ...orgHeaders(orgId, token),
@@ -282,7 +284,15 @@ export async function v2Request<T>(
   }
 
   const err = parsed as { code?: number | string; message?: string };
+  const alreadyExists =
+    err.code === 6 ||
+    err.code === "already_exists" ||
+    err.message?.toLowerCase().includes("already");
+
   if (!res.ok) {
+    if (alreadyExists) {
+      throw new ConflictError(err.message ?? "Resource already exists");
+    }
     throw new Error(`ZITADEL v2 ${path} → ${res.status}: ${err.message ?? text}`);
   }
 

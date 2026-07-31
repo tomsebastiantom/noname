@@ -1,6 +1,5 @@
-import { Queue } from "bullmq";
+import { closeBullmqQueue, getBullmqQueue } from "../../shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
-import { getRedisConnection } from "../../shared/redis";
 
 export interface AgentJobData {
   taskId: string;
@@ -12,18 +11,10 @@ export interface AgentJobData {
   tracestate?: string;
 }
 
-let agentQueue: Queue<AgentJobData> | null = null;
-
-export function getAgentQueue(): Queue<AgentJobData> {
-  if (!agentQueue) {
-    agentQueue = new Queue<AgentJobData>(BULLMQ_QUEUES.AGENT, { connection: getRedisConnection() });
-  }
-  return agentQueue;
+export function getAgentQueue() {
+  return getBullmqQueue<AgentJobData>(BULLMQ_QUEUES.AGENT);
 }
 
 export async function closeQueue(): Promise<void> {
-  if (agentQueue) {
-    await agentQueue.close();
-    agentQueue = null;
-  }
+  await closeBullmqQueue(BULLMQ_QUEUES.AGENT);
 }

@@ -1,5 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
-import type { FlagStatus, FlagType, TargetingRule } from "./ports";
+import type { FlagDTO, FlagStatus, FlagType, TargetingRule } from "./ports";
 
 export class FeatureFlag extends AggregateRoot {
   constructor(
@@ -50,6 +50,23 @@ export class FeatureFlag extends AggregateRoot {
       type,
     });
     return flag;
+  }
+
+  static fromDTO(dto: FlagDTO): FeatureFlag {
+    return new FeatureFlag(
+      dto.id,
+      dto.orgId,
+      dto.key,
+      dto.type,
+      dto.description,
+      dto.defaultValue,
+      dto.targeting,
+      dto.status,
+      dto.schemaId,
+      dto.variantId,
+      dto.createdAt,
+      dto.updatedAt,
+    );
   }
 
   update(

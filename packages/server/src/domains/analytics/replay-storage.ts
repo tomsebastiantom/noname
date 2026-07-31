@@ -1,5 +1,5 @@
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
-import { createR2AssetStorage, type R2Config, r2ConfigFromEnv } from "../documents";
+import { createR2AssetStorage, type R2Config, r2ConfigFromEnv } from "../documents/contracts";
 
 export interface ReplayBlobStorage {
   putChunk(orgId: string, sessionId: string, chunkId: string, json: string): Promise<string>;

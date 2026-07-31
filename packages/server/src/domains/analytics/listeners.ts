@@ -1,4 +1,6 @@
 import { eventBus } from "../../shared/event-bus";
+import { ContextEvents } from "../context/events";
+import { MachineEvents } from "../machines/events";
 import type { AnalyticsService } from "./ports";
 
 function subscribe(service: AnalyticsService, eventName: string) {
@@ -45,13 +47,13 @@ export function registerAnalyticsListeners(service: AnalyticsService): void {
   subscribe(service, "tenant_settings.updated");
 
   // Machines — workflow audit
-  subscribe(service, "machine.defined");
-  subscribe(service, "machine.started");
-  subscribe(service, "machine.transition");
-  subscribe(service, "machine.transition.rejected");
+  subscribe(service, MachineEvents.DEFINED);
+  subscribe(service, MachineEvents.STARTED);
+  subscribe(service, MachineEvents.TRANSITION);
+  subscribe(service, MachineEvents.TRANSITION_REJECTED);
 
   // Context — segment resolution
-  subscribe(service, "context.segment_resolved");
+  subscribe(service, ContextEvents.SEGMENT_RESOLVED);
 
   // Agent — task lifecycle
   subscribe(service, "task.created");

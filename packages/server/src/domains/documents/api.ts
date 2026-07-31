@@ -1,8 +1,8 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
-import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId } from "../../shared/org";
 import { created, deleted, notFound, ok } from "../../shared/respond";
+import { denyUnless } from "../auth/deny-unless";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { createAssetStorage, processImage, sha256 } from "./assets/binary";
 import type {

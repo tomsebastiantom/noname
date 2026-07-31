@@ -2,14 +2,15 @@ import { PERMISSIONS, primaryTeamRole, resolveAuthContextFromAccessToken } from 
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
-import { notFound } from "../../shared/respond";
-import { resolveSiteIdToOrgId } from "../../shared/site-id";
-import { isSupportedLoginProvider, type TenantSettingsService } from "../documents";
+import { ValidationError } from "../../shared/domain-error";
+import { parseBody } from "../../shared/parse-body";
+import { created, notFound, ok } from "../../shared/respond";
+import { resolveRouteOrgId } from "../../shared/site-id";
+import { isSupportedLoginProvider, type TenantSettingsService } from "../documents/contracts";
+import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import { requireAuthenticatedUser, requirePermission } from "./guards";
 import type { AuthService } from "./ports";
-
-const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 const loginBodySchema = z.object({
   email: z.email(),
@@ -112,342 +113,241 @@ async function requireAuthManage(
 export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSettingsService) {
   const routes = new Hono();
 
-  async function orgFromParam(siteId: string): Promise<string | null> {
-    if (!tenantSettings) return siteId;
-    return resolveSiteIdToOrgId(tenantSettings, siteId);
-  }
-
   routes.get("/:orgId/auth/config", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const config = await service.getConfig(orgId);
-    return c.json({ data: config });
+    return ok(c, await service.getConfig(orgId));
   });
 
   routes.put("/:orgId/auth/config", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
-    const parsed = authConfigUpdateSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid auth config payload" }, 400);
-    }
-    try {
-      const config = await service.updateConfig(orgId, parsed.data);
-      return c.json({ data: config });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Auth config update failed";
-      return c.json({ error: message }, 400);
-    }
+    const body = parseBody(
+      authConfigUpdateSchema.safeParse(await c.req.json()),
+      "auth config payload",
+    );
+    return ok(c, await service.updateConfig(orgId, body));
   });
 
   routes.get("/:orgId/auth/idp/:provider/start", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const provider = c.req.param("provider");
     if (!isSupportedLoginProvider(provider)) {
-      return c.json({ error: "Unsupported identity provider" }, 400);
+      throw new ValidationError("provider", "Unsupported identity provider");
     }
 
-    const parsed = oauthStartQuerySchema.safeParse({
-      clientId: c.req.query("clientId"),
-      redirectUri: c.req.query("redirectUri"),
-      codeChallenge: c.req.query("codeChallenge"),
-    });
-    if (!parsed.success) {
-      return c.json({ error: "Invalid OAuth start parameters" }, 400);
-    }
+    const query = parseBody(
+      oauthStartQuerySchema.safeParse({
+        clientId: c.req.query("clientId"),
+        redirectUri: c.req.query("redirectUri"),
+        codeChallenge: c.req.query("codeChallenge"),
+      }),
+      "OAuth start parameters",
+    );
 
-    try {
-      const result = await service.startIdpLogin({
+    return ok(
+      c,
+      await service.startIdpLogin({
         orgId,
         provider,
-        clientId: parsed.data.clientId,
-        redirectUri: parsed.data.redirectUri,
-        codeChallenge: parsed.data.codeChallenge,
-      });
-      return c.json({ data: result });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "OAuth start failed";
-      return c.json({ error: message }, 503);
-    }
+        clientId: query.clientId,
+        redirectUri: query.redirectUri,
+        codeChallenge: query.codeChallenge,
+      }),
+    );
   });
 
   routes.post("/:orgId/auth/callback", async (c) => {
-    const parsed = oauthCallbackBodySchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid OAuth callback payload" }, 400);
-    }
-
-    try {
-      const result = await service.exchangeOAuthCallback(parsed.data);
-      return c.json({
-        data: {
-          accessToken: result.accessToken,
-          expiresIn: result.expiresIn,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "OAuth callback failed";
-      return c.json({ error: message }, 401);
-    }
+    const body = parseBody(
+      oauthCallbackBodySchema.safeParse(await c.req.json()),
+      "OAuth callback payload",
+    );
+    const result = await service.exchangeOAuthCallback(body);
+    return ok(c, {
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+    });
   });
 
   routes.post("/:orgId/auth/login", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const parsed = loginBodySchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid login payload" }, 400);
+    const body = parseBody(loginBodySchema.safeParse(await c.req.json()), "login payload");
+
+    const result = await service.login({
+      orgId,
+      email: body.email,
+      password: body.password,
+      clientId: body.clientId,
+      redirectUri: body.redirectUri,
+      codeVerifier: body.codeVerifier,
+    });
+
+    if (result.mfaRequired) {
+      return ok(c, {
+        mfaRequired: true,
+        sessionId: result.sessionId,
+        sessionToken: result.sessionToken,
+        authRequestId: result.authRequestId,
+      });
     }
 
-    try {
-      const result = await service.login({
-        orgId,
-        email: parsed.data.email,
-        password: parsed.data.password,
-        clientId: parsed.data.clientId,
-        redirectUri: parsed.data.redirectUri,
-        codeVerifier: parsed.data.codeVerifier,
-      });
-      if (result.mfaRequired) {
-        return c.json({
-          data: {
-            mfaRequired: true,
-            sessionId: result.sessionId,
-            sessionToken: result.sessionToken,
-            authRequestId: result.authRequestId,
-          },
-        });
-      }
-      return c.json({
-        data: {
-          accessToken: result.accessToken,
-          expiresIn: result.expiresIn,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Login failed";
-      return c.json({ error: message }, 401);
-    }
+    return ok(c, {
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+    });
   });
 
   routes.post("/:orgId/auth/mfa/verify", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const parsed = mfaVerifyBodySchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid MFA payload" }, 400);
-    }
+    const body = parseBody(mfaVerifyBodySchema.safeParse(await c.req.json()), "MFA payload");
 
-    try {
-      const result = await service.verifyMfa({
-        orgId,
-        ...parsed.data,
-      });
-      return c.json({
-        data: {
-          accessToken: result.accessToken,
-          expiresIn: result.expiresIn,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "MFA verification failed";
-      return c.json({ error: message }, 401);
-    }
+    const result = await service.verifyMfa({ orgId, ...body });
+    return ok(c, {
+      accessToken: result.accessToken,
+      expiresIn: result.expiresIn,
+    });
   });
 
   routes.post("/:orgId/auth/mfa/totp/register", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
-    try {
-      const result = await service.startTotpEnrollment({
+    return ok(
+      c,
+      await service.startTotpEnrollment({
         userId: auth.userId,
         userToken: auth.userToken,
-      });
-      return c.json({ data: result });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "TOTP enrollment failed";
-      return c.json({ error: message }, 400);
-    }
+      }),
+    );
   });
 
   routes.post("/:orgId/auth/mfa/totp/confirm", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
-    const parsed = mfaEnrollmentConfirmSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid TOTP confirmation payload" }, 400);
-    }
+    const body = parseBody(
+      mfaEnrollmentConfirmSchema.safeParse(await c.req.json()),
+      "TOTP confirmation payload",
+    );
 
-    try {
-      await service.confirmTotpEnrollment({
-        orgId,
-        userId: auth.userId,
-        userToken: auth.userToken,
-        code: parsed.data.code,
-      });
-      return c.json({ data: { ok: true } });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "TOTP confirmation failed";
-      return c.json({ error: message }, 400);
-    }
+    await service.confirmTotpEnrollment({
+      orgId,
+      userId: auth.userId,
+      userToken: auth.userToken,
+      code: body.code,
+    });
+    return ok(c, { ok: true });
   });
 
   routes.post("/:orgId/auth/password-reset/request", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const parsed = passwordResetRequestSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid password reset payload" }, 400);
-    }
+    const body = parseBody(
+      passwordResetRequestSchema.safeParse(await c.req.json()),
+      "password reset payload",
+    );
 
-    try {
-      await service.requestPasswordReset({ orgId, email: parsed.data.email });
-      return c.json({ data: { ok: true } });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Password reset request failed";
-      return c.json({ error: message }, 400);
-    }
+    await service.requestPasswordReset({ orgId, email: body.email });
+    return ok(c, { ok: true });
   });
 
   routes.post("/:orgId/auth/password-reset/confirm", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const parsed = passwordResetConfirmSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid password reset confirmation payload" }, 400);
-    }
+    const body = parseBody(
+      passwordResetConfirmSchema.safeParse(await c.req.json()),
+      "password reset confirmation payload",
+    );
 
-    try {
-      await service.confirmPasswordReset({
-        orgId,
-        userId: parsed.data.userId,
-        verificationCode: parsed.data.verificationCode,
-        newPassword: parsed.data.newPassword,
-      });
-      return c.json({ data: { ok: true } });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Password reset failed";
-      return c.json({ error: message }, 400);
-    }
+    await service.confirmPasswordReset({
+      orgId,
+      userId: body.userId,
+      verificationCode: body.verificationCode,
+      newPassword: body.newPassword,
+    });
+    return ok(c, { ok: true });
   });
 
   routes.post("/:orgId/auth/register", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const parsed = registerBodySchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid registration payload" }, 400);
-    }
+    const body = parseBody(
+      registerBodySchema.safeParse(await c.req.json()),
+      "registration payload",
+    );
 
-    try {
-      const result = await service.register({
+    return created(
+      c,
+      await service.register({
         orgId,
-        email: parsed.data.email,
-        password: parsed.data.password,
-        givenName: parsed.data.givenName,
-        familyName: parsed.data.familyName,
-      });
-      return c.json({ data: result }, 201);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Registration failed";
-      const status = message.toLowerCase().includes("already") ? 409 : 400;
-      return c.json({ error: message }, status);
-    }
+        email: body.email,
+        password: body.password,
+        givenName: body.givenName,
+        familyName: body.familyName,
+      }),
+    );
   });
 
   routes.get("/:orgId/auth/session", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
-    try {
-      const status = await service.getSessionStatus(orgId, auth.userId);
-      const projectId = zitadelProjectIdOrNull() ?? undefined;
-      const { roles, permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
-        projectId,
-        issuer: ZITADEL_ISSUER,
-      });
-      const teamRole = primaryTeamRole(roles);
-      return c.json({
-        data: {
-          ...status,
-          roles,
-          permissions,
-          teamRole,
-        },
-      });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Session status failed";
-      return c.json({ error: message }, 400);
-    }
+    const status = await service.getSessionStatus(orgId, auth.userId);
+    const projectId = zitadelProjectIdOrNull() ?? undefined;
+    const { roles, permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
+      projectId,
+      issuer: zitadelIssuer(),
+    });
+    const teamRole = primaryTeamRole(roles);
+    return ok(c, {
+      ...status,
+      roles,
+      permissions,
+      teamRole,
+    });
   });
 
   routes.get("/:orgId/auth/users", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
-    try {
-      const users = await service.listTeamUsers(orgId);
-      return c.json({ data: users });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Failed to list users";
-      return c.json({ error: message }, 400);
-    }
+    return ok(c, await service.listTeamUsers(orgId));
   });
 
   routes.post("/:orgId/auth/users/invite", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
-    const parsed = teamInviteSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid invite payload" }, 400);
-    }
-
-    try {
-      const result = await service.inviteTeamUser(orgId, parsed.data);
-      return c.json({ data: result }, 201);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Invite failed";
-      const status = message.toLowerCase().includes("already") ? 409 : 400;
-      return c.json({ error: message }, status);
-    }
+    const body = parseBody(teamInviteSchema.safeParse(await c.req.json()), "invite payload");
+    return created(c, await service.inviteTeamUser(orgId, body));
   });
 
   routes.put("/:orgId/auth/users/:userId/role", async (c) => {
-    const orgId = await orgFromParam(c.req.param("orgId"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
     if (auth instanceof Response) return auth;
 
-    const parsed = teamRoleUpdateSchema.safeParse(await c.req.json());
-    if (!parsed.success) {
-      return c.json({ error: "Invalid role payload" }, 400);
-    }
-
+    const body = parseBody(teamRoleUpdateSchema.safeParse(await c.req.json()), "role payload");
     const userId = c.req.param("userId");
-    try {
-      await service.updateTeamUserRole(orgId, userId, parsed.data.role);
-      return c.json({ data: { ok: true } });
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Role update failed";
-      return c.json({ error: message }, 400);
-    }
+    await service.updateTeamUserRole(orgId, userId, body.role);
+    return ok(c, { ok: true });
   });
 
   return routes;

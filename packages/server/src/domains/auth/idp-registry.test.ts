@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_TENANT_AUTH } from "../documents";
+import { DEFAULT_TENANT_AUTH } from "../documents/contracts";
 import { IDP_PROVIDER_IDS, publicProviderLabels, resolveIdpUpdate } from "./idp-registry";
 
 describe("idp-registry", () => {

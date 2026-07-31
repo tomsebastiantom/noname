@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { eventBus } from "../../shared/event-bus";
+import { ContextEvents } from "./events";
 import type { ContextEngine, ContextSignal, ContextStorage, SegmentDTO } from "./ports";
 import { extractSignals } from "./signal-extraction";
 
@@ -36,7 +37,7 @@ export function createContextEngine(storage: ContextStorage): ContextEngine {
 
       if (visitorId) await storage.cacheSegment(orgId, visitorId, segment.hash);
 
-      eventBus.publish("context.segment_resolved", { orgId, hash: segment.hash, signals });
+      eventBus.publish(ContextEvents.SEGMENT_RESOLVED, { orgId, hash: segment.hash, signals });
       return segment;
     },
 

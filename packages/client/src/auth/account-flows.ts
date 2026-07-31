@@ -1,7 +1,8 @@
+import { apiFetchData, apiFetchVoid } from "../lib/api";
 import { loadOidcConfig } from "./config";
 import { createCodeVerifier } from "./oauth";
 import { requireStoreSlug } from "./org";
-import { apiHeaders, setSessionToken } from "./session";
+import { setSessionToken } from "./session";
 
 async function loadOidcOrThrow() {
   const oidc = await loadOidcConfig();
@@ -12,45 +13,33 @@ async function loadOidcOrThrow() {
 }
 
 export async function requestPasswordReset(storeSlug: string, email: string): Promise<void> {
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/password-reset/request`, {
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/password-reset/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Password reset request failed (${res.status})`);
-  }
 }
 
 export async function confirmPasswordReset(
   storeSlug: string,
   input: { userId: string; verificationCode: string; newPassword: string },
 ): Promise<void> {
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/password-reset/confirm`, {
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/password-reset/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Password reset failed (${res.status})`);
-  }
 }
 
 export async function registerAccount(
   storeSlug: string,
   input: { email: string; password: string; givenName?: string; familyName?: string },
 ): Promise<void> {
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/register`, {
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Registration failed (${res.status})`);
-  }
 }
 
 export interface MfaLoginState {
@@ -68,7 +57,14 @@ export async function loginWithPassword(
   const oidc = await loadOidcOrThrow();
   const codeVerifier = await createCodeVerifier();
 
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/login`, {
+  const data = await apiFetchData<{
+    accessToken?: string;
+    expiresIn?: number;
+    mfaRequired?: boolean;
+    sessionId?: string;
+    sessionToken?: string;
+    authRequestId?: string;
+  }>(`/api/tenants/${storeSlug}/auth/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -80,41 +76,20 @@ export async function loginWithPassword(
     }),
   });
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Sign-in failed (${res.status})`);
-  }
-
-  const body = (await res.json()) as {
-    data?: {
-      accessToken?: string;
-      expiresIn?: number;
-      mfaRequired?: boolean;
-      sessionId?: string;
-      sessionToken?: string;
-      authRequestId?: string;
-    };
-  };
-
-  if (
-    body.data?.mfaRequired &&
-    body.data.sessionId &&
-    body.data.sessionToken &&
-    body.data.authRequestId
-  ) {
+  if (data.mfaRequired && data.sessionId && data.sessionToken && data.authRequestId) {
     return {
-      sessionId: body.data.sessionId,
-      sessionToken: body.data.sessionToken,
-      authRequestId: body.data.authRequestId,
+      sessionId: data.sessionId,
+      sessionToken: data.sessionToken,
+      authRequestId: data.authRequestId,
       codeVerifier,
     };
   }
 
-  if (!body.data?.accessToken) {
+  if (!data.accessToken) {
     throw new Error("No access token returned");
   }
 
-  setSessionToken(body.data.accessToken, body.data.expiresIn ?? 3600);
+  setSessionToken(data.accessToken, data.expiresIn ?? 3600);
   return null;
 }
 
@@ -125,47 +100,43 @@ export async function verifyMfaAndLogin(
 ): Promise<void> {
   const oidc = await loadOidcOrThrow();
 
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/verify`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      sessionId: state.sessionId,
-      sessionToken: state.sessionToken,
-      authRequestId: state.authRequestId,
-      totpCode,
-      codeVerifier: state.codeVerifier,
-      clientId: oidc.clientId,
-      redirectUri: oidc.redirectUri,
-    }),
-  });
+  const data = await apiFetchData<{ accessToken?: string; expiresIn?: number }>(
+    `/api/tenants/${storeSlug}/auth/mfa/verify`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        sessionId: state.sessionId,
+        sessionToken: state.sessionToken,
+        authRequestId: state.authRequestId,
+        totpCode,
+        codeVerifier: state.codeVerifier,
+        clientId: oidc.clientId,
+        redirectUri: oidc.redirectUri,
+      }),
+    },
+  );
 
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `MFA verification failed (${res.status})`);
-  }
-
-  const body = (await res.json()) as { data?: { accessToken?: string; expiresIn?: number } };
-  if (!body.data?.accessToken) {
+  if (!data.accessToken) {
     throw new Error("No access token returned");
   }
 
-  setSessionToken(body.data.accessToken, body.data.expiresIn ?? 3600);
+  setSessionToken(data.accessToken, data.expiresIn ?? 3600);
 }
 
 export async function startTotpEnrollment(): Promise<{ uri: string; secret: string }> {
   const storeSlug = requireStoreSlug();
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/totp/register`, {
-    method: "POST",
-    headers: { ...apiHeaders(), "Content-Type": "application/json" },
-    body: "{}",
-  });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `TOTP enrollment failed (${res.status})`);
-  }
-  const body = (await res.json()) as { data?: { uri?: string; secret?: string } };
-  const uri = body.data?.uri?.trim();
-  const secret = body.data?.secret?.trim();
+  const data = await apiFetchData<{ uri?: string; secret?: string }>(
+    `/api/tenants/${storeSlug}/auth/mfa/totp/register`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: "{}",
+    },
+  );
+
+  const uri = data.uri?.trim();
+  const secret = data.secret?.trim();
   if (!uri || !secret) {
     throw new Error("No TOTP registration details returned");
   }
@@ -174,13 +145,9 @@ export async function startTotpEnrollment(): Promise<{ uri: string; secret: stri
 
 export async function confirmTotpEnrollment(code: string): Promise<void> {
   const storeSlug = requireStoreSlug();
-  const res = await fetch(`/api/tenants/${storeSlug}/auth/mfa/totp/confirm`, {
+  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/mfa/totp/confirm`, {
     method: "POST",
-    headers: { ...apiHeaders(), "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),
   });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `TOTP confirmation failed (${res.status})`);
-  }
 }

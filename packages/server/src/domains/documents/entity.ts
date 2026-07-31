@@ -123,4 +123,14 @@ export class LayoutDocument extends AggregateRoot {
       version: this.version,
     });
   }
+
+  recordVariantCreated(): void {
+    this.apply("layout.variant_created", {
+      id: this.id,
+      orgId: this.orgId,
+      templateName: this.templateName,
+      segment: this.segment,
+      version: this.version,
+    });
+  }
 }

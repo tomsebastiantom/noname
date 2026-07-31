@@ -2,8 +2,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { fetchUserinfo as fetchUserinfoFromIssuer } from "@noname/auth";
-
-const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
+import { ServiceUnavailableError, UnauthorizedError } from "../../../../shared/domain-error";
+import { zitadelIssuer } from "./issuer";
 
 /** Scope required for end-user tokens to call ZITADEL user APIs (e.g. TOTP enrollment). */
 const ZITADEL_USER_API_SCOPE = "urn:zitadel:iam:org:project:id:zitadel:aud";
@@ -66,7 +66,7 @@ async function startAuthRequest(input: {
   orgId: string;
   codeChallenge: string;
 }): Promise<string> {
-  const authUrl = new URL(`${ISSUER}/oauth/v2/authorize`);
+  const authUrl = new URL(`${zitadelIssuer()}/oauth/v2/authorize`);
   authUrl.searchParams.set("client_id", input.clientId);
   authUrl.searchParams.set("redirect_uri", input.redirectUri);
   authUrl.searchParams.set("response_type", "code");
@@ -78,13 +78,13 @@ async function startAuthRequest(input: {
   const location = res.headers.get("location") ?? "";
   const match = location.match(/authRequest=([^&]+)/);
   if (!match?.[1]) {
-    throw new Error(`Failed to start OIDC auth request (${location})`);
+    throw new ServiceUnavailableError(`Failed to start OIDC auth request (${location})`);
   }
   return match[1];
 }
 
 async function createSession(loginName: string, pat: string) {
-  const res = await fetch(`${ISSUER}/v2/sessions`, {
+  const res = await fetch(`${zitadelIssuer()}/v2/sessions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${pat}`, "Content-Type": "application/json" },
     body: JSON.stringify({ checks: { user: { loginName } } }),
@@ -95,7 +95,7 @@ async function createSession(loginName: string, pat: string) {
     message?: string;
   };
   if (!res.ok || !body.sessionId || !body.sessionToken) {
-    throw new Error(body.message ?? "Invalid email or password");
+    throw new UnauthorizedError(body.message ?? "Invalid email or password");
   }
   return { sessionId: body.sessionId, sessionToken: body.sessionToken };
 }
@@ -106,7 +106,7 @@ async function verifyPassword(
   password: string,
   pat: string,
 ) {
-  const res = await fetch(`${ISSUER}/v2/sessions/${sessionId}`, {
+  const res = await fetch(`${zitadelIssuer()}/v2/sessions/${sessionId}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${pat}`,
@@ -121,7 +121,7 @@ async function verifyPassword(
     message?: string;
   };
   if (!res.ok || !body.sessionToken) {
-    throw new Error(body.message ?? "Invalid email or password");
+    throw new UnauthorizedError(body.message ?? "Invalid email or password");
   }
   return { sessionId: body.sessionId ?? sessionId, sessionToken: body.sessionToken };
 }
@@ -131,17 +131,17 @@ async function finalizeAuthRequest(
   session: { sessionId: string; sessionToken: string },
   pat: string,
 ): Promise<string> {
-  const res = await fetch(`${ISSUER}/v2/oidc/auth_requests/${authRequestId}`, {
+  const res = await fetch(`${zitadelIssuer()}/v2/oidc/auth_requests/${authRequestId}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${pat}`, "Content-Type": "application/json" },
     body: JSON.stringify({ session }),
   });
   const body = (await res.json()) as { callbackUrl?: string; message?: string };
   if (!res.ok || !body.callbackUrl) {
-    throw new Error(body.message ?? "Login finalization failed");
+    throw new UnauthorizedError(body.message ?? "Login finalization failed");
   }
   const code = new URL(body.callbackUrl).searchParams.get("code");
-  if (!code) throw new Error("Missing authorization code");
+  if (!code) throw new UnauthorizedError("Missing authorization code");
   return code;
 }
 
@@ -151,7 +151,7 @@ async function exchangeCode(input: {
   code: string;
   codeVerifier: string;
 }): Promise<{ access_token: string; expires_in?: number }> {
-  const res = await fetch(`${ISSUER}/oauth/v2/token`, {
+  const res = await fetch(`${zitadelIssuer()}/oauth/v2/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
@@ -169,14 +169,14 @@ async function exchangeCode(input: {
     error_description?: string;
   };
   if (!res.ok || !body.access_token) {
-    throw new Error(body.error_description ?? "Token exchange failed");
+    throw new UnauthorizedError(body.error_description ?? "Token exchange failed");
   }
   return { access_token: body.access_token, expires_in: body.expires_in };
 }
 
 /** OIDC userinfo — includes project roles when not present in access token JWT. */
 export async function fetchUserinfo(accessToken: string): Promise<Record<string, unknown>> {
-  return fetchUserinfoFromIssuer(accessToken, ISSUER);
+  return fetchUserinfoFromIssuer(accessToken, zitadelIssuer());
 }
 
 export interface LoginSession {
@@ -213,7 +213,7 @@ async function verifyTotpOnSession(
   code: string,
   pat: string,
 ): Promise<LoginSession> {
-  const res = await fetch(`${ISSUER}/v2/sessions/${sessionId}`, {
+  const res = await fetch(`${zitadelIssuer()}/v2/sessions/${sessionId}`, {
     method: "PATCH",
     headers: {
       Authorization: `Bearer ${pat}`,
@@ -228,7 +228,7 @@ async function verifyTotpOnSession(
     message?: string;
   };
   if (!res.ok || !body.sessionToken) {
-    throw new Error(body.message ?? "Invalid verification code");
+    throw new UnauthorizedError(body.message ?? "Invalid verification code");
   }
   return { sessionId: body.sessionId ?? sessionId, sessionToken: body.sessionToken };
 }
@@ -330,7 +330,7 @@ export async function buildOAuthAuthorizeUrl(input: {
   codeChallenge: string;
   idpId?: string;
 }): Promise<string> {
-  const authUrl = new URL(`${ISSUER}/oauth/v2/authorize`);
+  const authUrl = new URL(`${zitadelIssuer()}/oauth/v2/authorize`);
   authUrl.searchParams.set("client_id", input.clientId);
   authUrl.searchParams.set("redirect_uri", input.redirectUri);
   authUrl.searchParams.set("response_type", "code");

@@ -1,6 +1,5 @@
+import { zitadelIssuer } from "./issuer";
 import { v2Request } from "./management";
-
-const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 export interface TotpRegistrationStart {
   uri: string;
@@ -13,7 +12,7 @@ async function userV2Request<T>(
   path: string,
   body?: unknown,
 ): Promise<T> {
-  const res = await fetch(`${ISSUER}${path}`, {
+  const res = await fetch(`${zitadelIssuer()}${path}`, {
     method,
     headers: {
       Authorization: `Bearer ${userToken}`,

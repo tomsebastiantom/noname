@@ -6,9 +6,8 @@ import {
 } from "@noname/auth";
 import type { Context } from "hono";
 import { getUserId } from "../../shared/org";
+import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
-
-const ZITADEL_ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 export function bearerToken(c: Context): string | null {
   const auth = c.req.header("Authorization") ?? "";
@@ -40,7 +39,7 @@ export async function requirePermission(
   const projectId = zitadelProjectIdOrNull() ?? undefined;
   const { permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
     projectId,
-    issuer: ZITADEL_ISSUER,
+    issuer: zitadelIssuer(),
   });
   if (!hasPermission(permissions, permission)) {
     return c.json({ error: "Forbidden" }, 403);

@@ -2,8 +2,11 @@ import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api"
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
+import { AgentTask } from "./entity";
 import type { AgentTaskStorage } from "./ports";
 import type { AgentJobData } from "./queue";
+import { requireAgentTask } from "./task-guards";
+import { persistAgentTask } from "./task-lifecycle";
 import type { AgentExecutor } from "./tools";
 
 const tracer = trace.getTracer("agent-worker");
@@ -28,25 +31,22 @@ export function startAgentWorker(
             span.setAttribute("agent.org_id", orgId);
             span.setAttribute("agent.type", type);
 
-            await storage.update(orgId, taskId, { status: "running" });
+            const row = await requireAgentTask(storage, orgId, taskId);
+            const entity = AgentTask.fromDTO(row);
+            entity.start();
+            await persistAgentTask(storage, orgId, entity);
 
             try {
               const result = await executor.execute(orgId, type, prompt, input);
               span.setAttribute("agent.model", result.model);
               span.setAttribute("agent.tokens", result.tokens);
-              await storage.update(orgId, taskId, {
-                status: "completed",
-                output: result.output,
-                model: result.model,
-                tokens: result.tokens,
-              });
+              entity.complete(result.output, result.model, result.tokens);
+              await persistAgentTask(storage, orgId, entity);
             } catch (err) {
               span.recordException(err as Error);
               span.setStatus({ code: SpanStatusCode.ERROR });
-              await storage.update(orgId, taskId, {
-                status: "failed",
-                error: err instanceof Error ? err.message : "unknown error",
-              });
+              entity.fail(err instanceof Error ? err.message : "unknown error");
+              await persistAgentTask(storage, orgId, entity);
               throw err;
             }
           } finally {

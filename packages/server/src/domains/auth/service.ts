@@ -1,3 +1,4 @@
+import { ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
 import {
   type AssetDocumentService,
   type ContentDocumentService,
@@ -9,7 +10,7 @@ import {
   normalizeAuthConfig,
   resolveLoginProviders,
   type TenantSettingsService,
-} from "../documents";
+} from "../documents/contracts";
 import { teamRoleAssignments, upsertUserTeamRole } from "./adapters/zitadel/authorizations";
 import {
   buildOAuthAuthorizeUrl,
@@ -34,6 +35,7 @@ import {
   setPasswordWithVerificationCode,
 } from "./adapters/zitadel/users";
 import { resolveProviderIconUrls } from "./asset-url";
+import { assertPasswordResetEnabled } from "./auth-flow-guards";
 import {
   credentialsFromPatch,
   IDP_PROVIDER_IDS,
@@ -110,13 +112,11 @@ export function createAuthService(deps: {
 
     async requestPasswordReset(input) {
       const auth = await loadAuth(input.orgId);
-      if (!auth.allowPassword || auth.allowPasswordReset === false) {
-        throw new Error("Password reset is not enabled for this store");
-      }
+      assertPasswordResetEnabled(auth);
       const settings = await tenantSettings.get(input.orgId);
       const slug = settings.slug?.trim();
       if (!slug) {
-        throw new Error("Store slug is required for password reset emails");
+        throw new ValidationError("slug", "Store slug is required for password reset emails");
       }
 
       const userId = await findUserIdByEmail(input.orgId, input.email);
@@ -128,9 +128,7 @@ export function createAuthService(deps: {
 
     async confirmPasswordReset(input) {
       const auth = await loadAuth(input.orgId);
-      if (!auth.allowPassword || auth.allowPasswordReset === false) {
-        throw new Error("Password reset is not enabled for this store");
-      }
+      assertPasswordResetEnabled(auth);
       await setPasswordWithVerificationCode(
         input.orgId,
         input.userId,
@@ -142,10 +140,13 @@ export function createAuthService(deps: {
     async register(input) {
       const auth = await loadAuth(input.orgId);
       if (!auth.allowSignUp) {
-        throw new Error("Sign-up is not enabled for this store");
+        throw new ValidationError("signUp", "Sign-up is not enabled for this store");
       }
       if (!auth.allowPassword) {
-        throw new Error("Password sign-up requires email/password login to be enabled");
+        throw new ValidationError(
+          "signUp",
+          "Password sign-up requires email/password login to be enabled",
+        );
       }
       return registerHumanUser(input.orgId, input);
     },
@@ -186,7 +187,7 @@ export function createAuthService(deps: {
         const resolved = resolveIdpUpdate(providerId, current, patchWithProviders);
 
         if (resolved.required && !resolved.credentials && !resolved.existingIdpId) {
-          throw new Error(definition.missingCredentialsError);
+          throw new ValidationError("credentials", definition.missingCredentialsError);
         }
 
         if (resolved.credentials) {
@@ -263,7 +264,7 @@ export function createAuthService(deps: {
       const settings = await tenantSettings.get(orgId);
       const slug = settings.slug?.trim();
       if (!slug) {
-        throw new Error("Store slug is required to invite users");
+        throw new ValidationError("slug", "Store slug is required to invite users");
       }
 
       const { userId } = await inviteHumanUser(orgId, slug, input);
@@ -282,7 +283,10 @@ export function createAuthService(deps: {
       const auth = await loadAuth(input.orgId);
       const idpId = idpIdForProvider(auth, input.provider);
       if (!idpId) {
-        throw new Error(`Identity provider "${input.provider}" is not configured for this org`);
+        throw new ServiceUnavailableError(
+          `Identity provider "${input.provider}" is not configured for this org`,
+          { provider: input.provider },
+        );
       }
 
       const authorizeUrl = await buildOAuthAuthorizeUrl({
@@ -304,4 +308,4 @@ export {
   DEFAULT_TENANT_AUTH,
   enabledProviders,
   normalizeAuthConfig,
-} from "../documents";
+} from "../documents/contracts";

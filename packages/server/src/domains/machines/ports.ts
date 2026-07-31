@@ -94,6 +94,7 @@ export type Guard = (ctx: GuardContext) => Promise<GuardResult> | GuardResult;
 export interface MachineEngine {
   load(orgId: string, name: string): Promise<MachineDefinition>;
   define(orgId: string, definition: MachineDefinition): Promise<MachineDefinition>;
+  listDefinitions(orgId: string): Promise<MachineDefinition[]>;
   start(
     orgId: string,
     machineName: string,

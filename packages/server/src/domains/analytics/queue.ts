@@ -1,27 +1,15 @@
-import { Queue } from "bullmq";
+import { closeBullmqQueue, getBullmqQueue } from "../../shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
-import { getRedisConnection } from "../../shared/redis";
 import type { AnalyticsEventDTO } from "./ports";
 
 export type AnalyticsJobData = AnalyticsEventDTO;
 
-let analyticsQueue: Queue<AnalyticsJobData> | null = null;
-
-export function getAnalyticsQueue(): Queue<AnalyticsJobData> {
-  if (!analyticsQueue) {
-    analyticsQueue = new Queue<AnalyticsJobData>(BULLMQ_QUEUES.ANALYTICS, {
-      connection: getRedisConnection(),
-      defaultJobOptions: {
-        attempts: 1,
-      },
-    });
-  }
-  return analyticsQueue;
+export function getAnalyticsQueue() {
+  return getBullmqQueue<AnalyticsJobData>(BULLMQ_QUEUES.ANALYTICS, {
+    defaultJobOptions: { attempts: 1 },
+  });
 }
 
 export async function closeAnalyticsQueue(): Promise<void> {
-  if (analyticsQueue) {
-    await analyticsQueue.close();
-    analyticsQueue = null;
-  }
+  await closeBullmqQueue(BULLMQ_QUEUES.ANALYTICS);
 }

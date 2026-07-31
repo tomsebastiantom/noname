@@ -4,6 +4,7 @@ import { parseLimitOffset } from "../../shared/pagination";
 import { created, notFound, ok } from "../../shared/respond";
 import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "./browser-ingest";
 import type { AnalyticsService } from "./ports";
+import { dateRangeFromQuery } from "./query-filters";
 import {
   assertReplayStorageKey,
   denyUnlessAnalyticsView,
@@ -99,12 +100,13 @@ export function createAnalyticsRoutes(
     if (orgId instanceof Response) return orgId;
 
     const { limit, offset } = parseLimitOffset(c);
+    const { from, to } = dateRangeFromQuery(c);
     const filters = {
       orgId,
       eventType: c.req.query("eventType") || undefined,
       eventSource: c.req.query("eventSource") as "server" | "frontend" | undefined,
-      from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
-      to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
+      from,
+      to,
       sessionId: c.req.query("sessionId") || undefined,
       schemaId: c.req.query("schemaId") || undefined,
       contextHash: c.req.query("contextHash") || undefined,
@@ -122,6 +124,7 @@ export function createAnalyticsRoutes(
     if (orgId instanceof Response) return orgId;
 
     const { limit } = parseLimitOffset(c, { defaultLimit: 20, maxLimit: 200 });
+    const { from, to } = dateRangeFromQuery(c);
     const filters = {
       orgId,
       groupBy: c.req.query("groupBy") as
@@ -130,8 +133,8 @@ export function createAnalyticsRoutes(
         | "schemaId"
         | "contextHash"
         | undefined,
-      from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
-      to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
+      from,
+      to,
       limit,
     };
     const results = await service.aggregate(filters);
@@ -144,11 +147,12 @@ export function createAnalyticsRoutes(
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;
 
+    const { from, to } = dateRangeFromQuery(c);
     const filters = {
       orgId,
       schemaId: c.req.query("schemaId") || undefined,
-      from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
-      to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
+      from,
+      to,
     };
     const results = await service.conversionRates(filters);
     return ok(c, results);

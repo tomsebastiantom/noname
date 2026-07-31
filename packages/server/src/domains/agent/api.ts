@@ -1,8 +1,8 @@
 ﻿import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
-import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId } from "../../shared/org";
-import { created, notFound, ok } from "../../shared/respond";
+import { created, ok } from "../../shared/respond";
+import { denyUnless } from "../auth/deny-unless";
 import type { AgentService } from "./ports";
 
 export function createAgentRoutes(service: AgentService) {
@@ -32,7 +32,7 @@ export function createAgentRoutes(service: AgentService) {
     if (denied) return denied;
     const orgId = getOrgId(c);
     const task = await service.get(orgId, c.req.param("id"));
-    return task ? ok(c, task) : notFound(c);
+    return ok(c, task);
   });
 
   routes.put("/tasks/:id/approve", async (c) => {

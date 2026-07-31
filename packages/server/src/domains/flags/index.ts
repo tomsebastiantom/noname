@@ -1,8 +1,7 @@
 import type { Database } from "../../drizzle";
-import { eventBus } from "../../shared/event-bus";
-import { broadcast } from "../../shared/sse-manager";
 import { createPostgresFlagStorage } from "./adapters/postgres";
 import { createFlagRoutes } from "./api";
+import { registerFlagListeners } from "./listeners";
 import type { FlagStorage } from "./ports";
 import { createFlagService } from "./service";
 
@@ -16,22 +15,7 @@ export function createFlagDomain(deps: FlagDomainDeps) {
   const service = createFlagService(storage);
   const routes = createFlagRoutes(service);
 
-  // SSE: broadcast flag changes to connected clients
-  eventBus.subscribe("flag.created", async (data: any) => {
-    if (data?.orgId && data?.key) {
-      broadcast(data.orgId, { key: data.key });
-    }
-  });
-  eventBus.subscribe("flag.updated", async (data: any) => {
-    if (data?.orgId && data?.key) {
-      broadcast(data.orgId, { key: data.key });
-    }
-  });
-  eventBus.subscribe("flag.archived", async (data: any) => {
-    if (data?.orgId && data?.key) {
-      broadcast(data.orgId, { key: data.key });
-    }
-  });
+  registerFlagListeners();
 
   return { storage, service, routes };
 }

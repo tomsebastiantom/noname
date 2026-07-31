@@ -1,8 +1,8 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
-import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId } from "../../shared/org";
 import { created, notFound, ok } from "../../shared/respond";
+import { denyUnless } from "../auth/deny-unless";
 import type { MachineDefinition, MachineEngine } from "./ports";
 
 export function createMachineRoutes(engine: MachineEngine) {
@@ -11,7 +11,9 @@ export function createMachineRoutes(engine: MachineEngine) {
   routes.get("/definitions", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.MACHINES_DEFINE);
     if (denied) return denied;
-    return ok(c, []);
+    const orgId = getOrgId(c);
+    const definitions = await engine.listDefinitions(orgId);
+    return ok(c, definitions);
   });
 
   routes.post("/definitions", async (c) => {

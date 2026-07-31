@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { ConflictError, ValidationError } from "../../../../shared/domain-error";
 import { getManagementToken, v2Request } from "./management";
-
-const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
 
 interface ZitadelUserRow {
   userId?: string;
@@ -156,12 +155,14 @@ export async function inviteHumanUser(
 ): Promise<{ userId: string }> {
   const email = input.email.trim().toLowerCase();
   if (!email) {
-    throw new Error("Email is required");
+    throw new ValidationError("email", "Email is required");
   }
 
   const existing = await findUserIdByEmail(orgId, email);
   if (existing) {
-    throw new Error("A user with this email already exists in this organization");
+    throw new ConflictError("A user with this email already exists in this organization", {
+      email,
+    });
   }
 
   const tempPassword = randomBytes(24).toString("base64url");
@@ -177,9 +178,7 @@ export async function inviteHumanUser(
 }
 
 /** @internal test hook */
-export function zitadelIssuer(): string {
-  return ISSUER;
-}
+export { zitadelIssuer } from "./issuer";
 
 /** @internal test hook */
 export async function managementTokenForTests(): Promise<string> {

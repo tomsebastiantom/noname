@@ -1,4 +1,4 @@
-import type { TenantSettingsService } from "../documents";
+import type { TenantSettingsService } from "../documents/contracts";
 import { createManifestStore } from "./adapters/manifest-store";
 import { createCatalogBundleStorage, r2ConfigFromEnv } from "./adapters/r2";
 import { createTenantRoutes } from "./api";

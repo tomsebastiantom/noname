@@ -9,7 +9,7 @@ import {
   parseAuthProviderEntryData,
   providerIdFromKey,
   type TenantSettingsService,
-} from "../../documents";
+} from "../../documents/contracts";
 import { upsertZitadelIdp } from "../adapters/zitadel/management";
 
 /** On publish: push OAuth config to ZITADEL and store the returned IdP id in tenant settings. */

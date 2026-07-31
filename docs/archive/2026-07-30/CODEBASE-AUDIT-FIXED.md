@@ -25,3 +25,9 @@
 **Also fixed (2026-07-31):** ClickHouse creds fail-loud in production; shared `denyUnless`; new permissions (`flags:write`, `tenant:manage`, `agent:manage`, `machines:define`); CLI `dev`/`status` wired; guards exported from `auth/index.ts`.
 
 **Intentional deferral:** `documents/api.ts` → `auth/guards` (optional: already exported from `auth/index.ts`).
+
+---
+
+## 2026-07-31 batch
+
+See [`docs/archive/2026-07-31/AUDIT-FIXED.md`](../2026-07-31/AUDIT-FIXED.md) for documents dedupe, flags/agent/edge/analytics/auth/machines cleanup, deprecated removal, S3358 fixes, and docs.

@@ -1,8 +1,6 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { ValidationError } from "../../../shared/domain-error";
-import { eventBus } from "../../../shared/event-bus";
 import { LayoutDocument } from "../entity";
-import { LayoutEvents } from "../events";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
 import { isPublished } from "../shared/document-status";
@@ -83,7 +81,9 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         baseVersion,
         status: "draft",
       });
-      void eventBus.publish(LayoutEvents.VARIANT_CREATED, saved as unknown as LayoutDTO);
+      const entity = toLayoutEntity(saved as LayoutDTO);
+      entity.recordVariantCreated();
+      flushEvents(entity);
       return saved as unknown as LayoutDTO;
     },
 

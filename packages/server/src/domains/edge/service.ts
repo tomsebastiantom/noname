@@ -4,8 +4,9 @@ import type {
   LayoutDocumentService,
   PageTreeService,
   TenantSettingsService,
-} from "../documents";
+} from "../documents/contracts";
 import type { FlagService } from "../flags/ports";
+import { evaluationsToFlagMap } from "./flags-map";
 import type { EdgeService, GetSchemaOptions } from "./ports";
 import { parseContentRef, resolveSpecWithState } from "./resolve-spec";
 
@@ -44,10 +45,7 @@ export function createEdgeService(
         variantId: null,
       });
 
-      const flagMap: Record<string, unknown> = {};
-      for (const f of flags) {
-        flagMap[f.flagKey] = f.value;
-      }
+      const flagMap = evaluationsToFlagMap(flags);
 
       let layoutSpec = resolved?.spec ?? null;
       if (layoutSpec) {
@@ -85,10 +83,7 @@ export function createEdgeService(
         input.flagKeys,
       );
 
-      const flagMap: Record<string, unknown> = {};
-      for (const f of flags) {
-        flagMap[f.flagKey] = f.value;
-      }
+      const flagMap = evaluationsToFlagMap(flags);
 
       let layoutSpec = resolved?.spec ?? null;
       if (layoutSpec) {

@@ -1,9 +1,9 @@
 import { context, propagation } from "@opentelemetry/api";
 import { flushEvents } from "../../shared/aggregate-root";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { AgentTask } from "./entity";
 import type { AgentService, AgentTaskStorage } from "./ports";
 import { getAgentQueue } from "./queue";
+import { requireAgentTask, requireCompletedTask } from "./task-guards";
 
 export function createAgentService(storage: AgentTaskStorage): AgentService {
   return {
@@ -40,23 +40,10 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
       return storage.list(orgId, filters);
     },
 
-    async get(orgId, id) {
-      const task = await storage.findById(orgId, id);
-      if (!task) throw new NotFoundError("AgentTask", id);
-      return task;
-    },
+    get: (orgId, id) => requireAgentTask(storage, orgId, id),
 
     async approve(orgId, id) {
-      const task = await storage.findById(orgId, id);
-      if (!task) throw new NotFoundError("AgentTask", id);
-
-      if (task.status !== "completed") {
-        throw new ValidationError(
-          "status",
-          `Task must be completed to approve. Current: ${task.status}`,
-        );
-      }
-
+      const task = await requireCompletedTask(storage, orgId, id);
       const entity = AgentTask.fromDTO(task);
       entity.approve();
       const saved = await storage.update(orgId, id, { status: "approved" });
@@ -65,16 +52,7 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
     },
 
     async reject(orgId, id) {
-      const task = await storage.findById(orgId, id);
-      if (!task) throw new NotFoundError("AgentTask", id);
-
-      if (task.status !== "completed") {
-        throw new ValidationError(
-          "status",
-          `Task must be completed to reject. Current: ${task.status}`,
-        );
-      }
-
+      const task = await requireCompletedTask(storage, orgId, id);
       const entity = AgentTask.fromDTO(task);
       entity.reject();
       const saved = await storage.update(orgId, id, { status: "rejected" });

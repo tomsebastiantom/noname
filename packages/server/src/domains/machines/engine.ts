@@ -1,6 +1,7 @@
 import { createActor, createMachine } from "xstate";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
+import { MachineEvents } from "./events";
 import type {
   Guard,
   GuardContext,
@@ -76,8 +77,12 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
     async define(orgId, definition) {
       validateDefinition(definition);
       const saved = await storage.saveDefinition(orgId, definition);
-      eventBus.publish("machine.defined", { orgId, machineName: saved.name });
+      eventBus.publish(MachineEvents.DEFINED, { orgId, machineName: saved.name });
       return saved;
+    },
+
+    listDefinitions(orgId) {
+      return storage.listDefinitions(orgId);
     },
 
     async start(orgId, machineName, context) {
@@ -91,7 +96,7 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
       const initialState = actor.getSnapshot().value as string;
 
       const instance = await storage.createInstance(orgId, machineName, initialState, context);
-      eventBus.publish("machine.started", { orgId, instanceId: instance.id, machineName });
+      eventBus.publish(MachineEvents.STARTED, { orgId, instanceId: instance.id, machineName });
       return instance;
     },
 
@@ -117,7 +122,7 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
       await storage.logTransition(instanceId, event, result, params);
 
       if (!result.success) {
-        eventBus.publish("machine.transition.rejected", {
+        eventBus.publish(MachineEvents.TRANSITION_REJECTED, {
           orgId,
           instanceId,
           event,
@@ -139,7 +144,7 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
       };
 
       await storage.updateInstance(updated);
-      eventBus.publish("machine.transition", {
+      eventBus.publish(MachineEvents.TRANSITION, {
         orgId,
         instanceId,
         event,

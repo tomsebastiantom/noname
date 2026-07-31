@@ -36,21 +36,36 @@ describe("shared", () => {
   });
 
   it("DomainError types", async () => {
-    const { NotFoundError, ValidationError } = await import("./domain-error");
+    const { ConflictError, NotFoundError, UnauthorizedError, ValidationError } = await import(
+      "./domain-error"
+    );
 
     const nf = new NotFoundError("User", "abc");
     expect(nf.message).toBe("User not found: abc");
+    expect(nf.httpStatus).toBe(404);
 
     const ve = new ValidationError("email", "invalid");
     expect(ve.message).toBe("Validation failed for email: invalid");
+    expect(ve.httpStatus).toBe(400);
+
+    const ue = new UnauthorizedError("bad credentials");
+    expect(ue.httpStatus).toBe(401);
+
+    const ce = new ConflictError("duplicate");
+    expect(ce.httpStatus).toBe(409);
   });
 
-  it("handleDomainError maps ValidationError to 400", async () => {
+  it("handleDomainError maps DomainError to httpStatus", async () => {
     const { handleDomainError } = await import("./error-handler");
-    const { ValidationError } = await import("./domain-error");
+    const { UnauthorizedError, ValidationError } = await import("./domain-error");
     const json = vi.fn((_body: unknown, status: number) => new Response(null, { status }));
     const c = { json } as unknown as import("hono").Context;
+
     handleDomainError(new ValidationError("hero", "missing ref"), c);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "VALIDATION_ERROR" }), 400);
+
+    json.mockClear();
+    handleDomainError(new UnauthorizedError("nope"), c);
+    expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "UNAUTHORIZED" }), 401);
   });
 });

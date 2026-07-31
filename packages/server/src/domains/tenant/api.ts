@@ -1,18 +1,10 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
-import { denyUnless } from "../../shared/deny-unless";
 import { noContent, notFound, ok } from "../../shared/respond";
-import { resolveSiteIdToOrgId } from "../../shared/site-id";
-import type { TenantSettingsService } from "../documents";
+import { resolveRouteOrgId } from "../../shared/site-id";
+import { denyUnless } from "../auth/deny-unless";
+import type { TenantSettingsService } from "../documents/contracts";
 import type { CatalogManifest, TenantCatalogService } from "./ports";
-
-async function resolveTenantOrgId(
-  tenantSettings: TenantSettingsService | undefined,
-  siteId: string,
-): Promise<string | null> {
-  if (!tenantSettings) return siteId.trim() || null;
-  return resolveSiteIdToOrgId(tenantSettings, siteId);
-}
 
 export function createTenantRoutes(
   service: TenantCatalogService,
@@ -32,7 +24,7 @@ export function createTenantRoutes(
   });
 
   routes.get("/:id/catalog", async (c) => {
-    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const manifest = await service.getManifest(orgId);
     return ok(c, manifest);
@@ -41,7 +33,7 @@ export function createTenantRoutes(
   routes.put("/:id/catalog", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.TENANT_MANAGE);
     if (denied) return denied;
-    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const body = await c.req.json<CatalogManifest>();
 
@@ -56,7 +48,7 @@ export function createTenantRoutes(
   routes.post("/:id/components", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.TENANT_MANAGE);
     if (denied) return denied;
-    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const body = await c.req.json<{ name: string; source: string }>();
 
@@ -71,7 +63,7 @@ export function createTenantRoutes(
   routes.get("/:id/builds/:buildId", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.TENANT_MANAGE);
     if (denied) return denied;
-    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const buildId = c.req.param("buildId");
 
@@ -86,7 +78,7 @@ export function createTenantRoutes(
   routes.delete("/:id/components/:name", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.TENANT_MANAGE);
     if (denied) return denied;
-    const orgId = await resolveTenantOrgId(tenantSettings, c.req.param("id"));
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const name = c.req.param("name");
 

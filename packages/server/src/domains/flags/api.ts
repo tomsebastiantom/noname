@@ -1,10 +1,10 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
-import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId, requireHeaderOrgId } from "../../shared/org";
-import { created, notFound, ok } from "../../shared/respond";
+import { created, ok } from "../../shared/respond";
 import { addClient } from "../../shared/sse-manager";
+import { denyUnless } from "../auth/deny-unless";
 import type {
   CreateFlagInput,
   FlagEvaluationContext,
@@ -102,7 +102,7 @@ export function createFlagRoutes(service: FlagService) {
     if (denied) return denied;
     const orgId = getOrgId(c);
     const flag = await service.get(orgId, c.req.param("id"));
-    return flag ? ok(c, flag) : notFound(c);
+    return ok(c, flag);
   });
 
   routes.put("/:id", async (c) => {

@@ -1,6 +1,15 @@
 import type { TenantSettingsService } from "../domains/documents";
 import { normalizeStoreSlug } from "./store-slug";
 
+/** Resolve route param (store slug or raw org id when tenant settings unavailable). */
+export async function resolveRouteOrgId(
+  tenantSettings: TenantSettingsService | undefined,
+  siteId: string,
+): Promise<string | null> {
+  if (!tenantSettings) return siteId.trim() || null;
+  return resolveSiteIdToOrgId(tenantSettings, siteId);
+}
+
 /** Resolve API path segment (store slug) to org id. */
 export async function resolveSiteIdToOrgId(
   tenantSettings: TenantSettingsService,
