@@ -1,5 +1,5 @@
 import { useActions } from "@json-render/react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { startTotpEnrollment } from "../../auth/account-flows";
 import { isLoggedIn } from "../../auth/session";
 import { fetchAuthSessionStatus } from "../../auth/team-users";
@@ -18,6 +18,80 @@ import { Label } from "../../components/ui/label";
 import type { ComponentCtx } from "./types";
 
 type Step = "idle" | "setup" | "enabled";
+
+function mfaStepContent(options: {
+  step: Step;
+  redirectPath: string | null | undefined;
+  qrUrl: string | null;
+  secret: string;
+  code: string;
+  loading: boolean;
+  onCodeChange: (value: string) => void;
+  onVerify: (event: FormEvent) => void;
+  onStart: () => void;
+}): ReactNode {
+  if (options.step === "enabled") {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-muted-foreground">
+          Sign-in may ask for a code from your authenticator app after your password.
+        </p>
+        {options.redirectPath?.startsWith("/") ? (
+          <Button asChild variant="default">
+            <a href={options.redirectPath}>Continue to admin →</a>
+          </Button>
+        ) : null}
+      </div>
+    );
+  }
+  if (options.step === "setup") {
+    return (
+      <>
+        <p className="text-sm text-muted-foreground">
+          Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter the secret
+          manually.
+        </p>
+        {options.qrUrl ? (
+          <img
+            src={options.qrUrl}
+            alt="TOTP QR code"
+            width={180}
+            height={180}
+            className="self-center rounded-md border bg-white p-2"
+          />
+        ) : null}
+        <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">{options.secret}</div>
+        <form onSubmit={(e) => options.onVerify(e)} className="flex flex-col gap-3">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="totp-code">Verification code</Label>
+            <Input
+              id="totp-code"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              value={options.code}
+              onChange={(e) => options.onCodeChange(e.target.value)}
+              placeholder="123456"
+              required
+            />
+          </div>
+          <Button type="submit" disabled={options.loading}>
+            {options.loading ? "Verifying…" : "Confirm setup"}
+          </Button>
+        </form>
+      </>
+    );
+  }
+  return (
+    <>
+      <p className="text-sm text-muted-foreground">
+        Add an authenticator app for an extra sign-in step after your password.
+      </p>
+      <Button type="button" onClick={() => options.onStart()} disabled={options.loading}>
+        {options.loading ? "Starting…" : "Set up authenticator app"}
+      </Button>
+    </>
+  );
+}
 
 export function AccountSecurityForm({
   props,
@@ -150,63 +224,17 @@ export function AccountSecurityForm({
                   </AlertDescription>
                 </Alert>
               )}
-              {step === "enabled" ? (
-                <div className="flex flex-col gap-3">
-                  <p className="text-sm text-muted-foreground">
-                    Sign-in may ask for a code from your authenticator app after your password.
-                  </p>
-                  {redirectPath?.startsWith("/") ? (
-                    <Button asChild variant="default">
-                      <a href={redirectPath}>Continue to admin →</a>
-                    </Button>
-                  ) : null}
-                </div>
-              ) : step === "setup" ? (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter
-                    the secret manually.
-                  </p>
-                  {qrUrl ? (
-                    <img
-                      src={qrUrl}
-                      alt="TOTP QR code"
-                      width={180}
-                      height={180}
-                      className="self-center rounded-md border bg-white p-2"
-                    />
-                  ) : null}
-                  <div className="rounded-md bg-muted p-3 font-mono text-xs break-all">
-                    {secret}
-                  </div>
-                  <form onSubmit={(e) => void handleVerify(e)} className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-1.5">
-                      <Label htmlFor="totp-code">Verification code</Label>
-                      <Input
-                        id="totp-code"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        placeholder="123456"
-                        required
-                      />
-                    </div>
-                    <Button type="submit" disabled={loading}>
-                      {loading ? "Verifying…" : "Confirm setup"}
-                    </Button>
-                  </form>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">
-                    Add an authenticator app for an extra sign-in step after your password.
-                  </p>
-                  <Button type="button" onClick={() => void handleStart()} disabled={loading}>
-                    {loading ? "Starting…" : "Set up authenticator app"}
-                  </Button>
-                </>
-              )}
+              {mfaStepContent({
+                step,
+                redirectPath,
+                qrUrl,
+                secret,
+                code,
+                loading,
+                onCodeChange: setCode,
+                onVerify: (e) => void handleVerify(e),
+                onStart: () => void handleStart(),
+              })}
 
               {error && (
                 <Alert variant="destructive">

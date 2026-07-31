@@ -174,6 +174,19 @@ export function resolveAssetUrl(storageKey: string, _mimeType: string): string {
   return `${base}/${storageKey}`;
 }
 
+function buildEnrichedOriginal(
+  original: { url?: string; width?: number | null; height?: number | null } | undefined,
+  originalUrl: string | undefined,
+): { url?: string; width?: number | null; height?: number | null } | undefined {
+  if (original) {
+    return { ...original, url: originalUrl ?? original.url };
+  }
+  if (originalUrl) {
+    return { url: originalUrl, width: null, height: null };
+  }
+  return undefined;
+}
+
 export function enrichAssetUrls(dto: AssetDTO): AssetDTO {
   const storageKey = typeof dto.data.storageKey === "string" ? dto.data.storageKey : null;
   const mimeType = typeof dto.data.mimeType === "string" ? dto.data.mimeType : "";
@@ -200,11 +213,7 @@ export function enrichAssetUrls(dto: AssetDTO): AssetDTO {
     ...dto,
     data: {
       ...dto.data,
-      original: original
-        ? { ...original, url: originalUrl ?? original.url }
-        : originalUrl
-          ? { url: originalUrl, width: null, height: null }
-          : undefined,
+      original: buildEnrichedOriginal(original, originalUrl),
       _resolved: resolved,
     },
   };

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { type ReactNode, useEffect, useState } from "react";
 import {
   type ContentEntryRow,
   entryLabel,
@@ -12,14 +12,52 @@ function documentIdFromFieldValue(value: string): string | null {
   if (!value.trim()) return null;
   try {
     const parsed = JSON.parse(value) as Record<string, unknown>;
-    for (const key of ["documentId", "entryId", "assetId"]) {
-      const raw = parsed[key];
-      if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
-    }
+    const raw = parsed.documentId;
+    if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
   } catch {
     if (value.trim()) return value.trim();
   }
   return null;
+}
+
+function entryPickerBody(options: {
+  loading: boolean;
+  entries: ContentEntryRow[];
+  targetContentType: string;
+  targetSchema: Awaited<ReturnType<typeof getContentType>>;
+  locale: string;
+  selectedDocumentId: string | null;
+  onChange: (value: string) => void;
+}): ReactNode {
+  if (options.loading) {
+    return <p className="text-sm text-muted-foreground">Loading entries…</p>;
+  }
+  if (options.entries.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">No {options.targetContentType} entries yet.</p>
+    );
+  }
+  return (
+    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border p-2">
+      {options.entries.map((entry) => (
+        <button
+          key={entry.id}
+          type="button"
+          onClick={() => options.onChange(JSON.stringify({ documentId: entry.id }))}
+          className={
+            options.selectedDocumentId === entry.id
+              ? "rounded bg-muted px-2 py-1.5 text-left text-sm font-medium"
+              : "rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted/60"
+          }
+        >
+          {options.targetSchema
+            ? entryLabel(entry, options.targetSchema.schema, options.locale)
+            : entry.id}
+          <span className="ml-2 text-xs uppercase">{entry.status}</span>
+        </button>
+      ))}
+    </div>
+  );
 }
 
 export function ReferenceFieldInput({
@@ -97,29 +135,15 @@ export function ReferenceFieldInput({
         </p>
       )}
 
-      {loading ? (
-        <p className="text-sm text-muted-foreground">Loading entries…</p>
-      ) : entries.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No {targetContentType} entries yet.</p>
-      ) : (
-        <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border p-2">
-          {entries.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              onClick={() => onChange(JSON.stringify({ documentId: entry.id }))}
-              className={
-                selectedDocumentId === entry.id
-                  ? "rounded bg-muted px-2 py-1.5 text-left text-sm font-medium"
-                  : "rounded px-2 py-1.5 text-left text-sm text-muted-foreground hover:bg-muted/60"
-              }
-            >
-              {targetSchema ? entryLabel(entry, targetSchema.schema, locale) : entry.id}
-              <span className="ml-2 text-xs uppercase">{entry.status}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {entryPickerBody({
+        loading,
+        entries,
+        targetContentType,
+        targetSchema,
+        locale,
+        selectedDocumentId,
+        onChange,
+      })}
 
       {selectedDocumentId && (
         <Button

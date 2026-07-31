@@ -1,11 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_TENANT_AUTH } from "../..";
 import type { ContentDocumentService, DocumentDTO } from "../../ports";
-import {
-  listPublishedAuthProviders,
-  listPublishedCustomAuthProviders,
-  resolveLoginProviders,
-} from "./runtime";
+import { isBuiltinLoginProvider } from "./content";
+import { listPublishedAuthProviders, resolveLoginProviders } from "./runtime";
 
 function authProviderRow(
   overrides: Partial<DocumentDTO> & Pick<DocumentDTO, "id" | "status" | "data">,
@@ -85,10 +82,8 @@ describe("listPublishedAuthProviders", () => {
       },
     ]);
   });
-});
 
-describe("listPublishedCustomAuthProviders", () => {
-  it("excludes built-in rows", async () => {
+  it("can filter to custom providers only", async () => {
     const content: Pick<ContentDocumentService, "findByType"> = {
       findByType: async () => [
         authProviderRow({
@@ -99,7 +94,10 @@ describe("listPublishedCustomAuthProviders", () => {
       ],
     };
 
-    expect(await listPublishedCustomAuthProviders(content, "org-1")).toEqual([]);
+    const customOnly = (await listPublishedAuthProviders(content, "org-1")).filter(
+      (provider) => !isBuiltinLoginProvider(provider.providerId),
+    );
+    expect(customOnly).toEqual([]);
   });
 });
 

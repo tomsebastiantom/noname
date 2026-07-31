@@ -52,30 +52,13 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
       base = z.string();
       break;
     case "media":
-      base = z.union([
-        z.string(),
-        z.object({ documentId: z.string() }).passthrough(),
-        z.object({ assetId: z.string() }).passthrough(),
-        z.object({ entryId: z.string() }).passthrough(),
-      ]);
+      base = z.union([z.string(), z.object({ documentId: z.string() }).strict()]);
       break;
     case "mediaList":
-      base = z.array(
-        z.union([
-          z.string(),
-          z.object({ documentId: z.string() }).passthrough(),
-          z.object({ assetId: z.string() }).passthrough(),
-          z.object({ entryId: z.string() }).passthrough(),
-        ]),
-      );
+      base = z.array(z.union([z.string(), z.object({ documentId: z.string() }).strict()]));
       break;
     case "reference":
-      base = z.union([
-        z.string(),
-        z.object({ documentId: z.string() }).passthrough(),
-        z.object({ entryId: z.string() }).passthrough(),
-        z.object({ assetId: z.string() }).passthrough(),
-      ]);
+      base = z.union([z.string(), z.object({ documentId: z.string() }).strict()]);
       break;
     case "enum":
       base =

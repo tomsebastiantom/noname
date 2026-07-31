@@ -1,4 +1,5 @@
 import type { CatalogManifest, CatalogManifestRemote } from "../ports";
+import { createRedisManifestStore } from "./redis-manifest-store";
 
 export interface BuildStatus {
   status: "pending" | "running" | "completed" | "failed";
@@ -20,6 +21,13 @@ export interface ManifestStore {
     result?: BuildStatus["result"],
   ): Promise<void>;
   getBuildStatus(buildId: string): Promise<BuildStatus | null>;
+}
+
+export function createManifestStore(): ManifestStore {
+  if (process.env.MANIFEST_STORE === "memory") {
+    return createInMemoryManifestStore();
+  }
+  return createRedisManifestStore();
 }
 
 export function createInMemoryManifestStore(): ManifestStore {

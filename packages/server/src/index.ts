@@ -18,7 +18,12 @@ import { createMachineDomain } from "./domains/machines";
 import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
+import { initEventBus } from "./shared/event-bus";
 import { orgMiddleware } from "./shared/org";
+import { initSseManager } from "./shared/sse-manager";
+
+initEventBus();
+initSseManager();
 
 const app = new Hono();
 

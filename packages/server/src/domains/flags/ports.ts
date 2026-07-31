@@ -109,7 +109,7 @@ export interface FlagService {
   archive(orgId: string, id: string): Promise<FlagDTO>;
   evaluate(
     orgId: string,
-    context: FlagEvaluationContext,
+    context: Partial<FlagEvaluationContext>,
     flagKeys?: string[],
   ): Promise<EvaluationResult[]>;
   evaluateBatch(

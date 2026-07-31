@@ -1,8 +1,8 @@
-import { PERMISSIONS, type PermissionKey } from "@noname/auth";
-import { type Context, Hono } from "hono";
+import { PERMISSIONS } from "@noname/auth";
+import { Hono } from "hono";
+import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId } from "../../shared/org";
 import { created, deleted, notFound, ok } from "../../shared/respond";
-import { requirePermission } from "../auth/guards";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { createAssetStorage, processImage, sha256 } from "./assets/binary";
 import type {
@@ -15,11 +15,6 @@ import type {
   UploadAssetInput,
 } from "./ports";
 import { mergeAuthConfig, normalizeAuthConfig } from "./tenant/auth-config";
-
-async function denyUnless(c: Context, permission: PermissionKey): Promise<Response | null> {
-  const auth = await requirePermission(c, permission);
-  return auth instanceof Response ? auth : null;
-}
 
 export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
   const routes = new Hono();

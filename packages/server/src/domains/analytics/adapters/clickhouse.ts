@@ -7,12 +7,43 @@ import type {
   SegmentEventsResult,
 } from "../ports";
 
+function aggregateGroupColumn(groupBy: string | undefined): string {
+  switch (groupBy) {
+    case "sessionId":
+      return "session_id";
+    case "schemaId":
+      return "schema_id";
+    case "contextHash":
+      return "context_hash";
+    case "eventType":
+      return "event_type";
+    default:
+      return "event_type";
+  }
+}
+
+function getClickHouseCredentials(): { username: string; password: string } {
+  const username = process.env.CLICKHOUSE_USER;
+  const password = process.env.CLICKHOUSE_PASSWORD;
+  if (process.env.NODE_ENV === "production") {
+    if (!username || !password) {
+      throw new Error("CLICKHOUSE_USER and CLICKHOUSE_PASSWORD are required in production");
+    }
+    return { username, password };
+  }
+  return {
+    username: username || "noname",
+    password: password || "noname_dev",
+  };
+}
+
 function getClickHouseClient(): ClickHouseClient {
   const url = process.env.CLICKHOUSE_URL || "http://localhost:8123";
+  const { username, password } = getClickHouseCredentials();
   return createClient({
     url,
-    username: process.env.CLICKHOUSE_USER || "noname",
-    password: process.env.CLICKHOUSE_PASSWORD || "noname_dev",
+    username,
+    password,
     database: process.env.CLICKHOUSE_DB || "app",
     request_timeout: 10_000,
   });
@@ -149,16 +180,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
     },
 
     async aggregate(filters) {
-      const groupCol =
-        filters.groupBy === "eventType"
-          ? "event_type"
-          : filters.groupBy === "sessionId"
-            ? "session_id"
-            : filters.groupBy === "schemaId"
-              ? "schema_id"
-              : filters.groupBy === "contextHash"
-                ? "context_hash"
-                : "event_type";
+      const groupCol = aggregateGroupColumn(filters.groupBy);
 
       const conditions = [`org_id = {orgId:String}`];
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);

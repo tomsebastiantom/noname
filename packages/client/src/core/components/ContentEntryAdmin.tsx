@@ -34,6 +34,18 @@ import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
 import { ReferenceFieldInput } from "./ReferenceFieldInput";
 import type { ComponentCtx } from "./types";
 
+function newEntryCardDescription(
+  contentType: string,
+  entryCount: number,
+  isNewEntry: boolean,
+): string {
+  if (isNewEntry && entryCount > 0) {
+    return `Create a ${contentType} entry`;
+  }
+  const entryState = entryCount === 0 ? "no entries yet" : "new entry";
+  return `Content type ${contentType} — ${entryState}.`;
+}
+
 function emptyValuesForSchema(typeSchema: ContentTypeSchema): Record<string, string> {
   const out: Record<string, string> = {};
   for (const field of typeSchema.fields) {
@@ -449,9 +461,7 @@ export function ContentEntryAdmin({
           <CardHeader>
             <CardTitle>{isNewEntry && entries.length > 0 ? "New entry" : props.title}</CardTitle>
             <CardDescription>
-              {isNewEntry && entries.length > 0
-                ? `Create a ${contentType} entry`
-                : `Content type ${contentType} — ${entries.length === 0 ? "no entries yet" : "new entry"}.`}
+              {newEntryCardDescription(contentType, entries.length, isNewEntry)}
             </CardDescription>
           </CardHeader>
           <CardContent>

@@ -29,12 +29,21 @@ describe("normalizeAuthConfig", () => {
     const auth = normalizeAuthConfig({
       providerIconAssets: {
         google: { documentId: "icon-1" },
-        github: { assetId: "icon-2" },
+        github: { documentId: "icon-2" },
       },
     });
     expect(auth.providerIconAssets).toEqual({
       google: { documentId: "icon-1" },
       github: { documentId: "icon-2" },
     });
+  });
+
+  it("drops non-canonical icon refs", () => {
+    const auth = normalizeAuthConfig({
+      providerIconAssets: {
+        google: { assetId: "icon-legacy" },
+      },
+    });
+    expect(auth.providerIconAssets).toEqual({});
   });
 });

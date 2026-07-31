@@ -15,6 +15,16 @@ export interface ContentServiceOptions {
   onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
 }
 
+function pickLocalizedFieldValue(
+  map: Record<string, unknown>,
+  locale: string,
+  defaultLocale: string,
+): unknown {
+  if (locale in map) return map[locale];
+  if (defaultLocale in map) return map[defaultLocale];
+  return Object.values(map)[0];
+}
+
 export function createContentService(
   storage: DocumentStorage,
   validator: typeof contentValidator = contentValidator,
@@ -142,13 +152,7 @@ export function createContentService(
         if (value === undefined) continue;
         if (field.isLocalizable && value && typeof value === "object" && !Array.isArray(value)) {
           const map = value as Record<string, unknown>;
-          const picked =
-            locale in map
-              ? map[locale]
-              : defaultLocale in map
-                ? map[defaultLocale]
-                : Object.values(map)[0];
-          resolved[field.key] = picked;
+          resolved[field.key] = pickLocalizedFieldValue(map, locale, defaultLocale);
         } else {
           resolved[field.key] = value;
         }

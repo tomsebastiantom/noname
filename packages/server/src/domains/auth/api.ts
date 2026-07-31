@@ -1,4 +1,4 @@
-import { PERMISSIONS, resolveAuthContextFromAccessToken } from "@noname/auth";
+import { PERMISSIONS, primaryTeamRole, resolveAuthContextFromAccessToken } from "@noname/auth";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -378,11 +378,7 @@ export function createAuthRoutes(service: AuthService, tenantSettings?: TenantSe
         projectId,
         issuer: ZITADEL_ISSUER,
       });
-      const teamRole = roles.includes("admin")
-        ? "admin"
-        : roles.includes("editor")
-          ? "editor"
-          : null;
+      const teamRole = primaryTeamRole(roles);
       return c.json({
         data: {
           ...status,

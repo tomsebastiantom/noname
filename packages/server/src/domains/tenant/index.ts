@@ -1,5 +1,5 @@
 import type { TenantSettingsService } from "../documents";
-import { createInMemoryManifestStore } from "./adapters/manifest-store";
+import { createManifestStore } from "./adapters/manifest-store";
 import { createCatalogBundleStorage, r2ConfigFromEnv } from "./adapters/r2";
 import { createTenantRoutes } from "./api";
 import { createTenantCatalogService } from "./service";
@@ -11,7 +11,7 @@ export interface TenantDomainDeps {
 
 export function createTenantDomain(deps: TenantDomainDeps = {}) {
   const storage = createCatalogBundleStorage(r2ConfigFromEnv() ?? undefined);
-  const manifestStore = createInMemoryManifestStore();
+  const manifestStore = createManifestStore();
   const service = createTenantCatalogService(manifestStore);
   const routes = createTenantRoutes(service, deps.tenantSettings);
   const worker = startCatalogBuildWorker(storage, manifestStore);

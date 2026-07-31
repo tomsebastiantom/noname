@@ -2,7 +2,7 @@ import type { ComponentRegistry } from "@json-render/react";
 import { loadRemote, registerRemotes } from "@module-federation/runtime";
 import { extensionLoaders } from "@noname/extensions";
 import { initMfRuntime } from "./mf-init";
-import { registry as platformRegistry } from "./registry";
+import { registry as platformRegistry } from "./platform/registry";
 
 export interface CatalogManifestRemote {
   name: string;

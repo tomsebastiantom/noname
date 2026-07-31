@@ -5,6 +5,9 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["./packages/**/*.test.ts"],
+    env: {
+      MANIFEST_STORE: "memory",
+    },
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html"],

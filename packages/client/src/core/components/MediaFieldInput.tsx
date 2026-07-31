@@ -7,10 +7,8 @@ function documentIdFromFieldValue(value: string): string | null {
   if (!value.trim()) return null;
   try {
     const parsed = JSON.parse(value) as Record<string, unknown>;
-    for (const key of ["documentId", "assetId", "entryId"]) {
-      const raw = parsed[key];
-      if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
-    }
+    const raw = parsed.documentId;
+    if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
   } catch {
     if (value.trim()) return value.trim();
   }

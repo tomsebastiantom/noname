@@ -1,6 +1,12 @@
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
 
+function textFieldDisplayValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value == null) return "";
+  return String(value);
+}
+
 export function TextField({
   fieldKey,
   label,
@@ -17,7 +23,7 @@ export function TextField({
       <Label htmlFor={fieldKey}>{label}</Label>
       <Input
         id={fieldKey}
-        value={typeof value === "string" ? value : value == null ? "" : String(value)}
+        value={textFieldDisplayValue(value)}
         onChange={(event) => onChange(event.target.value)}
       />
     </div>

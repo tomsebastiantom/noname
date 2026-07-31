@@ -15,9 +15,6 @@ export interface PublishedAuthProvider {
   enabled: boolean;
 }
 
-/** @deprecated Use listPublishedAuthProviders */
-export type PublishedCustomAuthProvider = PublishedAuthProvider;
-
 /** Published auth_provider documents — enable, label, and icon for all login providers. */
 export async function listPublishedAuthProviders(
   content: Pick<ContentDocumentService, "findByType">,
@@ -49,15 +46,6 @@ export async function listPublishedAuthProviders(
   }
 
   return providers;
-}
-
-/** @deprecated Use listPublishedAuthProviders */
-export async function listPublishedCustomAuthProviders(
-  content: Pick<ContentDocumentService, "findByType">,
-  orgId: string,
-): Promise<PublishedAuthProvider[]> {
-  const all = await listPublishedAuthProviders(content, orgId);
-  return all.filter((provider) => !isBuiltinLoginProvider(provider.providerId));
 }
 
 /** Enabled published providers that also have a ZITADEL IdP id for this org. */

@@ -20,15 +20,6 @@ describe("content.create — document ref validation", () => {
     expect(saved.data.category).toEqual({ documentId: CATEGORY_ID });
   });
 
-  it("accepts legacy assetId on media fields", async () => {
-    const { content } = createDocumentsService(mockStorage(docs));
-    const saved = await content.create(ORG, "product", {
-      title: "Sneakers",
-      hero: { assetId: ASSET_ID },
-    });
-    expect(saved.data.hero).toEqual({ assetId: ASSET_ID });
-  });
-
   it("rejects missing referenced document", async () => {
     const { content } = createDocumentsService(mockStorage(docs));
     await expect(

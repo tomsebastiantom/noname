@@ -42,6 +42,3 @@ export function rolesFromTokenPayload(
 
   return [...found];
 }
-
-/** @deprecated Use rolesFromTokenPayload */
-export const rolesFromZitadelJwt = rolesFromTokenPayload;

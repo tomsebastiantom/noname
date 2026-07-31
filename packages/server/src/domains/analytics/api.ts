@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { getUserId, requireHeaderOrgId } from "../../shared/org";
+import { parseLimitOffset } from "../../shared/pagination";
 import { created, notFound, ok } from "../../shared/respond";
 import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "./browser-ingest";
 import type { AnalyticsService } from "./ports";
@@ -97,6 +98,7 @@ export function createAnalyticsRoutes(
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;
 
+    const { limit, offset } = parseLimitOffset(c);
     const filters = {
       orgId,
       eventType: c.req.query("eventType") || undefined,
@@ -106,8 +108,8 @@ export function createAnalyticsRoutes(
       sessionId: c.req.query("sessionId") || undefined,
       schemaId: c.req.query("schemaId") || undefined,
       contextHash: c.req.query("contextHash") || undefined,
-      limit: c.req.query("limit") ? Number(c.req.query("limit")) : undefined,
-      offset: c.req.query("offset") ? Number(c.req.query("offset")) : undefined,
+      limit,
+      offset,
     };
     const events = await service.query(filters);
     return ok(c, events);
@@ -119,6 +121,7 @@ export function createAnalyticsRoutes(
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;
 
+    const { limit } = parseLimitOffset(c, { defaultLimit: 20, maxLimit: 200 });
     const filters = {
       orgId,
       groupBy: c.req.query("groupBy") as
@@ -129,7 +132,7 @@ export function createAnalyticsRoutes(
         | undefined,
       from: c.req.query("from") ? new Date(c.req.query("from")!) : undefined,
       to: c.req.query("to") ? new Date(c.req.query("to")!) : undefined,
-      limit: c.req.query("limit") ? Number(c.req.query("limit")) : undefined,
+      limit,
     };
     const results = await service.aggregate(filters);
     return ok(c, results);
@@ -175,10 +178,11 @@ export function createAnalyticsRoutes(
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;
 
+    const { limit } = parseLimitOffset(c, { defaultLimit: 500, maxLimit: 500 });
     const events = await service.query({
       orgId,
       eventType: "session_replay.chunk",
-      limit: c.req.query("limit") ? Number(c.req.query("limit")) : 500,
+      limit,
     });
 
     const bySession = new Map<

@@ -24,5 +24,6 @@ export function createAuthDomain(deps: {
 }
 
 export { loginWithCredentials } from "./adapters/zitadel/client";
+export { requireAuthenticatedUser, requirePermission } from "./guards";
 export type { AuthService, LoginCredentials, LoginResult } from "./ports";
 export { createAuthProviderPublishHandler } from "./providers/publish";

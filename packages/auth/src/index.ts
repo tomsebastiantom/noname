@@ -4,7 +4,6 @@ export { orgIdFromTokenPayload } from "./jwt/claims";
 export { decodeAccessTokenPayload, userIdFromAccessToken } from "./jwt/decode";
 export {
   rolesFromTokenPayload,
-  rolesFromZitadelJwt,
   zitadelProjectRolesClaimKey,
 } from "./jwt/roles";
 
@@ -17,10 +16,8 @@ export {
   teamRoleFromJwt,
 } from "./oidc/resolve-auth-context";
 export { fetchUserinfo, rolesFromUserinfo } from "./oidc/userinfo";
-/** @deprecated Use canDraft */
 export {
   canDraft,
-  canDraft as canDraftAtEdge,
   expandPermissions,
   expandPermissionsFromKeys,
   hasPermission,

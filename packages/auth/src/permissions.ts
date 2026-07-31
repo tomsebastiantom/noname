@@ -23,6 +23,10 @@ export const PERMISSIONS = {
   AUTH_MANAGE: "auth:manage",
   /** Session replay + analytics dashboards — admin only (PII / DOM content). */
   ANALYTICS_VIEW: "analytics:view",
+  FLAGS_WRITE: "flags:write",
+  TENANT_MANAGE: "tenant:manage",
+  AGENT_MANAGE: "agent:manage",
+  MACHINES_DEFINE: "machines:define",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

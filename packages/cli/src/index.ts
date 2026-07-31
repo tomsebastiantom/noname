@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { Command } from "commander";
+import { execa } from "execa";
 
 const program = new Command();
 
@@ -14,24 +15,34 @@ program
   .command("init")
   .description("Scaffold a new project in the current directory")
   .action(async () => {
-    console.log("Scaffolding new project...");
-    // Phase 1: create project structure, config files, Docker Compose
+    console.log("Run from the repo root: pnpm install && cp .env.example .env");
   });
 
 program
   .command("dev")
-  .description("Start the development server with hot reload (requires Postgres via Docker)")
+  .description("Start the development server (Postgres + Dragonfly via Docker)")
   .action(async () => {
-    console.log("Starting dev server...");
-    // Phase 0: exec docker compose up or start server directly
+    await execa("docker", ["compose", "up", "-d"], { stdio: "inherit" });
+    await execa("pnpm", ["--filter", "@noname/server", "dev"], { stdio: "inherit" });
   });
 
 program
   .command("status")
-  .description("Check service health (Postgres, Dragonfly, ClickHouse, ZITADEL)")
+  .description("Check API health and Docker services")
   .action(async () => {
-    console.log("Checking services...");
-    // Phase 0: HTTP health check to running server
+    const port = process.env.PORT || "3000";
+    try {
+      const res = await fetch(`http://localhost:${port}/health`);
+      const body = await res.json();
+      console.log(`API (${port}):`, res.ok ? "ok" : "error", body);
+    } catch {
+      console.log(`API (${port}): unreachable`);
+    }
+    try {
+      await execa("docker", ["compose", "ps"], { stdio: "inherit" });
+    } catch {
+      console.log("Docker compose: not running or unavailable");
+    }
   });
 
 program.parse(process.argv);

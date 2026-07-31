@@ -1,9 +1,52 @@
 import type { SSEStreamingApi } from "hono/streaming";
+import Redis from "ioredis";
+import { getRedisConnection } from "./redis";
+
+const CHANNEL = "noname:sse";
 
 type OrgId = string;
 type StreamId = string;
 
 const clients = new Map<OrgId, Map<StreamId, SSEStreamingApi>>();
+let publisher: Redis | null = null;
+let initialized = false;
+
+function broadcastLocal(orgId: OrgId, data: Record<string, unknown>): void {
+  const orgClients = clients.get(orgId);
+  if (!orgClients) return;
+
+  for (const stream of orgClients.values()) {
+    try {
+      stream.writeSSE({ data: JSON.stringify(data) });
+    } catch {
+      // Stream closed — cleanup handled by onAbort
+    }
+  }
+}
+
+/** Subscribe to Redis pub/sub so SSE reaches clients on every API replica. */
+export function initSseManager(): void {
+  if (initialized) return;
+  initialized = true;
+
+  try {
+    publisher = new Redis(getRedisConnection());
+    const subscriber = new Redis(getRedisConnection());
+    void subscriber.subscribe(CHANNEL);
+    subscriber.on("message", (_channel, raw) => {
+      try {
+        const msg = JSON.parse(raw) as { orgId?: string; data?: Record<string, unknown> };
+        if (typeof msg.orgId === "string" && msg.data && typeof msg.data === "object") {
+          broadcastLocal(msg.orgId, msg.data);
+        }
+      } catch {
+        /* ignore malformed */
+      }
+    });
+  } catch {
+    publisher = null;
+  }
+}
 
 export function addClient(orgId: OrgId, stream: SSEStreamingApi): StreamId {
   if (!clients.has(orgId)) {
@@ -34,16 +77,11 @@ export function removeClient(orgId: OrgId, streamId: StreamId): void {
 }
 
 export function broadcast(orgId: OrgId, data: Record<string, unknown>): void {
-  const orgClients = clients.get(orgId);
-  if (!orgClients) return;
-
-  for (const stream of orgClients.values()) {
-    try {
-      stream.writeSSE({ data: JSON.stringify(data) });
-    } catch {
-      // Stream closed — cleanup handled by onAbort
-    }
+  if (publisher) {
+    void publisher.publish(CHANNEL, JSON.stringify({ orgId, data }));
+    return;
   }
+  broadcastLocal(orgId, data);
 }
 
 export function getClientCount(orgId?: OrgId): number {

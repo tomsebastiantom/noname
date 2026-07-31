@@ -1,5 +1,18 @@
 import type { ContextSignal } from "./ports";
 
+function deviceTypeFromUserAgent(ua: string): "mobile" | "tablet" | "desktop" {
+  if (/mobile/i.test(ua)) return "mobile";
+  if (/tablet/i.test(ua)) return "tablet";
+  return "desktop";
+}
+
+function timePartFromHour(hour: number): string {
+  if (hour < 6) return "night";
+  if (hour < 12) return "morning";
+  if (hour < 18) return "afternoon";
+  return "evening";
+}
+
 // Dependency-free signal extraction from HTTP headers.
 // Signal categories follow TECH.md: user, device, network, geography,
 // business, referral, time.
@@ -9,7 +22,7 @@ export function extractSignals(headers: Record<string, string>): ContextSignal[]
 
   // Device (from User-Agent)
   const ua = h["user-agent"] || "";
-  const device = /mobile/i.test(ua) ? "mobile" : /tablet/i.test(ua) ? "tablet" : "desktop";
+  const device = deviceTypeFromUserAgent(ua);
   signals.push({ category: "device", key: "type", value: device });
   if (/android/i.test(ua)) signals.push({ category: "device", key: "os", value: "android" });
   else if (/iphone|ipad|mac os/i.test(ua))
@@ -37,7 +50,7 @@ export function extractSignals(headers: Record<string, string>): ContextSignal[]
 
   // Time (server hour bucket, UTC)
   const hour = new Date().getUTCHours();
-  const part = hour < 6 ? "night" : hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+  const part = timePartFromHour(hour);
   signals.push({ category: "time", key: "part", value: part });
 
   return signals;

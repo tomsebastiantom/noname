@@ -5,6 +5,30 @@ import { join } from "node:path";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
 import { rspack } from "@rspack/core";
 
+const MAX_SOURCE_BYTES = 100_000;
+const BUILD_TIMEOUT_MS = 120_000;
+const FORBIDDEN_SOURCE = [
+  /child_process/,
+  /node:fs/,
+  /node:child_process/,
+  /\beval\s*\(/,
+  /\bFunction\s*\(/,
+];
+
+export function validateComponentSource(source: string): void {
+  if (!source.trim()) {
+    throw new Error("source must not be empty");
+  }
+  if (source.length > MAX_SOURCE_BYTES) {
+    throw new Error("source exceeds maximum size");
+  }
+  for (const pattern of FORBIDDEN_SOURCE) {
+    if (pattern.test(source)) {
+      throw new Error("source contains forbidden pattern");
+    }
+  }
+}
+
 export interface BundleInput {
   scope: string;
   source: string;
@@ -61,13 +85,14 @@ function computeHash(input: BundleInput): string {
 const pendingBuilds = new Map<string, Promise<BundleOutput>>();
 
 export async function bundleCatalog(input: BundleInput): Promise<BundleOutput> {
+  validateComponentSource(input.source);
   const hash = computeHash(input);
   const key = `${input.scope}:${hash}`;
 
   const existing = pendingBuilds.get(key);
   if (existing) return existing;
 
-  const buildPromise = runBuild(input, hash);
+  const buildPromise = withBuildTimeout(runBuild(input, hash));
   pendingBuilds.set(key, buildPromise);
 
   try {
@@ -183,4 +208,20 @@ function cleanup(dir: string): void {
   } catch {
     // best effort
   }
+}
+
+function withBuildTimeout<T>(promise: Promise<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("Catalog build timed out")), BUILD_TIMEOUT_MS);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
+  });
 }

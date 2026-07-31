@@ -30,11 +30,6 @@ describe("findInboundRefsInDocument", () => {
     ]);
   });
 
-  it("finds legacy assetId keys", () => {
-    const product = doc("prod-1", "product", { hero: { assetId: "asset-1" } });
-    expect(findInboundRefsInDocument(product, "asset-1")).toHaveLength(1);
-  });
-
   it("finds bare string contentRef-style values", () => {
     const page = doc("page-1", "page", { contentRef: "entry-1" });
     expect(findInboundRefsInDocument(page, "entry-1")[0]?.fieldPath).toBe("data.contentRef");

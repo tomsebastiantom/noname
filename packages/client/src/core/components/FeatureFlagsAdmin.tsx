@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useState } from "react";
 import { type FlagRow, listFlags, updateBooleanFlag } from "../../admin/flags";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -15,6 +15,31 @@ import type { ComponentCtx } from "./types";
 function flagValue(flag: FlagRow): unknown {
   const rule = flag.targeting.find((r) => r.priority === 0) ?? flag.targeting[0];
   return rule?.value ?? flag.defaultValue;
+}
+
+function flagListBody(
+  loading: boolean,
+  flags: FlagRow[],
+  labels: { loadingLabel: string; emptyLabel: string },
+  renderFlags: () => ReactNode,
+): ReactNode {
+  if (loading) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+  if (flags.length === 0) {
+    return <p className="text-sm text-muted-foreground">{labels.emptyLabel}</p>;
+  }
+  return renderFlags();
+}
+
+function booleanToggleLabel(
+  toggling: boolean,
+  isOn: boolean,
+  labels: { togglingLabel: string; onLabel: string; offLabel: string },
+): string {
+  if (toggling) return labels.togglingLabel;
+  if (isOn) return `Turn ${labels.offLabel.toLowerCase()}`;
+  return `Turn ${labels.onLabel.toLowerCase()}`;
 }
 
 export function FeatureFlagsAdmin({
@@ -76,11 +101,7 @@ export function FeatureFlagsAdmin({
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : null}
-        {loading ? (
-          <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>
-        ) : flags.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{props.emptyLabel}</p>
-        ) : (
+        {flagListBody(loading, flags, props, () => (
           <ul className="divide-y rounded-md border">
             {flags.map((flag) => {
               const value = flagValue(flag);
@@ -109,18 +130,14 @@ export function FeatureFlagsAdmin({
                       disabled={toggling === flag.id}
                       onClick={() => void toggleBoolean(flag)}
                     >
-                      {toggling === flag.id
-                        ? props.togglingLabel
-                        : isOn
-                          ? `Turn ${props.offLabel.toLowerCase()}`
-                          : `Turn ${props.onLabel.toLowerCase()}`}
+                      {booleanToggleLabel(toggling === flag.id, isOn, props)}
                     </Button>
                   ) : null}
                 </li>
               );
             })}
           </ul>
-        )}
+        ))}
       </CardContent>
     </Card>
   );

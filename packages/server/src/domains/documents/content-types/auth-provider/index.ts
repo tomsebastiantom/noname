@@ -14,8 +14,6 @@ export {
 } from "./content";
 export {
   listPublishedAuthProviders,
-  listPublishedCustomAuthProviders,
   type PublishedAuthProvider,
-  type PublishedCustomAuthProvider,
   resolveLoginProviders,
 } from "./runtime";

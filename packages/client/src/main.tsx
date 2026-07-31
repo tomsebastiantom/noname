@@ -23,8 +23,8 @@ import {
   syncObservabilityUserFromSession,
 } from "./platform/browser-observability";
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
+import { registry as platformRegistry } from "./platform/registry";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
-import { registry as platformRegistry } from "./registry";
 
 interface EdgeSchemaResponse {
   siteId?: string;

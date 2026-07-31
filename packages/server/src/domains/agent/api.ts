@@ -1,4 +1,6 @@
-﻿import { Hono } from "hono";
+﻿import { PERMISSIONS } from "@noname/auth";
+import { Hono } from "hono";
+import { denyUnless } from "../../shared/deny-unless";
 import { getOrgId } from "../../shared/org";
 import { created, notFound, ok } from "../../shared/respond";
 import type { AgentService } from "./ports";
@@ -7,6 +9,8 @@ export function createAgentRoutes(service: AgentService) {
   const routes = new Hono();
 
   routes.post("/tasks", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.AGENT_MANAGE);
+    if (denied) return denied;
     const orgId = getOrgId(c);
     const body = await c.req.json();
     const task = await service.create(orgId, body);
@@ -14,6 +18,8 @@ export function createAgentRoutes(service: AgentService) {
   });
 
   routes.get("/tasks", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.AGENT_MANAGE);
+    if (denied) return denied;
     const orgId = getOrgId(c);
     const status = c.req.query("status");
     const type = c.req.query("type");
@@ -22,18 +28,24 @@ export function createAgentRoutes(service: AgentService) {
   });
 
   routes.get("/tasks/:id", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.AGENT_MANAGE);
+    if (denied) return denied;
     const orgId = getOrgId(c);
     const task = await service.get(orgId, c.req.param("id"));
     return task ? ok(c, task) : notFound(c);
   });
 
   routes.put("/tasks/:id/approve", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.AGENT_MANAGE);
+    if (denied) return denied;
     const orgId = getOrgId(c);
     const task = await service.approve(orgId, c.req.param("id"));
     return ok(c, task);
   });
 
   routes.put("/tasks/:id/reject", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.AGENT_MANAGE);
+    if (denied) return denied;
     const orgId = getOrgId(c);
     const task = await service.reject(orgId, c.req.param("id"));
     return ok(c, task);
