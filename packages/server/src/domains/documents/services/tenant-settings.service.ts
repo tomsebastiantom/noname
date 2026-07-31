@@ -1,7 +1,7 @@
 import { ValidationError } from "../../../shared/domain-error";
 import { assertValidStoreSlug, normalizeStoreSlug } from "../../../shared/store-slug";
 import type { DocumentStorage, TenantSettingsService } from "../ports";
-import { defaultTenantSettings } from "./helpers";
+import { defaultTenantSettings } from "./tenant-defaults";
 
 export function createTenantSettingsService(storage: DocumentStorage): TenantSettingsService {
   return {

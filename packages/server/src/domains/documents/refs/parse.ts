@@ -25,8 +25,3 @@ export function parseDocumentRef(value: unknown): DocumentRef | null {
   const documentId = documentIdFromRef(value);
   return documentId ? { documentId } : null;
 }
-
-/** Normalize ref values to canonical { documentId } for persistence. */
-export function normalizeDocumentRef(value: unknown): DocumentRef | null {
-  return parseDocumentRef(value);
-}

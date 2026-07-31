@@ -1,4 +1,5 @@
 import type { ContentDocumentService, TenantAuthConfig } from "../../ports";
+import { isPublished } from "../../shared/document-status";
 import {
   AUTH_PROVIDER_CONTENT_TYPE,
   isBuiltinLoginProvider,
@@ -24,7 +25,7 @@ export async function listPublishedAuthProviders(
   const providers: PublishedAuthProvider[] = [];
 
   for (const row of rows) {
-    if (row.status !== "published") continue;
+    if (!isPublished(row)) continue;
 
     const display = parseAuthProviderDisplayData(row.data);
     if (!display) continue;

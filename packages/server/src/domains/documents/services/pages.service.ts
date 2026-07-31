@@ -1,5 +1,7 @@
 import type { DocumentStorage, PageDTO, PageTreeDTO, PageTreeService } from "../ports";
+import { isPublished } from "../shared/document-status";
 import { DEFAULT_DEFAULT_LOCALE } from "./constants";
+import { toRoutingPageView } from "./routing-page";
 
 /** Normalize URL paths for page_tree slug matching ("/about/" → "/about"). */
 export function normalizeRoutePath(url: string): string {
@@ -61,26 +63,14 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const rows = await storage.listDocuments(orgId, { type: "page" });
       return rows
         .filter((row) => typeof row.data.layoutRef === "string")
-        .map((row) => ({
-          id: row.id,
-          key: row.key,
-          status: row.status,
-          layoutRef: (row.data.layoutRef as string) ?? "",
-          contentRef: (row.data.contentRef as string) ?? "",
-        }))
+        .map(toRoutingPageView)
         .sort((a, b) => a.key.localeCompare(b.key));
     },
 
     async getRoutingPage(orgId, pageKey) {
       const row = await storage.findDocument(orgId, "page", pageKey);
       if (!row || typeof row.data.layoutRef !== "string") return null;
-      return {
-        id: row.id,
-        key: row.key,
-        status: row.status,
-        layoutRef: (row.data.layoutRef as string) ?? "",
-        contentRef: (row.data.contentRef as string) ?? "",
-      };
+      return toRoutingPageView(row);
     },
 
     async upsertMainTree(orgId, pageRefs) {
@@ -88,7 +78,7 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const data = { pages: pageRefs };
       if (existing) {
         const updated = await storage.updateDocument(existing.id, data);
-        if (existing.status !== "published") {
+        if (!isPublished(existing)) {
           return (await storage.publishDocument(existing.id)) as unknown as PageTreeDTO;
         }
         return updated as unknown as PageTreeDTO;
@@ -112,7 +102,7 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const existing = await storage.findDocument(orgId, "page", pageKey);
       if (existing) {
         const updated = await storage.updateDocument(existing.id, data);
-        if (existing.status !== "published") {
+        if (!isPublished(existing)) {
           return (await storage.publishDocument(existing.id)) as unknown as PageDTO;
         }
         return updated as unknown as PageDTO;

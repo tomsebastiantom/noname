@@ -1,24 +1,13 @@
 import { type ReactNode, useEffect, useState } from "react";
 import {
   type ContentEntryRow,
+  documentIdFromFieldValue,
   entryLabel,
   getContentType,
   listEntries,
 } from "../../admin/content-entries";
 import { Button } from "../../components/ui/button";
 import { Label } from "../../components/ui/label";
-
-function documentIdFromFieldValue(value: string): string | null {
-  if (!value.trim()) return null;
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    const raw = parsed.documentId;
-    if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
-  } catch {
-    if (value.trim()) return value.trim();
-  }
-  return null;
-}
 
 function entryPickerBody(options: {
   loading: boolean;

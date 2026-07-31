@@ -14,6 +14,7 @@ import type {
   TenantAuthConfig,
   UploadAssetInput,
 } from "./ports";
+import { parseRefIdsParam } from "./refs/resolve";
 import { mergeAuthConfig, normalizeAuthConfig } from "./tenant/auth-config";
 
 export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
@@ -329,16 +330,9 @@ export function createDocumentsRoutes(service: DocumentService, binary?: AssetBi
 
   routes.get("/resolve-refs", async (c) => {
     const orgId = getOrgId(c);
-    const idsParam = c.req.query("ids");
-    if (!idsParam?.trim()) {
-      return c.json({ error: "missing ?ids= comma-separated document row ids" }, 400);
-    }
-    const ids = idsParam
-      .split(",")
-      .map((id) => id.trim())
-      .filter(Boolean);
+    const ids = parseRefIdsParam(c.req.query("ids"));
     if (ids.length === 0) {
-      return c.json({ error: "no valid document ids in ?ids=" }, 400);
+      return c.json({ error: "missing ?ids= comma-separated document row ids" }, 400);
     }
     const locale = c.req.query("locale") || undefined;
     const resolved = await resolveRefs(orgId, ids, locale);

@@ -1,4 +1,5 @@
 import type { ContentTypeDTO, DocumentDTO, DocumentStorage, TenantSettingsDTO } from "./ports";
+import { DEFAULT_TENANT_AUTH } from "./tenant/auth-config";
 
 export const ORG = "org-1";
 export const ASSET_ID = "asset-row-1";
@@ -52,7 +53,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     defaultLocale: "en-US",
     seo: {},
     integrations: {},
-    auth: { providers: [], idpIds: {}, allowPassword: true },
+    auth: { ...DEFAULT_TENANT_AUTH },
   };
 
   return {

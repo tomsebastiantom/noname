@@ -1,4 +1,5 @@
 import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
+import { assetUrlFromData } from "../lib/asset-url";
 
 export interface ContentFieldSchema {
   key: string;
@@ -27,6 +28,19 @@ export interface ContentEntryRow {
 }
 
 const DEFAULT_LOCALE = "en-US";
+
+/** Parse document id from a form field value (JSON ref or bare uuid). */
+export function documentIdFromFieldValue(value: string): string | null {
+  if (!value.trim()) return null;
+  try {
+    const parsed = JSON.parse(value) as Record<string, unknown>;
+    const raw = parsed.documentId;
+    if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
+  } catch {
+    if (value.trim()) return value.trim();
+  }
+  return null;
+}
 
 export function contentTypeFromPath(pathname: string): string {
   const match = pathname.match(/^\/admin\/content\/?([^/]*)/);
@@ -232,14 +246,6 @@ function assetFromRow(row: {
     mimeType: String(data.mimeType ?? ""),
     url: assetUrlFromData(data),
   };
-}
-
-function assetUrlFromData(data: Record<string, unknown>): string | null {
-  const original = data.original as { url?: string } | undefined;
-  if (typeof original?.url === "string" && original.url.trim() !== "") return original.url;
-  const variants = data.variants as Record<string, { url?: string }> | undefined;
-  const variantUrl = variants?.original?.url;
-  return typeof variantUrl === "string" && variantUrl.trim() !== "" ? variantUrl : null;
 }
 
 export async function listAssets(): Promise<AssetSummary[]> {

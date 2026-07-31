@@ -1,6 +1,7 @@
-import { NotFoundError } from "../../../shared/domain-error";
+import { enrichAssetUrls, validateAssetMime } from "../assets/enrich";
+import { urlFromStorageKey } from "../assets/url";
 import type { AssetDocumentService, AssetDTO, DocumentStorage, UploadAssetInput } from "../ports";
-import { enrichAssetUrls, resolveAssetUrl, validateAssetMime } from "./helpers";
+import { requireAssetDocument } from "./document-guards";
 
 export function createAssetsService(storage: DocumentStorage): AssetDocumentService {
   return {
@@ -14,7 +15,7 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
         storageKey: input.storageKey,
         hash: input.hash,
         original: {
-          url: resolveAssetUrl(input.storageKey, input.mimeType),
+          url: urlFromStorageKey(input.storageKey),
           width: input.width ?? null,
           height: input.height ?? null,
         },
@@ -51,10 +52,7 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
     },
 
     async update(orgId, documentId, input) {
-      const existing = await storage.findDocumentById(documentId);
-      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
-        throw new NotFoundError("Asset", documentId);
-      }
+      const existing = await requireAssetDocument(storage, orgId, documentId);
       const data = { ...existing.data };
       if (input.altText !== undefined) data.altText = input.altText;
       if (input.caption !== undefined) data.caption = input.caption;
@@ -65,26 +63,17 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
     },
 
     async archive(orgId, documentId) {
-      const existing = await storage.findDocumentById(documentId);
-      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
-        throw new NotFoundError("Asset", documentId);
-      }
+      const existing = await requireAssetDocument(storage, orgId, documentId);
       return (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
     },
 
     async delete(orgId, documentId) {
-      const existing = await storage.findDocumentById(documentId);
-      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
-        throw new NotFoundError("Asset", documentId);
-      }
+      const existing = await requireAssetDocument(storage, orgId, documentId);
       await storage.deleteDocument(existing.id);
     },
 
     async publish(orgId, documentId) {
-      const existing = await storage.findDocumentById(documentId);
-      if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
-        throw new NotFoundError("Asset", documentId);
-      }
+      const existing = await requireAssetDocument(storage, orgId, documentId);
       return (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
     },
   };

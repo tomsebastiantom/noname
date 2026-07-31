@@ -1,11 +1,18 @@
 import { flushEvents } from "../../../shared/aggregate-root";
-import { NotFoundError, ValidationError } from "../../../shared/domain-error";
+import { ValidationError } from "../../../shared/domain-error";
 import { eventBus } from "../../../shared/event-bus";
 import { LayoutDocument } from "../entity";
 import { LayoutEvents } from "../events";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
-import { readContentRef, toLayoutEntity, validateSpec, validateTemplateName } from "./helpers";
+import { isPublished } from "../shared/document-status";
+import { requireLayoutDocument, requirePublishedLayout } from "./document-guards";
+import {
+  readContentRef,
+  toLayoutEntity,
+  validateSpec,
+  validateTemplateName,
+} from "./layout-helpers";
 
 export function createLayoutService(storage: DocumentStorage): LayoutDocumentService {
   return {
@@ -34,9 +41,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       return saved as unknown as LayoutDTO;
     },
 
-    async update(_orgId, id, input) {
-      const existing = await storage.findDocumentById(id);
-      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+    async update(orgId, id, input) {
+      const existing = await requireLayoutDocument(storage, id, orgId);
       validateSpec(input.spec);
 
       const entity = toLayoutEntity(existing as LayoutDTO);
@@ -60,10 +66,12 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         throw new ValidationError("overrides", "overrides must be an object of dot-path keys");
       }
 
-      const publishedDefault = await storage.findDocument(orgId, "layout", templateName, "default");
-      if (publishedDefault?.status !== "published") {
-        throw new NotFoundError("LayoutDocument", `${templateName} (published default)`);
-      }
+      const publishedDefault = await requirePublishedLayout(
+        storage,
+        orgId,
+        templateName,
+        "default",
+      );
       const baseVersion = publishedDefault.version;
 
       const saved = await storage.createDocument({
@@ -79,9 +87,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       return saved as unknown as LayoutDTO;
     },
 
-    async publish(_orgId, id) {
-      const existing = await storage.findDocumentById(id);
-      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+    async publish(orgId, id) {
+      const existing = await requireLayoutDocument(storage, id, orgId);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.publish();
       const updated = await storage.publishDocument(id);
@@ -89,9 +96,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       return updated as unknown as LayoutDTO;
     },
 
-    async archive(_orgId, id) {
-      const existing = await storage.findDocumentById(id);
-      if (existing?.type !== "layout") throw new NotFoundError("LayoutDocument", id);
+    async archive(orgId, id) {
+      const existing = await requireLayoutDocument(storage, id, orgId);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.archive();
       const updated = await storage.archiveDocument(id);
@@ -107,14 +113,15 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         status: filters?.status,
       }) as unknown as Promise<LayoutDTO[]>,
 
-    get: async (_orgId, id) => {
+    get: async (orgId, id) => {
       const found = await storage.findDocumentById(id);
-      return found && found.type === "layout" ? (found as LayoutDTO) : null;
+      if (found?.type !== "layout" || found.orgId !== orgId) return null;
+      return found as LayoutDTO;
     },
 
     async resolve(orgId, templateName, segment) {
       const publishedDefault = await storage.findDocument(orgId, "layout", templateName, "default");
-      if (publishedDefault?.status !== "published") return null;
+      if (!publishedDefault || !isPublished(publishedDefault)) return null;
       const defaultSpec = (publishedDefault.data.spec as Record<string, unknown>) ?? {};
 
       if (segment === "default") {
@@ -129,7 +136,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       }
 
       const variant = await storage.findDocument(orgId, "layout", templateName, segment);
-      if (variant?.status !== "published") {
+      if (!variant || !isPublished(variant)) {
         return {
           templateName,
           segment: "default",

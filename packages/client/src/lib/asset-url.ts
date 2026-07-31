@@ -1,10 +1,12 @@
-import type { AssetDTO } from "../ports";
-import { urlFromStorageKey } from "./url";
+/** Must match server default in documents/assets/url.ts until a shared package exists. */
+export const DEFAULT_ASSET_PUBLIC_BASE_URL = "https://assets.noname.dev";
 
-/** Public URL for an asset row — storageKey, original.url, or variants.original.url. */
-export function iconUrlFromAsset(asset: AssetDTO | null): string | null {
-  if (!asset) return null;
-  const data = asset.data as Record<string, unknown>;
+export function urlFromStorageKey(storageKey: string): string {
+  return `${DEFAULT_ASSET_PUBLIC_BASE_URL}/${storageKey}`;
+}
+
+/** Public URL from asset row data — mirrors server iconUrlFromAsset resolution order. */
+export function assetUrlFromData(data: Record<string, unknown>): string | null {
   const storageKey = typeof data.storageKey === "string" ? data.storageKey.trim() : "";
   if (storageKey) {
     return urlFromStorageKey(storageKey);

@@ -1,5 +1,6 @@
 import { iconUrlFromAsset } from "../assets/icon-url";
 import type { AssetDTO, ContentTypeSchema, DocumentDTO, DocumentStorage } from "../ports";
+import { labelFromContentData } from "../shared/locale";
 
 export interface ResolvedDocumentRef {
   documentId: string;
@@ -11,39 +12,6 @@ export interface ResolvedDocumentRef {
 }
 
 const MAX_BATCH = 50;
-
-function pickLocalized(value: unknown, locale: string, defaultLocale: string): unknown {
-  if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
-    return value;
-  }
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const map = value as Record<string, unknown>;
-    if (locale in map) return map[locale];
-    if (defaultLocale in map) return map[defaultLocale];
-    return Object.values(map)[0];
-  }
-  return value;
-}
-
-function labelFromContentData(
-  schema: ContentTypeSchema | null,
-  data: Record<string, unknown>,
-  key: string,
-  locale: string,
-  defaultLocale: string,
-): string {
-  const titleField =
-    schema?.fields.find((f) => f.key === "title") ??
-    schema?.fields.find((f) => f.type === "text" || f.type === "longText");
-  if (titleField) {
-    const raw = data[titleField.key];
-    const picked = titleField.isLocalizable ? pickLocalized(raw, locale, defaultLocale) : raw;
-    if (picked !== undefined && picked !== null && String(picked).trim() !== "") {
-      return String(picked).trim();
-    }
-  }
-  return key;
-}
 
 export async function resolveDocumentRefs(
   storage: DocumentStorage,

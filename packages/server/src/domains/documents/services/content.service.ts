@@ -1,28 +1,13 @@
 import { flushEvents } from "../../../shared/aggregate-root";
-import { NotFoundError, ValidationError } from "../../../shared/domain-error";
 import { ContentDocument } from "../entity";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
+import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
 import { contentValidator } from "../validation/validator";
-import { DEFAULT_DEFAULT_LOCALE, DEFAULT_LOCALES } from "./constants";
-import {
-  assertDocumentRefs,
-  buildContentData,
-  filterReadFields,
-  validateFieldWritePermissions,
-} from "./helpers";
+import { filterReadFields, prepareContentWrite } from "./content-write";
+import { requireContentEntry } from "./document-guards";
 
 export interface ContentServiceOptions {
   onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
-}
-
-function pickLocalizedFieldValue(
-  map: Record<string, unknown>,
-  locale: string,
-  defaultLocale: string,
-): unknown {
-  if (locale in map) return map[locale];
-  if (defaultLocale in map) return map[defaultLocale];
-  return Object.values(map)[0];
 }
 
 export function createContentService(
@@ -32,26 +17,13 @@ export function createContentService(
 ): ContentDocumentService {
   return {
     async create(orgId, type, data, opts) {
-      const locale = opts?.locale;
-      const role = opts?.role;
-      const schema = await storage.findContentTypeByName(orgId, type);
-      if (!schema) throw new NotFoundError("ContentType", type);
+      const { data: builtData } = await prepareContentWrite(storage, validator, orgId, type, data, {
+        locale: opts?.locale,
+        role: opts?.role,
+        isCreate: true,
+      });
 
-      validateFieldWritePermissions(schema.schema.fields, data, role);
-
-      const ts = await storage.getTenantSettings(orgId);
-      const locales = ts?.locales ?? DEFAULT_LOCALES;
-      const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
-
-      const built = buildContentData(schema.schema, data, undefined, locale, true, defaultLocale);
-      if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
-
-      await assertDocumentRefs(storage, schema.schema, built.data!, orgId);
-
-      const v = validator.validate(schema.schema, built.data!, locales);
-      if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
-
-      const entity = ContentDocument.create(orgId, type, built.data!);
+      const entity = ContentDocument.create(orgId, type, builtData);
       const saved = await storage.createDocument({
         orgId,
         type,
@@ -77,36 +49,16 @@ export function createContentService(
     },
 
     async updateById(orgId, type, id, data, opts) {
-      const locale = opts?.locale;
-      const role = opts?.role;
-      const schema = await storage.findContentTypeByName(orgId, type);
-      if (!schema) throw new NotFoundError("ContentType", type);
-      const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type)
-        throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      const existing = await requireContentEntry(storage, orgId, type, id);
 
-      validateFieldWritePermissions(schema.schema.fields, data, role);
+      const { data: builtData } = await prepareContentWrite(storage, validator, orgId, type, data, {
+        locale: opts?.locale,
+        role: opts?.role,
+        existingData: existing.data,
+        isCreate: false,
+      });
 
-      const ts = await storage.getTenantSettings(orgId);
-      const locales = ts?.locales ?? DEFAULT_LOCALES;
-      const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
-
-      const built = buildContentData(
-        schema.schema,
-        data,
-        existing.data,
-        locale,
-        false,
-        defaultLocale,
-      );
-      if (built.errors.length) throw new ValidationError(type, built.errors.join("; "));
-
-      await assertDocumentRefs(storage, schema.schema, built.data!, orgId);
-
-      const v = validator.validate(schema.schema, built.data!, locales);
-      if (!v.valid) throw new ValidationError(type, v.errors?.join("; ") || "invalid");
-
-      const updated = await storage.updateDocument(existing.id, built.data!);
+      const updated = await storage.updateDocument(existing.id, builtData);
       const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
       entity.update(updated.data);
       flushEvents(entity);
@@ -114,9 +66,7 @@ export function createContentService(
     },
 
     async deleteById(orgId, type, id) {
-      const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type)
-        throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      const existing = await requireContentEntry(storage, orgId, type, id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, existing.status);
       entity.deleteEntry();
       await storage.deleteDocument(existing.id);
@@ -124,9 +74,7 @@ export function createContentService(
     },
 
     async publish(orgId, type, id) {
-      const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type)
-        throw new NotFoundError("ContentEntry", `${type}/${id}`);
+      const existing = await requireContentEntry(storage, orgId, type, id);
       const published = await storage.publishDocument(existing.id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, "draft");
       entity.publish();
@@ -141,8 +89,7 @@ export function createContentService(
       const existing = await storage.findDocumentById(id);
       if (!existing || existing.type !== type) return null;
       const schema = await storage.findContentTypeByName(orgId, type);
-      const ts = await storage.getTenantSettings(orgId);
-      const defaultLocale = ts?.defaultLocale ?? DEFAULT_DEFAULT_LOCALE;
+      const { defaultLocale } = await resolveTenantLocales(storage, orgId);
 
       const resolved: Record<string, unknown> = {};
       if (!schema) return existing.data;
@@ -151,8 +98,7 @@ export function createContentService(
         const value = existing.data[field.key];
         if (value === undefined) continue;
         if (field.isLocalizable && value && typeof value === "object" && !Array.isArray(value)) {
-          const map = value as Record<string, unknown>;
-          resolved[field.key] = pickLocalizedFieldValue(map, locale, defaultLocale);
+          resolved[field.key] = pickLocalizedValue(value, locale, defaultLocale);
         } else {
           resolved[field.key] = value;
         }

@@ -1,6 +1,6 @@
 import { NotFoundError, ValidationError } from "../../../shared/domain-error";
 import type { ContentTypeDocumentService, DocumentStorage } from "../ports";
-import { validateContentTypeName, validateSchema } from "./helpers";
+import { validateContentTypeName, validateSchema } from "./content-type-validation";
 
 export function createContentTypesService(storage: DocumentStorage): ContentTypeDocumentService {
   return {
