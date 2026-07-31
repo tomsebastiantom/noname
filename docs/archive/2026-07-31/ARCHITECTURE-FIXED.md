@@ -28,3 +28,16 @@ Items from [`ARCHITECTURE-PATTERNS.md`](../../2026-07-31/ARCHITECTURE-PATTERNS.m
 ## Client
 
 - `auth/account-flows.ts` — uses `apiFetch` / `apiFetchData` / `apiFetchVoid`.
+
+## Typed event bus (phase 2)
+
+- `packages/server/src/domain-events.ts` — `DomainEventName`, `DomainEventMap`, `ALL_DOMAIN_EVENTS`.
+- `shared/event-bus.ts` — typed publish/subscribe signatures.
+- `analytics/listeners.ts` — subscribes via `ALL_DOMAIN_EVENTS` (no string literals).
+
+## God API splits
+
+- **auth** — `routes/{schemas,deps,config,oauth,login,mfa,account,session,team}.ts`
+- **documents** — `routes/{deps,helpers,content-types,tenant-settings,assets,layout,pages,refs,content}.ts`
+- **analytics** — `routes/{deps,ingest,query,replay}.ts`
+- Each `api.ts` is a thin mount assembler (~20 lines).

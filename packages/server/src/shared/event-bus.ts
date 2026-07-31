@@ -1,4 +1,5 @@
 ﻿import Redis from "ioredis";
+import type { DomainEventName } from "../domain-events";
 import { getRedisConnection } from "./redis";
 
 const CHANNEL = "noname:event-bus";
@@ -44,7 +45,7 @@ export function initEventBus(): void {
 }
 
 export const eventBus = {
-  publish: async (event: string, payload: unknown) => {
+  publish: async (event: DomainEventName | string, payload: unknown) => {
     if (publisher) {
       await publisher.publish(CHANNEL, JSON.stringify({ event, payload }));
       return;
@@ -52,7 +53,7 @@ export const eventBus = {
     await dispatchLocal(event, payload);
   },
 
-  subscribe: (event: string, handler: EventHandler) => {
+  subscribe: (event: DomainEventName | string, handler: EventHandler) => {
     const existing = handlers.get(event) || [];
     existing.push(handler);
     handlers.set(event, existing);
