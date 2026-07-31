@@ -47,7 +47,9 @@ Client / workers / extensions
   └── HTTP to server OR import shared package when bar is met
 ```
 
-**Do not** create one mega `@noname/shared` for every domain — it erases boundaries and becomes a junk drawer.
+**Do not** create one mega junk-drawer package for every domain — domain logic stays in `@noname/server`.
+
+**Do** use **`@noname/shared`** only for tiny, pure helpers duplicated across **3+ runtimes** (see below).
 
 **Do not** create `@noname/{domain}-shared` upfront for every domain — most never need it.
 
@@ -114,3 +116,44 @@ Until then: **API-first for labels**, server modules for pure logic, client stay
 | Documents CMS | `@noname/server` domain; client `content-entries.ts` |
 | Flags, analytics, machines, tenant, agent | Server only; admin UI via HTTP |
 | Cross-domain server helpers | `packages/server/src/shared/` (not an npm package) |
+| Pure cross-runtime helpers (3+ packages) | `@noname/shared` — strict bar; see **AI agents** below |
+
+---
+
+## `@noname/shared` (cross-runtime utilities)
+
+**Added:** 2026-07-31 — replaces triplicated `coerceScalarString` in client, server, workers.
+
+**In-package instructions (canonical for agents):** [`packages/shared/README.md`](../../packages/shared/README.md)
+
+| Export | Why here |
+|---|---|
+| `coerceScalarString` | Same pure coercion in CMS UI, ClickHouse adapter, JWKS cache |
+
+### For AI agents — what belongs in `@noname/shared`
+
+See **`packages/shared/README.md`** for the full add / never-add checklist. Summary:
+
+**Add only when all are true:**
+
+1. **3+ workspace packages** import the same logic (not 2, not server-only).
+2. **Pure function** — no `process.env`, DB, Hono, React, Cloudflare bindings, Node-only APIs.
+3. **Stable** — unlikely to move back into a domain within one sprint.
+4. **Small** — one concern per file; re-export from `src/index.ts`.
+
+**Never add to `@noname/shared` (keeps it from becoming a junkyard):**
+
+| Do not add | Put it instead |
+|---|---|
+| Domain types, DTOs, event names | Server domain `ports.ts` or future `@noname/{domain}-shared` |
+| Auth, JWT, permissions | `@noname/auth` |
+| CMS labels, locale, ref parsing | Server `documents/` or `@noname/documents-shared` when bar is met |
+| React components or hooks | `@noname/client` |
+| HTTP clients, `fetch` wrappers | Consumer package or `@noname/auth` for auth-related fetch |
+| Config, env readers, feature flags | Server domain or `@noname/server/src/shared/` |
+| “Might be useful someday” helpers | Inline or wait for a third consumer |
+| Re-exports of server domain code | Import the domain or use HTTP |
+
+**Before adding a new export:** grep the monorepo for duplicates. If only two copies exist, fix drift locally or defer — do not create the package export yet.
+
+**Review gate:** Each new file in `packages/shared/src/` needs a one-line comment at top stating which 3+ packages use it.

@@ -1,5 +1,5 @@
+import { coerceScalarString } from "@noname/shared";
 import { apiFetch, apiFetchVoid } from "../lib/api";
-import { coerceScalarString } from "../lib/coerce-scalar-string";
 import { requireStoreSlug } from "./org";
 
 export type AuthProvider = "google" | "github" | "apple";

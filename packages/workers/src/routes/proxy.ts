@@ -99,6 +99,10 @@ export function createApiProxyRoutes() {
     }
     const contentType = c.req.header("Content-Type");
     if (contentType) headers.set("Content-Type", contentType);
+    const traceparent = c.req.header("traceparent");
+    if (traceparent) headers.set("traceparent", traceparent);
+    const tracestate = c.req.header("tracestate");
+    if (tracestate) headers.set("tracestate", tracestate);
     const authorization = c.req.header("Authorization");
     if (authorization) headers.set("Authorization", authorization);
 

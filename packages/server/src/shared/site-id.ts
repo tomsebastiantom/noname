@@ -1,5 +1,5 @@
+import { normalizeStoreSlug } from "@noname/shared";
 import type { TenantSettingsService } from "../domains/documents";
-import { normalizeStoreSlug } from "./store-slug";
 
 /** Resolve route param (store slug or raw org id when tenant settings unavailable). */
 export async function resolveRouteOrgId(

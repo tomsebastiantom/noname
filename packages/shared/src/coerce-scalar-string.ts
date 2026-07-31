@@ -1,6 +1,6 @@
 /**
  * Coerce CMS / JSON scalar values to string without `[object Object]`.
- * Use for unknown or Record<string, unknown> field values — not for intentional JSON serialization.
+ * Used by: @noname/client, @noname/server, @noname/workers.
  */
 export function coerceScalarString(value: unknown, fallback = ""): string {
   if (value === null || value === undefined) return fallback;

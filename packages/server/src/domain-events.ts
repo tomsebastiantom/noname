@@ -14,7 +14,7 @@ import { MachineEvents } from "./domains/machines/events";
 
 type ValueOf<T> = T[keyof T];
 
-/** All known domain event names — single source of truth for subscribers. */
+/** Event names with active publishers — analytics and other subscribers use this list. */
 export type DomainEventName =
   | ValueOf<typeof AgentEvents>
   | ValueOf<typeof ContextEvents>
@@ -27,11 +27,6 @@ export type DomainEventName =
   | ValueOf<typeof TenantSettingsEvents>
   | ValueOf<typeof FlagEvents>
   | ValueOf<typeof MachineEvents>;
-
-/** Phase 2 payload map — loose `Record` until per-event shapes are defined. */
-export type DomainEventMap = {
-  [K in DomainEventName]: Record<string, unknown>;
-};
 
 export const ALL_DOMAIN_EVENTS: readonly DomainEventName[] = [
   ...Object.values(AgentEvents),

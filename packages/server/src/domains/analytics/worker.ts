@@ -1,8 +1,11 @@
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import type { AnalyticsStorage } from "./ports";
 import type { AnalyticsJobData } from "./queue";
+
+const tracer = trace.getTracer("analytics-worker");
 
 const BATCH_SIZE = 50;
 const FLUSH_INTERVAL_MS = 2000;
@@ -19,11 +22,17 @@ export function startAnalyticsWorker(storage: AnalyticsStorage): Worker<Analytic
       clearTimeout(flushTimer);
       flushTimer = null;
     }
-    try {
-      await storage.ingestBatch(current);
-    } catch {
-      // Analytics events are disposable — silently drop on failure
-    }
+    await tracer.startActiveSpan("analytics.ingest.batch", async (span) => {
+      try {
+        span.setAttribute("analytics.batch_size", current.length);
+        await storage.ingestBatch(current);
+      } catch (err) {
+        span.recordException(err as Error);
+        span.setStatus({ code: SpanStatusCode.ERROR });
+      } finally {
+        span.end();
+      }
+    });
   }
 
   const worker = new Worker<AnalyticsJobData>(

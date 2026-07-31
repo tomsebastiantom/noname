@@ -14,8 +14,6 @@ import {
   type ContentEntryRow,
   type ContentTypeSchema,
   contentTypeFromPath,
-  createContentEntry,
-  deleteContentEntry,
   fetchRefBackrefs,
   getContentType,
   isEditableField,
@@ -166,10 +164,17 @@ export function ContentEntryAdmin({
     setError(null);
     setSuccess(null);
     try {
-      const id = await createContentEntry({ contentType, schema, values, locale });
+      const previousIds = new Set(entries.map((row) => row.id));
+      await execute({
+        action: "createContentEntry",
+        params: { contentType, schema, values, locale },
+      });
       const rows = await listEntries(contentType);
       setEntries(rows);
-      setSelectedId(id);
+      const created = rows.find((row) => !previousIds.has(row.id));
+      if (created) {
+        setSelectedId(created.id);
+      }
       setStatus("draft");
       setSuccess(props.entryCreatedMessage);
     } catch (err) {
@@ -244,7 +249,10 @@ export function ContentEntryAdmin({
         return;
       }
 
-      await deleteContentEntry(contentType, selectedId);
+      await execute({
+        action: "deleteContentEntry",
+        params: { contentType, id: selectedId },
+      });
       const rows = await listEntries(contentType);
       setEntries(rows);
       if (rows[0]) {

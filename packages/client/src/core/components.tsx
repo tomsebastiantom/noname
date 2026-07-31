@@ -1,36 +1,8 @@
-import { AccountSecurityForm } from "../admin/components/AccountSecurityForm";
-import { AdminHome } from "../admin/components/AdminHome";
-import { AdminShell } from "../admin/components/AdminShell";
-import { AuthSettingsForm } from "../admin/components/AuthSettingsForm";
-import { ContentEntryAdmin } from "../admin/components/ContentEntryAdmin";
-import { FeatureFlagsAdmin } from "../admin/components/FeatureFlagsAdmin";
-import { LayoutEntryAdmin } from "../admin/components/LayoutEntryAdmin";
-import { LoginBrandingForm } from "../admin/components/LoginBrandingForm";
-import { PageEntryAdmin } from "../admin/components/PageEntryAdmin";
-import { PageRoutingAdmin } from "../admin/components/PageRoutingAdmin";
-import { PageTreeAdmin } from "../admin/components/PageTreeAdmin";
-import { SessionReplayAdmin } from "../admin/components/SessionReplayAdmin";
-import { UsersAdminForm } from "../admin/components/UsersAdminForm";
 import { AuthLayout } from "./components/AuthLayout";
 import { LoginForm } from "./components/LoginForm";
 import { MountAction } from "./components/MountAction";
 import type { ComponentCtx } from "./components/types";
 
-export { AccountSecurityForm } from "../admin/components/AccountSecurityForm";
-export { AdminHome } from "../admin/components/AdminHome";
-export { AdminNav } from "../admin/components/AdminNav";
-export { AdminPageHeader } from "../admin/components/AdminPageHeader";
-export { AdminShell } from "../admin/components/AdminShell";
-export { AuthSettingsForm } from "../admin/components/AuthSettingsForm";
-export { ContentEntryAdmin } from "../admin/components/ContentEntryAdmin";
-export { FeatureFlagsAdmin } from "../admin/components/FeatureFlagsAdmin";
-export { LayoutEntryAdmin } from "../admin/components/LayoutEntryAdmin";
-export { LoginBrandingForm } from "../admin/components/LoginBrandingForm";
-export { PageEntryAdmin } from "../admin/components/PageEntryAdmin";
-export { PageRoutingAdmin } from "../admin/components/PageRoutingAdmin";
-export { PageTreeAdmin } from "../admin/components/PageTreeAdmin";
-export { SessionReplayAdmin } from "../admin/components/SessionReplayAdmin";
-export { UsersAdminForm } from "../admin/components/UsersAdminForm";
 export { AuthLayout } from "./components/AuthLayout";
 export { LoginForm } from "./components/LoginForm";
 export { MountAction } from "./components/MountAction";
@@ -161,6 +133,7 @@ export function Image({
   );
 }
 
+/** json-render component map for layout primitives, auth shell, and mount hooks. */
 export const coreComponents = {
   Grid,
   Stack,
@@ -169,18 +142,5 @@ export const coreComponents = {
   Image,
   LoginForm,
   AuthLayout,
-  AdminShell,
   MountAction,
-  AuthSettingsForm,
-  LoginBrandingForm,
-  AccountSecurityForm,
-  UsersAdminForm,
-  FeatureFlagsAdmin,
-  ContentEntryAdmin,
-  LayoutEntryAdmin,
-  PageEntryAdmin,
-  PageRoutingAdmin,
-  PageTreeAdmin,
-  AdminHome,
-  SessionReplayAdmin,
 };

@@ -1,3 +1,8 @@
+/**
+ * Store slug parsing and validation.
+ * Used by: @noname/client, @noname/server, @noname/workers.
+ */
+
 const STORE_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 const RESERVED_STORE_SLUGS = new Set([
@@ -32,6 +37,7 @@ export function assertValidStoreSlug(slug: string): void {
   }
 }
 
+/** First subdomain label from a Host header or hostname (strips port). */
 export function storeSlugFromHost(host: string): string | null {
   const hostname = host.split(":")[0]?.trim() ?? "";
   const sub = hostname.split(".")[0];

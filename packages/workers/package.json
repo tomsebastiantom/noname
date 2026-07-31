@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@noname/auth": "workspace:*",
+    "@noname/shared": "workspace:*",
     "@cfworker/jwt": "^6.0.0",
     "hono": "^4.0.0"
   },

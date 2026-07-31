@@ -1,20 +1,10 @@
+import { type ContentTypeSchema, DEFAULT_CONTENT_LOCALE } from "@noname/documents";
+import { coerceScalarString } from "@noname/shared";
 import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
 import { assetUrlFromData } from "../lib/asset-url";
-import { coerceScalarString } from "../lib/coerce-scalar-string";
 
-export interface ContentFieldSchema {
-  key: string;
-  type: string;
-  required: boolean;
-  isLocalizable: boolean;
-  label: string;
-  /** Target content type for FieldType "reference". */
-  references?: string;
-}
-
-export interface ContentTypeSchema {
-  fields: ContentFieldSchema[];
-}
+export type { ContentFieldSchema, ContentTypeSchema } from "@noname/documents";
+export { documentIdFromFieldValue, entryLabel } from "@noname/documents";
 
 export interface ContentTypeSummary {
   name: string;
@@ -28,47 +18,11 @@ export interface ContentEntryRow {
   data: Record<string, unknown>;
 }
 
-const DEFAULT_LOCALE = "en-US";
-
-/** Parse document id from a form field value (JSON ref or bare uuid). */
-export function documentIdFromFieldValue(value: string): string | null {
-  if (!value.trim()) return null;
-  try {
-    const parsed = JSON.parse(value) as Record<string, unknown>;
-    const raw = parsed.documentId;
-    if (typeof raw === "string" && raw.trim() !== "") return raw.trim();
-  } catch {
-    if (value.trim()) return value.trim();
-  }
-  return null;
-}
+const DEFAULT_LOCALE = DEFAULT_CONTENT_LOCALE;
 
 export function contentTypeFromPath(pathname: string): string {
   const match = pathname.match(/^\/admin\/content\/?([^/]*)/);
   return match?.[1]?.trim() ?? "";
-}
-
-function pickLocalized(value: unknown, locale: string): string {
-  if (typeof value === "string") return value;
-  if (typeof value === "number" || typeof value === "boolean") return String(value);
-  if (value && typeof value === "object" && !Array.isArray(value)) {
-    const map = value as Record<string, unknown>;
-    if (locale in map) return coerceScalarString(map[locale]);
-    return coerceScalarString(Object.values(map)[0]);
-  }
-  return coerceScalarString(value);
-}
-
-export function entryLabel(
-  entry: ContentEntryRow,
-  schema: ContentTypeSchema,
-  locale: string,
-): string {
-  const titleField = schema.fields.find((f) => f.key === "title") ?? schema.fields[0];
-  if (!titleField) return entry.key;
-  const raw = entry.data[titleField.key];
-  if (titleField.isLocalizable) return pickLocalized(raw, locale) || entry.key;
-  return coerceScalarString(raw, entry.key);
 }
 
 export function fieldsFromResolved(resolved: Record<string, unknown>): Record<string, string> {

@@ -85,9 +85,15 @@ importers:
       '@noname/browser-sdk':
         specifier: workspace:*
         version: link:../browser-sdk
+      '@noname/documents-shared':
+        specifier: workspace:*
+        version: link:../documents-shared
       '@noname/extensions':
         specifier: workspace:*
         version: link:../extensions
+      '@noname/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@radix-ui/react-label':
         specifier: ^2.1.15
         version: 2.1.15(@types/react-dom@19.2.3(@types/react@19.2.15))(@types/react@19.2.15)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -150,6 +156,16 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  packages/documents-shared:
+    dependencies:
+      '@noname/shared':
+        specifier: workspace:*
+        version: link:../shared
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   packages/extensions:
     dependencies:
       '@json-render/core':
@@ -198,6 +214,12 @@ importers:
       '@noname/auth':
         specifier: workspace:*
         version: link:../auth
+      '@noname/documents-shared':
+        specifier: workspace:*
+        version: link:../documents-shared
+      '@noname/shared':
+        specifier: workspace:*
+        version: link:../shared
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -263,26 +285,26 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  packages/shared:
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   packages/workers:
     dependencies:
       '@cfworker/jwt':
         specifier: ^6.0.0
         version: 6.0.1
-      '@json-render/core':
-        specifier: ^0.19.0
-        version: 0.19.0(zod@4.4.3)
       '@noname/auth':
         specifier: workspace:*
         version: link:../auth
+      '@noname/shared':
+        specifier: workspace:*
+        version: link:../shared
       hono:
         specifier: ^4.0.0
         version: 4.12.23
-      react:
-        specifier: ^19.0.0
-        version: 19.2.6
-      react-dom:
-        specifier: ^19.0.0
-        version: 19.2.7(react@19.2.6)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.0.0
@@ -3531,10 +3553,6 @@ packages:
     resolution: {integrity: sha512-t0BRVXvbiE/o20Hfw669rLbMCDWtYZLvmJigy2f0MxsXF+71pxhR3xOkspmsO8h3ZlNzyibAmtCa3l4lYKk6gQ==}
     peerDependencies:
       react: ^19.2.7
-
-  react@19.2.6:
-    resolution: {integrity: sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.7:
     resolution: {integrity: sha512-HNe9WslTbXmFK8o8cmwgAeJFSBvt1bPdHCVKtaaV+WlAN36mpT4hcRpwbf3fY56ar2oIXzsBpOAiIRHAdY0OlQ==}
@@ -7047,17 +7065,10 @@ snapshots:
 
   queue-microtask@1.2.3: {}
 
-  react-dom@19.2.7(react@19.2.6):
-    dependencies:
-      react: 19.2.6
-      scheduler: 0.27.0
-
   react-dom@19.2.7(react@19.2.7):
     dependencies:
       react: 19.2.7
       scheduler: 0.27.0
-
-  react@19.2.6: {}
 
   react@19.2.7: {}
 

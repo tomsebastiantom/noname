@@ -1,4 +1,4 @@
-import { coerceScalarString } from "../../../../shared/coerce-scalar-string";
+import { coerceScalarString } from "@noname/shared";
 import { documentIdFromRef } from "../../refs";
 
 export const AUTH_PROVIDER_CONTENT_TYPE = "auth_provider";

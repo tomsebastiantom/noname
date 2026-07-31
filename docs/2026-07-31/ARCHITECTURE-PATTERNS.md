@@ -7,7 +7,7 @@
 
 ## Current shape (one paragraph)
 
-pnpm monorepo: **`@noname/server`** (Hono monolith) is the system of record; **`@noname/client`** and **`@noname/workers`** call it over HTTP; **`@noname/auth`** is the only cross-runtime shared library. Server boot (`packages/server/src/index.ts`) wires domains manually — **documents** is built first and acts as the hub (CMS, tenant settings, assets); auth, edge, and tenant consume slices of it via **`documents/contracts.ts`**. Cross-cutting code lives in `packages/server/src/shared/` (org HMAC, `respond.ts`, `parse-body.ts`, `bullmq-queue.ts`, event-bus, Redis, domain errors). **`domain-events.ts`** aggregates all domain event names; analytics subscribes via `ALL_DOMAIN_EVENTS`. God APIs split into **`routes/*.ts`** (auth, documents, analytics). Permission checks live in **`domains/auth/deny-unless.ts`**. Auth routes mount at **`/api/auth/:orgId/*`**; tenant catalog at **`/api/tenants/:id/*`**.
+pnpm monorepo: **`@noname/server`** (Hono monolith) is the system of record; **`@noname/client`** and **`@noname/workers`** call it over HTTP; **`@noname/auth`** and **`@noname/shared`** are cross-runtime libraries (auth/permissions; tiny pure helpers only). Server boot (`packages/server/src/index.ts`) wires domains manually — **documents** is built first and acts as the hub (CMS, tenant settings, assets); auth, edge, and tenant consume slices of it via **`documents/contracts.ts`**. Cross-cutting code lives in `packages/server/src/shared/` (org HMAC, `respond.ts`, `parse-body.ts`, `bullmq-queue.ts`, event-bus, Redis, domain errors). **`domain-events.ts`** aggregates all domain event names; analytics subscribes via `ALL_DOMAIN_EVENTS`. God APIs split into **`routes/*.ts`** (auth, documents, analytics). Permission checks live in **`domains/auth/deny-unless.ts`**. Auth routes mount at **`/api/auth/:orgId/*`**; tenant catalog at **`/api/tenants/:id/*`**.
 
 ---
 
@@ -15,7 +15,7 @@ pnpm monorepo: **`@noname/server`** (Hono monolith) is the system of record; **`
 
 - `createXDomain(deps) → { routes, service, … }` factory pattern
 - **`api.ts` + `routes/*.ts`** — auth (config/oauth/login/mfa/account/session/team), documents (8 route modules), analytics (ingest/query/replay)
-- **`domain-events.ts`** — `DomainEventName`, `DomainEventMap`, `ALL_DOMAIN_EVENTS`; typed `eventBus.publish/subscribe`
+- **`domain-events.ts`** — `DomainEventName`, `ALL_DOMAIN_EVENTS`; typed event names on `eventBus.publish/subscribe`
 - Recent domain splits: `*-guards.ts`, `*-validation.ts`, `fromDTO`, `flushEvents` (documents, flags, agent)
 - Central errors: `domain-error.ts` + `app.onError` + `shared/respond.ts` + `parse-body.ts`
 - Cross-domain imports via `documents/contracts.ts`
@@ -31,7 +31,6 @@ pnpm monorepo: **`@noname/server`** (Hono monolith) is the system of record; **`
 |---|---|---|
 | 1 | **Store-slug triplicated** | Documented defer in `SHARED-PACKAGES.md` |
 | 2 | **Edge/context runtime routes** — HMAC-gated, not JWT | By design for worker path |
-| 3 | **Per-event payload shapes** — `DomainEventMap` uses loose `Record` | Tighten when a consumer needs typed payloads |
 
 ---
 
@@ -98,12 +97,14 @@ See [`archive/2026-07-31/ARCHITECTURE-FIXED.md`](../archive/2026-07-31/ARCHITECT
 | Auth mount `/api/auth` | Routes `/:orgId/*`; client + worker public patterns updated; docs under `docs/` swept |
 | `engine`/`pipeline` → `service` | `context/service.ts`, `ContextService`; ai-pipeline exports `service`; machines keeps `engine.ts` |
 | God-component splits | `ContentEntryAdmin` → type-list / create / editor; `LoginForm` → per-view components |
-
-### Medium — open
-
-| Action | Files |
-|---|---|
-| Per-event payload types on `DomainEventMap` | When a consumer needs strict shapes |
+| Content event `orgId` | CMS events include `orgId` — analytics ingestion works |
+| Phantom events trimmed | `ALL_DOMAIN_EVENTS` = publishers only; reserved names stay in `documents/events.ts` |
+| `@noname/shared` | `coerceScalarString`; AI junkyard rules in `SHARED-PACKAGES.md` |
+| Edge trace forwarding | Proxy forwards `traceparent` / `tracestate` to API origin |
+| Analytics worker OTEL | `analytics.ingest.batch` span on batch flush |
+| Domain `routes/` splits | flags, context, agent, tenant, machines, ai-pipeline — thin `api.ts` assemblers |
+| Client admin catalog split | `admin/registry.ts`, `admin/catalog-schemas.ts`; actions via catalog |
+| Reserved document events | content_type, asset, page, page_tree, tenant_settings wired in services |
 
 ### Defer
 
@@ -117,5 +118,4 @@ See [`archive/2026-07-31/ARCHITECTURE-FIXED.md`](../archive/2026-07-31/ARCHITECT
 
 ## Highest leverage (remaining)
 
-1. **Per-event payload typing** on `DomainEventMap` when a consumer needs strict shapes
-2. **Store-slug shared util** — defer per `SHARED-PACKAGES.md`
+(none — see Defer for optional follow-ups)

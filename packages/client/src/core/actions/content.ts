@@ -1,6 +1,7 @@
 import {
   type ContentTypeSchema,
   createContentEntry,
+  deleteContentEntry,
   publishContentEntry,
   saveContentEntry,
 } from "../../admin/content-entries";
@@ -31,5 +32,10 @@ export const contentActions = {
       locale?: string;
     };
     await createContentEntry({ contentType, schema, values, locale });
+  }) satisfies CatalogActionHandler,
+
+  deleteContentEntry: (async (params) => {
+    const { contentType, id } = params as { contentType: string; id: string };
+    await deleteContentEntry(contentType, id);
   }) satisfies CatalogActionHandler,
 };

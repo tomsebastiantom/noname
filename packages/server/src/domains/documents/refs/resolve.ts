@@ -1,4 +1,4 @@
-import { coerceScalarString } from "../../../shared/coerce-scalar-string";
+import { coerceScalarString } from "@noname/shared";
 import { iconUrlFromAsset } from "../assets/icon-url";
 import type { AssetDTO, ContentTypeSchema, DocumentDTO, DocumentStorage } from "../ports";
 import { labelFromContentData } from "../shared/locale";

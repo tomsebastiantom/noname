@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { loadOidcConfig } from "../../auth/config";
-import { clearSession, hydrateTokenFromCookie, isLoggedIn } from "../../auth/session";
+import { performLogout } from "../../auth/logout";
+import { hydrateTokenFromCookie, isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
-import { clearObservabilityUser } from "../../platform/browser-observability";
 
 function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
@@ -19,6 +19,12 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
     return null;
   }
 
+  function signOut() {
+    setLoggedIn(false);
+    onAuthChange();
+    performLogout();
+  }
+
   return (
     <header className="flex items-center justify-end gap-3 border-b bg-muted/40 px-4 py-2 text-sm">
       {loggedIn ? (
@@ -30,18 +36,7 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
             Security
           </a>
           <span className="text-muted-foreground">Signed in</span>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              clearObservabilityUser();
-              clearSession();
-              setLoggedIn(false);
-              onAuthChange();
-              window.location.href = "/login";
-            }}
-          >
+          <Button type="button" variant="outline" size="sm" onClick={signOut}>
             Sign out
           </Button>
         </>

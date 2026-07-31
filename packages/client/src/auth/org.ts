@@ -1,14 +1,12 @@
+import { storeSlugFromHost } from "@noname/shared";
+
 let cached: { key: string; orgId: string } | null = null;
 
-/** First subdomain label — store slug. */
-export function storeSlugFromHostname(hostname: string): string | null {
-  const sub = hostname.split(".")[0];
-  if (!sub || sub === "localhost" || sub === "127") return null;
-  return sub;
-}
+/** @deprecated Prefer `storeSlugFromHost` from `@noname/shared`. */
+export const storeSlugFromHostname = storeSlugFromHost;
 
 export function requireStoreSlug(): string {
-  const slug = storeSlugFromHostname(window.location.hostname);
+  const slug = storeSlugFromHost(window.location.hostname);
   if (!slug) {
     throw new Error("Missing store subdomain — use {slug}.localhost:5173");
   }
@@ -17,7 +15,7 @@ export function requireStoreSlug(): string {
 
 /** Resolve hostname subdomain to ZITADEL org id via store slug lookup. */
 export async function resolveOrgIdFromHostname(hostname: string): Promise<string | null> {
-  const sub = storeSlugFromHostname(hostname);
+  const sub = storeSlugFromHost(hostname);
   if (!sub) return null;
 
   if (cached?.key === sub) return cached.orgId;

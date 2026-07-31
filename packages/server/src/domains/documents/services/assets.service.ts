@@ -1,7 +1,15 @@
 import { enrichAssetUrls, validateAssetMime } from "../assets/enrich";
 import { urlFromStorageKey } from "../assets/url";
+import { emitDocumentEvent } from "../emit-event";
+import { AssetEvents } from "../events";
 import type { AssetDocumentService, AssetDTO, DocumentStorage, UploadAssetInput } from "../ports";
 import { requireAssetDocument } from "./document-guards";
+
+function emitAssetProcessed(orgId: string, id: string, mimeType: string): void {
+  if (mimeType.startsWith("image/")) {
+    emitDocumentEvent(AssetEvents.PROCESSED, { orgId, id });
+  }
+}
 
 export function createAssetsService(storage: DocumentStorage): AssetDocumentService {
   return {
@@ -32,7 +40,11 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
         data,
         status: "draft",
       });
-      return saved as unknown as AssetDTO;
+      const dto = saved as unknown as AssetDTO;
+      emitDocumentEvent(AssetEvents.CREATED, { orgId, id: dto.id });
+      emitDocumentEvent(AssetEvents.UPLOADED, { orgId, id: dto.id });
+      emitAssetProcessed(orgId, dto.id, input.mimeType);
+      return dto;
     },
 
     async findByHash(orgId, hash) {
@@ -57,14 +69,19 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
       if (input.altText !== undefined) data.altText = input.altText;
       if (input.caption !== undefined) data.caption = input.caption;
       if (input.focalPoint !== undefined) data.focalPoint = input.focalPoint;
-      if (input.variants !== undefined) data.variants = input.variants;
+      if (input.variants !== undefined) {
+        data.variants = input.variants;
+        emitAssetProcessed(orgId, existing.id, String(existing.data.mimeType ?? ""));
+      }
       const updated = await storage.updateDocument(existing.id, data);
       return enrichAssetUrls(updated as unknown as AssetDTO);
     },
 
     async archive(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
-      return (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
+      const archived = (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
+      emitDocumentEvent(AssetEvents.ARCHIVED, { orgId, id: archived.id });
+      return archived;
     },
 
     async delete(orgId, documentId) {
@@ -74,7 +91,9 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
 
     async publish(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
-      return (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
+      const published = (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
+      emitDocumentEvent(AssetEvents.PUBLISHED, { orgId, id: published.id });
+      return published;
     },
   };
 }

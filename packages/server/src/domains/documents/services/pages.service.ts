@@ -1,3 +1,5 @@
+import { emitDocumentEvent } from "../emit-event";
+import { PageEvents, PageTreeEvents } from "../events";
 import type { DocumentStorage, PageDTO, PageTreeDTO, PageTreeService } from "../ports";
 import { isPublished } from "../shared/document-status";
 import { DEFAULT_DEFAULT_LOCALE } from "./constants";
@@ -78,8 +80,10 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const data = { pages: pageRefs };
       if (existing) {
         const updated = await storage.updateDocument(existing.id, data);
+        emitDocumentEvent(PageTreeEvents.UPDATED, { orgId, id: existing.id, key: "main" });
         if (!isPublished(existing)) {
-          return (await storage.publishDocument(existing.id)) as unknown as PageTreeDTO;
+          const published = (await storage.publishDocument(existing.id)) as unknown as PageTreeDTO;
+          return published;
         }
         return updated as unknown as PageTreeDTO;
       }
@@ -91,6 +95,7 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
         data,
         status: "published",
       });
+      emitDocumentEvent(PageTreeEvents.CREATED, { orgId, id: created.id, key: "main" });
       return created as unknown as PageTreeDTO;
     },
 
@@ -102,8 +107,11 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const existing = await storage.findDocument(orgId, "page", pageKey);
       if (existing) {
         const updated = await storage.updateDocument(existing.id, data);
+        emitDocumentEvent(PageEvents.UPDATED, { orgId, id: existing.id, pageKey });
         if (!isPublished(existing)) {
-          return (await storage.publishDocument(existing.id)) as unknown as PageDTO;
+          const published = (await storage.publishDocument(existing.id)) as unknown as PageDTO;
+          emitDocumentEvent(PageEvents.PUBLISHED, { orgId, id: existing.id, pageKey });
+          return published;
         }
         return updated as unknown as PageDTO;
       }
@@ -115,6 +123,8 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
         data,
         status: "published",
       });
+      emitDocumentEvent(PageEvents.CREATED, { orgId, id: created.id, pageKey });
+      emitDocumentEvent(PageEvents.PUBLISHED, { orgId, id: created.id, pageKey });
       return created as unknown as PageDTO;
     },
   };

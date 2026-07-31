@@ -1,6 +1,6 @@
 import { type DecodedJwt, getKey, importKey } from "@cfworker/jwt";
+import { coerceScalarString } from "@noname/shared";
 import { getCached, setCache } from "./cache";
-import { coerceScalarString } from "./coerce-scalar-string";
 import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
 

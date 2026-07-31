@@ -25,4 +25,9 @@ export const ADMIN_STATE = {
     playerEvents: "/admin/replay/playerEvents",
     playerLoading: "/admin/replay/playerLoading",
   },
+  flags: {
+    flags: "/admin/flags/rows",
+    loading: "/admin/flags/loading",
+    error: "/admin/flags/error",
+  },
 } as const;

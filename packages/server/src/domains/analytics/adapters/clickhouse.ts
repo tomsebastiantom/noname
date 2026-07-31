@@ -1,6 +1,6 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { createClient } from "@clickhouse/client";
-import { coerceScalarString } from "../../../shared/coerce-scalar-string";
+import { coerceScalarString } from "@noname/shared";
 import type {
   AnalyticsEventDTO,
   AnalyticsStorage,

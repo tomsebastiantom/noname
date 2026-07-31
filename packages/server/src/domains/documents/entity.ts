@@ -1,4 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
+import { ContentEvents } from "./events";
 
 // Content document — extends AggregateRoot so it can collect domain events.
 // Emits content.* events (distinct namespace from layout.*).
@@ -16,22 +17,22 @@ export class ContentDocument extends AggregateRoot {
 
   static create(orgId: string, type: string, data: Record<string, unknown>): ContentDocument {
     const entry = new ContentDocument(crypto.randomUUID(), orgId, type, data, "draft");
-    entry.apply("content.created", { id: entry.id, type, data });
+    entry.apply(ContentEvents.CREATED, { id: entry.id, orgId, type, data });
     return entry;
   }
 
   update(data: Record<string, unknown>): void {
     this.data = data;
-    this.apply("content.updated", { id: this.id, type: this.type, data });
+    this.apply(ContentEvents.UPDATED, { id: this.id, orgId: this.orgId, type: this.type, data });
   }
 
   publish(): void {
     this.status = "published";
-    this.apply("content.published", { id: this.id, type: this.type });
+    this.apply(ContentEvents.PUBLISHED, { id: this.id, orgId: this.orgId, type: this.type });
   }
 
   deleteEntry(): void {
-    this.apply("content.deleted", { id: this.id, type: this.type });
+    this.apply(ContentEvents.DELETED, { id: this.id, orgId: this.orgId, type: this.type });
   }
 }
 

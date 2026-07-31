@@ -1,15 +1,11 @@
+import { storeSlugFromHost } from "@noname/shared";
 import { getCached, setCache, slugCacheKey } from "./cache";
 import { fetchWithTimeout } from "./fetch-with-timeout";
 import type { Env } from "./types";
 
 const SLUG_CACHE_TTL = 300;
 
-export function storeSlugFromHost(host: string): string | null {
-  const hostname = host.split(":")[0]?.trim() ?? "";
-  const sub = hostname.split(".")[0];
-  if (!sub || sub === "localhost" || sub === "127") return null;
-  return sub;
-}
+export { storeSlugFromHost };
 
 /** Resolve store slug to org id — KV cache, then API. */
 export async function resolveSiteId(env: Env, siteId: string): Promise<string | null> {

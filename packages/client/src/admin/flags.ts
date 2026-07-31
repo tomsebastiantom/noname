@@ -14,8 +14,8 @@ export async function listFlags(): Promise<FlagRow[]> {
   return apiFetchData<FlagRow[]>("/api/flags");
 }
 
-export async function updateBooleanFlag(flag: FlagRow, next: boolean): Promise<void> {
-  await apiFetchVoid(`/api/flags/${flag.id}`, {
+export async function setBooleanFlagValue(flagId: string, next: boolean): Promise<void> {
+  await apiFetchVoid(`/api/flags/${flagId}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({

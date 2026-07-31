@@ -338,7 +338,11 @@ const adminFlagsSpec = {
         "Feature flags",
         "Toggle flags live on the storefront — changes push via SSE.",
       ),
-      children: ["flagsAdmin"],
+      children: ["loadFlags", "flagsAdmin"],
+    },
+    loadFlags: {
+      type: "MountAction",
+      props: { action: "listFlags" },
     },
     flagsAdmin: {
       type: "FeatureFlagsAdmin",

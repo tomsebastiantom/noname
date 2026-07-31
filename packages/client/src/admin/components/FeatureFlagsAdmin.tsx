@@ -1,4 +1,5 @@
-import { type ReactNode, useCallback, useEffect, useState } from "react";
+import { useActions, useStateValue } from "@json-render/react";
+import { type ReactNode, useState } from "react";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -9,8 +10,9 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import { ADMIN_STATE } from "../../core/admin-state";
 import type { ComponentCtx } from "../../core/components/types";
-import { type FlagRow, listFlags, updateBooleanFlag } from "../flags";
+import type { FlagRow } from "../flags";
 
 function flagValue(flag: FlagRow): unknown {
   const rule = flag.targeting.find((r) => r.priority === 0) ?? flag.targeting[0];
@@ -53,41 +55,32 @@ export function FeatureFlagsAdmin({
   offLabel: string;
   togglingLabel: string;
 }>) {
-  const [flags, setFlags] = useState<FlagRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { execute } = useActions();
+
+  const flags = (useStateValue(ADMIN_STATE.flags.flags) as FlagRow[] | undefined) ?? [];
+  const loading = (useStateValue(ADMIN_STATE.flags.loading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(ADMIN_STATE.flags.error) as string | null | undefined;
   const [toggling, setToggling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadFlags = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setFlags(await listFlags());
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void loadFlags();
-  }, [loadFlags]);
-
   async function toggleBoolean(flag: FlagRow) {
     if (flag.type !== "boolean") return;
-    const next = !flagValue(flag);
+    const next = flagValue(flag) !== true;
     setToggling(flag.id);
     setError(null);
     try {
-      await updateBooleanFlag(flag, next === true);
-      await loadFlags();
+      await execute({
+        action: "toggleBooleanFlag",
+        params: { flagId: flag.id, value: next },
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setToggling(null);
     }
   }
+
+  const displayError = error ?? loadError ?? null;
 
   return (
     <Card className="max-w-2xl">
@@ -96,9 +89,9 @@ export function FeatureFlagsAdmin({
         {props.description ? <CardDescription>{props.description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="space-y-4">
-        {error ? (
+        {displayError ? (
           <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription>{displayError}</AlertDescription>
           </Alert>
         ) : null}
         {flagListBody(loading, flags, props, () => (

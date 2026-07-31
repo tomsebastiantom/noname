@@ -1,10 +1,10 @@
+import { useActions } from "@json-render/react";
 import type { MouseEvent, ReactNode } from "react";
 import { useAnalyticsViewPermission } from "../../auth/analytics-access";
-import { clearSession, isLoggedIn } from "../../auth/session";
+import { isLoggedIn } from "../../auth/session";
 import { Button } from "../../components/ui/button";
 import { Separator } from "../../components/ui/separator";
 import { navigateApp } from "../../platform/app-navigation";
-import { clearObservabilityUser } from "../../platform/browser-observability";
 import { isPlatformPath } from "../../platform-routes";
 
 export type AdminNavItem = {
@@ -70,6 +70,7 @@ function AdminNavLink({
 }
 
 export function AdminNav(props: AdminNavProps) {
+  const { execute } = useActions();
   const loggedIn = isLoggedIn();
   const canViewReplay = useAnalyticsViewPermission();
 
@@ -121,11 +122,7 @@ export function AdminNav(props: AdminNavProps) {
             variant="outline"
             size="sm"
             className="w-full"
-            onClick={() => {
-              clearObservabilityUser();
-              clearSession();
-              window.location.href = "/login";
-            }}
+            onClick={() => void execute({ action: "logout" })}
           >
             {props.signOutLabel}
           </Button>
