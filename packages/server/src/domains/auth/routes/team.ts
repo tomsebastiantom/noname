@@ -8,7 +8,7 @@ import { teamInviteSchema, teamRoleUpdateSchema } from "./schemas";
 export function registerAuthTeamRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.get("/:orgId/auth/users", async (c) => {
+  routes.get("/:orgId/users", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
@@ -17,7 +17,7 @@ export function registerAuthTeamRoutes(routes: Hono, deps: AuthRouteDeps): void 
     return ok(c, await service.listTeamUsers(orgId));
   });
 
-  routes.post("/:orgId/auth/users/invite", async (c) => {
+  routes.post("/:orgId/users/invite", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);
@@ -27,7 +27,7 @@ export function registerAuthTeamRoutes(routes: Hono, deps: AuthRouteDeps): void 
     return created(c, await service.inviteTeamUser(orgId, body));
   });
 
-  routes.put("/:orgId/auth/users/:userId/role", async (c) => {
+  routes.put("/:orgId/users/:userId/role", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);

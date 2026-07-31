@@ -59,14 +59,14 @@
 | Task | Status |
 |------|--------|
 | `tenant_settings.auth` schema | ✅ |
-| `GET /api/tenants/:slug/auth/config` from Postgres | ✅ |
-| `PUT /api/tenants/:slug/auth/config` (admin/seed) | ✅ |
+| `GET /api/auth/:slug/config` from Postgres | ✅ |
+| `PUT /api/auth/:slug/config` (admin/seed) | ✅ |
 | `startIdpLogin` uses per-org `idpIds` | ✅ |
 | Removed env `listEnabledProviders` / `resolveIdpId` | ✅ |
 | ZITADEL Google IdP on Save (Management API) | ✅ Phase C |
 | Admin UI toggles (Google) | ✅ Phase C |
 
-**Validate:** `PUT auth/config` with `idpIds.google` → `GET auth/config` returns `providers: ["google"]` (no secrets in response).
+**Validate:** `PUT /api/auth/:slug/config` with `idpIds.google` → `GET /api/auth/:slug/config` returns `providers: ["google"]` (no secrets in response).
 
 **Doc:** [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)
 

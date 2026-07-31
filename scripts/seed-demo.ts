@@ -292,7 +292,7 @@ function adminShellProps(
     ...adminShellNavProps,
     activeNav,
     title,
-    ...(description !== undefined ? { description } : {}),
+    ...(description === undefined ? {} : { description }),
   };
 }
 
@@ -694,7 +694,7 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: orgHeaders(),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: body === undefined ? undefined : JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();

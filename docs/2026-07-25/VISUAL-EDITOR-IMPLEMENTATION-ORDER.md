@@ -18,7 +18,7 @@
 |---|------|------|------------|
 | **0** | **OpenFGA Playground** — prototype `store` + `document` relations (`owner` → `editor` → `viewer`) | Design (no prod service) | [play.fga.dev](https://play.fga.dev) · [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) |
 | **1** | **ZITADEL Role Assignment API** — `admin` / `editor` / `customer` in JWT; remove Postgres `teamRoles` | **Phase 0 — code** | [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) |
-| **2** | **`teamRoleFromJwt`** + guards on documents API, edge `?edit=true`, `GET /auth/session` | Phase 0 | [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) § Phase 0 |
+| **2** | **`teamRoleFromJwt`** + guards on documents API, edge `?edit=true`, `GET /api/auth/:slug/session` | Phase 0 | [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) § Phase 0 |
 | **3** | **Postgres `relation_tuples` + `Check()`** — per-document share (from OpenFGA model) | Phase 1 ReBAC | [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) |
 | **4** | **Catalog Zod `validateSpec`** + draft save by dot-path overrides | Spec storage | [`SPEC-STORAGE-MERGE.md`](./SPEC-STORAGE-MERGE.md) |
 | **5** | **Visual editor UI** — `?edit=true`, overlay, save bar, shared API paths | Phase 1 UI | [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) |

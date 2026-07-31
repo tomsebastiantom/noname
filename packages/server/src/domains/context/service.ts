@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import { eventBus } from "../../shared/event-bus";
 import { ContextEvents } from "./events";
-import type { ContextEngine, ContextSignal, ContextStorage, SegmentDTO } from "./ports";
+import type { ContextService, ContextSignal, ContextStorage, SegmentDTO } from "./ports";
 import { extractSignals } from "./signal-extraction";
 
 // Deterministic, tenant-agnostic segment resolution.
 // The SAME signal set ALWAYS maps to the SAME hash — regardless of which
 // tenant or when — so personalization is stable and cacheable.
-export function createContextEngine(storage: ContextStorage): ContextEngine {
+export function createContextService(storage: ContextStorage): ContextService {
   const hashSignals = (signals: ContextSignal[]): string => {
     const sorted = [...signals].sort((a, b) =>
       a.category === b.category ? a.key.localeCompare(b.key) : a.category.localeCompare(b.category),

@@ -10,9 +10,9 @@ export function SocialLoginButtons({
 }: Readonly<{
   providers: string[];
   redirectPath: string;
-  /** Button labels from GET /api/tenants/:slug/auth/config */
+  /** Button labels from GET /api/auth/:slug/config */
   providerLabels?: Record<string, string>;
-  /** Icon URLs from GET /api/tenants/:slug/auth/config */
+  /** Icon URLs from GET /api/auth/:slug/config */
   providerIcons?: Record<string, string>;
 }>) {
   const { execute } = useActions();

@@ -9,7 +9,7 @@ import { mfaEnrollmentConfirmSchema } from "./schemas";
 export function registerAuthMfaRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.post("/:orgId/auth/mfa/totp/register", async (c) => {
+  routes.post("/:orgId/mfa/totp/register", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);
@@ -24,7 +24,7 @@ export function registerAuthMfaRoutes(routes: Hono, deps: AuthRouteDeps): void {
     );
   });
 
-  routes.post("/:orgId/auth/mfa/totp/confirm", async (c) => {
+  routes.post("/:orgId/mfa/totp/confirm", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);

@@ -1,17 +1,17 @@
 import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
-import { getLayoutForTemplate, specToJson } from "../../admin/layout-entries";
-import {
-  applyLoginBranding,
-  extractLoginBranding,
-  type LoginBrandingValues,
-} from "../../admin/login-branding";
 import { fetchAuthSessionStatus, sessionHasPermission } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import type { ComponentCtx } from "./types";
+import type { ComponentCtx } from "../../core/components/types";
+import { getLayoutForTemplate, specToJson } from "../layout-entries";
+import {
+  applyLoginBranding,
+  extractLoginBranding,
+  type LoginBrandingValues,
+} from "../login-branding";
 
 export function LoginBrandingForm({
   props,

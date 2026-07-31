@@ -94,14 +94,8 @@ export function mergeAuthConfig(
     allowSignUp: patch.allowSignUp ?? current.allowSignUp ?? false,
     allowPasswordReset: patch.allowPasswordReset ?? current.allowPasswordReset ?? true,
     requireMfaForAdmin: patch.requireMfaForAdmin ?? current.requireMfaForAdmin ?? false,
-    idpIds: patch.idpIds !== undefined ? { ...patch.idpIds } : { ...current.idpIds },
-    providerLabels:
-      patch.providerLabels !== undefined
-        ? { ...patch.providerLabels }
-        : { ...(current.providerLabels ?? {}) },
-    providerIconAssets:
-      patch.providerIconAssets !== undefined
-        ? { ...patch.providerIconAssets }
-        : { ...(current.providerIconAssets ?? {}) },
+    idpIds: { ...(patch.idpIds ?? current.idpIds) },
+    providerLabels: { ...(patch.providerLabels ?? current.providerLabels ?? {}) },
+    providerIconAssets: { ...(patch.providerIconAssets ?? current.providerIconAssets ?? {}) },
   };
 }

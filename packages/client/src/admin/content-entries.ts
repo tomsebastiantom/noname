@@ -1,5 +1,6 @@
 import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
 import { assetUrlFromData } from "../lib/asset-url";
+import { coerceScalarString } from "../lib/coerce-scalar-string";
 
 export interface ContentFieldSchema {
   key: string;
@@ -52,11 +53,10 @@ function pickLocalized(value: unknown, locale: string): string {
   if (typeof value === "number" || typeof value === "boolean") return String(value);
   if (value && typeof value === "object" && !Array.isArray(value)) {
     const map = value as Record<string, unknown>;
-    if (locale in map) return String(map[locale] ?? "");
-    const first = Object.values(map)[0];
-    return first !== undefined ? String(first) : "";
+    if (locale in map) return coerceScalarString(map[locale]);
+    return coerceScalarString(Object.values(map)[0]);
   }
-  return value !== undefined && value !== null ? String(value) : "";
+  return coerceScalarString(value);
 }
 
 export function entryLabel(
@@ -68,7 +68,7 @@ export function entryLabel(
   if (!titleField) return entry.key;
   const raw = entry.data[titleField.key];
   if (titleField.isLocalizable) return pickLocalized(raw, locale) || entry.key;
-  return raw !== undefined && raw !== null ? String(raw) : entry.key;
+  return coerceScalarString(raw, entry.key);
 }
 
 export function fieldsFromResolved(resolved: Record<string, unknown>): Record<string, string> {
@@ -107,14 +107,7 @@ export function splitSavePayload(
       parsed = raw === "" ? 0 : Number(raw);
     } else if (field.type === "boolean") {
       parsed = raw === "true";
-    } else if (field.type === "media") {
-      if (raw === "") continue;
-      try {
-        parsed = JSON.parse(raw) as unknown;
-      } catch {
-        parsed = { documentId: raw };
-      }
-    } else if (field.type === "reference") {
+    } else if (field.type === "media" || field.type === "reference") {
       if (raw === "") continue;
       try {
         parsed = JSON.parse(raw) as unknown;
@@ -242,8 +235,8 @@ function assetFromRow(row: {
   const data = row.data ?? {};
   return {
     id: row.id,
-    fileName: String(data.fileName ?? row.key),
-    mimeType: String(data.mimeType ?? ""),
+    fileName: coerceScalarString(data.fileName, row.key),
+    mimeType: coerceScalarString(data.mimeType),
     url: assetUrlFromData(data),
   };
 }

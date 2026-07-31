@@ -1,10 +1,10 @@
 import type { ReactNode } from "react";
 import { useSyncExternalStore } from "react";
+import type { ComponentCtx } from "../../core/components/types";
 import { getPathname, subscribeAppLocation } from "../../platform/app-navigation";
 import { adminActiveNavFromPath } from "../../platform-routes";
 import { AdminNav, type AdminNavProps } from "./AdminNav";
 import { AdminPageHeader } from "./AdminPageHeader";
-import type { ComponentCtx } from "./types";
 
 export function AdminShell({
   props,

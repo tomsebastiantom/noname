@@ -49,7 +49,7 @@ Multi-tenant storefront + admin on **json-render specs** and a **documents** CMS
 
 ```text
 http://yogastore.localhost:5173          storefront
-http://yogastore.localhost:5173/login    login (spec props + auth/config)
+http://yogastore.localhost:5173/login    login (spec props + GET /api/auth/:slug/config)
 http://yogastore.localhost:5173/admin    admin (JWT required)
 http://yogastore.localhost:5173/account/security   MFA enrollment (JWT required)
 API :3000 · edge :8787 · ZITADEL :8080
@@ -82,19 +82,19 @@ pnpm seed:demo
 
 | API | Use |
 |-----|-----|
-| `GET /api/tenants/:slug/auth/config` | Login: providers, flags, icon URLs |
-| `POST /api/tenants/:slug/auth/login` | Email login or `mfaRequired` |
-| `POST …/auth/register` | Sign-up (if `allowSignUp`) |
-| `POST …/auth/password-reset/*` | Forgot / confirm reset |
-| `POST …/auth/mfa/totp/register` | Start TOTP enrollment (JWT) |
-| `POST …/auth/mfa/totp/confirm` | Confirm TOTP enrollment |
+| `GET /api/auth/:slug/config` | Login: providers, flags, icon URLs |
+| `POST /api/auth/:slug/login` | Email login or `mfaRequired` |
+| `POST /api/auth/:slug/register` | Sign-up (if `allowSignUp`) |
+| `POST /api/auth/:slug/password-reset/*` | Forgot / confirm reset |
+| `POST /api/auth/:slug/mfa/totp/register` | Start TOTP enrollment (JWT) |
+| `POST /api/auth/:slug/mfa/totp/confirm` | Confirm TOTP enrollment |
 | `GET /api/documents/resolve-refs?ids=` | Batch ref → label/preview |
 | `GET /api/documents/ref-backrefs?documentId=` | Inbound refs before delete |
 | `GET /api/edge/schema/:slug?template=` | Page spec (storefront + admin) |
-| `GET /api/tenants/:slug/auth/session` | MFA policy + enrollment status (JWT) |
-| `GET /api/tenants/:slug/auth/users` | List org team (JWT) |
-| `POST …/auth/users/invite` | Invite by email + role |
-| `PUT …/auth/users/:userId/role` | Assign admin/editor |
+| `GET /api/auth/:slug/session` | MFA policy + enrollment status (JWT) |
+| `GET /api/auth/:slug/users` | List org team (JWT) |
+| `POST /api/auth/:slug/users/invite` | Invite by email + role |
+| `PUT /api/auth/:slug/users/:userId/role` | Assign admin/editor |
 
 Header: `x-org-id` on document APIs. Storefront client uses `:slug` in tenant URLs.
 

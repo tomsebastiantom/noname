@@ -5,7 +5,7 @@ import { created } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
 import type { AIPipeline } from "./ports";
 
-export function createAIPipelineRoutes(pipeline: AIPipeline) {
+export function createAIPipelineRoutes(service: AIPipeline) {
   const routes = new Hono();
 
   routes.post("/generate/layout", async (c) => {
@@ -17,7 +17,7 @@ export function createAIPipelineRoutes(pipeline: AIPipeline) {
       prompt: string;
       context?: Record<string, unknown>;
     }>();
-    const result = await pipeline.generateLayout(orgId, prompt, context);
+    const result = await service.generateLayout(orgId, prompt, context);
     return created(c, result);
   });
 
@@ -27,7 +27,7 @@ export function createAIPipelineRoutes(pipeline: AIPipeline) {
 
     const orgId = getOrgId(c);
     const { contentType, prompt } = await c.req.json<{ contentType: string; prompt: string }>();
-    const result = await pipeline.generateContent(orgId, contentType, prompt);
+    const result = await service.generateContent(orgId, contentType, prompt);
     return created(c, result);
   });
 
@@ -40,7 +40,7 @@ export function createAIPipelineRoutes(pipeline: AIPipeline) {
       machineName: string;
       description: string;
     }>();
-    const result = await pipeline.generateMachine(orgId, machineName, description);
+    const result = await service.generateMachine(orgId, machineName, description);
     return created(c, result);
   });
 

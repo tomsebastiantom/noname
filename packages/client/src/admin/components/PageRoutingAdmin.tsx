@@ -1,7 +1,7 @@
-import { isPageTreePath } from "../../admin/routing-entries";
+import type { ComponentCtx } from "../../core/components/types";
+import { isPageTreePath } from "../routing-entries";
 import { PageEntryAdmin } from "./PageEntryAdmin";
 import { PageTreeAdmin } from "./PageTreeAdmin";
-import type { ComponentCtx } from "./types";
 
 type PageRoutingAdminProps = {
   title: string;

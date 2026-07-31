@@ -1,6 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
-import { type PageTreeEntry, ROUTING_DEFAULT_LOCALE } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
 import {
@@ -12,9 +11,10 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { ADMIN_STATE } from "../admin-state";
-import { useMountAction } from "./MountAction";
-import type { ComponentCtx } from "./types";
+import { ADMIN_STATE } from "../../core/admin-state";
+import { useMountAction } from "../../core/components/MountAction";
+import type { ComponentCtx } from "../../core/components/types";
+import { type PageTreeEntry, ROUTING_DEFAULT_LOCALE } from "../routing-entries";
 
 function emptyEntry(): PageTreeEntry {
   return {

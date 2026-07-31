@@ -2,7 +2,6 @@ import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 import { storeSlugFromHostname } from "../../auth/org";
 import { Alert, AlertDescription } from "../../components/ui/alert";
-import { Button } from "../../components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,29 +9,23 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Separator } from "../../components/ui/separator";
 import type { CoreActionName } from "../actions";
-import { SocialLoginButtons } from "./SocialLoginButtons";
+import {
+  type AuthProvider,
+  LOGIN_VIEW_SUBTITLES,
+  LOGIN_VIEW_TITLES,
+  type LoginView,
+  safeRedirect,
+  viewFromSearch,
+} from "./login-form-types";
+import {
+  LoginCredentialsView,
+  LoginForgotView,
+  LoginMfaView,
+  LoginResetView,
+  LoginSignupView,
+} from "./login-views";
 import type { ComponentCtx } from "./types";
-
-type AuthProvider = "google" | "github" | "apple" | (string & {});
-
-type LoginView = "login" | "forgot" | "reset" | "signup" | "mfa";
-
-function safeRedirect(path: string | null | undefined): string | null {
-  if (!path?.startsWith("/") || path.startsWith("//")) return null;
-  return path;
-}
-
-function viewFromSearch(search: URLSearchParams): LoginView {
-  if (search.get("mfa") === "1") return "mfa";
-  if (search.get("userID") && search.get("code")) return "reset";
-  if (search.get("signup") === "1") return "signup";
-  if (search.get("forgot") === "1") return "forgot";
-  return "login";
-}
 
 export function LoginForm({
   props,
@@ -75,7 +68,7 @@ export function LoginForm({
 
   useEffect(() => {
     if (!storeSlug) return;
-    void fetch(`/api/tenants/${storeSlug}/auth/config`)
+    void fetch(`/api/auth/${storeSlug}/config`)
       .then((res) =>
         res.ok
           ? (res.json() as Promise<{
@@ -118,6 +111,7 @@ export function LoginForm({
 
   const showSocial = enabledProviders.length > 0 && view === "login";
   const showPasswordForm = allowPassword && (view === "login" || view === "signup");
+  const alertState = { error, info, loading };
 
   async function runAction(action: CoreActionName, payload: Record<string, unknown>) {
     setError(null);
@@ -201,21 +195,8 @@ export function LoginForm({
     );
   }
 
-  const titles: Record<LoginView, string> = {
-    login: props.title,
-    forgot: "Forgot password",
-    reset: "Set new password",
-    signup: "Create account",
-    mfa: "Verify your identity",
-  };
-
-  const subtitles: Record<LoginView, string | null> = {
-    login: props.subtitle,
-    forgot: "Enter your email and we will send reset instructions.",
-    reset: "Choose a new password for your account.",
-    signup: "Register with email and password.",
-    mfa: "Enter the code from your authenticator app.",
-  };
+  const title = view === "login" ? props.title : LOGIN_VIEW_TITLES[view];
+  const subtitle = view === "login" ? props.subtitle : LOGIN_VIEW_SUBTITLES[view];
 
   return (
     <Card className="w-full border shadow-sm">
@@ -224,293 +205,81 @@ export function LoginForm({
           <img src={props.logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />
         )}
         <div className="space-y-1">
-          <CardTitle className="text-2xl">{titles[view]}</CardTitle>
-          {subtitles[view] && <CardDescription>{subtitles[view]}</CardDescription>}
+          <CardTitle className="text-2xl">{title}</CardTitle>
+          {subtitle && <CardDescription>{subtitle}</CardDescription>}
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
-        {showSocial && (
-          <SocialLoginButtons
-            providers={enabledProviders}
+        {view === "login" && showPasswordForm && (
+          <LoginCredentialsView
+            email={email}
+            password={password}
+            showPassword={showPassword}
+            showPasswordToggle={props.showPasswordToggle}
+            showSocial={showSocial}
+            allowPasswordReset={allowPasswordReset}
+            allowSignUp={allowSignUp}
+            enabledProviders={enabledProviders}
             redirectPath={redirectPath}
             providerLabels={providerLabels}
             providerIcons={providerIcons}
+            footerText={props.footerText}
+            state={alertState}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onTogglePassword={() => setShowPassword((v) => !v)}
+            onSubmit={onLoginSubmit}
+            onForgot={() => setView("forgot")}
+            onSignup={() => setView("signup")}
           />
         )}
 
-        {view === "login" && showPasswordForm && (
-          <form onSubmit={(e) => void onLoginSubmit(e)} className="flex flex-col gap-4">
-            {showSocial && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-                </div>
-              </div>
-            )}
-
-            {!showSocial && (
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Continue with email</span>
-                </div>
-              </div>
-            )}
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">Password</Label>
-                {allowPasswordReset && (
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
-                    onClick={() => setView("forgot")}
-                  >
-                    Forgot password?
-                  </button>
-                )}
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={props.showPasswordToggle && showPassword ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className={props.showPasswordToggle ? "pr-16" : undefined}
-                />
-                {props.showPasswordToggle && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
-                    onClick={() => setShowPassword((v) => !v)}
-                  >
-                    {showPassword ? "Hide" : "Show"}
-                  </Button>
-                )}
-              </div>
-            </div>
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {info && (
-              <Alert>
-                <AlertDescription>{info}</AlertDescription>
-              </Alert>
-            )}
-
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Signing in…" : "Sign in"}
-            </Button>
-
-            {allowSignUp && (
-              <p className="text-center text-sm text-muted-foreground">
-                No account?{" "}
-                <button
-                  type="button"
-                  className="underline underline-offset-2 hover:text-foreground"
-                  onClick={() => setView("signup")}
-                >
-                  Create one
-                </button>
-              </p>
-            )}
-
-            {props.footerText && (
-              <p className="text-center text-xs text-muted-foreground">{props.footerText}</p>
-            )}
-          </form>
-        )}
-
         {view === "forgot" && allowPasswordReset && (
-          <form onSubmit={(e) => void onForgotSubmit(e)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="forgot-email">Email</Label>
-              <Input
-                id="forgot-email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {info && (
-              <Alert>
-                <AlertDescription>{info}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Sending…" : "Send reset link"}
-            </Button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              onClick={() => setView("login")}
-            >
-              Back to sign in
-            </button>
-          </form>
+          <LoginForgotView
+            email={email}
+            state={alertState}
+            onEmailChange={setEmail}
+            onSubmit={onForgotSubmit}
+            onBack={() => setView("login")}
+          />
         )}
 
         {view === "reset" && allowPasswordReset && resetUserId && (
-          <form onSubmit={(e) => void onResetSubmit(e)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="new-password">New password</Label>
-              <Input
-                id="new-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {info && (
-              <Alert>
-                <AlertDescription>{info}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Saving…" : "Update password"}
-            </Button>
-          </form>
+          <LoginResetView
+            newPassword={newPassword}
+            state={alertState}
+            onPasswordChange={setNewPassword}
+            onSubmit={onResetSubmit}
+          />
         )}
 
         {view === "signup" && allowSignUp && (
-          <form onSubmit={(e) => void onSignupSubmit(e)} className="flex flex-col gap-4">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="given-name">First name</Label>
-                <Input
-                  id="given-name"
-                  autoComplete="given-name"
-                  value={givenName}
-                  onChange={(e) => setGivenName(e.target.value)}
-                />
-              </div>
-              <div className="flex flex-col gap-2">
-                <Label htmlFor="family-name">Last name</Label>
-                <Input
-                  id="family-name"
-                  autoComplete="family-name"
-                  value={familyName}
-                  onChange={(e) => setFamilyName(e.target.value)}
-                />
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="signup-email">Email</Label>
-              <Input
-                id="signup-email"
-                type="email"
-                autoComplete="username"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="signup-password">Password</Label>
-              <Input
-                id="signup-password"
-                type="password"
-                autoComplete="new-password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            {info && (
-              <Alert>
-                <AlertDescription>{info}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Creating account…" : "Create account"}
-            </Button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              onClick={() => setView("login")}
-            >
-              Back to sign in
-            </button>
-          </form>
+          <LoginSignupView
+            email={email}
+            password={password}
+            givenName={givenName}
+            familyName={familyName}
+            state={alertState}
+            onEmailChange={setEmail}
+            onPasswordChange={setPassword}
+            onGivenNameChange={setGivenName}
+            onFamilyNameChange={setFamilyName}
+            onSubmit={onSignupSubmit}
+            onBack={() => setView("login")}
+          />
         )}
 
         {view === "mfa" && (
-          <form onSubmit={(e) => void onMfaSubmit(e)} className="flex flex-col gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="totp">Authentication code</Label>
-              <Input
-                id="totp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                required
-                value={totpCode}
-                onChange={(e) => setTotpCode(e.target.value)}
-              />
-            </div>
-            {error && (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Verifying…" : "Continue"}
-            </Button>
-            <button
-              type="button"
-              className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
-              onClick={() => {
-                sessionStorage.removeItem("noname_mfa_login");
-                setView("login");
-              }}
-            >
-              Back to sign in
-            </button>
-          </form>
+          <LoginMfaView
+            totpCode={totpCode}
+            state={alertState}
+            onTotpChange={setTotpCode}
+            onSubmit={onMfaSubmit}
+            onBack={() => {
+              sessionStorage.removeItem("noname_mfa_login");
+              setView("login");
+            }}
+          />
         )}
 
         {view === "login" && !showPasswordForm && !showSocial && (

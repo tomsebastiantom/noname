@@ -13,7 +13,7 @@ async function loadOidcOrThrow() {
 }
 
 export async function requestPasswordReset(storeSlug: string, email: string): Promise<void> {
-  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/password-reset/request`, {
+  await apiFetchVoid(`/api/auth/${storeSlug}/password-reset/request`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ email }),
@@ -24,7 +24,7 @@ export async function confirmPasswordReset(
   storeSlug: string,
   input: { userId: string; verificationCode: string; newPassword: string },
 ): Promise<void> {
-  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/password-reset/confirm`, {
+  await apiFetchVoid(`/api/auth/${storeSlug}/password-reset/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -35,7 +35,7 @@ export async function registerAccount(
   storeSlug: string,
   input: { email: string; password: string; givenName?: string; familyName?: string },
 ): Promise<void> {
-  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/register`, {
+  await apiFetchVoid(`/api/auth/${storeSlug}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),
@@ -64,7 +64,7 @@ export async function loginWithPassword(
     sessionId?: string;
     sessionToken?: string;
     authRequestId?: string;
-  }>(`/api/tenants/${storeSlug}/auth/login`, {
+  }>(`/api/auth/${storeSlug}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -101,7 +101,7 @@ export async function verifyMfaAndLogin(
   const oidc = await loadOidcOrThrow();
 
   const data = await apiFetchData<{ accessToken?: string; expiresIn?: number }>(
-    `/api/tenants/${storeSlug}/auth/mfa/verify`,
+    `/api/auth/${storeSlug}/mfa/verify`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -127,7 +127,7 @@ export async function verifyMfaAndLogin(
 export async function startTotpEnrollment(): Promise<{ uri: string; secret: string }> {
   const storeSlug = requireStoreSlug();
   const data = await apiFetchData<{ uri?: string; secret?: string }>(
-    `/api/tenants/${storeSlug}/auth/mfa/totp/register`,
+    `/api/auth/${storeSlug}/mfa/totp/register`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -145,7 +145,7 @@ export async function startTotpEnrollment(): Promise<{ uri: string; secret: stri
 
 export async function confirmTotpEnrollment(code: string): Promise<void> {
   const storeSlug = requireStoreSlug();
-  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/mfa/totp/confirm`, {
+  await apiFetchVoid(`/api/auth/${storeSlug}/mfa/totp/confirm`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ code }),

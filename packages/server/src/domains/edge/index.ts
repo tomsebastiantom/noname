@@ -1,4 +1,4 @@
-import type { ContextEngine } from "../context/ports";
+import type { ContextService } from "../context/ports";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -14,7 +14,7 @@ export interface EdgeDomainDeps {
   content: ContentDocumentService;
   tenantSettings: TenantSettingsService;
   pages: PageTreeService;
-  context: ContextEngine;
+  context: ContextService;
   flags: FlagService;
 }
 

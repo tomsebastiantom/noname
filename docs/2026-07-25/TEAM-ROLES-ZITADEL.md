@@ -159,7 +159,7 @@ Edge HMAC: use resolved `admin` | `editor` | `customer` in `x-role`, not a stale
 2. **Invite / role APIs** — ZITADEL `CreateAuthorization` / `UpdateAuthorization` only  
 3. **Remove `teamRoles`** from Postgres read/write paths  
 4. **`teamRoleFromJwt`** in server + worker  
-5. **`GET /auth/session`** — `teamRole` from JWT (or re-fetch from ZITADEL if claim missing)  
+5. **`GET /api/auth/:slug/session`** — `teamRole` from JWT (or re-fetch from ZITADEL if claim missing)  
 6. **Documents API** — guards use JWT role; pass role into service for field ACLs  
 7. **`seed:demo`** — grant seed user `admin` in ZITADEL  
 

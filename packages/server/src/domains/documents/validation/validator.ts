@@ -25,6 +25,7 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
   switch (field.type) {
     case "text":
     case "longText":
+    case "date":
       base = z.string();
       break;
     case "richText": {
@@ -48,17 +49,12 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
     case "boolean":
       base = z.boolean();
       break;
-    case "date":
-      base = z.string();
-      break;
     case "media":
+    case "reference":
       base = z.union([z.string(), z.object({ documentId: z.string() }).strict()]);
       break;
     case "mediaList":
       base = z.array(z.union([z.string(), z.object({ documentId: z.string() }).strict()]));
-      break;
-    case "reference":
-      base = z.union([z.string(), z.object({ documentId: z.string() }).strict()]);
       break;
     case "enum":
       base =

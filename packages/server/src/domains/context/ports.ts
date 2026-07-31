@@ -13,7 +13,7 @@ export interface SegmentDTO {
 }
 
 // Persistence for segments + visitor->segment cache.
-// Kept separate from the engine so the engine stays pure (hashing + orchestration).
+// Kept separate from the service so resolution stays pure (hashing + orchestration).
 export interface ContextStorage {
   saveSegment(orgId: string, hash: string, signals: ContextSignal[]): Promise<SegmentDTO>;
   findSegmentByHash(orgId: string, hash: string): Promise<SegmentDTO | null>;
@@ -22,7 +22,7 @@ export interface ContextStorage {
   listSegments(orgId: string): Promise<SegmentDTO[]>;
 }
 
-export interface ContextEngine {
+export interface ContextService {
   // Resolve a signal set to a deterministic segment. orgId is optional for
   // ad-hoc resolution; request-based resolution always carries one.
   resolve(signals: ContextSignal[], orgId?: string): Promise<SegmentDTO>;

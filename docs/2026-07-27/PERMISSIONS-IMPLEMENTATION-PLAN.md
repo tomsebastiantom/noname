@@ -22,7 +22,7 @@
 | Assign **user → role** per org (existing admin UI) | Real ZITADEL user groups (“Marketing team”) |
 | ZITADEL **role group** field (console UI bucket only) | Postgres `relation_tuples` |
 | `requirePermission()` on write/publish routes | Visual editor `?edit=true` UI |
-| `GET /auth/session` → `{ roles, permissions[] }` | Per-page / tag-scoped access |
+| `GET /api/auth/:slug/session` → `{ roles, permissions[] }` | Per-page / tag-scoped access |
 
 **Platform-wide** = every store uses the same `ROLE_PERMISSIONS` map in code. Stores only choose **who** gets `admin` or `editor` in ZITADEL — not **what** those roles mean.
 
@@ -136,7 +136,7 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 | PUT content/layout draft | `content:draft_write` / `layout:draft_write` |
 | PUT publish | `content:publish` / `layout:publish` |
 | PUT page draft / publish | `page:draft_write` / `page:publish` |
-| PUT auth config, users, invite, role | `auth:manage` |
+| PUT `/api/auth/:slug/config`, users, invite, role | `auth:manage` |
 
 | Task | File |
 |------|------|
@@ -155,7 +155,7 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 
 | Task | Detail |
 |------|--------|
-| **4a** | `GET /auth/session` → `{ roles: string[], permissions: string[], teamRole?: string }` (legacy `teamRole` optional for client transition) |
+| **4a** | `GET /api/auth/:slug/session` → `{ roles: string[], permissions: string[], teamRole?: string }` (legacy `teamRole` optional for client transition) |
 | **4b** | Client: store `permissions[]` from session; hide Publish if missing `*:publish` |
 | **4c** | Client: MFA gate on `?edit=true` when policy on (same as `/admin`) |
 | **4d** | Edge `packages/workers/src/auth.ts` — parse roles claim; set `role` from JWT roles not hardcoded `customer` |
@@ -236,7 +236,7 @@ pnpm test && pnpm typecheck
 | 1 | editor → content draft | 200 |
 | 2 | editor → content publish | 403 |
 | 3 | admin → layout publish | 200 |
-| 4 | editor → PUT auth/config | 403 |
+| 4 | editor → PUT /api/auth/:slug/config | 403 |
 | 5 | no JWT → `?edit=true` at edge | login / 403 |
 | 6 | session returns `permissions[]` | includes draft keys for editor |
 

@@ -377,7 +377,7 @@ Read-only admin preview (JSON → `<Renderer>`) is OK before Phase 0. **Any save
 | **0b** | `init:zitadel` — roles `admin`, `editor`, `customer`; token emits role claim |
 | **0c** | Invite / role APIs → ZITADEL Authorization only; remove `teamRoles` writes |
 | **0d** | `rolesFromJwt()` + `expandPermissions(roles)` + `requirePermission(key)` |
-| **0e** | `GET /auth/session` → `{ roles, permissions[] }`; cache expand; invalidate on deploy / role change | [`PERMISSIONS-IDP-COMPARISON.md`](./PERMISSIONS-IDP-COMPARISON.md) |
+| **0e** | `GET /api/auth/:slug/session` → `{ roles, permissions[] }`; cache expand; invalidate on deploy / role change | [`PERMISSIONS-IDP-COMPARISON.md`](./PERMISSIONS-IDP-COMPARISON.md) |
 | **0f** | Documents API: save draft → `*:draft_write`; publish → `*:publish`; auth → `auth:manage` |
 | **0g** | Edge: gate `?edit=true` if missing `layout:draft_write` (or editor role) |
 | **0h** | Client: hide Publish unless `permissions` includes publish keys; MFA gate |
@@ -487,7 +487,7 @@ pnpm seed:demo && pnpm test && pnpm typecheck
 | 4 | admin | PUT layout publish | **200** |
 | 5 | no JWT | `?edit=true` at edge | login / **403** |
 | 6 | editor | `?edit=true` | **200** |
-| 7 | editor | PUT `/auth/config` | **403** |
+| 7 | editor | PUT `/api/auth/:slug/config` | **403** |
 | 8 | editor | write `price` field (admin-only rule) | **403** |
 
 ---

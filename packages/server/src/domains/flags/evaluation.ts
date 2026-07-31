@@ -136,8 +136,6 @@ function conditionMatches(
       return propertyMatches(condition, ctx.contextProperties);
     case "always":
       return true;
-    case "expression":
-      return false;
     default:
       return false;
   }

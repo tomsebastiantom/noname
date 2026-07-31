@@ -13,7 +13,7 @@
 | JWT session | `session.ts` + edge | Same | ✅ Yes |
 | Login copy / logo | Login **layout spec** props | Seeded spec + `LoginBrandingForm` | ✅ Yes |
 | Which social buttons show | **`tenant_settings.auth`** + ZITADEL IdP on **that org** | Postgres `auth.providers` + `idpIds` per org | ✅ Yes |
-| `GET .../auth/config` | Read **Postgres** for store slug | Same | ✅ Yes |
+| `GET /api/auth/:slug/config` | Read **Postgres** for store slug | Same | ✅ Yes |
 | IdP credentials | ZITADEL Management API per org (secrets server-only) | Admin Save → ZITADEL (Google/GitHub/Apple) | ✅ |
 | Merchant toggles | Admin **Auth settings** UI | `/admin/settings/auth` | ✅ Google/GitHub/Apple + password |
 | Provider icons | `providerIconAssets` as `{ documentId }` → resolved URLs on config | Same | ✅ Yes |
@@ -28,9 +28,9 @@ Do **not** move to Phase C admin or “production auth” until steps 1–4 exis
 
 ```
 ✅ 1. tenant_settings.auth schema     Postgres document shape (providers, idpIds, allowPassword)
-✅ 2. Persist + read per orgId        GET /auth/config from documents, not process.env
+✅ 2. Persist + read per orgId        GET /api/auth/:slug/config from documents, not process.env
 ✅ 3. ZITADEL IdP per org             Google via Management API on admin Save (`zitadel-management.ts`)
-✅ 4. Merge runtime                   LoginForm: spec.providers ∩ auth/config (from step 2)
+✅ 4. Merge runtime                   LoginForm: spec.providers ∩ GET /api/auth/:slug/config (from step 2)
 ✅ 5. Admin Auth settings (Phase C)   Google OAuth → ZITADEL + Postgres; generic content CMS
 ✅ 6. Remove env shortcut             No listEnabledProviders / resolveIdpId in runtime
 ```
@@ -153,7 +153,7 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 
 | API | Purpose |
 |-----|---------|
-| `POST /api/tenants/:slug/auth/login` | Email/password → JWT |
+| `POST /api/auth/:slug/login` | Email/password → JWT |
 | `GET/PUT /api/tenants/:slug/catalog` | Extension manifest |
 | `GET/PUT /api/documents/tenant_settings/default` | Locales, SEO, integrations (extend with `auth` block) |
 | `POST/PUT /api/documents/layout` | Login layout spec publish |
@@ -165,8 +165,8 @@ One ZITADEL instance; **each store = one ZITADEL organization** ([`AUTH-IDENTITY
 
 | API | Purpose |
 |-----|---------|
-| `GET /api/tenants/:slug/auth/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
-| `PUT /api/tenants/:slug/auth/config` | Admin JWT required: save providers + `idpIds` + MFA policy |
+| `GET /api/auth/:slug/config` | Public-safe providers from `tenant_settings.auth` (no `idpIds`) |
+| `PUT /api/auth/:slug/config` | Admin JWT required: save providers + `idpIds` + MFA policy |
 | `GET/PUT /api/documents/tenant_settings/default` | Full settings including `auth` block |
 
 OAuth routes (`idp/start`, callback) use per-org `idpIds` from Postgres.
@@ -234,10 +234,10 @@ Merchant flow (target):
 GET yogastore.localhost:5173/login
   │
   ├─► GET /api/edge/schema/yogastore?template=login     → layout spec (LoginForm tree)
-  ├─► GET /api/tenants/yogastore/auth/config (public)  → providers, flags (no secrets)
+  ├─► GET /api/auth/yogastore/config (public)  → providers, flags (no secrets)
   └─► catalog manifest (core only for login)
 
-Client merges auth/config into LoginForm props
+Client merges GET /api/auth/:slug/config into LoginForm props
   → LoginForm renders social buttons + email form
   → User signs in → same JWT pipeline
 ```
@@ -277,7 +277,7 @@ Cross-doc consolidated backlog:
 
 | Item | Doc | Phase |
 |------|-----|-------|
-| `tenant_settings.auth` schema + read in GET auth/config | This doc § Build order | ✅ A2 |
+| `tenant_settings.auth` schema + read in GET /api/auth/:slug/config | This doc § Build order | ✅ A2 |
 | Per-org IdP CRUD (Management API) | This doc | ✅ Google/GitHub/Apple |
 | Remove env IdP shortcut | This doc | ✅ A2 |
 | IdP start + OAuth callback routes | [`LOGIN-UI.md`](./LOGIN-UI.md) | ✅ scaffold |
@@ -321,7 +321,7 @@ Cross-doc consolidated backlog:
 ✅ 2. Phase B                   — commerce validation
 ✅ 3. Content render pipeline  — CMS → $state → edge resolve
 ✅ 4. Login social + OAuth      — UI + routes; config from Postgres
-✅ 5. tenant_settings.auth      — Postgres + GET/PUT auth/config per orgId
+✅ 5. tenant_settings.auth      — Postgres + GET/PUT /api/auth/:slug/config per orgId
 ✅ 6. Per-org ZITADEL IdP API    — Google on admin Save (Management API)
 ✅ 7. Phase C Admin (partial)    — Auth settings + ContentEntryAdmin
 📋 8. Layout admin + visual editor

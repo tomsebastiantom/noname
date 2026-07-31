@@ -8,7 +8,7 @@
 
 ## Principle
 
-Passwords and MFA secrets **never** live in Postgres. ZITADEL owns users, credentials, and policies. Our server stays a **broker** — same pattern as email login today (`POST …/auth/login` → Session API).
+Passwords and MFA secrets **never** live in Postgres. ZITADEL owns users, credentials, and policies. Our server stays a **broker** — same pattern as email login today (`POST /api/auth/:slug/login` → Session API).
 
 ---
 
@@ -35,7 +35,7 @@ Passwords and MFA secrets **never** live in Postgres. ZITADEL owns users, creden
 | `allowPasswordReset` | `true` (when password on) | Auth settings |
 | `allowSignUp` | `false` | Auth settings |
 
-Public flags on `GET /api/tenants/:slug/auth/config`: `allowPassword`, `allowSignUp`, `allowPasswordReset`.
+Public flags on `GET /api/auth/:slug/config`: `allowPassword`, `allowSignUp`, `allowPasswordReset`.
 
 ---
 
@@ -43,13 +43,13 @@ Public flags on `GET /api/tenants/:slug/auth/config`: `allowPassword`, `allowSig
 
 | Method | Path | Purpose |
 |--------|------|---------|
-| `POST` | `/api/tenants/:slug/auth/password-reset/request` | `{ email }` → ZITADEL reset email (always `{ ok: true }`) |
-| `POST` | `/api/tenants/:slug/auth/password-reset/confirm` | `{ userId, verificationCode, newPassword }` |
-| `POST` | `/api/tenants/:slug/auth/register` | `{ email, password, givenName?, familyName? }` |
-| `POST` | `/api/tenants/:slug/auth/login` | Returns `{ accessToken }` or `{ mfaRequired, sessionId, sessionToken, authRequestId }` |
-| `POST` | `/api/tenants/:slug/auth/mfa/verify` | Complete login after TOTP |
-| `POST` | `/api/tenants/:slug/auth/mfa/totp/register` | Start TOTP enrollment (JWT required) |
-| `POST` | `/api/tenants/:slug/auth/mfa/totp/confirm` | Confirm enrollment with `{ code }` (JWT required) |
+| `POST` | `/api/auth/:slug/password-reset/request` | `{ email }` → ZITADEL reset email (always `{ ok: true }`) |
+| `POST` | `/api/auth/:slug/password-reset/confirm` | `{ userId, verificationCode, newPassword }` |
+| `POST` | `/api/auth/:slug/register` | `{ email, password, givenName?, familyName? }` |
+| `POST` | `/api/auth/:slug/login` | Returns `{ accessToken }` or `{ mfaRequired, sessionId, sessionToken, authRequestId }` |
+| `POST` | `/api/auth/:slug/mfa/verify` | Complete login after TOTP |
+| `POST` | `/api/auth/:slug/mfa/totp/register` | Start TOTP enrollment (JWT required) |
+| `POST` | `/api/auth/:slug/mfa/totp/confirm` | Confirm enrollment with `{ code }` (JWT required) |
 
 ---
 

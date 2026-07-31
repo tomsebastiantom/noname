@@ -1,3 +1,4 @@
+import { coerceScalarString } from "../../../shared/coerce-scalar-string";
 import { iconUrlFromAsset } from "../assets/icon-url";
 import type { AssetDTO, ContentTypeSchema, DocumentDTO, DocumentStorage } from "../ports";
 import { labelFromContentData } from "../shared/locale";
@@ -41,7 +42,7 @@ export async function resolveDocumentRefs(
         type: "asset",
         key: row.key,
         status: row.status,
-        label: String(data.fileName ?? data.altText ?? row.key),
+        label: coerceScalarString(data.fileName) || coerceScalarString(data.altText) || row.key,
         imageUrl: iconUrlFromAsset(asset ?? (row as AssetDTO)),
       };
       continue;

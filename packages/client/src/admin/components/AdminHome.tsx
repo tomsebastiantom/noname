@@ -1,8 +1,8 @@
 import type { MouseEvent } from "react";
 import { isReplayAdminLink, useAnalyticsViewPermission } from "../../auth/analytics-access";
+import type { ComponentCtx } from "../../core/components/types";
 import { navigateApp } from "../../platform/app-navigation";
 import { isPlatformPath } from "../../platform-routes";
-import type { ComponentCtx } from "./types";
 
 function adminHomeLinkProps(href: string): { href: string; onClick?: (e: MouseEvent) => void } {
   const spa =

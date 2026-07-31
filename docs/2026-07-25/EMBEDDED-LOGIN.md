@@ -10,7 +10,7 @@
 
 Merchants and customers sign in on **our** `LoginForm` at `/login`. We do **not** send users to ZITADEL’s hosted login UI for product flows.
 
-Login goes through **our API** (`POST /api/tenants/:slug/auth/login`), which calls ZITADEL on the server and returns an OIDC access token (JWT).
+Login goes through **our API** (`POST /api/auth/:slug/login`), which calls ZITADEL on the server and returns an OIDC access token (JWT).
 
 ---
 
@@ -32,7 +32,7 @@ ZITADEL still owns users, passwords, and tokens. We never store passwords in Pos
 ```
 Browser (yogastore.localhost:5173/login)
   LoginForm → executeAction("login", { email, password, redirectPath })
-  → actions.login → auth/account-flows.ts → POST /api/tenants/yogastore/auth/login
+  → actions.login → auth/account-flows.ts → POST /api/auth/yogastore/login
       { email, password, codeVerifier, clientId, redirectUri }
            │
            ▼
@@ -64,9 +64,9 @@ Everything after login is unchanged: edge JWT validation, HMAC to server, `org_i
 | Client auth | `packages/client/src/auth/login.ts` | POST to our API, store token (used by actions only) |
 | Client session | `packages/client/src/auth/session.ts` | Token storage, `apiHeaders()` |
 | **Server auth** | `packages/server/src/domains/auth/` | ZITADEL Session + OIDC finalize |
-| **Auth config (target)** | `tenant_settings.auth` + `GET .../auth/config` | Per-org providers from Postgres — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
+| **Auth config (target)** | `tenant_settings.auth` + `GET /api/auth/:slug/config` | Per-org providers from Postgres — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) |
 | **Auth config (scaffold)** | `listEnabledProviders()` env lookup | Dev only — **not** production; replace in Phase A2 |
-| Edge | `packages/workers/src/routes/proxy.ts` | Public `POST .../auth/login` |
+| Edge | `packages/workers/src/routes/proxy.ts` | Public `POST /api/auth/:slug/login` |
 | Secrets | `zitadel_keys/login-client.pat` | Server-only; created by `pnpm init:zitadel` |
 
 See [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — one canonical path; do not import `auth/login.ts` from catalog components.

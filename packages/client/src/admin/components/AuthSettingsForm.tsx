@@ -12,7 +12,7 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import type { ComponentCtx } from "./types";
+import type { ComponentCtx } from "../../core/components/types";
 
 function cmsProviderEnabled(
   authProviders: Array<{ providerKey: AuthProvider; enabled: boolean }>,

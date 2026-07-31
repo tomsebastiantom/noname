@@ -12,13 +12,16 @@ import {
   stripOrgFromSearch,
 } from "./strip-public-org";
 
-/** /api/edge/schema/:siteId or /api/tenants/:siteId/... */
+/** /api/edge/schema/:siteId, /api/tenants/:siteId/..., or /api/auth/:siteId/... */
 function siteIdFromPath(pathname: string): string {
   const parts = pathname.split("/").filter(Boolean);
   if (parts[0] === "api" && parts[1] === "edge" && parts[2] === "schema" && parts[3]) {
     return parts[3];
   }
   if (parts[0] === "api" && parts[1] === "tenants" && parts[2] && parts[2] !== "resolve") {
+    return parts[2];
+  }
+  if (parts[0] === "api" && parts[1] === "auth" && parts[2]) {
     return parts[2];
   }
   return "";
@@ -30,6 +33,15 @@ function isResolveSlugPath(pathname: string): boolean {
 
 function routeIsPublic(method: string, pathname: string): boolean {
   return isPublicGet(method, pathname) || isPublicPost(method, pathname);
+}
+
+async function resolveJwt(
+  req: Request,
+  env: Env,
+): Promise<Awaited<ReturnType<typeof tryParseJwt>> | Response> {
+  const existing = await tryParseJwt(req, env);
+  if (existing) return existing;
+  return validateJwt(req, env);
 }
 
 export function createApiProxyRoutes() {
@@ -46,22 +58,16 @@ export function createApiProxyRoutes() {
     let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
     if (editMode) {
-      jwt = await tryParseJwt(c.req.raw, c.env);
-      if (!jwt) {
-        const auth = await validateJwt(c.req.raw, c.env);
-        if (auth instanceof Response) return auth;
-        jwt = auth;
-      }
-      if (!canDraft(jwt.roles ?? [])) {
+      const auth = await resolveJwt(c.req.raw, c.env);
+      if (auth instanceof Response) return auth;
+      jwt = auth;
+      if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
     } else if (!isPublic) {
-      jwt = await tryParseJwt(c.req.raw, c.env);
-      if (!jwt) {
-        const auth = await validateJwt(c.req.raw, c.env);
-        if (auth instanceof Response) return auth;
-        jwt = auth;
-      }
+      const auth = await resolveJwt(c.req.raw, c.env);
+      if (auth instanceof Response) return auth;
+      jwt = auth;
     }
 
     let orgId = jwt?.orgId || "";

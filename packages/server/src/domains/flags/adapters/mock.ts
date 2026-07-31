@@ -57,8 +57,8 @@ export function createInMemoryFlagStorage(): FlagStorage {
         defaultValue: input.defaultValue ?? existing.defaultValue,
         targeting: input.targeting ?? existing.targeting,
         status: input.status ?? existing.status,
-        schemaId: input.schemaId !== undefined ? input.schemaId : existing.schemaId,
-        variantId: input.variantId !== undefined ? input.variantId : existing.variantId,
+        schemaId: "schemaId" in input ? input.schemaId! : existing.schemaId,
+        variantId: "variantId" in input ? input.variantId! : existing.variantId,
         updatedAt: new Date(),
       };
       flags.set(id, updated);

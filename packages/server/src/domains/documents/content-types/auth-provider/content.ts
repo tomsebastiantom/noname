@@ -1,3 +1,4 @@
+import { coerceScalarString } from "../../../../shared/coerce-scalar-string";
 import { documentIdFromRef } from "../../refs";
 
 export const AUTH_PROVIDER_CONTENT_TYPE = "auth_provider";
@@ -44,17 +45,15 @@ export function isSupportedLoginProvider(provider: string): boolean {
 export function parseAuthProviderDisplayData(
   data: Record<string, unknown>,
 ): AuthProviderDisplayData | null {
-  const providerKey = String(data.provider_key ?? "")
-    .trim()
-    .toLowerCase();
+  const providerKey = coerceScalarString(data.provider_key).trim().toLowerCase();
   if (!providerKey || !PROVIDER_KEY_PATTERN.test(providerKey)) {
     return null;
   }
 
-  const name = String(data.name ?? "").trim();
+  const name = coerceScalarString(data.name).trim();
   if (!name) return null;
 
-  const enabled = data.enabled === undefined ? true : Boolean(data.enabled);
+  const enabled = Boolean(data.enabled ?? true);
 
   return { name, providerKey, enabled };
 }
@@ -66,11 +65,11 @@ export function parseAuthProviderEntryData(data: Record<string, unknown>): AuthP
     throw new Error("provider_key must be lowercase letters, numbers, and hyphens");
   }
 
-  const clientId = String(data.client_id ?? "").trim();
-  const clientSecret = String(data.client_secret ?? "").trim();
-  const authorizationEndpoint = String(data.authorization_endpoint ?? "").trim();
-  const tokenEndpoint = String(data.token_endpoint ?? "").trim();
-  const userEndpoint = String(data.user_endpoint ?? "").trim();
+  const clientId = coerceScalarString(data.client_id).trim();
+  const clientSecret = coerceScalarString(data.client_secret).trim();
+  const authorizationEndpoint = coerceScalarString(data.authorization_endpoint).trim();
+  const tokenEndpoint = coerceScalarString(data.token_endpoint).trim();
+  const userEndpoint = coerceScalarString(data.user_endpoint).trim();
 
   if (isBuiltinLoginProvider(display.providerKey)) {
     throw new Error("Built-in providers must not include OAuth credentials in CMS entries");
@@ -81,7 +80,7 @@ export function parseAuthProviderEntryData(data: Record<string, unknown>): AuthP
     throw new Error("authorization_endpoint, token_endpoint, and user_endpoint are required");
   }
 
-  const scopesRaw = String(data.scopes ?? "openid email profile").trim();
+  const scopesRaw = coerceScalarString(data.scopes, "openid email profile").trim();
   const scopes = scopesRaw
     .split(/[\s,]+/)
     .map((s) => s.trim())

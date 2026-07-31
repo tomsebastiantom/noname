@@ -54,13 +54,13 @@ HMAC payload: `orgId:userId:role`
 | DB column | Drizzle `orgId: text("org_id")` | ✅ |
 | Client → edge | rspack proxy → `localhost:8787`; **no `x-org-id`** from browser | ✅ |
 | Client OIDC config | `pnpm init:zitadel` → `packages/client/public/oidc.json` | ✅ runtime fetch, not bundler |
-| Embedded login | `LoginForm`, `POST .../auth/login`, server ZITADEL Session API | ✅ see [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
+| Embedded login | `LoginForm`, `POST /api/auth/:slug/login`, server ZITADEL Session API | ✅ see [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md) |
 
 ---
 
 ## Roadmap (auth + routing)
 
-> **Updated 2026-07-25:** login branding admin, per-org `auth/config` from Postgres — verified against live API.
+> **Updated 2026-07-25:** login branding admin, per-org `/api/auth/:slug/config` from Postgres — verified against live API.
 
 | Phase | Scope | Status |
 |-------|--------|--------|
@@ -92,7 +92,7 @@ pnpm --filter @noname/client dev     # :5173 → proxies /api to edge
 
 Open the client at **`http://yogastore.localhost:5173`** — store slug in the subdomain resolves to org id, same as production hostname routing. No demo org baked into rspack.
 
-**Sign in:** open **`/login`** → enter email/password → client POSTs to `POST /api/tenants/yogastore/auth/login` → server calls ZITADEL Session API → JWT stored → redirect.
+**Sign in:** open **`/login`** → enter email/password → client POSTs to `POST /api/auth/yogastore/login` → server calls ZITADEL Session API → JWT stored → redirect.
 
 Why the server is in the path: ZITADEL does not support password grant in the browser, and the Session API requires a secret. See [EMBEDDED-LOGIN.md](./EMBEDDED-LOGIN.md).
 

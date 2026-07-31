@@ -1,4 +1,4 @@
-import type { ContextEngine } from "../context/ports";
+import type { ContextService } from "../context/ports";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -14,7 +14,7 @@ export function createEdgeService(
   layout: LayoutDocumentService,
   content: ContentDocumentService,
   tenantSettings: TenantSettingsService,
-  contextEngine: ContextEngine,
+  contextService: ContextService,
   flagService: FlagService,
   pages: PageTreeService,
 ): EdgeService {
@@ -67,7 +67,7 @@ export function createEdgeService(
 
     async personalize(orgId, input) {
       const headers = input.headers ?? {};
-      const segment = await contextEngine.segmentForRequest(orgId, headers);
+      const segment = await contextService.segmentForRequest(orgId, headers);
 
       const resolved = await layout.resolve(orgId, "home", segment.hash);
 

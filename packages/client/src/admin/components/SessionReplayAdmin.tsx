@@ -1,6 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { useState } from "react";
-import type { ReplaySessionSummary } from "../../admin/session-replay";
 import { useAnalyticsViewPermission } from "../../auth/analytics-access";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Button } from "../../components/ui/button";
@@ -11,10 +10,11 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import { ADMIN_STATE } from "../admin-state";
+import { ADMIN_STATE } from "../../core/admin-state";
+import type { ComponentCtx } from "../../core/components/types";
+import type { ReplaySessionSummary } from "../session-replay";
 import { DataTable, type DataTableColumn } from "./DataTable";
 import { ReplayPlayer } from "./ReplayPlayer";
-import type { ComponentCtx } from "./types";
 
 export function SessionReplayAdmin({
   props,

@@ -60,7 +60,7 @@ AdminShell (activeNav: "content")
 **Actions:** `login`, `idpLogin`  
 **Layout:** `login`
 
-Copy (title, subtitle, logo) in **layout spec props**. Provider list merged from `GET /api/tenants/:orgId/auth/config`.
+Copy (title, subtitle, logo) in **layout spec props**. Provider list merged from `GET /api/auth/:orgId/config`.
 
 **Not CMS content** — see `docs/2026-07-25/ARCHITECTURE-MAP.md` § two page types.
 

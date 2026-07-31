@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ConflictError } from "../../../../shared/domain-error";
 import { zitadelIssuer } from "./issuer";
+import { jsonRequestBody } from "./json-body";
 
 const issuer = zitadelIssuer();
 const MANAGEMENT_BASE = `${issuer}/management/v1`;
@@ -107,7 +108,7 @@ async function managementRequest<T>(
   const res = await fetch(`${MANAGEMENT_BASE}${path}`, {
     method,
     headers: orgHeaders(orgId, token),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: jsonRequestBody(body),
   });
 
   const text = await res.text();
@@ -234,7 +235,7 @@ export async function connectRequest<T>(
       ...orgHeaders(orgId, token),
       "Connect-Protocol-Version": "1",
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: jsonRequestBody(body),
   });
 
   const text = await res.text();
@@ -270,7 +271,7 @@ export async function v2Request<T>(
   const res = await fetch(`${ZITADEL_V2_BASE}${path}`, {
     method,
     headers: orgHeaders(orgId, token),
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: jsonRequestBody(body),
   });
 
   const text = await res.text();

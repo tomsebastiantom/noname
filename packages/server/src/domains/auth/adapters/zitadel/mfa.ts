@@ -1,4 +1,5 @@
 import { zitadelIssuer } from "./issuer";
+import { jsonRequestBody } from "./json-body";
 import { v2Request } from "./management";
 
 export interface TotpRegistrationStart {
@@ -18,7 +19,7 @@ async function userV2Request<T>(
       Authorization: `Bearer ${userToken}`,
       "Content-Type": "application/json",
     },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    body: jsonRequestBody(body),
   });
 
   const text = await res.text();

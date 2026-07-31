@@ -8,13 +8,13 @@ import { authConfigUpdateSchema } from "./schemas";
 export function registerAuthConfigRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.get("/:orgId/auth/config", async (c) => {
+  routes.get("/:orgId/config", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     return ok(c, await service.getConfig(orgId));
   });
 
-  routes.put("/:orgId/auth/config", async (c) => {
+  routes.put("/:orgId/config", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireAuthManage(c);

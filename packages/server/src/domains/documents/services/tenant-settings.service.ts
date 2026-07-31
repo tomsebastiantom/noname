@@ -11,8 +11,7 @@ export function createTenantSettingsService(storage: DocumentStorage): TenantSet
       return storage.upsertTenantSettings(orgId, defaultTenantSettings());
     },
     async upsert(orgId, data) {
-      const nextSlug =
-        data.slug === null || data.slug === undefined ? null : normalizeStoreSlug(data.slug);
+      const nextSlug = data.slug == null ? null : normalizeStoreSlug(data.slug);
       if (nextSlug) {
         assertValidStoreSlug(nextSlug);
         const owner = await storage.findOrgIdByStoreSlug(nextSlug);

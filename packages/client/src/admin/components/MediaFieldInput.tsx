@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from "react";
+import { Button } from "../../components/ui/button";
+import { Label } from "../../components/ui/label";
 import {
   type AssetSummary,
   documentIdFromFieldValue,
   getAsset,
   listAssets,
   uploadAsset,
-} from "../../admin/content-entries";
-import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/label";
+} from "../content-entries";
 
 export type MediaFieldLabels = {
   uploadFileLabel: string;

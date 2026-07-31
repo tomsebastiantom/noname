@@ -124,7 +124,7 @@ From [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) — still open:
 
 1. **`init:zitadel`** — project roles + token claims  
 2. **Invite / role APIs** — ZITADEL Role Assignment only; stop writing `teamRoles`  
-3. **`teamRoleFromJwt`** — server + worker + `GET /auth/session`  
+3. **`teamRoleFromJwt`** — server + worker + `GET /api/auth/:slug/session`  
 4. **Documents API** — guards + field ACL enforcement using JWT role  
 5. **Edge** — `?edit=true` requires JWT with `editor` or `admin`  
 6. **Client** — edit-mode gate from session `teamRole`  

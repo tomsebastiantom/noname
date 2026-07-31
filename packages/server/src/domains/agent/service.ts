@@ -1,5 +1,5 @@
-import { context, propagation } from "@opentelemetry/api";
 import { flushEvents } from "../../shared/aggregate-root";
+import { injectTraceCarrier } from "../../shared/bullmq-trace";
 import { AgentTask } from "./entity";
 import type { AgentService, AgentTaskStorage } from "./ports";
 import { getAgentQueue } from "./queue";
@@ -12,9 +12,6 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
       const saved = await storage.create(orgId, entity.toDTO());
       flushEvents(entity);
 
-      const carrier: Record<string, string> = {};
-      propagation.inject(context.active(), carrier);
-
       const queue = getAgentQueue();
       await queue.add(
         entity.type,
@@ -24,8 +21,7 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
           type: entity.type,
           prompt: entity.prompt,
           input: entity.input,
-          traceparent: carrier.traceparent,
-          tracestate: carrier.tracestate,
+          ...injectTraceCarrier(),
         },
         {
           attempts: 3,

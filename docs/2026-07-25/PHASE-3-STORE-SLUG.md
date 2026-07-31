@@ -54,7 +54,7 @@ Production shape is the same: hostname identifies the store; edge resolves it to
 JWT org claim  →  URL path slug  →  Host → slug lookup
 ```
 
-Public paths use **slug** in the segment (`/api/edge/schema/yogastore`, `/api/tenants/yogastore/...`). Edge and server resolve slug → org id before upstream HMAC.
+Public paths use **slug** in the segment (`/api/edge/schema/yogastore`, `/api/auth/yogastore/...`, `/api/tenants/yogastore/catalog`, …). Edge and server resolve slug → org id before upstream HMAC.
 
 ### 4. Client
 
@@ -102,7 +102,7 @@ Phase 3 only changes **how `orgId` is discovered** from the incoming request (Ho
 
 - [x] Schema: `slug` on `tenant_settings` (+ uniqueness on save)
 - [x] `seed:demo` → `yogastore`
-- [x] Server: `GET /api/tenants/resolve/:slug` + `resolveSiteIdToOrgId` on edge/tenant/auth paths
+- [x] Server: `GET /api/tenants/resolve/:slug` + `resolveSiteIdToOrgId` on edge, tenant, and `/api/auth` paths
 - [x] Edge: Host → slug → org id (KV cache in `resolve-slug.ts`)
 - [x] Edge proxy: slug in path segments resolved to org id for HMAC upstream
 - [x] Edge public routes: auth config, login, register, password-reset, MFA, OAuth start

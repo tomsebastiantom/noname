@@ -10,7 +10,7 @@ import type { AuthRouteDeps } from "./deps";
 export function registerAuthSessionRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.get("/:orgId/auth/session", async (c) => {
+  routes.get("/:orgId/session", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = requireAuthenticatedUser(c);

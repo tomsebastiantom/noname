@@ -83,35 +83,27 @@ app.route("/api/analytics", analytics.routes);
 const aiPipeline = createAIPipelineDomain();
 app.route("/api/ai", aiPipeline.routes);
 
+function pipelineTaskResult(r: { response: unknown; model: string; tokens: number }) {
+  return {
+    output: r.response as Record<string, unknown>,
+    model: r.model,
+    tokens: r.tokens,
+  };
+}
+
 const agent = createAgentDomain({
   db,
   executor: {
     async execute(orgId, type, prompt, input) {
       switch (type) {
-        case "generate_layout": {
-          const r = await aiPipeline.pipeline.generateLayout(orgId, prompt, input);
-          return {
-            output: r.response as Record<string, unknown>,
-            model: r.model,
-            tokens: r.tokens,
-          };
-        }
-        case "generate_content": {
-          const r = await aiPipeline.pipeline.generateContent(orgId, "content", prompt);
-          return {
-            output: r.response as Record<string, unknown>,
-            model: r.model,
-            tokens: r.tokens,
-          };
-        }
-        case "generate_machine": {
-          const r = await aiPipeline.pipeline.generateMachine(orgId, type, prompt);
-          return {
-            output: r.response as Record<string, unknown>,
-            model: r.model,
-            tokens: r.tokens,
-          };
-        }
+        case "generate_layout":
+          return pipelineTaskResult(await aiPipeline.service.generateLayout(orgId, prompt, input));
+        case "generate_content":
+          return pipelineTaskResult(
+            await aiPipeline.service.generateContent(orgId, "content", prompt),
+          );
+        case "generate_machine":
+          return pipelineTaskResult(await aiPipeline.service.generateMachine(orgId, type, prompt));
         case "analyze_analytics":
           return { output: { insights: [] }, model: "mock", tokens: 0 };
         default:
@@ -127,7 +119,7 @@ const edge = createEdgeDomain({
   content: docs.service.content,
   tenantSettings: docs.service.tenantSettings,
   pages: docs.service.pages,
-  context: ctx.engine,
+  context: ctx.service,
   flags: flags.service,
 });
 app.route("/api/edge", edge.routes);
@@ -135,7 +127,7 @@ app.route("/api/edge", edge.routes);
 const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
 app.route("/api/tenants", tenant.routes);
 
-app.route("/api/tenants", auth.routes);
+app.route("/api/auth", auth.routes);
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });

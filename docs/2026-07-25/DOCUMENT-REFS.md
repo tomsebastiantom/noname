@@ -21,7 +21,7 @@ Meaning is **not** stored in the ref. It comes from **where the ref lives**:
 | Content field `type: "media"` | Must resolve to a row with `type === "asset"` |
 | Content field `type: "reference"`, `references: "product"` | Must resolve to a row with `type === "product"` |
 | `tenant_settings.seo.ogImage` | Code-defined: media ref → asset row |
-| `tenant_settings.auth.providerIconAssets` | Code-defined: media ref → asset row; URLs resolved at read time on `GET /auth/config` |
+| `tenant_settings.auth.providerIconAssets` | Code-defined: media ref → asset row; URLs resolved at read time on `GET /api/auth/:slug/config` |
 
 **Resolution by id is the right model.** We do not embed entry content, URLs, or type names inside the stored ref. We store a stable row id; validation and UI use schema (or code-defined config) to interpret it.
 
@@ -76,7 +76,7 @@ Asset CRUD and `assets.get(orgId, documentId)` use **row id** (`findDocumentById
 ### Auth + tenant config
 
 - `providerIconAssets`: `Record<string, MediaRef>` — stored refs, not URLs
-- `GET /auth/config`: `providerIcons` — URLs resolved at read time via `resolveProviderIconUrls()`
+- `GET /api/auth/:slug/config`: `providerIcons` — URLs resolved at read time via `resolveProviderIconUrls()`
 - Custom IdPs: `auth_provider.icon` media field → publish sync → `tenant_settings.auth`
 
 ### Client admin
@@ -120,7 +120,7 @@ Not every code path resolves refs. That is intentional:
 | Consumer | Resolves refs? | Notes |
 |----------|----------------|-------|
 | Content save | Validates existence + type only | No URL expansion |
-| `GET /auth/config` | Yes — `providerIcons` | Public login needs image URLs |
+| `GET /api/auth/:slug/config` | Yes — `providerIcons` | Public login needs image URLs |
 | Edge `$state` / render pipeline | Yes — media → variant URLs | See CONTENT-RENDER-PIPELINE |
 | Admin entry list | Partial — labels from entry data | Reference picker loads target list by type |
 | Raw `GET /api/documents/:type/:id` | No — returns stored `{ documentId }` | Callers resolve if needed |

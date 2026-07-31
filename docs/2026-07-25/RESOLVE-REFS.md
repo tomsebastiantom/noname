@@ -134,7 +134,7 @@ Id parsing: `parseRefIdsParam()` — trim, dedupe, cap.
 
 | Use case | Mechanism |
 |----------|-----------|
-| Login social icons | `GET /auth/config` → `providerIcons` (resolved from `providerIconAssets` refs) |
+| Login social icons | `GET /api/auth/:slug/config` → `providerIcons` (resolved from `providerIconAssets` refs) |
 | Asset admin preview | `enrichAssetUrls()` on asset GET/list |
 | Edge page render | `$state` + content pipeline — full entry data, not resolve batch |
 

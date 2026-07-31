@@ -35,7 +35,7 @@ export function registerTenantSettingsRoutes(routes: Hono, deps: DocumentsRouteD
     }>();
     const current = await tenantSettings.get(orgId);
     const upserted = await tenantSettings.upsert(orgId, {
-      slug: body.slug !== undefined ? body.slug : current.slug,
+      slug: "slug" in body ? body.slug! : current.slug,
       locales: body.locales ?? current.locales,
       defaultLocale: body.defaultLocale ?? current.defaultLocale,
       seo: (body.seo ?? current.seo) as never,

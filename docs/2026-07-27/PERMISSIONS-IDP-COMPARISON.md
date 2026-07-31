@@ -61,7 +61,7 @@ Changing who can do what has **two different triggers**:
 |--------|----------------|
 | All IdPs | JWT still says old role until **refresh / re-login** |
 | ZITADEL | New Role Assignment → new token on next login/refresh |
-| Our app | `GET /auth/session` should re-read JWT; invalidate session cache for Bob |
+| Our app | `GET /api/auth/:slug/session` should re-read JWT; invalidate session cache for Bob |
 
 **Every system** needs a new token (or refresh) when **role assignment** changes.
 

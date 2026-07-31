@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { context, propagation } from "@opentelemetry/api";
+import { injectTraceCarrier } from "../../shared/bullmq-trace";
 import type { ManifestStore } from "./adapters/manifest-store";
 import type { CatalogManifest, TenantCatalogService } from "./ports";
 import { getCatalogBuildQueue } from "./queue";
@@ -22,8 +22,6 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
 
     async publishComponent(orgId, name, source) {
       const buildId = randomUUID();
-      const carrier: Record<string, string> = {};
-      propagation.inject(context.active(), carrier);
 
       await manifestStore.setBuildStatus(buildId, "pending");
 
@@ -35,8 +33,7 @@ export function createTenantCatalogService(manifestStore: ManifestStore): Tenant
           orgId,
           name,
           source,
-          traceparent: carrier.traceparent,
-          tracestate: carrier.tracestate,
+          ...injectTraceCarrier(),
         },
         {
           attempts: 3,

@@ -17,11 +17,11 @@ This session added org MFA policy, team user admin, and then ran a security/edge
 | # | Issue | Severity | Fix |
 |---|-------|----------|-----|
 | 1 | `requireMfaForAdmin` and `teamRoles` dropped on Postgres read | **High** | `toTenantSettings()` in `postgres.ts` now uses `normalizeAuthConfig(data.auth)` instead of rebuilding a partial auth object |
-| 2 | `PUT /api/tenants/:slug/auth/config` accepted updates with only `x-org-id` (no JWT) | **Critical** | Route requires `requireAuthenticatedUser`; returns **401** without Bearer token |
+| 2 | `PUT /api/auth/:slug/config` accepted updates with only `x-org-id` (no JWT) | **Critical** | Route requires `requireAuthenticatedUser`; returns **401** without Bearer token |
 | 3 | TOTP enrollment failed with `Errors.Token.Invalid (AUTH-7fs1e)` | **High** | Login OIDC scope now includes `urn:zitadel:iam:org:project:id:zitadel:aud` so user JWTs can call `POST /v2/users/{id}/totp` |
 | 4 | JWT-only API calls had no `x-user-id` → TOTP/register failed | **Medium** | `jwt-user.ts` extracts `sub` from Bearer token; `requireAuthenticatedUser` uses it as fallback |
 | 5 | `PUT /api/documents/tenant_settings/default` partial `auth` patch wiped `requireMfaForAdmin` / `teamRoles` | **High** | Uses `mergeAuthConfig(current, partialPatch)` — do **not** `normalizeAuthConfig()` the patch body (that defaults omitted flags to `false`) |
-| 6 | Team routes (`/auth/users`, invite, role) had no admin check | **High** | `requireTeamAdmin` on config PUT, user list, invite, and role update; **403** for non-admins once roles are assigned |
+| 6 | Team routes (`/api/auth/:slug/users`, invite, role) had no admin check | **High** | `requireTeamAdmin` on config PUT, user list, invite, and role update; **403** for non-admins once roles are assigned |
 | 7 | ZITADEL user list returned **405** | **Medium** | Fixed path: `POST /users` with `{ queries: [], limit, offset }` (not `/users/_search`) |
 | 8 | `mfaEnrolled` always false after TOTP confirm | **High** | ZITADEL returns `{ otp: {} }` not `type: "TOTP"` — `userHasTotpFactor` now checks `otp` field |
 
@@ -31,19 +31,19 @@ This session added org MFA policy, team user admin, and then ran a security/edge
 
 ### Public (no JWT)
 
-- `GET /auth/config`, login, register, password-reset, OAuth start/callback, MFA verify at login
+- `GET /api/auth/:slug/config`, login, register, password-reset, OAuth start/callback, MFA verify at login
 
 ### Authenticated (JWT required)
 
-- `GET /auth/session` — MFA policy + enrollment status for current user
-- `POST /auth/mfa/totp/register` and `/confirm` — TOTP enrollment
+- `GET /api/auth/:slug/session` — MFA policy + enrollment status for current user
+- `POST /api/auth/:slug/mfa/totp/register` and `/confirm` — TOTP enrollment
 
 ### Admin only (JWT + team admin role)
 
-- `PUT /auth/config`
-- `GET /auth/users`
-- `POST /auth/users/invite`
-- `PUT /auth/users/:userId/role`
+- `PUT /api/auth/:slug/config`
+- `GET /api/auth/:slug/users`
+- `POST /api/auth/:slug/users/invite`
+- `PUT /api/auth/:slug/users/:userId/role`
 
 **Bootstrap rule:** if `tenant_settings.auth.teamRoles` is empty, every authenticated user is treated as **admin** so the first merchant setup works. Once any role is assigned, only users with `teamRoles[userId] === "admin"` pass `requireTeamAdmin`.
 
@@ -84,18 +84,18 @@ pnpm test && pnpm typecheck
 
 | Step | Request | Expected |
 |------|---------|----------|
-| 1 | `PUT /api/tenants/yogastore/auth/config` with only `x-org-id`, no `Authorization` | **401** |
+| 1 | `PUT /api/auth/yogastore/config` with only `x-org-id`, no `Authorization` | **401** |
 | 2 | Same route with admin Bearer token | **200** |
 | 3 | Set `requireMfaForAdmin: true` via auth config PUT, then `PUT /api/documents/tenant_settings/default` with `{ auth: { allowPassword: true } }` | Response auth block still has `requireMfaForAdmin: true` |
-| 4 | `POST /api/tenants/yogastore/auth/mfa/totp/register` with login JWT | **200** + `{ uri, secret }` |
-| 5 | `GET /api/tenants/yogastore/auth/session` at edge without JWT | **302** redirect to login |
-| 6 | `GET /api/tenants/yogastore/auth/users` without JWT | **401** |
+| 4 | `POST /api/auth/yogastore/mfa/totp/register` with login JWT | **200** + `{ uri, secret }` |
+| 5 | `GET /api/auth/yogastore/session` at edge without JWT | **302** redirect to login |
+| 6 | `GET /api/auth/yogastore/users` without JWT | **401** |
 | 7 | Same with admin JWT | **200** user list |
 | 8 | Password reset for unknown email | **200** (no enumeration) |
 | 9 | Register duplicate email (with `allowSignUp: true`) | **409** |
 | 10 | Register when `allowSignUp: false` | **400** (“Sign-up is not enabled”) |
 
-Login for tests: `admin@zitadel.localhost` / `NonameAdmin1!` via `POST /api/tenants/yogastore/auth/login` (through edge `:8787`).
+Login for tests: `admin@zitadel.localhost` / `NonameAdmin1!` via `POST /api/auth/yogastore/login` (through edge `:8787`).
 
 ### Browser checks
 
@@ -108,7 +108,7 @@ Login for tests: `admin@zitadel.localhost` / `NonameAdmin1!` via `POST /api/tena
 
 ### E2E result (2026-07-25)
 
-- API: register → confirm → `GET /auth/session` returns `mfaEnrolled: true` (after fix #8).
+- API: register → confirm → `GET /api/auth/:slug/session` returns `mfaEnrolled: true` (after fix #8).
 - Browser: login at `/login?redirect=/admin` → lands on `/admin` dashboard with MFA policy on.
 - Browser: `/account/security` reflects enrolled state after session poll on mount.
 
@@ -132,8 +132,8 @@ Login for tests: `admin@zitadel.localhost` / `NonameAdmin1!` via `POST /api/tena
 - During security testing, `requireMfaForAdmin` may have been left `true` via direct API before the auth-config JWT fix. Restore for dev:
 
 ```bash
-# After logging in (Bearer token from /auth/login):
-curl -X PUT http://localhost:3000/api/tenants/yogastore/auth/config \
+# After logging in (Bearer token from /api/auth/:slug/login):
+curl -X PUT http://localhost:3000/api/auth/yogastore/config \
   -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"requireMfaForAdmin": false}'

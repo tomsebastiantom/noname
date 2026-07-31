@@ -1,4 +1,5 @@
 import { apiFetch, apiFetchVoid } from "../lib/api";
+import { coerceScalarString } from "../lib/coerce-scalar-string";
 import { requireStoreSlug } from "./org";
 
 export type AuthProvider = "google" | "github" | "apple";
@@ -36,14 +37,12 @@ export async function loadAuthProviderEntries(): Promise<AuthProviderEntryState[
 
   const entries: AuthProviderEntryState[] = [];
   for (const row of body.data ?? []) {
-    const providerKey = String(row.data?.provider_key ?? "")
-      .trim()
-      .toLowerCase();
+    const providerKey = coerceScalarString(row.data?.provider_key).trim().toLowerCase();
     if (!ALL_AUTH_PROVIDERS.includes(providerKey as AuthProvider)) continue;
 
     entries.push({
       providerKey: providerKey as AuthProvider,
-      name: String(row.data?.name ?? providerKey).trim(),
+      name: coerceScalarString(row.data?.name, providerKey).trim(),
       enabled: row.data?.enabled !== false,
     });
   }
@@ -62,7 +61,7 @@ export async function loadAuthSettings(): Promise<AuthSettingsState> {
         allowPasswordReset?: boolean;
         requireMfaForAdmin?: boolean;
       };
-    }>(`/api/tenants/${storeSlug}/auth/config`),
+    }>(`/api/auth/${storeSlug}/config`),
     apiFetch<{ data?: { auth?: { idpIds?: Record<string, string> } } }>(
       "/api/documents/tenant_settings/default",
     ).catch(() => ({ data: undefined }) as { data?: undefined }),
@@ -94,7 +93,7 @@ export async function saveAuthConfig(input: {
 }): Promise<void> {
   const storeSlug = requireStoreSlug();
 
-  await apiFetchVoid(`/api/tenants/${storeSlug}/auth/config`, {
+  await apiFetchVoid(`/api/auth/${storeSlug}/config`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(input),

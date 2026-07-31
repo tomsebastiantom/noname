@@ -1,13 +1,5 @@
 import { useActions } from "@json-render/react";
 import { type FormEvent, useEffect, useState } from "react";
-import {
-  getLayoutForTemplate,
-  type LayoutSummary,
-  layoutTemplateFromPath,
-  listLayouts,
-  parseSpecJson,
-  specToJson,
-} from "../../admin/layout-entries";
 import { fetchAuthSessionStatus, sessionHasPermission } from "../../auth/team-users";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
@@ -21,8 +13,16 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import type { ComponentCtx } from "../../core/components/types";
+import {
+  getLayoutForTemplate,
+  type LayoutSummary,
+  layoutTemplateFromPath,
+  listLayouts,
+  parseSpecJson,
+  specToJson,
+} from "../layout-entries";
 import { DataTable } from "./DataTable";
-import type { ComponentCtx } from "./types";
 
 export function LayoutEntryAdmin({
   props,

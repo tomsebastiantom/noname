@@ -12,7 +12,7 @@ import {
 export function registerAuthAccountRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.post("/:orgId/auth/password-reset/request", async (c) => {
+  routes.post("/:orgId/password-reset/request", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const body = parseBody(
@@ -24,7 +24,7 @@ export function registerAuthAccountRoutes(routes: Hono, deps: AuthRouteDeps): vo
     return ok(c, { ok: true });
   });
 
-  routes.post("/:orgId/auth/password-reset/confirm", async (c) => {
+  routes.post("/:orgId/password-reset/confirm", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const body = parseBody(
@@ -41,7 +41,7 @@ export function registerAuthAccountRoutes(routes: Hono, deps: AuthRouteDeps): vo
     return ok(c, { ok: true });
   });
 
-  routes.post("/:orgId/auth/register", async (c) => {
+  routes.post("/:orgId/register", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const body = parseBody(

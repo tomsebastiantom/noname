@@ -1,5 +1,4 @@
 import { type ReactNode, useCallback, useEffect, useState } from "react";
-import { type FlagRow, listFlags, updateBooleanFlag } from "../../admin/flags";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -10,7 +9,8 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import type { ComponentCtx } from "./types";
+import type { ComponentCtx } from "../../core/components/types";
+import { type FlagRow, listFlags, updateBooleanFlag } from "../flags";
 
 function flagValue(flag: FlagRow): unknown {
   const rule = flag.targeting.find((r) => r.priority === 0) ?? flag.targeting[0];

@@ -1,6 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
-import { type RoutingPageView, routingPageKeyFromPath } from "../../admin/routing-entries";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import { Badge } from "../../components/ui/badge";
 import { Button } from "../../components/ui/button";
@@ -13,10 +12,11 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { ADMIN_STATE } from "../admin-state";
+import { ADMIN_STATE } from "../../core/admin-state";
+import { useMountAction } from "../../core/components/MountAction";
+import type { ComponentCtx } from "../../core/components/types";
+import { type RoutingPageView, routingPageKeyFromPath } from "../routing-entries";
 import { DataTable } from "./DataTable";
-import { useMountAction } from "./MountAction";
-import type { ComponentCtx } from "./types";
 
 export function PageEntryAdmin({
   props,

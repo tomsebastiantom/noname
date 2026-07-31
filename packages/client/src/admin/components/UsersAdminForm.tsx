@@ -13,9 +13,9 @@ import {
 } from "../../components/ui/card";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
-import { ADMIN_STATE } from "../admin-state";
+import { ADMIN_STATE } from "../../core/admin-state";
+import type { ComponentCtx } from "../../core/components/types";
 import { DataTable, type DataTableColumn } from "./DataTable";
-import type { ComponentCtx } from "./types";
 
 const ROLE_OPTIONS: TeamMemberRole[] = ["admin", "editor"];
 

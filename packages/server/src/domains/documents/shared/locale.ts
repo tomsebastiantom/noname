@@ -1,3 +1,4 @@
+import { coerceScalarString } from "../../../shared/coerce-scalar-string";
 import type { ContentTypeSchema, DocumentStorage } from "../ports";
 import { DEFAULT_DEFAULT_LOCALE, DEFAULT_LOCALES } from "../services/constants";
 
@@ -29,9 +30,8 @@ export function labelFromContentData(
   if (titleField) {
     const raw = data[titleField.key];
     const picked = titleField.isLocalizable ? pickLocalizedValue(raw, locale, defaultLocale) : raw;
-    if (picked !== undefined && picked !== null && String(picked).trim() !== "") {
-      return String(picked).trim();
-    }
+    const label = coerceScalarString(picked).trim();
+    if (label !== "") return label;
   }
   return key;
 }

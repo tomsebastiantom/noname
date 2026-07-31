@@ -22,9 +22,9 @@ Sign-in on **our** `/login` page — Clerk-like UX, ZITADEL as IdP only (no host
 |-------|--------|
 | `LoginForm`, `AuthLayout`, `SocialLoginButtons` | ✅ |
 | shadcn polish (Alert, Separator, password toggle) | ✅ |
-| `POST .../auth/login` server broker | ✅ |
+| `POST /api/auth/:slug/login` server broker | ✅ |
 | OAuth start + `/auth/callback` | ✅ scaffold |
-| Per-org social config (Postgres) | ✅ `GET /auth/config` + admin settings |
+| Per-org social config (Postgres) | ✅ `GET /api/auth/:slug/config` + admin settings |
 | `allowPassword` hides email form when off | ✅ |
 | Forgot password / MFA / sign-up | ✅ see [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) |
 
@@ -51,7 +51,7 @@ Details: [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) · [`EMBEDDED-LOGIN.md`](./E
 ```
 GET yogastore.localhost:5173/login
   → GET /api/edge/schema/yogastore?template=login
-  → GET /api/tenants/yogastore/auth/config   (provider merge)
+  → GET /api/auth/yogastore/config   (provider merge)
   → GET /api/tenants/yogastore/catalog       (core only)
   → Renderer(LoginForm from spec)
 ```
@@ -66,7 +66,7 @@ Login text comes from **layout spec props**, not `$state` / content CMS.
 
 ```
 LoginForm → executeAction("login")
-  → POST /api/tenants/yogastore/auth/login
+  → POST /api/auth/yogastore/login
   → ZITADEL Session API (server) → JWT
   → sessionStorage + cookie → redirect
 ```
@@ -78,7 +78,7 @@ SocialLoginButtons → executeAction("idpLogin")
   → OAuth redirect → /auth/callback → JWT
 ```
 
-Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgres per org — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)).
+Provider list = **layout spec `providers` ∩ `GET /api/auth/:slug/config`** (reads Postgres per org — see [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)).
 
 ---
 
@@ -89,7 +89,7 @@ Provider list = **layout spec `providers` ∩ `GET auth/config`** (reads Postgre
 | `title`, `subtitle`, `footerText`, `logoUrl` | Layout spec | Yes — `/admin/settings/login` (`LoginBrandingForm`) |
 | `providers` | Layout spec (intent) | Yes |
 | `redirectPath`, `showPasswordToggle` | Layout spec | Yes |
-| OAuth button text (`Continue with Google`, …) | `tenant_settings.auth.providerLabels` from `GET auth/config` | Yes per org — admin / seed; component must not own copy |
+| OAuth button text (`Continue with Google`, …) | `tenant_settings.auth.providerLabels` from `GET /api/auth/:slug/config` | Yes per org — admin / seed; component must not own copy |
 
 ---
 

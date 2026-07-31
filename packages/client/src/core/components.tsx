@@ -1,40 +1,40 @@
-import { AccountSecurityForm } from "./components/AccountSecurityForm";
-import { AdminHome } from "./components/AdminHome";
-import { AdminShell } from "./components/AdminShell";
+import { AccountSecurityForm } from "../admin/components/AccountSecurityForm";
+import { AdminHome } from "../admin/components/AdminHome";
+import { AdminShell } from "../admin/components/AdminShell";
+import { AuthSettingsForm } from "../admin/components/AuthSettingsForm";
+import { ContentEntryAdmin } from "../admin/components/ContentEntryAdmin";
+import { FeatureFlagsAdmin } from "../admin/components/FeatureFlagsAdmin";
+import { LayoutEntryAdmin } from "../admin/components/LayoutEntryAdmin";
+import { LoginBrandingForm } from "../admin/components/LoginBrandingForm";
+import { PageEntryAdmin } from "../admin/components/PageEntryAdmin";
+import { PageRoutingAdmin } from "../admin/components/PageRoutingAdmin";
+import { PageTreeAdmin } from "../admin/components/PageTreeAdmin";
+import { SessionReplayAdmin } from "../admin/components/SessionReplayAdmin";
+import { UsersAdminForm } from "../admin/components/UsersAdminForm";
 import { AuthLayout } from "./components/AuthLayout";
-import { AuthSettingsForm } from "./components/AuthSettingsForm";
-import { ContentEntryAdmin } from "./components/ContentEntryAdmin";
-import { FeatureFlagsAdmin } from "./components/FeatureFlagsAdmin";
-import { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
-import { LoginBrandingForm } from "./components/LoginBrandingForm";
 import { LoginForm } from "./components/LoginForm";
 import { MountAction } from "./components/MountAction";
-import { PageEntryAdmin } from "./components/PageEntryAdmin";
-import { PageRoutingAdmin } from "./components/PageRoutingAdmin";
-import { PageTreeAdmin } from "./components/PageTreeAdmin";
-import { SessionReplayAdmin } from "./components/SessionReplayAdmin";
 import type { ComponentCtx } from "./components/types";
-import { UsersAdminForm } from "./components/UsersAdminForm";
 
-export { AccountSecurityForm } from "./components/AccountSecurityForm";
-export { AdminHome } from "./components/AdminHome";
-export { AdminNav } from "./components/AdminNav";
-export { AdminPageHeader } from "./components/AdminPageHeader";
-export { AdminShell } from "./components/AdminShell";
+export { AccountSecurityForm } from "../admin/components/AccountSecurityForm";
+export { AdminHome } from "../admin/components/AdminHome";
+export { AdminNav } from "../admin/components/AdminNav";
+export { AdminPageHeader } from "../admin/components/AdminPageHeader";
+export { AdminShell } from "../admin/components/AdminShell";
+export { AuthSettingsForm } from "../admin/components/AuthSettingsForm";
+export { ContentEntryAdmin } from "../admin/components/ContentEntryAdmin";
+export { FeatureFlagsAdmin } from "../admin/components/FeatureFlagsAdmin";
+export { LayoutEntryAdmin } from "../admin/components/LayoutEntryAdmin";
+export { LoginBrandingForm } from "../admin/components/LoginBrandingForm";
+export { PageEntryAdmin } from "../admin/components/PageEntryAdmin";
+export { PageRoutingAdmin } from "../admin/components/PageRoutingAdmin";
+export { PageTreeAdmin } from "../admin/components/PageTreeAdmin";
+export { SessionReplayAdmin } from "../admin/components/SessionReplayAdmin";
+export { UsersAdminForm } from "../admin/components/UsersAdminForm";
 export { AuthLayout } from "./components/AuthLayout";
-export { AuthSettingsForm } from "./components/AuthSettingsForm";
-export { ContentEntryAdmin } from "./components/ContentEntryAdmin";
-export { FeatureFlagsAdmin } from "./components/FeatureFlagsAdmin";
-export { LayoutEntryAdmin } from "./components/LayoutEntryAdmin";
-export { LoginBrandingForm } from "./components/LoginBrandingForm";
 export { LoginForm } from "./components/LoginForm";
 export { MountAction } from "./components/MountAction";
-export { PageEntryAdmin } from "./components/PageEntryAdmin";
-export { PageRoutingAdmin } from "./components/PageRoutingAdmin";
-export { PageTreeAdmin } from "./components/PageTreeAdmin";
-export { SessionReplayAdmin } from "./components/SessionReplayAdmin";
 export type { ComponentCtx } from "./components/types";
-export { UsersAdminForm } from "./components/UsersAdminForm";
 
 export function Grid({
   props,
@@ -103,8 +103,6 @@ export function Text({
       return <h2 style={style}>{props.value}</h2>;
     case "h3":
       return <h3 style={style}>{props.value}</h3>;
-    case "caption":
-      return <p style={style}>{props.value}</p>;
     default:
       return <p style={style}>{props.value}</p>;
   }

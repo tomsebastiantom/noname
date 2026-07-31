@@ -8,7 +8,7 @@ import { loginBodySchema, mfaVerifyBodySchema } from "./schemas";
 export function registerAuthLoginRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.post("/:orgId/auth/login", async (c) => {
+  routes.post("/:orgId/login", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const body = parseBody(loginBodySchema.safeParse(await c.req.json()), "login payload");
@@ -37,7 +37,7 @@ export function registerAuthLoginRoutes(routes: Hono, deps: AuthRouteDeps): void
     });
   });
 
-  routes.post("/:orgId/auth/mfa/verify", async (c) => {
+  routes.post("/:orgId/mfa/verify", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const body = parseBody(mfaVerifyBodySchema.safeParse(await c.req.json()), "MFA payload");

@@ -1,5 +1,6 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { createClient } from "@clickhouse/client";
+import { coerceScalarString } from "../../../shared/coerce-scalar-string";
 import type {
   AnalyticsEventDTO,
   AnalyticsStorage,
@@ -15,8 +16,6 @@ function aggregateGroupColumn(groupBy: string | undefined): string {
       return "schema_id";
     case "contextHash":
       return "context_hash";
-    case "eventType":
-      return "event_type";
     default:
       return "event_type";
   }
@@ -207,7 +206,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
       });
       const rows = await rs.json<{ key: string | null; count: string }>();
       return rows.map((r: { key: string | null; count: string }) => ({
-        key: String(r.key ?? "null"),
+        key: coerceScalarString(r.key, "null"),
         count: Number(r.count),
       }));
     },

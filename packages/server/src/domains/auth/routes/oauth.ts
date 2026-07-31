@@ -10,7 +10,7 @@ import { oauthCallbackBodySchema, oauthStartQuerySchema } from "./schemas";
 export function registerAuthOAuthRoutes(routes: Hono, deps: AuthRouteDeps): void {
   const { service, tenantSettings } = deps;
 
-  routes.get("/:orgId/auth/idp/:provider/start", async (c) => {
+  routes.get("/:orgId/idp/:provider/start", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const provider = c.req.param("provider");
@@ -39,7 +39,7 @@ export function registerAuthOAuthRoutes(routes: Hono, deps: AuthRouteDeps): void
     );
   });
 
-  routes.post("/:orgId/auth/callback", async (c) => {
+  routes.post("/:orgId/callback", async (c) => {
     const body = parseBody(
       oauthCallbackBodySchema.safeParse(await c.req.json()),
       "OAuth callback payload",

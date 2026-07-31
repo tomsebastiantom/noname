@@ -3,11 +3,11 @@ import type { AIPipeline } from "./ports";
 import { createAIPipeline } from "./service";
 
 export interface AIPipelineDomainDeps {
-  pipeline?: AIPipeline;
+  service?: AIPipeline;
 }
 
 export function createAIPipelineDomain(deps: AIPipelineDomainDeps = {}) {
-  const pipeline = deps.pipeline ?? createAIPipeline();
-  const routes = createAIPipelineRoutes(pipeline);
-  return { pipeline, routes };
+  const service = deps.service ?? createAIPipeline();
+  const routes = createAIPipelineRoutes(service);
+  return { service, routes };
 }

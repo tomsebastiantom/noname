@@ -1,13 +1,13 @@
 import { type ReactNode, useEffect, useState } from "react";
+import { Button } from "../../components/ui/button";
+import { Label } from "../../components/ui/label";
 import {
   type ContentEntryRow,
   documentIdFromFieldValue,
   entryLabel,
   getContentType,
   listEntries,
-} from "../../admin/content-entries";
-import { Button } from "../../components/ui/button";
-import { Label } from "../../components/ui/label";
+} from "../content-entries";
 
 function entryPickerBody(options: {
   loading: boolean;
