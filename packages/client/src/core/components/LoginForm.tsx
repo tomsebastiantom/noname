@@ -9,11 +9,11 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import type { CatalogProps } from "../../schemas/shared";
 import type { CoreActionName } from "../actions";
+import type { LoginViewFields } from "../login-form-labels";
 import {
   type AuthProvider,
-  LOGIN_VIEW_SUBTITLES,
-  LOGIN_VIEW_TITLES,
   type LoginView,
   safeRedirect,
   viewFromSearch,
@@ -27,17 +27,27 @@ import {
 } from "./login-views";
 import type { ComponentCtx } from "./types";
 
-export function LoginForm({
-  props,
-}: ComponentCtx<{
-  title: string;
-  subtitle: string | null;
+type LoginFormConfig = {
   redirectPath: string | null;
   logoUrl: string | null;
   showPasswordToggle: boolean;
-  footerText: string | null;
   providers: AuthProvider[];
-}>) {
+};
+
+type LoginFormLabels = {
+  views: LoginViewFields;
+  footerText: string | null;
+  providers: Record<string, string>;
+  messages: {
+    noSignInMethods: string;
+    passwordResetSent: string;
+    passwordUpdated: string;
+    invalidHost: string;
+  };
+};
+
+export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, LoginFormLabels>>) {
+  const { config, labels } = props;
   const { execute } = useActions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -61,7 +71,7 @@ export function LoginForm({
   const [view, setView] = useState<LoginView>(() => viewFromSearch(search));
 
   const redirectFromQuery = safeRedirect(search.get("redirect"));
-  const redirectPath = redirectFromQuery ?? props.redirectPath ?? "/";
+  const redirectPath = redirectFromQuery ?? config.redirectPath ?? "/";
 
   const resetUserId = search.get("userID") ?? "";
   const resetCode = search.get("code") ?? "";
@@ -85,7 +95,7 @@ export function LoginForm({
       )
       .then((body) => {
         const serverProviders = body?.data?.providers ?? [];
-        const fromSpec = (props.providers ?? []) as string[];
+        const fromSpec = (config.providers ?? []) as string[];
         const merged =
           fromSpec.length > 0
             ? serverProviders.filter(
@@ -107,7 +117,15 @@ export function LoginForm({
         setProviderLabels({});
         setProviderIcons({});
       });
-  }, [storeSlug, props.providers]);
+  }, [storeSlug, config.providers]);
+
+  const mergedProviderLabels = useMemo(() => {
+    const merged: Record<string, string> = { ...providerLabels };
+    for (const [key, value] of Object.entries(labels.providers ?? {})) {
+      if (value) merged[key] = value;
+    }
+    return merged;
+  }, [providerLabels, labels.providers]);
 
   const showSocial = enabledProviders.length > 0 && view === "login";
   const showPasswordForm = allowPassword && (view === "login" || view === "signup");
@@ -138,7 +156,7 @@ export function LoginForm({
     setError(null);
     try {
       await runAction("requestPasswordReset", { email });
-      setInfo("If an account exists for that email, we sent reset instructions.");
+      setInfo(labels.messages.passwordResetSent);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -157,7 +175,7 @@ export function LoginForm({
         verificationCode: resetCode,
         newPassword,
       });
-      setInfo("Password updated. You can sign in now.");
+      setInfo(labels.messages.passwordUpdated);
       setView("login");
       window.history.replaceState({}, "", `/login?redirect=${encodeURIComponent(redirectPath)}`);
     } catch (err) {
@@ -188,21 +206,20 @@ export function LoginForm({
   if (!storeSlug) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>
-          Use {"{slug}"}.localhost:5173/login — e.g. yogastore.localhost:5173/login
-        </AlertDescription>
+        <AlertDescription>{labels.messages.invalidHost}</AlertDescription>
       </Alert>
     );
   }
 
-  const title = view === "login" ? props.title : LOGIN_VIEW_TITLES[view];
-  const subtitle = view === "login" ? props.subtitle : LOGIN_VIEW_SUBTITLES[view];
+  const viewLabels = labels.views[view];
+  const title = viewLabels.title;
+  const subtitle = viewLabels.description;
 
   return (
     <Card className="w-full border shadow-sm">
       <CardHeader className="space-y-3 text-center">
-        {props.logoUrl && (
-          <img src={props.logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />
+        {config.logoUrl && (
+          <img src={config.logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />
         )}
         <div className="space-y-1">
           <CardTitle className="text-2xl">{title}</CardTitle>
@@ -215,15 +232,16 @@ export function LoginForm({
             email={email}
             password={password}
             showPassword={showPassword}
-            showPasswordToggle={props.showPasswordToggle}
+            showPasswordToggle={config.showPasswordToggle}
             showSocial={showSocial}
             allowPasswordReset={allowPasswordReset}
             allowSignUp={allowSignUp}
             enabledProviders={enabledProviders}
             redirectPath={redirectPath}
-            providerLabels={providerLabels}
+            providerLabels={mergedProviderLabels}
             providerIcons={providerIcons}
-            footerText={props.footerText}
+            footerText={labels.footerText}
+            fields={labels.views.login.fields}
             state={alertState}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
@@ -237,6 +255,7 @@ export function LoginForm({
         {view === "forgot" && allowPasswordReset && (
           <LoginForgotView
             email={email}
+            fields={labels.views.forgot.fields}
             state={alertState}
             onEmailChange={setEmail}
             onSubmit={onForgotSubmit}
@@ -247,6 +266,7 @@ export function LoginForm({
         {view === "reset" && allowPasswordReset && resetUserId && (
           <LoginResetView
             newPassword={newPassword}
+            fields={labels.views.reset.fields}
             state={alertState}
             onPasswordChange={setNewPassword}
             onSubmit={onResetSubmit}
@@ -259,6 +279,7 @@ export function LoginForm({
             password={password}
             givenName={givenName}
             familyName={familyName}
+            fields={labels.views.signup.fields}
             state={alertState}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
@@ -272,6 +293,7 @@ export function LoginForm({
         {view === "mfa" && (
           <LoginMfaView
             totpCode={totpCode}
+            fields={labels.views.mfa.fields}
             state={alertState}
             onTotpChange={setTotpCode}
             onSubmit={onMfaSubmit}
@@ -284,7 +306,7 @@ export function LoginForm({
 
         {view === "login" && !showPasswordForm && !showSocial && (
           <Alert>
-            <AlertDescription>No sign-in methods are enabled for this store.</AlertDescription>
+            <AlertDescription>{labels.messages.noSignInMethods}</AlertDescription>
           </Alert>
         )}
 

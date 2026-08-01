@@ -12,17 +12,18 @@ import {
 } from "../../../components/ui/card";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
+import type { CatalogProps } from "../../../schemas/shared";
 import type { ReplaySessionSummary } from "../../session-replay";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
 import { ReplayPlayer } from "./ReplayPlayer";
 
-export function SessionReplayAdmin({
-  props,
-}: ComponentCtx<{
+type SessionReplayConfig = Record<string, never>;
+
+type SessionReplayLabels = {
   title: string;
   description: string | null;
   loadingLabel: string;
-  emptyLabel: string;
+  empty: string;
   sessionColumnHeader: string;
   chunksColumnHeader: string;
   lastSeenColumnHeader: string;
@@ -33,7 +34,12 @@ export function SessionReplayAdmin({
   playerLoadingLabel: string;
   forbiddenLabel: string;
   noChunksLabel: string;
-}>) {
+};
+
+export function SessionReplayAdmin({
+  props,
+}: ComponentCtx<CatalogProps<SessionReplayConfig, SessionReplayLabels>>) {
+  const { labels } = props;
   const canViewReplay = useAnalyticsViewPermission();
   const { execute } = useActions();
   const sessions =
@@ -62,17 +68,17 @@ export function SessionReplayAdmin({
   const columns: DataTableColumn<ReplaySessionSummary>[] = [
     {
       key: "sessionId",
-      header: props.sessionColumnHeader,
+      header: labels.sessionColumnHeader,
       cell: (row) => <span className="font-mono text-xs">{row.sessionId}</span>,
     },
     {
       key: "chunks",
-      header: props.chunksColumnHeader,
+      header: labels.chunksColumnHeader,
       cell: (row) => row.chunkCount,
     },
     {
       key: "lastSeen",
-      header: props.lastSeenColumnHeader,
+      header: labels.lastSeenColumnHeader,
       cell: (row) => new Date(row.lastTimestamp).toLocaleString(),
     },
   ];
@@ -87,13 +93,13 @@ export function SessionReplayAdmin({
   }
 
   if (canViewReplay === null) {
-    return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (canViewReplay === false) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{props.forbiddenLabel}</AlertDescription>
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
       </Alert>
     );
   }
@@ -108,19 +114,19 @@ export function SessionReplayAdmin({
 
       <Card>
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          {props.description ? <CardDescription>{props.description}</CardDescription> : null}
+          <CardTitle>{labels.title}</CardTitle>
+          {labels.description ? <CardDescription>{labels.description}</CardDescription> : null}
         </CardHeader>
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>
+            <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>
           ) : (
             <DataTable
               columns={columns}
               rows={sessions}
               rowKey={(row) => row.sessionId}
               onRowClick={handleSelectSession}
-              emptyMessage={props.emptyLabel}
+              emptyMessage={labels.empty}
             />
           )}
         </CardContent>
@@ -129,12 +135,12 @@ export function SessionReplayAdmin({
       {selected ? (
         <Card>
           <CardHeader>
-            <CardTitle>{props.previewTitle}</CardTitle>
+            <CardTitle>{labels.previewTitle}</CardTitle>
             <CardDescription className="font-mono text-xs">{selected.sessionId}</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             {selected.storageKeys.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{props.noChunksLabel}</p>
+              <p className="text-sm text-muted-foreground">{labels.noChunksLabel}</p>
             ) : (
               <>
                 <div className="flex flex-wrap gap-2">
@@ -152,7 +158,7 @@ export function SessionReplayAdmin({
                       })
                     }
                   >
-                    {props.playSessionLabel}
+                    {labels.playSessionLabel}
                   </Button>
                 </div>
                 <ul className="space-y-2 text-sm">
@@ -171,13 +177,13 @@ export function SessionReplayAdmin({
                           })
                         }
                       >
-                        {props.loadChunkLabel}
+                        {labels.loadChunkLabel}
                       </Button>
                     </li>
                   ))}
                 </ul>
                 {chunkLoading ? (
-                  <p className="text-sm text-muted-foreground">{props.previewLoadingLabel}</p>
+                  <p className="text-sm text-muted-foreground">{labels.previewLoadingLabel}</p>
                 ) : null}
                 {chunkPreview && selectedSessionId === selected.sessionId ? (
                   <p className="text-sm">
@@ -186,7 +192,7 @@ export function SessionReplayAdmin({
                   </p>
                 ) : null}
                 {playerLoading && selectedSessionId === selected.sessionId ? (
-                  <p className="text-sm text-muted-foreground">{props.playerLoadingLabel}</p>
+                  <p className="text-sm text-muted-foreground">{labels.playerLoadingLabel}</p>
                 ) : null}
                 {playerEvents &&
                 playerEvents.length > 0 &&

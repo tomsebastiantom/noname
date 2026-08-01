@@ -36,38 +36,57 @@ const productContentType = {
   ],
 };
 
+const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
+
+function catalogProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
+  config: TConfig,
+  labels: TLabels,
+) {
+  return { config, labels };
+}
+
 const commerceSpec = {
   root: "main",
   elements: {
     main: {
       type: "Stack",
-      props: { direction: "column", gap: 24, align: "stretch" },
+      props: catalogProps({ direction: "column", gap: 24, align: "stretch" }, {}),
       children: ["hero", "products"],
     },
     hero: {
       type: "Hero",
-      props: {
-        title: "Welcome to Noname",
-        subtitle: "Commerce extension demo layout",
-        image: null,
-        ctaLabel: "Explore",
-        ctaAction: null,
-      },
+      props: catalogProps(
+        { image: null, ctaAction: null },
+        {
+          title: "Welcome to Noname",
+          subtitle: "Commerce extension demo layout",
+          ctaText: "Explore",
+          imageAlt: null,
+        },
+      ),
     },
     products: {
       type: "Grid",
-      props: { columns: 2, gap: 16 },
+      props: catalogProps({ columns: 2, gap: 16 }, {}),
       children: ["product1"],
     },
     product1: {
       type: "ProductCard",
-      props: {
-        productId: { $state: "productId" },
-        title: { $state: "title" },
-        price: { $state: "price" },
-        image: { $state: "image" },
-        description: { $state: "description" },
-      },
+      props: catalogProps(
+        {
+          productId: { $state: "productId" },
+          title: { $state: "title" },
+          price: { $state: "price" },
+          image: { $state: "image" },
+          description: { $state: "description" },
+        },
+        {
+          addToCart: "Add to Cart",
+          adding: "Adding…",
+          addedToCart: "Added to cart",
+          addFailed: "Could not add to cart",
+        },
+      ),
     },
   },
 };

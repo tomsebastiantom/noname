@@ -1,52 +1,67 @@
 import { useState } from "react";
+import type { CatalogProps } from "../catalog-props";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
 
-export function Hero({
-  props,
-  emit,
-}: ComponentCtx<{
+type HeroConfig = {
+  image: string | null;
+  ctaAction: string | null;
+};
+
+type HeroLabels = {
   title: string;
   subtitle: string | null;
-  image: string | null;
-  ctaLabel: string | null;
-  ctaAction: string | null;
-}>) {
+  ctaText: string | null;
+  imageAlt: string | null;
+};
+
+export function Hero({ props, emit }: ComponentCtx<CatalogProps<HeroConfig, HeroLabels>>) {
+  const { config, labels } = props;
   return (
     <section className="bg-muted/50 px-6 py-16 text-center">
-      {props.image && (
+      {config.image && (
         <img
-          src={props.image}
-          alt={props.title}
+          src={config.image}
+          alt={labels.imageAlt ?? labels.title}
           className="mx-auto max-h-[400px] max-w-full rounded-lg object-cover"
         />
       )}
-      <h1 className="mt-6 text-4xl font-bold tracking-tight">{props.title}</h1>
-      {props.subtitle && (
-        <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">{props.subtitle}</p>
+      <h1 className="mt-6 text-4xl font-bold tracking-tight">{labels.title}</h1>
+      {labels.subtitle && (
+        <p className="mx-auto mt-2 max-w-2xl text-lg text-muted-foreground">{labels.subtitle}</p>
       )}
-      {props.ctaLabel && (
+      {labels.ctaText && (
         <button
           type="button"
           className="mt-6 inline-flex items-center rounded-md bg-primary px-8 py-3 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-          onClick={() => props.ctaAction && emit?.(props.ctaAction)}
+          onClick={() => config.ctaAction && emit?.(config.ctaAction)}
         >
-          {props.ctaLabel}
+          {labels.ctaText}
         </button>
       )}
     </section>
   );
 }
 
-export function ProductCard({
-  props,
-}: ComponentCtx<{
+type ProductCardConfig = {
   productId: string;
   title: string;
   price: number;
   image: string | null;
   description: string | null;
-}>) {
+};
+
+type ProductCardLabels = {
+  addToCart: string;
+  adding: string;
+  addedToCart: string;
+  addFailed: string;
+};
+
+export function ProductCard({
+  props,
+}: ComponentCtx<CatalogProps<ProductCardConfig, ProductCardLabels>>) {
+  const { config, labels } = props;
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -55,12 +70,12 @@ export function ProductCard({
     setStatus(null);
     try {
       await commerceActions.addToCart({
-        productId: props.productId,
+        productId: config.productId,
         quantity: 1,
       });
-      setStatus("Added to cart");
+      setStatus(labels.addedToCart);
     } catch (err) {
-      setStatus(err instanceof Error ? err.message : "Could not add to cart");
+      setStatus(err instanceof Error ? err.message : labels.addFailed);
     } finally {
       setLoading(false);
     }
@@ -68,23 +83,23 @@ export function ProductCard({
 
   return (
     <div className="overflow-hidden rounded-lg border bg-card shadow-sm">
-      {props.image && (
-        <img src={props.image} alt={props.title} className="h-[200px] w-full object-cover" />
+      {config.image && (
+        <img src={config.image} alt={config.title} className="h-[200px] w-full object-cover" />
       )}
       <div className="p-4">
-        <h3 className="text-lg font-semibold">{props.title}</h3>
-        {props.description && (
-          <p className="mt-1 text-sm text-muted-foreground">{props.description}</p>
+        <h3 className="text-lg font-semibold">{config.title}</h3>
+        {config.description && (
+          <p className="mt-1 text-sm text-muted-foreground">{config.description}</p>
         )}
         <div className="mt-4 flex items-center justify-between gap-4">
-          <span className="text-xl font-bold">${props.price.toFixed(2)}</span>
+          <span className="text-xl font-bold">${config.price.toFixed(2)}</span>
           <button
             type="button"
             className="inline-flex items-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
             disabled={loading}
             onClick={() => void onAddToCart()}
           >
-            {loading ? "Adding…" : "Add to Cart"}
+            {loading ? labels.adding : labels.addToCart}
           </button>
         </div>
         {status && (

@@ -14,7 +14,6 @@ import type { MediaFieldLabels } from "./MediaFieldInput";
 export function ContentEntryCreateForm({
   entryCount,
   isNewEntry,
-  title,
   description,
   editableFields,
   values,
@@ -23,15 +22,13 @@ export function ContentEntryCreateForm({
   error,
   success,
   creating,
-  createDraftLabel,
-  creatingLabel,
+  labels,
   onValuesChange,
   onSubmit,
   onCancel,
 }: {
   entryCount: number;
   isNewEntry: boolean;
-  title: string;
   description: string;
   editableFields: ContentFieldSchema[];
   values: Record<string, string>;
@@ -40,8 +37,7 @@ export function ContentEntryCreateForm({
   error: string | null;
   success: string | null;
   creating: boolean;
-  createDraftLabel: string;
-  creatingLabel: string;
+  labels: { title: string; createDraftLabel: string; creatingLabel: string };
   onValuesChange: (values: Record<string, string>) => void;
   onSubmit: () => void;
   onCancel?: () => void;
@@ -53,7 +49,7 @@ export function ContentEntryCreateForm({
       </a>
       <Card>
         <CardHeader>
-          <CardTitle>{isNewEntry && entryCount > 0 ? "New entry" : title}</CardTitle>
+          <CardTitle>{isNewEntry && entryCount > 0 ? "New entry" : labels.title}</CardTitle>
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
@@ -89,7 +85,7 @@ export function ContentEntryCreateForm({
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={creating}>
-                {creating ? creatingLabel : createDraftLabel}
+                {creating ? labels.creatingLabel : labels.createDraftLabel}
               </Button>
               {onCancel && (
                 <Button type="button" variant="outline" onClick={onCancel}>

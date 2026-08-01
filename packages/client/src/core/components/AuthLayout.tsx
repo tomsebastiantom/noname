@@ -1,53 +1,58 @@
+import type { ReactNode } from "react";
+import type { CatalogProps } from "../../schemas/shared";
 import type { ComponentCtx } from "./types";
+
+type AuthLayoutConfig = {
+  layout: "centered" | "split";
+};
+
+type AuthLayoutLabels = {
+  brandTitle: string | null;
+  brandSubtitle: string | null;
+};
 
 export function AuthLayout({
   props,
   children,
-}: ComponentCtx<{
-  layout: "centered" | "split";
-  brandTitle: string | null;
-  brandSubtitle: string | null;
-}>) {
-  if (props.layout === "split") {
+}: ComponentCtx<CatalogProps<AuthLayoutConfig, AuthLayoutLabels>>) {
+  const { config, labels } = props;
+
+  if (config.layout === "split") {
     return (
-      <div className="flex min-h-[calc(100vh-3rem)] flex-1">
-        <aside className="hidden w-1/2 flex-col justify-between bg-primary p-10 text-primary-foreground lg:flex">
+      <div className="flex min-h-screen">
+        <aside className="hidden w-1/2 flex-col justify-between bg-muted p-12 lg:flex">
           <div>
-            {props.brandTitle && (
-              <p className="text-lg font-semibold tracking-tight">{props.brandTitle}</p>
+            {labels.brandTitle && (
+              <p className="text-lg font-semibold tracking-tight">{labels.brandTitle}</p>
             )}
           </div>
           <div>
-            {props.brandTitle && (
-              <h1 className="text-3xl font-bold tracking-tight">{props.brandTitle}</h1>
+            {labels.brandTitle && (
+              <h1 className="text-3xl font-bold tracking-tight">{labels.brandTitle}</h1>
             )}
-            {props.brandSubtitle && (
-              <p className="mt-3 max-w-md text-sm text-primary-foreground/80">
-                {props.brandSubtitle}
-              </p>
+            {labels.brandSubtitle && (
+              <p className="mt-2 text-muted-foreground">{labels.brandSubtitle}</p>
             )}
           </div>
         </aside>
-        <div className="flex flex-1 items-center justify-center p-6">{children}</div>
+        <main className="flex flex-1 items-center justify-center p-6">{children as ReactNode}</main>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center p-6">
-      {(props.brandTitle || props.brandSubtitle) && (
-        <div className="mb-8 max-w-md text-center">
-          {props.brandTitle && (
-            <p className="text-sm font-medium uppercase tracking-wider text-muted-foreground">
-              {props.brandTitle}
-            </p>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-6">
+      {(labels.brandTitle || labels.brandSubtitle) && (
+        <div className="mb-8 text-center">
+          {labels.brandTitle && (
+            <h1 className="text-2xl font-bold tracking-tight">{labels.brandTitle}</h1>
           )}
-          {props.brandSubtitle && (
-            <p className="mt-2 text-sm text-muted-foreground">{props.brandSubtitle}</p>
+          {labels.brandSubtitle && (
+            <p className="mt-1 text-sm text-muted-foreground">{labels.brandSubtitle}</p>
           )}
         </div>
       )}
-      <div className="w-full max-w-md">{children}</div>
+      <div className="w-full max-w-md">{children as ReactNode}</div>
     </div>
   );
 }

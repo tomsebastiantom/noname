@@ -17,10 +17,13 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { type RoutingPageView, routingPageKeyFromPath } from "../../routing-entries";
 import { DataTable } from "../shared/DataTable";
 
-type PageEntryAdminProps = ComponentCtx<{
+type PageEntryConfig = Record<string, never>;
+
+type PageEntryLabels = {
   title: string;
   description: string | null;
   saveLabel: string;
@@ -32,17 +35,19 @@ type PageEntryAdminProps = ComponentCtx<{
   editUrlTreeLabel: string;
   allPagesLinkLabel: string;
   urlTreeLinkLabel: string;
-}>;
+};
+
+type PageEntryAdminProps = ComponentCtx<CatalogProps<PageEntryConfig, PageEntryLabels>>;
 
 function PageEntryDetailFields({
   page,
   pageKey,
-  props,
+  labels,
   loadError,
 }: {
   page: RoutingPageLoaded;
   pageKey: string;
-  props: PageEntryAdminProps["props"];
+  labels: PageEntryLabels;
   loadError: string | null | undefined;
 }) {
   const { submit, pending, error, success } = useCatalogSubmit();
@@ -58,7 +63,7 @@ function PageEntryDetailFields({
         layoutRef,
         contentRef: contentRef || null,
       },
-      successMessage: props.pageSavedMessage,
+      successMessage: labels.pageSavedMessage,
     });
   }
 
@@ -114,19 +119,19 @@ function PageEntryDetailFields({
 
         <div className="flex flex-wrap gap-2">
           <Button type="submit" disabled={pending}>
-            {pending ? props.savingLabel : props.saveLabel}
+            {pending ? labels.savingLabel : labels.saveLabel}
           </Button>
           <a
             href="/admin/pages"
             className="inline-flex items-center text-sm text-primary hover:underline"
           >
-            {props.allPagesLinkLabel}
+            {labels.allPagesLinkLabel}
           </a>
           <a
             href="/admin/pages/tree"
             className="inline-flex items-center text-sm text-primary hover:underline"
           >
-            {props.urlTreeLinkLabel}
+            {labels.urlTreeLinkLabel}
           </a>
         </div>
       </form>
@@ -135,6 +140,7 @@ function PageEntryDetailFields({
 }
 
 export function PageEntryAdmin({ props }: PageEntryAdminProps) {
+  const { labels } = props;
   const pageKey = routingPageKeyFromPath(window.location.pathname);
   const createCatalog = useCatalogSubmit();
   const loadAction = pageKey ? "loadRoutingPage" : "listRoutingPages";
@@ -167,14 +173,14 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
   const listDisplayError = mergeCatalogError(createCatalog.error, loadError);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (!pageKey) {
     return (
       <div className="max-w-3xl">
-        {props.description ? (
-          <p className="mb-4 text-sm text-muted-foreground">{props.description}</p>
+        {labels.description ? (
+          <p className="mb-4 text-sm text-muted-foreground">{labels.description}</p>
         ) : null}
 
         {listDisplayError ? (
@@ -188,7 +194,7 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
             href="/admin/pages/tree"
             className="inline-flex items-center rounded-md border px-3 py-2 text-sm hover:bg-muted/40"
           >
-            {props.editUrlTreeLabel}
+            {labels.editUrlTreeLabel}
           </a>
         </div>
 
@@ -218,7 +224,7 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
                 />
               </div>
               <Button type="submit" disabled={createCatalog.pending}>
-                {createCatalog.pending ? props.creatingLabel : props.createLabel}
+                {createCatalog.pending ? labels.creatingLabel : labels.createLabel}
               </Button>
             </form>
           </CardContent>
@@ -274,7 +280,7 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
       key={currentPage.loadedAt}
       page={currentPage}
       pageKey={pageKey}
-      props={props}
+      labels={labels}
       loadError={loadError}
     />
   );

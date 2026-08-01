@@ -16,13 +16,14 @@ import { Label } from "../../../components/ui/label";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
 
 const ROLE_OPTIONS: TeamMemberRole[] = ["admin", "editor"];
 
-export function UsersAdminForm({
-  props,
-}: ComponentCtx<{
+type UsersAdminConfig = Record<string, never>;
+
+type UsersAdminLabels = {
   title: string;
   description: string | null;
   loadingLabel: string;
@@ -39,7 +40,12 @@ export function UsersAdminForm({
   statusColumnHeader: string;
   mfaEnabledLabel: string;
   mfaOffLabel: string;
-}>) {
+};
+
+export function UsersAdminForm({
+  props,
+}: ComponentCtx<CatalogProps<UsersAdminConfig, UsersAdminLabels>>) {
+  const { labels } = props;
   const catalog = useCatalogSubmit();
   const { submit, pending, error, success, reset } = catalog;
   const users = (useStateValue(ADMIN_STATE.team.users) as TeamUser[] | undefined) ?? [];
@@ -60,7 +66,7 @@ export function UsersAdminForm({
         familyName: familyName.trim() || undefined,
         role,
       },
-      successMessage: props.inviteSuccessMessage,
+      successMessage: labels.inviteSuccessMessage,
       onSuccess: () => {
         setEmail("");
         setGivenName("");
@@ -75,14 +81,14 @@ export function UsersAdminForm({
     await submit({
       action: "updateTeamUserRole",
       params: { userId, role: nextRole },
-      successMessage: props.roleUpdatedMessage,
+      successMessage: labels.roleUpdatedMessage,
     });
   }
 
   const columns: DataTableColumn<TeamUser>[] = [
     {
       key: "email",
-      header: props.emailColumnHeader,
+      header: labels.emailColumnHeader,
       cell: (row) => (
         <div>
           <p className="font-medium">{row.email}</p>
@@ -94,7 +100,7 @@ export function UsersAdminForm({
     },
     {
       key: "role",
-      header: props.roleColumnHeader,
+      header: labels.roleColumnHeader,
       cell: (row) => (
         <select
           className="rounded-md border border-input bg-background px-2 py-1 text-sm"
@@ -112,16 +118,16 @@ export function UsersAdminForm({
     },
     {
       key: "mfa",
-      header: props.mfaColumnHeader,
+      header: labels.mfaColumnHeader,
       cell: (row) => (
         <Badge variant={row.mfaEnrolled ? "default" : "outline"}>
-          {row.mfaEnrolled ? props.mfaEnabledLabel : props.mfaOffLabel}
+          {row.mfaEnrolled ? labels.mfaEnabledLabel : labels.mfaOffLabel}
         </Badge>
       ),
     },
     {
       key: "state",
-      header: props.statusColumnHeader,
+      header: labels.statusColumnHeader,
       cell: (row) => (
         <span className="text-sm text-muted-foreground">
           {row.state.replace(/^USER_STATE_/, "").toLowerCase() || "active"}
@@ -133,30 +139,30 @@ export function UsersAdminForm({
   const displayError = mergeCatalogError(error, loadError);
 
   if (loading) {
-    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <Card>
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          {props.description && <CardDescription>{props.description}</CardDescription>}
+          <CardTitle>{labels.title}</CardTitle>
+          {labels.description && <CardDescription>{labels.description}</CardDescription>}
         </CardHeader>
         <CardContent>
           <DataTable
             columns={columns}
             rows={users}
             rowKey={(row) => row.userId}
-            emptyMessage={props.emptyTableMessage}
+            emptyMessage={labels.emptyTableMessage}
           />
         </CardContent>
       </Card>
 
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>{props.inviteSectionTitle}</CardTitle>
-          <CardDescription>{props.inviteSectionDescription}</CardDescription>
+          <CardTitle>{labels.inviteSectionTitle}</CardTitle>
+          <CardDescription>{labels.inviteSectionDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <form
@@ -213,7 +219,7 @@ export function UsersAdminForm({
               </select>
             </div>
             <Button type="submit" disabled={pending}>
-              {pending ? props.invitingLabel : props.inviteLabel}
+              {pending ? labels.invitingLabel : labels.inviteLabel}
             </Button>
           </form>
         </CardContent>

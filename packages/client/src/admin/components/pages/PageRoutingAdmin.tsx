@@ -1,12 +1,16 @@
 import type { ComponentCtx } from "../../../core/components/types";
+import type { CatalogProps } from "../../../schemas/shared";
 import { isPageTreePath } from "../../routing-entries";
 import { PageEntryAdmin } from "./PageEntryAdmin";
 import { PageTreeAdmin } from "./PageTreeAdmin";
 
-type PageRoutingAdminProps = {
+type PageRoutingConfig = {
+  locale: string;
+};
+
+type PageRoutingLabels = {
   title: string;
   description: string | null;
-  locale: string;
   saveLabel: string;
   savingLabel: string;
   pageSavedMessage: string;
@@ -25,21 +29,27 @@ type PageRoutingAdminProps = {
   treeLoadingLabel: string;
 };
 
-export function PageRoutingAdmin(props: ComponentCtx<PageRoutingAdminProps>) {
+export function PageRoutingAdmin(
+  props: ComponentCtx<CatalogProps<PageRoutingConfig, PageRoutingLabels>>,
+) {
+  const { config, labels } = props.props;
+
   if (isPageTreePath(window.location.pathname)) {
     return (
       <PageTreeAdmin
         props={{
-          title: props.props.title,
-          description: props.props.description,
-          locale: props.props.locale,
-          saveTreeLabel: props.props.saveTreeLabel,
-          savingTreeLabel: props.props.savingTreeLabel,
-          treeSavedMessage: props.props.treeSavedMessage,
-          addEntryLabel: props.props.addEntryLabel,
-          removeEntryLabel: props.props.removeEntryLabel,
-          pageDocumentsLinkLabel: props.props.pageDocumentsLinkLabel,
-          treeLoadingLabel: props.props.treeLoadingLabel,
+          config: { locale: config.locale },
+          labels: {
+            title: labels.title,
+            description: labels.description,
+            saveTreeLabel: labels.saveTreeLabel,
+            savingTreeLabel: labels.savingTreeLabel,
+            treeSavedMessage: labels.treeSavedMessage,
+            addEntryLabel: labels.addEntryLabel,
+            removeEntryLabel: labels.removeEntryLabel,
+            pageDocumentsLinkLabel: labels.pageDocumentsLinkLabel,
+            treeLoadingLabel: labels.treeLoadingLabel,
+          },
         }}
         emit={props.emit}
       />
@@ -48,17 +58,20 @@ export function PageRoutingAdmin(props: ComponentCtx<PageRoutingAdminProps>) {
   return (
     <PageEntryAdmin
       props={{
-        title: props.props.title,
-        description: props.props.description,
-        saveLabel: props.props.saveLabel,
-        savingLabel: props.props.savingLabel,
-        pageSavedMessage: props.props.pageSavedMessage,
-        createLabel: props.props.createLabel,
-        creatingLabel: props.props.creatingLabel,
-        loadingLabel: props.props.loadingLabel,
-        editUrlTreeLabel: props.props.editUrlTreeLabel,
-        allPagesLinkLabel: props.props.allPagesLinkLabel,
-        urlTreeLinkLabel: props.props.urlTreeLinkLabel,
+        config: {},
+        labels: {
+          title: labels.title,
+          description: labels.description,
+          saveLabel: labels.saveLabel,
+          savingLabel: labels.savingLabel,
+          pageSavedMessage: labels.pageSavedMessage,
+          createLabel: labels.createLabel,
+          creatingLabel: labels.creatingLabel,
+          loadingLabel: labels.loadingLabel,
+          editUrlTreeLabel: labels.editUrlTreeLabel,
+          allPagesLinkLabel: labels.allPagesLinkLabel,
+          urlTreeLinkLabel: labels.urlTreeLinkLabel,
+        },
       }}
       emit={props.emit}
     />

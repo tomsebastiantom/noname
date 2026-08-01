@@ -7,6 +7,10 @@ import "dotenv/config";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  DEFAULT_LOGIN_FORM_MESSAGES,
+  DEFAULT_LOGIN_FORM_VIEWS,
+} from "../packages/client/src/core/login-form-labels.ts";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 
@@ -15,29 +19,42 @@ const DEMO_STORE_SLUG = "yogastore";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
+function catalogProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
+  config: TConfig,
+  labels: TLabels,
+) {
+  return { config, labels };
+}
+
+const loginViewLabels = DEFAULT_LOGIN_FORM_VIEWS;
+
 const loginSpec = {
   root: "page",
   elements: {
     page: {
       type: "AuthLayout",
-      props: {
-        layout: "centered",
-        brandTitle: "Noname",
-        brandSubtitle: "Platform demo",
-      },
+      props: catalogProps(
+        { layout: "centered" },
+        { brandTitle: "Noname", brandSubtitle: "Platform demo" },
+      ),
       children: ["form"],
     },
     form: {
       type: "LoginForm",
-      props: {
-        title: "Welcome back",
-        subtitle: "Sign in to continue",
-        redirectPath: "/",
-        logoUrl: null,
-        showPasswordToggle: true,
-        footerText: null,
-        providers: ["google"],
-      },
+      props: catalogProps(
+        {
+          redirectPath: "/",
+          logoUrl: null,
+          showPasswordToggle: true,
+          providers: ["google"],
+        },
+        {
+          views: loginViewLabels,
+          footerText: null,
+          providers: { google: "Continue with Google" },
+          messages: DEFAULT_LOGIN_FORM_MESSAGES,
+        },
+      ),
     },
   },
 };
@@ -47,65 +64,82 @@ const demoSpec = {
   elements: {
     main: {
       type: "Stack",
-      props: { direction: "column", gap: 24, align: "stretch" },
+      props: catalogProps({ direction: "column", gap: 24, align: "stretch" }, {}),
       children: ["header", "promo", "intro", "actions"],
     },
     promo: {
       type: "Text",
       visible: { $state: "/flags/show_summer_sale" },
-      props: {
-        value: "Summer sale — 20% off yoga mats this week!",
-        variant: "h3",
-        align: "center",
-      },
+      props: catalogProps(
+        { variant: "h3", align: "center" },
+        { content: "Summer sale — 20% off yoga mats this week!" },
+      ),
     },
     header: {
       type: "Text",
-      props: { value: "Welcome to Noname", variant: "h1", align: "center" },
+      props: catalogProps({ variant: "h1", align: "center" }, { content: "Welcome to Noname" }),
     },
     intro: {
       type: "Text",
-      props: {
-        value: "Platform demo — core layout components only. Enable an extension via catalog manifest for domain-specific UI.",
-        variant: "body",
-        align: "center",
-      },
+      props: catalogProps(
+        { variant: "body", align: "center" },
+        {
+          content:
+            "Platform demo — core layout components only. Enable an extension via catalog manifest for domain-specific UI.",
+        },
+      ),
     },
     actions: {
       type: "Stack",
-      props: { direction: "row", gap: 12, align: "center" },
+      props: catalogProps({ direction: "row", gap: 12, align: "center" }, {}),
       children: ["cta"],
     },
     cta: {
       type: "Button",
-      props: { label: "Get started", variant: "primary", action: null },
+      props: catalogProps({ variant: "primary", action: null }, { text: "Get started" }),
     },
   },
 };
 
-const adminShellNavProps = {
+const adminShellNavConfig = {
+  navItems: [
+    { id: "home", href: "/admin" },
+    { id: "pages", href: "/admin/pages" },
+    { id: "content", href: "/admin/content" },
+    { id: "layout", href: "/admin/layout" },
+  ],
+  settingsItems: [
+    { id: "auth", href: "/admin/settings/auth" },
+    { id: "users", href: "/admin/settings/users" },
+    { id: "flags", href: "/admin/settings/flags" },
+    { id: "replay", href: "/admin/settings/replay" },
+    { id: "login", href: "/admin/settings/login" },
+  ],
+  accountSecurityHref: "/account/security",
+  storefrontHref: "/",
+};
+
+const adminShellNavLabels = {
   sidebarTitle: "Admin",
   productName: "Noname",
-  navItems: [
-    { id: "home", label: "Overview", href: "/admin" },
-    { id: "pages", label: "Pages", href: "/admin/pages" },
-    { id: "content", label: "Content", href: "/admin/content" },
-    { id: "layout", label: "Layouts", href: "/admin/layout" },
-  ],
   settingsSectionLabel: "Settings",
-  settingsItems: [
-    { id: "auth", label: "Auth settings", href: "/admin/settings/auth" },
-    { id: "users", label: "Team members", href: "/admin/settings/users" },
-    { id: "flags", label: "Feature flags", href: "/admin/settings/flags" },
-    { id: "replay", label: "Session replay", href: "/admin/settings/replay" },
-    { id: "login", label: "Login appearance", href: "/admin/settings/login" },
-  ],
-  accountSecurityLabel: "Account security",
-  accountSecurityHref: "/account/security",
-  storefrontLabel: "← Site",
-  storefrontHref: "/",
-  signOutLabel: "Sign out",
-  signInLabel: "Sign in",
+  nav: {
+    home: "Overview",
+    pages: "Pages",
+    content: "Content",
+    layout: "Layouts",
+  },
+  settings: {
+    auth: "Auth settings",
+    users: "Team members",
+    flags: "Feature flags",
+    replay: "Session replay",
+    login: "Login appearance",
+  },
+  accountSecurity: "Account security",
+  storefront: "← Site",
+  signOut: "Sign out",
+  signIn: "Sign in",
 };
 
 const draftPublishLabels = {
@@ -173,7 +207,7 @@ const usersAdminLabels = {
 
 const sessionReplayAdminLabels = {
   loadingLabel: "Loading replay sessions…",
-  emptyLabel: "No replay sessions yet. Browse the storefront with replay enabled to record sessions.",
+  empty: "No replay sessions yet. Browse the storefront with replay enabled to record sessions.",
   sessionColumnHeader: "Session",
   chunksColumnHeader: "Chunks",
   lastSeenColumnHeader: "Last activity",
@@ -235,65 +269,81 @@ const pagesAdminLabels = {
   treeLoadingLabel: "Loading page tree…",
 };
 
-const adminHomeLinks = [
-  {
-    href: "/admin/pages",
-    label: "Pages",
-    description: "URL tree and routing page documents",
-  },
-  {
-    href: "/admin/content/auth_provider",
+const featureFlagsAdminLabels = {
+  loadingLabel: "Loading flags…",
+  empty: "No flags yet.",
+  onLabel: "On",
+  offLabel: "Off",
+  togglingLabel: "Saving…",
+};
+
+const adminHomeLinkConfig = [
+  { id: "pages", href: "/admin/pages" },
+  { id: "auth_providers", href: "/admin/content/auth_provider" },
+  { id: "layout", href: "/admin/layout" },
+  { id: "users", href: "/admin/settings/users" },
+  { id: "flags", href: "/admin/settings/flags" },
+  { id: "replay", href: "/admin/settings/replay" },
+  { id: "auth", href: "/admin/settings/auth" },
+  { id: "account_security", href: "/account/security" },
+  { id: "login", href: "/admin/settings/login" },
+];
+
+const adminHomeLinkLabels: Record<string, { label: string; description: string }> = {
+  pages: { label: "Pages", description: "URL tree and routing page documents" },
+  auth_providers: {
     label: "Identity providers",
     description: "Custom OAuth/OIDC providers (schema-driven CMS entries)",
   },
-  {
-    href: "/admin/layout",
-    label: "Layouts",
-    description: "Edit json-render templates (home, login, …)",
-  },
-  {
-    href: "/admin/settings/users",
+  layout: { label: "Layouts", description: "Edit json-render templates (home, login, …)" },
+  users: {
     label: "Team members",
     description: "Invite staff, assign admin/editor roles, view MFA status",
   },
-  {
-    href: "/admin/settings/flags",
+  flags: {
     label: "Feature flags",
     description: "Toggle storefront features live (SSE + json-render)",
   },
-  {
-    href: "/admin/settings/replay",
+  replay: {
     label: "Session replay",
     description: "Browse recorded browser sessions for this org (admin only)",
   },
-  {
-    href: "/admin/settings/auth",
+  auth: {
     label: "Auth settings",
     description: "Social login (Google, GitHub, Apple) and password toggle",
   },
-  {
-    href: "/account/security",
+  account_security: {
     label: "Account security",
     description: "Set up authenticator app (two-factor sign-in)",
   },
-  {
-    href: "/admin/settings/login",
+  login: {
     label: "Login appearance",
     description: "Title, logo, and brand copy on /login",
   },
-];
+};
 
 function adminShellProps(
   activeNav: string,
   title: string,
   description?: string,
 ): Record<string, unknown> {
-  return {
-    ...adminShellNavProps,
-    activeNav,
-    title,
-    ...(description === undefined ? {} : { description }),
-  };
+  return catalogProps(
+    { activeNav, ...adminShellNavConfig },
+    {
+      title,
+      ...(description === undefined ? {} : { description }),
+      ...adminShellNavLabels,
+    },
+  );
+}
+
+function panelProps(
+  config: Record<string, unknown>,
+  title: string,
+  description: string | null,
+  labels: Record<string, unknown>,
+): Record<string, unknown> {
+  return catalogProps(config, { title, description, ...labels });
 }
 
 const adminDashboardSpec = {
@@ -310,22 +360,14 @@ const adminDashboardSpec = {
     },
     authSettings: {
       type: "AuthSettingsForm",
-      props: {
-        title: "Sign-in methods",
-        description:
-          "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
-        ...authSettingsLabels,
-      },
+      props: panelProps(
+        {},
+        "Sign-in methods",
+        "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
+        authSettingsLabels,
+      ),
     },
   },
-};
-
-const featureFlagsAdminLabels = {
-  loadingLabel: "Loading flags…",
-  emptyLabel: "No flags yet.",
-  onLabel: "On",
-  offLabel: "Off",
-  togglingLabel: "Saving…",
 };
 
 const adminFlagsSpec = {
@@ -342,15 +384,16 @@ const adminFlagsSpec = {
     },
     loadFlags: {
       type: "MountAction",
-      props: { action: "listFlags" },
+      props: catalogProps({ action: "listFlags" }, {}),
     },
     flagsAdmin: {
       type: "FeatureFlagsAdmin",
-      props: {
-        title: "Feature flags",
-        description: "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
-        ...featureFlagsAdminLabels,
-      },
+      props: panelProps(
+        {},
+        "Feature flags",
+        "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
+        featureFlagsAdminLabels,
+      ),
     },
   },
 };
@@ -369,16 +412,16 @@ const adminReplaySpec = {
     },
     loadReplay: {
       type: "MountAction",
-      props: { action: "listReplaySessions" },
+      props: catalogProps({ action: "listReplaySessions" }, {}),
     },
     replayAdmin: {
       type: "SessionReplayAdmin",
-      props: {
-        title: "Session replay",
-        description:
-          "Sessions are grouped from analytics chunks. Select a row to inspect stored rrweb events.",
-        ...sessionReplayAdminLabels,
-      },
+      props: panelProps(
+        {},
+        "Session replay",
+        "Sessions are grouped from analytics chunks. Select a row to inspect stored rrweb events.",
+        sessionReplayAdminLabels,
+      ),
     },
   },
 };
@@ -397,16 +440,16 @@ const adminUsersSpec = {
     },
     loadTeam: {
       type: "MountAction",
-      props: { action: "listTeamUsers" },
+      props: catalogProps({ action: "listTeamUsers" }, {}),
     },
     usersAdmin: {
       type: "UsersAdminForm",
-      props: {
-        title: "Team members",
-        description:
-          "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
-        ...usersAdminLabels,
-      },
+      props: panelProps(
+        {},
+        "Team members",
+        "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
+        usersAdminLabels,
+      ),
     },
   },
 };
@@ -425,13 +468,12 @@ const adminLoginBrandingSpec = {
     },
     loginBranding: {
       type: "LoginBrandingForm",
-      props: {
-        title: "Login appearance",
-        description:
-          "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
-        segment: "default",
-        ...loginBrandingLabels,
-      },
+      props: panelProps(
+        { segment: "default" },
+        "Login appearance",
+        "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
+        loginBrandingLabels,
+      ),
     },
   },
 };
@@ -441,19 +483,20 @@ const accountSecuritySpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: {
-        layout: "centered",
-        brandTitle: "Account security",
-        brandSubtitle: "Protect your account",
-      },
+      props: catalogProps(
+        { layout: "centered" },
+        { brandTitle: "Account security", brandSubtitle: "Protect your account" },
+      ),
       children: ["security"],
     },
     security: {
       type: "AccountSecurityForm",
-      props: {
-        title: "Two-factor authentication",
-        description: "Use an authenticator app for an extra sign-in step after your password.",
-      },
+      props: panelProps(
+        {},
+        "Two-factor authentication",
+        "Use an authenticator app for an extra sign-in step after your password.",
+        {},
+      ),
     },
   },
 };
@@ -468,13 +511,12 @@ const adminContentSpec = {
     },
     contentAdmin: {
       type: "ContentEntryAdmin",
-      props: {
-        title: "Content entries",
-        description:
-          "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
-        locale: "en-US",
-        ...contentAdminLabels,
-      },
+      props: panelProps(
+        { locale: "en-US" },
+        "Content entries",
+        "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
+        contentAdminLabels,
+      ),
     },
   },
 };
@@ -489,13 +531,12 @@ const adminLayoutSpec = {
     },
     layoutAdmin: {
       type: "LayoutEntryAdmin",
-      props: {
-        title: "Layout templates",
-        description:
-          "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
-        segment: "default",
-        ...layoutAdminLabels,
-      },
+      props: panelProps(
+        { segment: "default" },
+        "Layout templates",
+        "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
+        layoutAdminLabels,
+      ),
     },
   },
 };
@@ -510,11 +551,14 @@ const adminHomeSpec = {
     },
     home: {
       type: "AdminHome",
-      props: {
-        title: "Dashboard",
-        description: "Manage content, layouts, and auth without re-seeding.",
-        links: adminHomeLinks,
-      },
+      props: catalogProps(
+        { links: adminHomeLinkConfig },
+        {
+          title: "Dashboard",
+          description: "Manage content, layouts, and auth without re-seeding.",
+          links: adminHomeLinkLabels,
+        },
+      ),
     },
   },
 };
@@ -529,17 +573,16 @@ const adminPagesSpec = {
     },
     loadPages: {
       type: "MountAction",
-      props: { action: "listRoutingPages" },
+      props: catalogProps({ action: "listRoutingPages" }, {}),
     },
     pagesAdmin: {
       type: "PageRoutingAdmin",
-      props: {
-        title: "Pages",
-        description:
-          "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
-        locale: "en-US",
-        ...pagesAdminLabels,
-      },
+      props: panelProps(
+        { locale: "en-US" },
+        "Pages",
+        "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
+        pagesAdminLabels,
+      ),
     },
   },
 };

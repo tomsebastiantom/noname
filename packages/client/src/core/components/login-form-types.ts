@@ -14,19 +14,3 @@ export function viewFromSearch(search: URLSearchParams): LoginView {
   if (search.get("forgot") === "1") return "forgot";
   return "login";
 }
-
-export const LOGIN_VIEW_TITLES: Record<LoginView, string> = {
-  login: "",
-  forgot: "Forgot password",
-  reset: "Set new password",
-  signup: "Create account",
-  mfa: "Verify your identity",
-};
-
-export const LOGIN_VIEW_SUBTITLES: Record<LoginView, string | null> = {
-  login: null,
-  forgot: "Enter your email and we will send reset instructions.",
-  reset: "Choose a new password for your account.",
-  signup: "Register with email and password.",
-  mfa: "Enter the code from your authenticator app.",
-};

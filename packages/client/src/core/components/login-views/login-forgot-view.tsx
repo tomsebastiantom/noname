@@ -2,17 +2,22 @@ import type { FormEvent } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
+import type { LoginViewFields } from "../../login-form-labels";
 import { LoginFormAlerts } from "./login-form-alerts";
 import type { LoginAlertState } from "./types";
 
+type ForgotFields = LoginViewFields["forgot"]["fields"];
+
 export function LoginForgotView({
   email,
+  fields,
   state,
   onEmailChange,
   onSubmit,
   onBack,
 }: {
   email: string;
+  fields: ForgotFields;
   state: LoginAlertState;
   onEmailChange: (value: string) => void;
   onSubmit: (e: FormEvent<HTMLFormElement>) => void;
@@ -21,7 +26,7 @@ export function LoginForgotView({
   return (
     <form onSubmit={(e) => void onSubmit(e)} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <Label htmlFor="forgot-email">Email</Label>
+        <Label htmlFor="forgot-email">{fields.email}</Label>
         <Input
           id="forgot-email"
           type="email"
@@ -33,14 +38,14 @@ export function LoginForgotView({
       </div>
       <LoginFormAlerts state={state} />
       <Button type="submit" disabled={state.loading} className="w-full">
-        {state.loading ? "Sending…" : "Send reset link"}
+        {state.loading ? fields.submitting : fields.submit}
       </Button>
       <button
         type="button"
         className="text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
         onClick={onBack}
       >
-        Back to sign in
+        {fields.back}
       </button>
     </form>
   );

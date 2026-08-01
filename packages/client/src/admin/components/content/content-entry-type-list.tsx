@@ -9,21 +9,19 @@ import {
 import { DataTable } from "../shared/DataTable";
 
 export function ContentEntryTypeList({
-  title,
-  description,
+  labels,
   types,
   error,
 }: {
-  title: string;
-  description: string | null;
+  labels: { title: string; description: string | null };
   types: { name: string; fieldCount: number }[];
   error?: string | null;
 }) {
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description && <CardDescription>{description}</CardDescription>}
+        <CardTitle>{labels.title}</CardTitle>
+        {labels.description && <CardDescription>{labels.description}</CardDescription>}
       </CardHeader>
       <CardContent className="space-y-4">
         {error ? (

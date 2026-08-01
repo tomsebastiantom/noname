@@ -3,9 +3,12 @@ import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import { Separator } from "../../../components/ui/separator";
+import type { LoginViewFields } from "../../login-form-labels";
 import { SocialLoginButtons } from "../SocialLoginButtons";
 import { LoginFormAlerts } from "./login-form-alerts";
 import type { LoginAlertState } from "./types";
+
+type LoginFields = LoginViewFields["login"]["fields"];
 
 export function LoginCredentialsView({
   email,
@@ -20,6 +23,7 @@ export function LoginCredentialsView({
   providerLabels,
   providerIcons,
   footerText,
+  fields,
   state,
   onEmailChange,
   onPasswordChange,
@@ -40,6 +44,7 @@ export function LoginCredentialsView({
   providerLabels: Record<string, string>;
   providerIcons: Record<string, string>;
   footerText: string | null;
+  fields: LoginFields;
   state: LoginAlertState;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
@@ -66,13 +71,13 @@ export function LoginCredentialsView({
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-card px-2 text-muted-foreground">
-              {showSocial ? "Or continue with email" : "Continue with email"}
+              {showSocial ? fields.dividerWithSocial : fields.dividerEmailOnly}
             </span>
           </div>
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">{fields.email}</Label>
           <Input
             id="email"
             type="email"
@@ -85,14 +90,14 @@ export function LoginCredentialsView({
 
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
-            <Label htmlFor="password">Password</Label>
+            <Label htmlFor="password">{fields.password}</Label>
             {allowPasswordReset && (
               <button
                 type="button"
                 className="text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground"
                 onClick={onForgot}
               >
-                Forgot password?
+                {fields.forgotPasswordLink}
               </button>
             )}
           </div>
@@ -114,7 +119,7 @@ export function LoginCredentialsView({
                 className="absolute right-1 top-1/2 h-7 -translate-y-1/2 px-2 text-xs text-muted-foreground"
                 onClick={onTogglePassword}
               >
-                {showPassword ? "Hide" : "Show"}
+                {showPassword ? fields.hidePassword : fields.showPassword}
               </Button>
             )}
           </div>
@@ -123,18 +128,18 @@ export function LoginCredentialsView({
         <LoginFormAlerts state={state} />
 
         <Button type="submit" disabled={state.loading} className="w-full">
-          {state.loading ? "Signing in…" : "Sign in"}
+          {state.loading ? fields.submitting : fields.submit}
         </Button>
 
         {allowSignUp && (
           <p className="text-center text-sm text-muted-foreground">
-            No account?{" "}
+            {fields.noAccountPrompt}{" "}
             <button
               type="button"
               className="underline underline-offset-2 hover:text-foreground"
               onClick={onSignup}
             >
-              Create one
+              {fields.createAccountLink}
             </button>
           </p>
         )}

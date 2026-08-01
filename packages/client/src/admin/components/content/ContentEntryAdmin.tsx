@@ -12,6 +12,7 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import {
   CONTENT_DEFAULT_LOCALE,
   type ContentEntryRow,
@@ -25,10 +26,13 @@ import { emptyValuesForSchema, newEntryCardDescription } from "./content-entry-u
 import type { MediaFieldLabels } from "./MediaFieldInput";
 import { useContentEntryAdminActions } from "./use-content-entry-actions";
 
-type ContentEntryAdminProps = ComponentCtx<{
+type ContentEntryConfig = {
+  locale: string;
+};
+
+type ContentEntryLabels = {
   title: string;
   description: string | null;
-  locale: string;
   saveLabel: string;
   savingLabel: string;
   publishLabel: string;
@@ -48,18 +52,30 @@ type ContentEntryAdminProps = ComponentCtx<{
   pickExistingLabel: string;
   loadingAssetsLabel: string;
   clearLabel: string;
-}>;
+};
+
+type ContentEntryAdminProps = ComponentCtx<CatalogProps<ContentEntryConfig, ContentEntryLabels>>;
 
 type EntriesLoaded = Extract<ContentAdminLoaded, { mode: "entries" }>;
 
+function mediaLabelsFrom(labels: ContentEntryLabels): MediaFieldLabels {
+  return {
+    uploadFileLabel: labels.uploadFileLabel,
+    uploadingLabel: labels.uploadingLabel,
+    pickExistingLabel: labels.pickExistingLabel,
+    loadingAssetsLabel: labels.loadingAssetsLabel,
+    clearLabel: labels.clearLabel,
+  };
+}
+
 function ContentEntryEntriesPanel({
   loaded,
-  props,
+  labels,
   loadParams,
   loadError,
 }: {
   loaded: EntriesLoaded;
-  props: ContentEntryAdminProps["props"];
+  labels: ContentEntryLabels;
   loadParams: { contentType: string; locale: string };
   loadError: string | null | undefined;
 }) {
@@ -68,13 +84,7 @@ function ContentEntryEntriesPanel({
   const locale = loaded.locale;
   const schema = loaded.schema;
 
-  const mediaLabels: MediaFieldLabels = {
-    uploadFileLabel: props.uploadFileLabel,
-    uploadingLabel: props.uploadingLabel,
-    pickExistingLabel: props.pickExistingLabel,
-    loadingAssetsLabel: props.loadingAssetsLabel,
-    clearLabel: props.clearLabel,
-  };
+  const mediaLabels = mediaLabelsFrom(labels);
 
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(loaded.initialSelectedId);
@@ -106,11 +116,11 @@ function ContentEntryEntriesPanel({
     selectedId,
     localEntries,
     messages: {
-      entryCreatedMessage: props.entryCreatedMessage,
-      entrySavedMessage: props.entrySavedMessage,
-      entryPublishedMessage: props.entryPublishedMessage,
-      entryDeletedMessage: props.entryDeletedMessage,
-      deleteConfirmMessage: props.deleteConfirmMessage,
+      entryCreatedMessage: labels.entryCreatedMessage,
+      entrySavedMessage: labels.entrySavedMessage,
+      entryPublishedMessage: labels.entryPublishedMessage,
+      entryDeletedMessage: labels.entryDeletedMessage,
+      deleteConfirmMessage: labels.deleteConfirmMessage,
     },
     setCreating,
     setSaving,
@@ -132,7 +142,6 @@ function ContentEntryEntriesPanel({
       <ContentEntryCreateForm
         entryCount={localEntries.length}
         isNewEntry={isNewEntry}
-        title={props.title}
         description={newEntryCardDescription(contentType, localEntries.length, isNewEntry)}
         editableFields={editableFields}
         values={values}
@@ -141,8 +150,7 @@ function ContentEntryEntriesPanel({
         error={displayError}
         success={catalog.success}
         creating={creating}
-        createDraftLabel={props.createDraftLabel}
-        creatingLabel={props.creatingLabel}
+        labels={labels}
         onValuesChange={setValues}
         onSubmit={() => void onCreate()}
         onCancel={
@@ -157,8 +165,6 @@ function ContentEntryEntriesPanel({
   return (
     <ContentEntryEditor
       contentType={contentType}
-      title={props.title}
-      description={props.description}
       locale={locale}
       status={status}
       schema={schema!}
@@ -172,12 +178,7 @@ function ContentEntryEntriesPanel({
       publishing={publishing}
       deleting={deleting}
       canPublish={loaded.canPublish}
-      saveLabel={props.saveLabel}
-      savingLabel={props.savingLabel}
-      publishLabel={props.publishLabel}
-      publishingLabel={props.publishingLabel}
-      deleteLabel={props.deleteLabel}
-      deletingLabel={props.deletingLabel}
+      labels={labels}
       onSelectEntry={(id) => void selectEntry(id)}
       onStartNewEntry={startNewEntry}
       onValuesChange={setValues}
@@ -189,7 +190,8 @@ function ContentEntryEntriesPanel({
 }
 
 export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
-  const locale = props.locale || CONTENT_DEFAULT_LOCALE;
+  const { config, labels } = props;
+  const locale = config.locale || CONTENT_DEFAULT_LOCALE;
   const contentType = contentTypeFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ contentType, locale }), [contentType, locale]);
   useMountAction("loadContentAdmin", loadParams);
@@ -202,25 +204,18 @@ export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
   const schema = loaded?.mode === "entries" ? (loaded.schema ?? null) : null;
 
   if (loading) {
-    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (!contentType) {
-    return (
-      <ContentEntryTypeList
-        title={props.title}
-        description={props.description}
-        types={types}
-        error={loadError}
-      />
-    );
+    return <ContentEntryTypeList labels={labels} types={types} error={loadError} />;
   }
 
   if (!schema || loaded?.mode !== "entries") {
     return (
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
+          <CardTitle>{labels.title}</CardTitle>
           <CardDescription>
             Content type <strong>{contentType}</strong> not found.
           </CardDescription>
@@ -241,7 +236,7 @@ export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
     <ContentEntryEntriesPanel
       key={loaded.loadedAt}
       loaded={loaded}
-      props={props}
+      labels={labels}
       loadParams={loadParams}
       loadError={loadError}
     />

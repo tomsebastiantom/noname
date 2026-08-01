@@ -16,8 +16,6 @@ import type { MediaFieldLabels } from "./MediaFieldInput";
 
 export function ContentEntryEditor({
   contentType,
-  title,
-  description,
   locale,
   status,
   schema,
@@ -31,12 +29,7 @@ export function ContentEntryEditor({
   publishing,
   deleting,
   canPublish,
-  saveLabel,
-  savingLabel,
-  publishLabel,
-  publishingLabel,
-  deleteLabel,
-  deletingLabel,
+  labels,
   onSelectEntry,
   onStartNewEntry,
   onValuesChange,
@@ -45,8 +38,6 @@ export function ContentEntryEditor({
   onDelete,
 }: {
   contentType: string;
-  title: string;
-  description: string | null;
   locale: string;
   status: string;
   schema: ContentTypeSchema;
@@ -60,12 +51,16 @@ export function ContentEntryEditor({
   publishing: boolean;
   deleting: boolean;
   canPublish: boolean;
-  saveLabel: string;
-  savingLabel: string;
-  publishLabel: string;
-  publishingLabel: string;
-  deleteLabel: string;
-  deletingLabel: string;
+  labels: {
+    title: string;
+    description: string | null;
+    saveLabel: string;
+    savingLabel: string;
+    publishLabel: string;
+    publishingLabel: string;
+    deleteLabel: string;
+    deletingLabel: string;
+  };
   onSelectEntry: (id: string) => void;
   onStartNewEntry: () => void;
   onValuesChange: (values: Record<string, string>) => void;
@@ -119,8 +114,8 @@ export function ContentEntryEditor({
 
         <Card className="flex-1">
           <CardHeader>
-            <CardTitle>{title}</CardTitle>
-            {description && <CardDescription>{description}</CardDescription>}
+            <CardTitle>{labels.title}</CardTitle>
+            {labels.description && <CardDescription>{labels.description}</CardDescription>}
             <p className="text-xs text-muted-foreground">
               Type: {contentType} · Locale: {locale} · Status: {status}
             </p>
@@ -164,7 +159,7 @@ export function ContentEntryEditor({
 
               <div className="flex flex-wrap gap-2">
                 <Button type="submit" disabled={saving || publishing || deleting}>
-                  {saving ? savingLabel : saveLabel}
+                  {saving ? labels.savingLabel : labels.saveLabel}
                 </Button>
                 {canPublish && (
                   <Button
@@ -173,7 +168,7 @@ export function ContentEntryEditor({
                     disabled={saving || publishing || deleting}
                     onClick={() => void onPublish()}
                   >
-                    {publishing ? publishingLabel : publishLabel}
+                    {publishing ? labels.publishingLabel : labels.publishLabel}
                   </Button>
                 )}
                 <Button
@@ -182,7 +177,7 @@ export function ContentEntryEditor({
                   disabled={saving || publishing || deleting || isNewEntry}
                   onClick={() => void onDelete()}
                 >
-                  {deleting ? deletingLabel : deleteLabel}
+                  {deleting ? labels.deletingLabel : labels.deleteLabel}
                 </Button>
               </div>
             </form>

@@ -9,13 +9,17 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { specToJson } from "../../layout-entries";
 import { applyLoginBranding, type LoginBrandingValues } from "../../login-branding";
 
-type LoginBrandingFormProps = ComponentCtx<{
+type LoginBrandingConfig = {
+  segment: string;
+};
+
+type LoginBrandingLabels = {
   title: string;
   description: string | null;
-  segment: string;
   saveLabel: string;
   savingLabel: string;
   publishLabel: string;
@@ -24,15 +28,17 @@ type LoginBrandingFormProps = ComponentCtx<{
   draftSavedMessage: string;
   publishedMessage: string;
   loadingLabel: string;
-}>;
+};
+
+type LoginBrandingFormProps = ComponentCtx<CatalogProps<LoginBrandingConfig, LoginBrandingLabels>>;
 
 function LoginBrandingFields({
   loaded,
-  props,
+  labels,
   loadError,
 }: {
   loaded: LoginBrandingLoaded;
-  props: LoginBrandingFormProps["props"];
+  labels: LoginBrandingLabels;
   loadError: string | null | undefined;
 }) {
   const { run, executeAction, error, success } = useCatalogSubmit();
@@ -53,7 +59,7 @@ function LoginBrandingFields({
         }
       },
       {
-        successMessage: publish ? props.publishedMessage : props.draftSavedMessage,
+        successMessage: publish ? labels.publishedMessage : labels.draftSavedMessage,
         onPendingChange: publish ? setPublishing : setSaving,
       },
     );
@@ -159,7 +165,7 @@ function LoginBrandingFields({
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit" disabled={saving || publishing}>
-          {saving ? props.savingLabel : props.saveLabel}
+          {saving ? labels.savingLabel : labels.saveLabel}
         </Button>
         {loaded.canPublish && (
           <Button
@@ -168,12 +174,12 @@ function LoginBrandingFields({
             disabled={saving || publishing}
             onClick={() => void save(true)}
           >
-            {publishing ? props.publishingLabel : props.publishLabel}
+            {publishing ? labels.publishingLabel : labels.publishLabel}
           </Button>
         )}
         <Button type="button" variant="ghost" asChild>
           <a href="/login" target="_blank" rel="noreferrer">
-            {props.previewLoginLabel}
+            {labels.previewLoginLabel}
           </a>
         </Button>
       </div>
@@ -182,7 +188,8 @@ function LoginBrandingFields({
 }
 
 export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
-  const segment = props.segment || "default";
+  const { config, labels } = props;
+  const segment = config.segment || "default";
   const loadParams = useMemo(() => ({ segment }), [segment]);
   useMountAction("loadLoginBranding", loadParams);
 
@@ -194,7 +201,7 @@ export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
   const loadError = useStateValue(ADMIN_STATE.loginBranding.error) as string | null | undefined;
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (!loaded) {
@@ -203,14 +210,14 @@ export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
 
   return (
     <div className="max-w-lg">
-      {props.description ? (
-        <p className="mb-6 text-sm text-muted-foreground">{props.description}</p>
+      {labels.description ? (
+        <p className="mb-6 text-sm text-muted-foreground">{labels.description}</p>
       ) : null}
 
       <LoginBrandingFields
         key={loaded.loadedAt}
         loaded={loaded}
-        props={props}
+        labels={labels}
         loadError={loadError}
       />
     </div>

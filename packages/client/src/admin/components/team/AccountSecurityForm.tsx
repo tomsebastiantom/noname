@@ -16,6 +16,7 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import type { ComponentCtx } from "../../../core/components/types";
 import { useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 
 type Step = "idle" | "setup" | "enabled";
 
@@ -99,12 +100,17 @@ function mfaStepContent(options: {
   );
 }
 
-export function AccountSecurityForm({
-  props,
-}: ComponentCtx<{
+type AccountSecurityConfig = Record<string, never>;
+
+type AccountSecurityLabels = {
   title: string;
   description: string | null;
-}>) {
+};
+
+export function AccountSecurityForm({
+  props,
+}: ComponentCtx<CatalogProps<AccountSecurityConfig, AccountSecurityLabels>>) {
+  const { labels } = props;
   const { submit, run, error, success } = useCatalogSubmit();
   const [step, setStep] = useState<Step>("idle");
   const [sessionLoading, setSessionLoading] = useState(true);
@@ -133,7 +139,7 @@ export function AccountSecurityForm({
     return (
       <Card className="mx-auto max-w-lg">
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
+          <CardTitle>{labels.title}</CardTitle>
           <CardDescription>Sign in to manage your account security settings.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -186,7 +192,7 @@ export function AccountSecurityForm({
     step === "enabled"
       ? "Your account is protected with an authenticator app."
       : showSetupDescription
-        ? props.description
+        ? labels.description
         : null;
 
   return (
@@ -199,7 +205,7 @@ export function AccountSecurityForm({
         <CardHeader>
           <div className="flex items-start justify-between gap-3">
             <div className="flex flex-col gap-1.5">
-              <CardTitle>{props.title}</CardTitle>
+              <CardTitle>{labels.title}</CardTitle>
               {cardDescription && <CardDescription>{cardDescription}</CardDescription>}
             </div>
             {step === "enabled" && !sessionLoading ? (

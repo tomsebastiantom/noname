@@ -12,15 +12,16 @@ export function Grid({
   props,
   children,
 }: ComponentCtx<{
-  columns: number;
-  gap: number;
+  config: { columns: number; gap: number };
+  labels: Record<string, never>;
 }>) {
+  const { config } = props;
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${props.columns}, 1fr)`,
-        gap: props.gap,
+        gridTemplateColumns: `repeat(${config.columns}, 1fr)`,
+        gap: config.gap,
         padding: 24,
       }}
     >
@@ -33,17 +34,21 @@ export function Stack({
   props,
   children,
 }: ComponentCtx<{
-  direction: "row" | "column";
-  gap: number;
-  align: "start" | "center" | "end" | "stretch";
+  config: {
+    direction: "row" | "column";
+    gap: number;
+    align: "start" | "center" | "end" | "stretch";
+  };
+  labels: Record<string, never>;
 }>) {
+  const { config } = props;
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: props.direction,
-        gap: props.gap,
-        alignItems: props.align,
+        flexDirection: config.direction,
+        gap: config.gap,
+        alignItems: config.align,
       }}
     >
       {children}
@@ -54,10 +59,13 @@ export function Stack({
 export function Text({
   props,
 }: ComponentCtx<{
-  value: string;
-  variant: "h1" | "h2" | "h3" | "body" | "caption";
-  align: "left" | "center" | "right";
+  config: {
+    variant: "h1" | "h2" | "h3" | "body" | "caption";
+    align: "left" | "center" | "right";
+  };
+  labels: { content: string };
 }>) {
+  const { config, labels } = props;
   const styles: Record<string, React.CSSProperties> = {
     h1: { fontSize: "2rem", fontWeight: 700, margin: "0 0 16px" },
     h2: { fontSize: "1.5rem", fontWeight: 600, margin: "0 0 12px" },
@@ -66,17 +74,17 @@ export function Text({
     caption: { fontSize: "0.85rem", color: "#888" },
   };
 
-  const style = { ...styles[props.variant], textAlign: props.align } as React.CSSProperties;
+  const style = { ...styles[config.variant], textAlign: config.align } as React.CSSProperties;
 
-  switch (props.variant) {
+  switch (config.variant) {
     case "h1":
-      return <h1 style={style}>{props.value}</h1>;
+      return <h1 style={style}>{labels.content}</h1>;
     case "h2":
-      return <h2 style={style}>{props.value}</h2>;
+      return <h2 style={style}>{labels.content}</h2>;
     case "h3":
-      return <h3 style={style}>{props.value}</h3>;
+      return <h3 style={style}>{labels.content}</h3>;
     default:
-      return <p style={style}>{props.value}</p>;
+      return <p style={style}>{labels.content}</p>;
   }
 }
 
@@ -84,10 +92,13 @@ export function Button({
   props,
   emit,
 }: ComponentCtx<{
-  label: string;
-  variant: "primary" | "secondary" | "outline";
-  action: string | null;
+  config: {
+    variant: "primary" | "secondary" | "outline";
+    action: string | null;
+  };
+  labels: { text: string };
 }>) {
+  const { config, labels } = props;
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: { background: "#000", color: "#fff", border: "none" },
     secondary: { background: "#666", color: "#fff", border: "none" },
@@ -102,11 +113,11 @@ export function Button({
         fontSize: "1rem",
         borderRadius: 6,
         cursor: "pointer",
-        ...variantStyles[props.variant],
+        ...variantStyles[config.variant],
       }}
-      onClick={() => props.action && emit?.(props.action)}
+      onClick={() => config.action && emit?.(config.action)}
     >
-      {props.label}
+      {labels.text}
     </button>
   );
 }
@@ -114,20 +125,23 @@ export function Button({
 export function Image({
   props,
 }: ComponentCtx<{
-  src: string;
-  alt: string;
-  fit: "cover" | "contain" | "fill";
-  width: number | null;
-  height: number | null;
+  config: {
+    src: string;
+    fit: "cover" | "contain" | "fill";
+    width: number | null;
+    height: number | null;
+  };
+  labels: { alt: string };
 }>) {
+  const { config, labels } = props;
   return (
     <img
-      src={props.src}
-      alt={props.alt}
+      src={config.src}
+      alt={labels.alt}
       style={{
-        width: props.width ?? "100%",
-        height: props.height ?? "auto",
-        objectFit: props.fit,
+        width: config.width ?? "100%",
+        height: config.height ?? "auto",
+        objectFit: config.fit,
       }}
     />
   );

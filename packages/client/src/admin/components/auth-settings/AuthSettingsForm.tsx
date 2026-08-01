@@ -15,13 +15,16 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { AuthAppleProviderSection } from "./apple-provider-section";
 import { AuthCredentialProviderSection } from "./credential-provider-section";
 import { cmsProviderEnabled, cmsProviderName } from "./form-utils";
 import { AuthSettingsMfaSection } from "./mfa-section";
 import { AuthSettingsPasswordSection } from "./password-section";
 
-type AuthSettingsFormProps = ComponentCtx<{
+type AuthSettingsConfig = Record<string, never>;
+
+type AuthSettingsLabels = {
   title: string;
   description: string | null;
   saveLabel: string;
@@ -48,24 +51,26 @@ type AuthSettingsFormProps = ComponentCtx<{
   githubSecretPlaceholderExisting: string;
   appleKeyPlaceholderNew: string;
   appleKeyPlaceholderExisting: string;
-}>;
+};
+
+type AuthSettingsFormProps = ComponentCtx<CatalogProps<AuthSettingsConfig, AuthSettingsLabels>>;
 
 function AuthSettingsFields({
   loaded,
-  props,
+  labels,
   loadError,
 }: {
   loaded: AuthSettingsLoaded;
-  props: AuthSettingsFormProps["props"];
+  labels: AuthSettingsLabels;
   loadError: string | null | undefined;
 }) {
   const catalog = useCatalogSubmit();
   const { submit, pending, error, success, clearSuccess } = catalog;
 
   const fallbackLabels: Record<AuthProvider, string> = {
-    google: props.googleLabel,
-    github: props.githubLabel,
-    apple: props.appleLabel,
+    google: labels.googleLabel,
+    github: labels.githubLabel,
+    apple: labels.appleLabel,
   };
   const [authProviders] = useState(loaded.authProviders);
   const [allowPassword, setAllowPassword] = useState(loaded.allowPassword);
@@ -122,7 +127,7 @@ function AuthSettingsFields({
         githubOAuth,
         appleOAuth,
       },
-      successMessage: props.successMessage,
+      successMessage: labels.successMessage,
       onSuccess: () => {
         setGoogleClientSecret("");
         setGithubClientSecret("");
@@ -142,14 +147,14 @@ function AuthSettingsFields({
       className="flex flex-col gap-6"
     >
       <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm font-medium">{props.socialProvidersLegend}</legend>
+        <legend className="text-sm font-medium">{labels.socialProvidersLegend}</legend>
 
         <p className="text-sm text-muted-foreground">
           <a
             href="/admin/content/auth_provider"
             className="underline underline-offset-2 hover:text-foreground"
           >
-            {props.authProvidersLinkText}
+            {labels.authProvidersLinkText}
           </a>
         </p>
 
@@ -162,11 +167,11 @@ function AuthSettingsFields({
           onClientSecretChange={setGoogleClientSecret}
           idPrefix="google"
           providerLabel={cmsProviderName(authProviders, "google", fallbackLabels.google)}
-          configuredBadgeLabel={props.configuredBadgeLabel}
+          configuredBadgeLabel={labels.configuredBadgeLabel}
           secretPlaceholder={
             googleConfigured
-              ? props.googleSecretPlaceholderExisting
-              : props.googleSecretPlaceholderNew
+              ? labels.googleSecretPlaceholderExisting
+              : labels.googleSecretPlaceholderNew
           }
         />
 
@@ -179,11 +184,11 @@ function AuthSettingsFields({
           onClientSecretChange={setGithubClientSecret}
           idPrefix="github"
           providerLabel={cmsProviderName(authProviders, "github", fallbackLabels.github)}
-          configuredBadgeLabel={props.configuredBadgeLabel}
+          configuredBadgeLabel={labels.configuredBadgeLabel}
           secretPlaceholder={
             githubConfigured
-              ? props.githubSecretPlaceholderExisting
-              : props.githubSecretPlaceholderNew
+              ? labels.githubSecretPlaceholderExisting
+              : labels.githubSecretPlaceholderNew
           }
         />
 
@@ -191,13 +196,13 @@ function AuthSettingsFields({
           visible={cmsProviderEnabled(authProviders, "apple")}
           configured={appleConfigured}
           providerLabel={cmsProviderName(authProviders, "apple", fallbackLabels.apple)}
-          configuredBadgeLabel={props.configuredBadgeLabel}
+          configuredBadgeLabel={labels.configuredBadgeLabel}
           clientId={appleClientId}
           teamId={appleTeamId}
           keyId={appleKeyId}
           privateKey={applePrivateKey}
           keyPlaceholder={
-            appleConfigured ? props.appleKeyPlaceholderExisting : props.appleKeyPlaceholderNew
+            appleConfigured ? labels.appleKeyPlaceholderExisting : labels.appleKeyPlaceholderNew
           }
           onClientIdChange={setAppleClientId}
           onTeamIdChange={setAppleTeamId}
@@ -205,16 +210,16 @@ function AuthSettingsFields({
           onPrivateKeyChange={setApplePrivateKey}
         />
 
-        <p className="text-xs text-muted-foreground">{props.saveHelperText}</p>
+        <p className="text-xs text-muted-foreground">{labels.saveHelperText}</p>
       </fieldset>
 
       <AuthSettingsPasswordSection
         allowPassword={allowPassword}
         allowPasswordReset={allowPasswordReset}
         allowSignUp={allowSignUp}
-        allowPasswordLabel={props.allowPasswordLabel}
-        allowPasswordResetLabel={props.allowPasswordResetLabel}
-        allowSignUpLabel={props.allowSignUpLabel}
+        allowPasswordLabel={labels.allowPasswordLabel}
+        allowPasswordResetLabel={labels.allowPasswordResetLabel}
+        allowSignUpLabel={labels.allowSignUpLabel}
         onAllowPasswordChange={(value) => {
           setAllowPassword(value);
           clearSuccess();
@@ -231,9 +236,9 @@ function AuthSettingsFields({
 
       <AuthSettingsMfaSection
         requireMfaForAdmin={requireMfaForAdmin}
-        adminSecurityLegend={props.adminSecurityLegend}
-        requireMfaLabel={props.requireMfaLabel}
-        mfaHelperText={props.mfaHelperText}
+        adminSecurityLegend={labels.adminSecurityLegend}
+        requireMfaLabel={labels.requireMfaLabel}
+        mfaHelperText={labels.mfaHelperText}
         onRequireMfaChange={(value) => {
           setRequireMfaForAdmin(value);
           clearSuccess();
@@ -245,7 +250,7 @@ function AuthSettingsFields({
           href="/admin/settings/login"
           className="underline underline-offset-2 hover:text-foreground"
         >
-          {props.loginAppearanceLinkText}
+          {labels.loginAppearanceLinkText}
         </a>
       </p>
 
@@ -262,13 +267,14 @@ function AuthSettingsFields({
       )}
 
       <Button type="submit" disabled={pending}>
-        {pending ? props.savingLabel : props.saveLabel}
+        {pending ? labels.savingLabel : labels.saveLabel}
       </Button>
     </form>
   );
 }
 
 export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
+  const { labels } = props;
   useMountAction("loadAuthSettings");
 
   const loaded = useStateValue(ADMIN_STATE.authSettings.loaded) as
@@ -279,7 +285,7 @@ export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
   const loadError = useStateValue(ADMIN_STATE.authSettings.error) as string | null | undefined;
 
   if (loading) {
-    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (!loaded) {
@@ -289,14 +295,14 @@ export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
   return (
     <Card className="max-w-xl">
       <CardHeader>
-        <CardTitle>{props.title}</CardTitle>
-        {props.description && <CardDescription>{props.description}</CardDescription>}
+        <CardTitle>{labels.title}</CardTitle>
+        {labels.description && <CardDescription>{labels.description}</CardDescription>}
       </CardHeader>
       <CardContent>
         <AuthSettingsFields
           key={loaded.loadedAt}
           loaded={loaded}
-          props={props}
+          labels={labels}
           loadError={loadError}
         />
       </CardContent>

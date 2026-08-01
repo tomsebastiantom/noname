@@ -13,6 +13,7 @@ import {
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import type { FlagRow } from "../../flags";
 
 function flagValue(flag: FlagRow): unknown {
@@ -23,14 +24,14 @@ function flagValue(flag: FlagRow): unknown {
 function flagListBody(
   loading: boolean,
   flags: FlagRow[],
-  labels: { loadingLabel: string; emptyLabel: string },
+  labels: { loadingLabel: string; empty: string },
   renderFlags: () => ReactNode,
 ): ReactNode {
   if (loading) {
     return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
   }
   if (flags.length === 0) {
-    return <p className="text-sm text-muted-foreground">{labels.emptyLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{labels.empty}</p>;
   }
   return renderFlags();
 }
@@ -45,17 +46,22 @@ function booleanToggleLabel(
   return `Turn ${labels.onLabel.toLowerCase()}`;
 }
 
-export function FeatureFlagsAdmin({
-  props,
-}: ComponentCtx<{
+type FeatureFlagsConfig = Record<string, never>;
+
+type FeatureFlagsLabels = {
   title: string;
   description: string | null;
   loadingLabel: string;
-  emptyLabel: string;
+  empty: string;
   onLabel: string;
   offLabel: string;
   togglingLabel: string;
-}>) {
+};
+
+export function FeatureFlagsAdmin({
+  props,
+}: ComponentCtx<CatalogProps<FeatureFlagsConfig, FeatureFlagsLabels>>) {
+  const { labels } = props;
   const catalog = useCatalogSubmit();
   const { submit, error } = catalog;
 
@@ -79,8 +85,8 @@ export function FeatureFlagsAdmin({
   return (
     <Card className="max-w-2xl">
       <CardHeader>
-        <CardTitle>{props.title}</CardTitle>
-        {props.description ? <CardDescription>{props.description}</CardDescription> : null}
+        <CardTitle>{labels.title}</CardTitle>
+        {labels.description ? <CardDescription>{labels.description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="space-y-4">
         {displayError ? (
@@ -88,7 +94,7 @@ export function FeatureFlagsAdmin({
             <AlertDescription>{displayError}</AlertDescription>
           </Alert>
         ) : null}
-        {flagListBody(loading, flags, props, () => (
+        {flagListBody(loading, flags, labels, () => (
           <ul className="divide-y rounded-md border">
             {flags.map((flag) => {
               const value = flagValue(flag);
@@ -106,7 +112,7 @@ export function FeatureFlagsAdmin({
                     <div className="mt-1 flex gap-2">
                       <Badge variant="outline">{flag.type}</Badge>
                       <Badge variant={isOn ? "default" : "secondary"}>
-                        {isOn ? props.onLabel : props.offLabel}
+                        {isOn ? labels.onLabel : labels.offLabel}
                       </Badge>
                     </div>
                   </div>
@@ -117,7 +123,7 @@ export function FeatureFlagsAdmin({
                       disabled={toggling === flag.id}
                       onClick={() => void toggleBoolean(flag)}
                     >
-                      {booleanToggleLabel(toggling === flag.id, isOn, props)}
+                      {booleanToggleLabel(toggling === flag.id, isOn, labels)}
                     </Button>
                   ) : null}
                 </li>

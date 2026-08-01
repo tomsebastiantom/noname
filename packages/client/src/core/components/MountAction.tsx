@@ -32,9 +32,12 @@ export function useMountAction(
 export function MountAction({
   props,
 }: ComponentCtx<{
-  action: string;
-  params?: Record<string, unknown> | null;
+  config: {
+    action: string;
+    params?: Record<string, unknown> | null;
+  };
+  labels: Record<string, never>;
 }>) {
-  useMountAction(props.action as CoreActionName, props.params);
+  useMountAction(props.config.action as CoreActionName, props.config.params);
   return null;
 }

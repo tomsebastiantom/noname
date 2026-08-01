@@ -22,7 +22,10 @@ const DEFAULTS: LoginBrandingValues = {
 
 type SpecElement = {
   type?: string;
-  props?: Record<string, unknown>;
+  props?: {
+    config?: Record<string, unknown>;
+    labels?: Record<string, unknown>;
+  };
   children?: string[];
 };
 
@@ -43,21 +46,34 @@ function str(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+function loginViews(
+  props: SpecElement["props"],
+): Record<string, { title?: string; description?: string | null }> {
+  const views = props?.labels?.views;
+  if (views && typeof views === "object" && !Array.isArray(views)) {
+    return views as Record<string, { title?: string; description?: string | null }>;
+  }
+  return {};
+}
+
 export function extractLoginBranding(spec: Record<string, unknown>): LoginBrandingValues {
   const layout = spec as LayoutSpec;
   const auth = findByType(layout, "AuthLayout");
   const form = findByType(layout, "LoginForm");
-  const authProps = auth?.props ?? {};
-  const formProps = form?.props ?? {};
+  const authLabels = auth?.props?.labels ?? {};
+  const authConfig = auth?.props?.config ?? {};
+  const formLabels = form?.props?.labels ?? {};
+  const formConfig = form?.props?.config ?? {};
+  const loginView = loginViews(form?.props).login ?? {};
 
   return {
-    layout: authProps.layout === "split" ? "split" : "centered",
-    brandTitle: str(authProps.brandTitle),
-    brandSubtitle: str(authProps.brandSubtitle),
-    title: str(formProps.title) || DEFAULTS.title,
-    subtitle: str(formProps.subtitle),
-    logoUrl: str(formProps.logoUrl),
-    footerText: str(formProps.footerText),
+    layout: authConfig.layout === "split" ? "split" : "centered",
+    brandTitle: str(authLabels.brandTitle),
+    brandSubtitle: str(authLabels.brandSubtitle),
+    title: str(loginView.title) || DEFAULTS.title,
+    subtitle: str(loginView.description),
+    logoUrl: str(formConfig.logoUrl),
+    footerText: str(formLabels.footerText),
   };
 }
 
@@ -70,16 +86,32 @@ export function applyLoginBranding(
   const form = findByType(next, "LoginForm");
 
   if (auth?.props) {
-    auth.props.layout = values.layout;
-    auth.props.brandTitle = values.brandTitle.trim() || null;
-    auth.props.brandSubtitle = values.brandSubtitle.trim() || null;
+    auth.props.config = { ...(auth.props.config ?? {}), layout: values.layout };
+    auth.props.labels = {
+      ...(auth.props.labels ?? {}),
+      brandTitle: values.brandTitle.trim() || null,
+      brandSubtitle: values.brandSubtitle.trim() || null,
+    };
   }
 
   if (form?.props) {
-    form.props.title = values.title.trim() || DEFAULTS.title;
-    form.props.subtitle = values.subtitle.trim() || null;
-    form.props.logoUrl = values.logoUrl.trim() || null;
-    form.props.footerText = values.footerText.trim() || null;
+    const views = loginViews(form.props);
+    form.props.config = {
+      ...(form.props.config ?? {}),
+      logoUrl: values.logoUrl.trim() || null,
+    };
+    form.props.labels = {
+      ...(form.props.labels ?? {}),
+      footerText: values.footerText.trim() || null,
+      views: {
+        ...views,
+        login: {
+          ...(views.login ?? {}),
+          title: values.title.trim() || DEFAULTS.title,
+          description: values.subtitle.trim() || null,
+        },
+      },
+    };
   }
 
   return next as Record<string, unknown>;

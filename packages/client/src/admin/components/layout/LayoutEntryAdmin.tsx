@@ -17,13 +17,17 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { layoutTemplateFromPath, parseSpecJson } from "../../layout-entries";
 import { DataTable } from "../shared/DataTable";
 
-type LayoutEntryAdminProps = ComponentCtx<{
+type LayoutEntryConfig = {
+  segment: string;
+};
+
+type LayoutEntryLabels = {
   title: string;
   description: string | null;
-  segment: string;
   saveLabel: string;
   savingLabel: string;
   publishLabel: string;
@@ -31,19 +35,21 @@ type LayoutEntryAdminProps = ComponentCtx<{
   loadingLabel: string;
   draftSavedMessage: string;
   publishedMessage: string;
-}>;
+};
+
+type LayoutEntryAdminProps = ComponentCtx<CatalogProps<LayoutEntryConfig, LayoutEntryLabels>>;
 
 type LayoutDetailLoaded = Extract<LayoutAdminLoaded, { mode: "detail" }>;
 
 function LayoutEntryDetailFields({
   loaded,
-  props,
+  labels,
   templateName,
   segment,
   loadError,
 }: {
   loaded: LayoutDetailLoaded;
-  props: LayoutEntryAdminProps["props"];
+  labels: LayoutEntryLabels;
   templateName: string;
   segment: string;
   loadError: string | null | undefined;
@@ -71,7 +77,7 @@ function LayoutEntryDetailFields({
         setStatus("published");
       },
       {
-        successMessage: props.publishedMessage,
+        successMessage: labels.publishedMessage,
         onPendingChange: setPublishing,
       },
     );
@@ -91,7 +97,7 @@ function LayoutEntryDetailFields({
         setStatus("draft");
       },
       {
-        successMessage: props.draftSavedMessage,
+        successMessage: labels.draftSavedMessage,
         onPendingChange: setSaving,
       },
     );
@@ -107,8 +113,8 @@ function LayoutEntryDetailFields({
 
       <Card>
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          {props.description && <CardDescription>{props.description}</CardDescription>}
+          <CardTitle>{labels.title}</CardTitle>
+          {labels.description && <CardDescription>{labels.description}</CardDescription>}
           <p className="text-xs text-muted-foreground">
             Template: {templateName} · Segment: {segment} · Status: {status}
           </p>
@@ -160,7 +166,7 @@ function LayoutEntryDetailFields({
 
             <div className="flex flex-wrap gap-2">
               <Button type="submit" disabled={saving || publishing}>
-                {saving ? props.savingLabel : props.saveLabel}
+                {saving ? labels.savingLabel : labels.saveLabel}
               </Button>
               {loaded.canPublish && (
                 <Button
@@ -169,7 +175,7 @@ function LayoutEntryDetailFields({
                   disabled={saving || publishing}
                   onClick={() => void onPublish()}
                 >
-                  {publishing ? props.publishingLabel : props.publishLabel}
+                  {publishing ? labels.publishingLabel : labels.publishLabel}
                 </Button>
               )}
             </div>
@@ -181,7 +187,8 @@ function LayoutEntryDetailFields({
 }
 
 export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
-  const segment = props.segment || "default";
+  const { config, labels } = props;
+  const segment = config.segment || "default";
   const templateName = layoutTemplateFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ templateName, segment }), [templateName, segment]);
   useMountAction("loadLayoutAdmin", loadParams);
@@ -193,15 +200,15 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
   const layouts = loaded?.mode === "list" ? loaded.layouts : [];
 
   if (loading) {
-    return <p className="text-muted-foreground">{props.loadingLabel}</p>;
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   if (!templateName) {
     return (
       <Card className="max-w-2xl">
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
-          {props.description && <CardDescription>{props.description}</CardDescription>}
+          <CardTitle>{labels.title}</CardTitle>
+          {labels.description && <CardDescription>{labels.description}</CardDescription>}
         </CardHeader>
         <CardContent>
           <DataTable
@@ -242,7 +249,7 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
     return (
       <Card className="max-w-xl">
         <CardHeader>
-          <CardTitle>{props.title}</CardTitle>
+          <CardTitle>{labels.title}</CardTitle>
           <CardDescription>
             Template <strong>{templateName}</strong> not found.
           </CardDescription>
@@ -263,7 +270,7 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
     <LayoutEntryDetailFields
       key={loaded.loadedAt}
       loaded={loaded}
-      props={props}
+      labels={labels}
       templateName={templateName}
       segment={segment}
       loadError={loadError}

@@ -15,6 +15,7 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 import { type PageTreeEntry, ROUTING_DEFAULT_LOCALE } from "../../routing-entries";
 
 function emptyEntry(): PageTreeEntry {
@@ -25,10 +26,13 @@ function emptyEntry(): PageTreeEntry {
   };
 }
 
-type PageTreeAdminProps = ComponentCtx<{
+type PageTreeConfig = {
+  locale: string;
+};
+
+type PageTreeLabels = {
   title: string;
   description: string | null;
-  locale: string;
   saveTreeLabel: string;
   savingTreeLabel: string;
   treeSavedMessage: string;
@@ -36,17 +40,19 @@ type PageTreeAdminProps = ComponentCtx<{
   removeEntryLabel: string;
   pageDocumentsLinkLabel: string;
   treeLoadingLabel: string;
-}>;
+};
+
+type PageTreeAdminProps = ComponentCtx<CatalogProps<PageTreeConfig, PageTreeLabels>>;
 
 function PageTreeFields({
   initialEntries,
   locale,
-  props,
+  labels,
   loadError,
 }: {
   initialEntries: PageTreeEntry[];
   locale: string;
-  props: PageTreeAdminProps["props"];
+  labels: PageTreeLabels;
   loadError: string | null | undefined;
 }) {
   const { submit, pending, error, success } = useCatalogSubmit();
@@ -56,7 +62,7 @@ function PageTreeFields({
     await submit({
       action: "saveMainTree",
       params: { pages: entries },
-      successMessage: props.treeSavedMessage,
+      successMessage: labels.treeSavedMessage,
     });
   }
 
@@ -130,7 +136,7 @@ function PageTreeFields({
                   size="sm"
                   onClick={() => setEntries((rows) => rows.filter((_, i) => i !== index))}
                 >
-                  {props.removeEntryLabel}
+                  {labels.removeEntryLabel}
                 </Button>
               </div>
             </CardContent>
@@ -144,16 +150,16 @@ function PageTreeFields({
           variant="outline"
           onClick={() => setEntries((rows) => [...rows, emptyEntry()])}
         >
-          {props.addEntryLabel}
+          {labels.addEntryLabel}
         </Button>
         <Button type="submit" disabled={pending}>
-          {pending ? props.savingTreeLabel : props.saveTreeLabel}
+          {pending ? labels.savingTreeLabel : labels.saveTreeLabel}
         </Button>
         <a
           href="/admin/pages"
           className="inline-flex items-center text-sm text-primary hover:underline"
         >
-          {props.pageDocumentsLinkLabel}
+          {labels.pageDocumentsLinkLabel}
         </a>
       </div>
 
@@ -172,7 +178,8 @@ function PageTreeFields({
 }
 
 export function PageTreeAdmin({ props }: PageTreeAdminProps) {
-  const locale = props.locale || ROUTING_DEFAULT_LOCALE;
+  const { config, labels } = props;
+  const locale = config.locale || ROUTING_DEFAULT_LOCALE;
 
   const treePages = useStateValue(ADMIN_STATE.routing.treePages) as PageTreeEntry[] | undefined;
   const treeStatus = useStateValue(ADMIN_STATE.routing.treeStatus) as string | null | undefined;
@@ -183,13 +190,13 @@ export function PageTreeAdmin({ props }: PageTreeAdminProps) {
   useMountAction("loadMainTree");
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">{props.treeLoadingLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{labels.treeLoadingLabel}</p>;
   }
 
   return (
     <div className="max-w-3xl">
-      {props.description ? (
-        <p className="mb-4 text-sm text-muted-foreground">{props.description}</p>
+      {labels.description ? (
+        <p className="mb-4 text-sm text-muted-foreground">{labels.description}</p>
       ) : null}
 
       {treeStatus ? (
@@ -200,7 +207,7 @@ export function PageTreeAdmin({ props }: PageTreeAdminProps) {
         key={treeLoadedAt ?? "loading"}
         initialEntries={treePages ?? []}
         locale={locale}
-        props={props}
+        labels={labels}
         loadError={loadError}
       />
     </div>
