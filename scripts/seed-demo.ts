@@ -322,20 +322,36 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   },
 };
 
-function adminShellProps(
-  activeNav: string,
-  title: string,
-  description?: string,
+function adminPanelSpec(
+  children: string[],
+  elements: Record<string, unknown>,
 ): Record<string, unknown> {
-  return catalogProps(
-    { activeNav, ...adminShellNavConfig },
-    {
-      title,
-      ...(description === undefined ? {} : { description }),
-      ...adminShellNavLabels,
+  return {
+    root: "panel",
+    elements: {
+      panel: {
+        type: "Stack",
+        props: catalogProps({ direction: "column", gap: 16, align: "stretch" }, {}),
+        children,
+      },
+      ...elements,
     },
-  );
+  };
 }
+
+const adminShellSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "AdminShell",
+      props: catalogProps(adminShellNavConfig, {
+        title: "Admin",
+        ...adminShellNavLabels,
+      }),
+      children: [],
+    },
+  },
+};
 
 function panelProps(
   config: Record<string, unknown>,
@@ -346,137 +362,77 @@ function panelProps(
   return catalogProps(config, { title, description, ...labels });
 }
 
-const adminDashboardSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps(
-        "auth",
-        "Auth settings",
-        "Social providers, password login, sign-up, MFA policy, and reset flags.",
-      ),
-      children: ["authSettings"],
-    },
-    authSettings: {
-      type: "AuthSettingsForm",
-      props: panelProps(
-        {},
-        "Sign-in methods",
-        "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
-        authSettingsLabels,
-      ),
-    },
+const adminDashboardSpec = adminPanelSpec(["authSettings"], {
+  authSettings: {
+    type: "AuthSettingsForm",
+    props: panelProps(
+      {},
+      "Sign-in methods",
+      "Enable Google, GitHub, or Apple sign-in. Save registers IdPs in ZITADEL and updates platform settings for this org.",
+      authSettingsLabels,
+    ),
   },
-};
+});
 
-const adminFlagsSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps(
-        "flags",
-        "Feature flags",
-        "Toggle flags live on the storefront — changes push via SSE.",
-      ),
-      children: ["loadFlags", "flagsAdmin"],
-    },
-    loadFlags: {
-      type: "MountAction",
-      props: catalogProps({ action: "listFlags" }, {}),
-    },
-    flagsAdmin: {
-      type: "FeatureFlagsAdmin",
-      props: panelProps(
-        {},
-        "Feature flags",
-        "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
-        featureFlagsAdminLabels,
-      ),
-    },
+const adminFlagsSpec = adminPanelSpec(["loadFlags", "flagsAdmin"], {
+  loadFlags: {
+    type: "MountAction",
+    props: catalogProps({ action: "listFlags" }, {}),
   },
-};
+  flagsAdmin: {
+    type: "FeatureFlagsAdmin",
+    props: panelProps(
+      {},
+      "Feature flags",
+      "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
+      featureFlagsAdminLabels,
+    ),
+  },
+});
 
-const adminReplaySpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps(
-        "replay",
-        "Session replay",
-        "Recorded browser sessions for this org. Requires admin role — enforced by the API.",
-      ),
-      children: ["loadReplay", "replayAdmin"],
-    },
-    loadReplay: {
-      type: "MountAction",
-      props: catalogProps({ action: "listReplaySessions" }, {}),
-    },
-    replayAdmin: {
-      type: "SessionReplayAdmin",
-      props: panelProps(
-        {},
-        "Session replay",
-        "Sessions are grouped from analytics chunks. Select a row to inspect stored rrweb events.",
-        sessionReplayAdminLabels,
-      ),
-    },
+const adminReplaySpec = adminPanelSpec(["loadReplay", "replayAdmin"], {
+  loadReplay: {
+    type: "MountAction",
+    props: catalogProps({ action: "listReplaySessions" }, {}),
   },
-};
+  replayAdmin: {
+    type: "SessionReplayAdmin",
+    props: panelProps(
+      {},
+      "Session replay",
+      "Sessions are grouped from analytics chunks. Select a row to inspect stored rrweb events.",
+      sessionReplayAdminLabels,
+    ),
+  },
+});
 
-const adminUsersSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps(
-        "users",
-        "Team members",
-        "Invite staff and assign roles for this org.",
-      ),
-      children: ["loadTeam", "usersAdmin"],
-    },
-    loadTeam: {
-      type: "MountAction",
-      props: catalogProps({ action: "listTeamUsers" }, {}),
-    },
-    usersAdmin: {
-      type: "UsersAdminForm",
-      props: panelProps(
-        {},
-        "Team members",
-        "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
-        usersAdminLabels,
-      ),
-    },
+const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
+  loadTeam: {
+    type: "MountAction",
+    props: catalogProps({ action: "listTeamUsers" }, {}),
   },
-};
+  usersAdmin: {
+    type: "UsersAdminForm",
+    props: panelProps(
+      {},
+      "Team members",
+      "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
+      usersAdminLabels,
+    ),
+  },
+});
 
-const adminLoginBrandingSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps(
-        "login",
-        "Login appearance",
-        "Title, logo, and brand copy on the sign-in page.",
-      ),
-      children: ["loginBranding"],
-    },
-    loginBranding: {
-      type: "LoginBrandingForm",
-      props: panelProps(
-        { segment: "default" },
-        "Login appearance",
-        "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
-        loginBrandingLabels,
-      ),
-    },
+const adminLoginBrandingSpec = adminPanelSpec(["loginBranding"], {
+  loginBranding: {
+    type: "LoginBrandingForm",
+    props: panelProps(
+      { segment: "default" },
+      "Login appearance",
+      "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
+      loginBrandingLabels,
+    ),
   },
-};
+});
 
 const accountSecuritySpec = {
   root: "page",
@@ -501,91 +457,59 @@ const accountSecuritySpec = {
   },
 };
 
-const adminContentSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps("content", "Content"),
-      children: ["contentAdmin"],
-    },
-    contentAdmin: {
-      type: "ContentEntryAdmin",
-      props: panelProps(
-        { locale: "en-US" },
-        "Content entries",
-        "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
-        contentAdminLabels,
-      ),
-    },
+const adminContentSpec = adminPanelSpec(["contentAdmin"], {
+  contentAdmin: {
+    type: "ContentEntryAdmin",
+    props: panelProps(
+      { locale: "en-US" },
+      "Content entries",
+      "Pick a content type, edit entries, and publish. Fields come from the content type schema in documents.",
+      contentAdminLabels,
+    ),
   },
-};
+});
 
-const adminLayoutSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps("layout", "Layouts"),
-      children: ["layoutAdmin"],
-    },
-    layoutAdmin: {
-      type: "LayoutEntryAdmin",
-      props: panelProps(
-        { segment: "default" },
-        "Layout templates",
-        "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
-        layoutAdminLabels,
-      ),
-    },
+const adminLayoutSpec = adminPanelSpec(["layoutAdmin"], {
+  layoutAdmin: {
+    type: "LayoutEntryAdmin",
+    props: panelProps(
+      { segment: "default" },
+      "Layout templates",
+      "Edit json-render specs for home, login, and other templates. Publish to update the live site.",
+      layoutAdminLabels,
+    ),
   },
-};
+});
 
-const adminHomeSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps("home", "Dashboard"),
-      children: ["home"],
-    },
-    home: {
-      type: "AdminHome",
-      props: catalogProps(
-        { links: adminHomeLinkConfig },
-        {
-          title: "Dashboard",
-          description: "Manage content, layouts, and auth without re-seeding.",
-          links: adminHomeLinkLabels,
-        },
-      ),
-    },
+const adminHomeSpec = adminPanelSpec(["home"], {
+  home: {
+    type: "AdminHome",
+    props: catalogProps(
+      { links: adminHomeLinkConfig },
+      {
+        title: "Dashboard",
+        description: "Manage content, layouts, and auth without re-seeding.",
+        links: adminHomeLinkLabels,
+      },
+    ),
   },
-};
+});
 
-const adminPagesSpec = {
-  root: "shell",
-  elements: {
-    shell: {
-      type: "AdminShell",
-      props: adminShellProps("pages", "Pages"),
-      children: ["loadPages", "pagesAdmin"],
-    },
-    loadPages: {
-      type: "MountAction",
-      props: catalogProps({ action: "listRoutingPages" }, {}),
-    },
-    pagesAdmin: {
-      type: "PageRoutingAdmin",
-      props: panelProps(
-        { locale: "en-US" },
-        "Pages",
-        "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
-        pagesAdminLabels,
-      ),
-    },
+const adminPagesSpec = adminPanelSpec(["loadPages", "pagesAdmin"], {
+  loadPages: {
+    type: "MountAction",
+    props: catalogProps({ action: "listRoutingPages" }, {}),
   },
-};
+  pagesAdmin: {
+    type: "PageRoutingAdmin",
+    props: panelProps(
+      { locale: "en-US" },
+      "Pages",
+      "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
+      pagesAdminLabels,
+    ),
+  },
+});
 
 const pageContentType = {
   fields: [
@@ -759,8 +683,20 @@ interface LayoutRow {
 async function upsertLayout(
   templateName: string,
   spec: Record<string, unknown>,
-  options?: { skipIfExists?: boolean },
+  options?: {
+    skipIfExists?: boolean;
+    renderAs?: "standalone" | "shell" | "panel";
+    shellRef?: string;
+  },
 ): Promise<void> {
+  const meta: Record<string, unknown> = {};
+  if (options?.renderAs) {
+    meta.renderAs = options.renderAs;
+  }
+  if (options?.shellRef) {
+    meta.shellRef = options.shellRef;
+  }
+
   const { data: layouts } = await api<{ data: LayoutRow[] }>(
     "GET",
     `/api/documents/layout?segment=default&templateName=${templateName}`,
@@ -772,7 +708,7 @@ async function upsertLayout(
       console.log(`${templateName} layout already published — skipping create.`);
       return;
     }
-    await api("PUT", `/api/documents/layout/${existing.id}`, { spec });
+    await api("PUT", `/api/documents/layout/${existing.id}`, { spec, ...meta });
     if (existing.status !== "published") {
       await api("PUT", `/api/documents/layout/${existing.id}/publish`);
     }
@@ -784,6 +720,7 @@ async function upsertLayout(
     templateName,
     segment: "default",
     spec,
+    ...meta,
   });
   await api("PUT", `/api/documents/layout/${created.id}/publish`);
   console.log(`${templateName} layout created and published.`);
@@ -833,18 +770,34 @@ async function main() {
     extensions: [],
   });
 
-  await upsertLayout("home", demoSpec);
-  await upsertLayout("login", loginSpec);
-  await upsertLayout("admin_dashboard", adminDashboardSpec);
-  await upsertLayout("admin_flags", adminFlagsSpec);
-  await upsertLayout("admin_replay", adminReplaySpec);
-  await upsertLayout("admin_users", adminUsersSpec);
-  await upsertLayout("admin_login", adminLoginBrandingSpec);
-  await upsertLayout("admin_content", adminContentSpec);
-  await upsertLayout("admin_layout", adminLayoutSpec);
-  await upsertLayout("admin_home", adminHomeSpec);
-  await upsertLayout("admin_pages", adminPagesSpec);
-  await upsertLayout("account_security", accountSecuritySpec);
+  await upsertLayout("admin_shell", adminShellSpec, { renderAs: "shell" });
+  await upsertLayout("home", demoSpec, { renderAs: "standalone" });
+  await upsertLayout("login", loginSpec, { renderAs: "standalone" });
+  await upsertLayout("admin_dashboard", adminDashboardSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_flags", adminFlagsSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_replay", adminReplaySpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_users", adminUsersSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_login", adminLoginBrandingSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_content", adminContentSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_layout", adminLayoutSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_home", adminHomeSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_pages", adminPagesSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("account_security", accountSecuritySpec, { renderAs: "standalone" });
 
   await ensurePageContentType();
   await ensureAuthProviderContentType();

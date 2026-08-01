@@ -1,6 +1,6 @@
 import { ValidationError } from "../../../shared/domain-error";
 import { LayoutDocument } from "../entity";
-import type { LayoutDTO } from "../ports";
+import type { LayoutDTO, LayoutRenderAs } from "../ports";
 
 export function validateTemplateName(name: string): void {
   if (!name || !/^[a-z0-9_-]+$/.test(name)) {
@@ -20,6 +20,38 @@ export function validateSpec(spec: Record<string, unknown>): void {
 export function readContentRef(data: Record<string, unknown>): string | null {
   const ref = data.contentRef;
   return typeof ref === "string" && ref.trim() !== "" ? ref : null;
+}
+
+export function readRenderAs(data: Record<string, unknown>): LayoutRenderAs {
+  const renderAs = data.renderAs;
+  if (renderAs === "standalone" || renderAs === "shell" || renderAs === "panel") {
+    return renderAs;
+  }
+  return "standalone";
+}
+
+export function readShellRef(data: Record<string, unknown>): string | null {
+  const ref = data.shellRef;
+  return typeof ref === "string" && ref.trim() !== "" ? ref.trim() : null;
+}
+
+export function validateLayoutMetadata(
+  data: Record<string, unknown>,
+  options?: { publishing?: boolean },
+): void {
+  const renderAs = readRenderAs(data);
+  const shellRef = readShellRef(data);
+
+  if (renderAs === "panel") {
+    if (options?.publishing && !shellRef) {
+      throw new ValidationError("shellRef", "panel layouts require shellRef on publish");
+    }
+    return;
+  }
+
+  if (renderAs === "shell" && shellRef) {
+    throw new ValidationError("shellRef", "shell layouts must not set shellRef");
+  }
 }
 
 export function toLayoutEntity(dto: LayoutDTO): LayoutDocument {

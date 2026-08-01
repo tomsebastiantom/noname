@@ -47,7 +47,16 @@ export function createEdgeService(
 
       const flagMap = evaluationsToFlagMap(flags);
 
+      const renderAs = resolved?.renderAs ?? "standalone";
+      const shellRef = resolved?.shellRef ?? null;
       let layoutSpec = resolved?.spec ?? null;
+      let shellSpec: Record<string, unknown> | null = null;
+
+      if (renderAs === "panel" && shellRef) {
+        const shellResolved = await layout.resolve(siteId, shellRef, segment);
+        shellSpec = shellResolved?.spec ?? null;
+      }
+
       if (layoutSpec) {
         layoutSpec = await mergeContentIntoSpec(siteId, layoutSpec, {
           contentRef: contentRef ?? resolved?.contentRef ?? null,
@@ -60,6 +69,9 @@ export function createEdgeService(
       return {
         siteId,
         layout: layoutSpec,
+        renderAs,
+        shell: shellSpec,
+        shellRef,
         flags: flagMap,
         segment,
       };
@@ -98,6 +110,9 @@ export function createEdgeService(
         siteId: input.siteId,
         segment: segment.hash,
         layout: layoutSpec,
+        renderAs: resolved?.renderAs ?? "standalone",
+        shell: null,
+        shellRef: resolved?.shellRef ?? null,
         flags: flagMap,
       };
     },

@@ -134,17 +134,23 @@ export interface LayoutDTO extends DocumentDTO {
   type: "layout";
 }
 
+export type LayoutRenderAs = "standalone" | "shell" | "panel";
+
 export interface CreateLayoutInput {
   templateName: string;
   segment?: string;
   // default segment -> full spec; non-default -> override map.
   spec: Record<string, unknown>;
   baseVersion?: number | null;
+  renderAs?: LayoutRenderAs;
+  shellRef?: string | null;
 }
 
 export interface UpdateLayoutInput {
   spec: Record<string, unknown>;
   contentRef?: string | null;
+  renderAs?: LayoutRenderAs;
+  shellRef?: string | null;
 }
 
 export interface ResolvedLayout {
@@ -153,6 +159,8 @@ export interface ResolvedLayout {
   version: number;
   spec: Record<string, unknown>;
   contentRef: string | null;
+  renderAs: LayoutRenderAs;
+  shellRef: string | null;
   conflicts: string[];
 }
 

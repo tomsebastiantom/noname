@@ -18,6 +18,12 @@ import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
 import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
 import {
+  adminShellPropsFromSpec,
+  assertAdminPanelSpec,
+  mergeAdminShellWithPanelChrome,
+} from "./platform/admin-layout";
+import { AdminPlatformView } from "./platform/admin-platform-view";
+import {
   initBrowserObservability,
   subscribeFlagLayoutRefresh,
   syncBrowserObservabilityContext,
@@ -25,11 +31,18 @@ import {
 } from "./platform/browser-observability";
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
 import { registry as platformRegistry } from "./platform/registry";
+import type { CatalogProps } from "./schemas/shared";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
+
+type LayoutRenderAs = "standalone" | "shell" | "panel";
+type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
 
 interface EdgeSchemaResponse {
   siteId?: string;
   layout?: Spec;
+  renderAs?: LayoutRenderAs;
+  shell?: Spec;
+  shellRef?: string | null;
   flags?: Record<string, unknown>;
   segment?: string;
 }
@@ -62,14 +75,17 @@ function AppShell({ children, template }: Readonly<{ children: ReactNode; templa
 
 function App() {
   const [spec, setSpec] = useState<Spec | null>(null);
+  const [composeMode, setComposeMode] = useState<"full" | "panel">("full");
+  const [adminPanelSpec, setAdminPanelSpec] = useState<Spec | null>(null);
+  const [adminShellProps, setAdminShellProps] = useState<AdminShellProps | null>(null);
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [shellKey, setShellKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [navigating, setNavigating] = useState(false);
-  const specRef = useRef<Spec | null>(null);
-  specRef.current = spec;
+  const contentRef = useRef<Spec | AdminShellProps | null>(null);
   const loadSeqRef = useRef(0);
+  const adminShellCacheRef = useRef<{ shellRef: string; props: AdminShellProps } | null>(null);
   const storeSlug = storeSlugFromHost(window.location.hostname);
 
   const pathname = useSyncExternalStore(subscribeAppLocation, getPathname, getPathname);
@@ -78,6 +94,7 @@ function App() {
   const template = platformRoute ? route.template : "storefront";
   const adminRoute = platformRoute && route.requiresAuth;
   const editMode = new URLSearchParams(window.location.search).get("edit") === "true";
+  const panelRoute = composeMode === "panel";
 
   const loadPage = useCallback(async () => {
     const loadSeq = ++loadSeqRef.current;
@@ -126,7 +143,7 @@ function App() {
       }
     }
 
-    if (specRef.current !== null) {
+    if (contentRef.current !== null) {
       setNavigating(true);
     } else {
       setLoading(true);
@@ -170,8 +187,44 @@ function App() {
         setRegistry(loaded.registry);
       }
 
-      setSpec(tree);
-      setShellKey(`${template}:${pathname}`);
+      const renderAs = body?.data?.renderAs ?? "standalone";
+
+      if (renderAs === "panel") {
+        const shellTree = body?.data?.shell as Spec | undefined;
+        const shellRef = body?.data?.shellRef ?? null;
+        if (!shellTree || !shellRef) {
+          throw new Error("Panel layout missing shellRef or shell spec");
+        }
+
+        const panelSpec = assertAdminPanelSpec(tree);
+        let baseShellProps =
+          adminShellCacheRef.current?.shellRef === shellRef
+            ? adminShellCacheRef.current.props
+            : adminShellPropsFromSpec(shellTree);
+        if (!baseShellProps) {
+          throw new Error(`Shell layout "${shellRef}" missing AdminShell`);
+        }
+
+        if (adminShellCacheRef.current?.shellRef !== shellRef) {
+          adminShellCacheRef.current = { shellRef, props: baseShellProps };
+        }
+
+        const mergedShell = mergeAdminShellWithPanelChrome(baseShellProps, panelSpec);
+        setComposeMode("panel");
+        setAdminShellProps(mergedShell);
+        setAdminPanelSpec(panelSpec);
+        setSpec(null);
+        setShellKey(template);
+        contentRef.current = mergedShell;
+      } else {
+        adminShellCacheRef.current = null;
+        setComposeMode("full");
+        setAdminShellProps(null);
+        setAdminPanelSpec(null);
+        setSpec(tree);
+        setShellKey(`${template}:${pathname}`);
+        contentRef.current = tree;
+      }
 
       void syncBrowserObservabilityContext(
         { contextHash: body?.data?.segment ?? "default" },
@@ -198,7 +251,9 @@ function App() {
     });
   }, [loadPage]);
 
-  if (loading && !spec) {
+  const hasContent = spec !== null || adminShellProps !== null;
+
+  if (loading && !hasContent) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
@@ -208,7 +263,7 @@ function App() {
     );
   }
 
-  if (error && !spec) {
+  if (error && !hasContent) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-destructive">
@@ -218,7 +273,7 @@ function App() {
     );
   }
 
-  if (!spec || !storeSlug) {
+  if (!hasContent || !storeSlug) {
     return (
       <AppShell template={template}>
         <div className="flex flex-1 items-center justify-center p-12 text-muted-foreground">
@@ -250,7 +305,17 @@ function App() {
           aria-label="Loading page"
         />
       ) : null}
-      <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+      {panelRoute && adminShellProps ? (
+        <AdminPlatformView
+          shellProps={adminShellProps}
+          panelSpec={navigating ? null : adminPanelSpec}
+          panelKey={template}
+          panelLoading={navigating}
+          registry={registry}
+        />
+      ) : (
+        spec && <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+      )}
     </AppShell>
   );
 }

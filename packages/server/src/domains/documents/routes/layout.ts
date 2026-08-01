@@ -19,6 +19,8 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       templateName: body.templateName,
       segment: body.segment,
       spec: body.spec,
+      renderAs: body.renderAs,
+      shellRef: body.shellRef,
     });
     return created(c, createdLayout);
   });
@@ -38,10 +40,17 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
     const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
     if (denied) return denied;
     const orgId = getOrgId(c);
-    const body = await c.req.json<{ spec: Record<string, unknown>; contentRef?: string | null }>();
+    const body = await c.req.json<{
+      spec: Record<string, unknown>;
+      contentRef?: string | null;
+      renderAs?: "standalone" | "shell" | "panel";
+      shellRef?: string | null;
+    }>();
     const updated = await layout.update(orgId, c.req.param("id"), {
       spec: body.spec,
       contentRef: body.contentRef,
+      renderAs: body.renderAs,
+      shellRef: body.shellRef,
     });
     return ok(c, updated);
   });

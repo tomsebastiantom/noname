@@ -37,7 +37,7 @@ export function platformTemplateFromPath(pathname: string): string {
 }
 
 export function isAdminTemplate(template: string): boolean {
-  return template.startsWith("admin_");
+  return template.startsWith("admin_") && template !== "admin_shell";
 }
 
 export function isLoginTemplate(template: string): boolean {

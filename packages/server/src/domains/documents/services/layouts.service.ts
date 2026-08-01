@@ -7,7 +7,10 @@ import { isPublished } from "../shared/document-status";
 import { requireLayoutDocument, requirePublishedLayout } from "./document-guards";
 import {
   readContentRef,
+  readRenderAs,
+  readShellRef,
   toLayoutEntity,
+  validateLayoutMetadata,
   validateSpec,
   validateTemplateName,
 } from "./layout-helpers";
@@ -26,12 +29,21 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         1,
         null,
       );
+      const data: Record<string, unknown> = { spec: entity.spec };
+      if (input.renderAs) {
+        data.renderAs = input.renderAs;
+      }
+      if (input.shellRef) {
+        data.shellRef = input.shellRef;
+      }
+      validateLayoutMetadata(data);
+
       const saved = await storage.createDocument({
         orgId,
         type: "layout",
         key: entity.templateName,
         segment: entity.segment,
-        data: { spec: entity.spec },
+        data,
         baseVersion: null,
         status: "draft",
       });
@@ -53,6 +65,17 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           nextData.contentRef = input.contentRef;
         }
       }
+      if (input.renderAs !== undefined) {
+        nextData.renderAs = input.renderAs;
+      }
+      if (input.shellRef !== undefined) {
+        if (input.shellRef === null) {
+          delete nextData.shellRef;
+        } else {
+          nextData.shellRef = input.shellRef;
+        }
+      }
+      validateLayoutMetadata(nextData);
       const updated = await storage.updateDocument(id, nextData, existing.meta);
       flushEvents(entity);
       return updated as unknown as LayoutDTO;
@@ -89,6 +112,20 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
 
     async publish(orgId, id) {
       const existing = await requireLayoutDocument(storage, id, orgId);
+      validateLayoutMetadata(existing.data, { publishing: true });
+
+      const renderAs = readRenderAs(existing.data);
+      const shellRef = readShellRef(existing.data);
+      if (renderAs === "panel" && shellRef) {
+        const shellLayout = await storage.findDocument(orgId, "layout", shellRef, "default");
+        if (!shellLayout || !isPublished(shellLayout)) {
+          throw new ValidationError("shellRef", `shell layout "${shellRef}" is not published`);
+        }
+        if (readRenderAs(shellLayout.data) !== "shell") {
+          throw new ValidationError("shellRef", `layout "${shellRef}" is not renderAs shell`);
+        }
+      }
+
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.publish();
       const updated = await storage.publishDocument(id);
@@ -131,6 +168,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           version: publishedDefault.version,
           spec: deepClone(defaultSpec),
           contentRef: readContentRef(publishedDefault.data),
+          renderAs: readRenderAs(publishedDefault.data),
+          shellRef: readShellRef(publishedDefault.data),
           conflicts: [],
         };
       }
@@ -143,6 +182,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           version: publishedDefault.version,
           spec: deepClone(defaultSpec),
           contentRef: readContentRef(publishedDefault.data),
+          renderAs: readRenderAs(publishedDefault.data),
+          shellRef: readShellRef(publishedDefault.data),
           conflicts: [],
         };
       }
@@ -155,6 +196,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         version: publishedDefault.version,
         spec,
         contentRef: readContentRef(publishedDefault.data),
+        renderAs: readRenderAs(publishedDefault.data),
+        shellRef: readShellRef(publishedDefault.data),
         conflicts,
       };
     },

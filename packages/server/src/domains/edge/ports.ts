@@ -1,6 +1,11 @@
+export type LayoutRenderAs = "standalone" | "shell" | "panel";
+
 export interface EdgeSchemaResponse {
   siteId: string;
   layout: Record<string, unknown> | null;
+  renderAs: LayoutRenderAs;
+  shell: Record<string, unknown> | null;
+  shellRef: string | null;
   flags: Record<string, unknown>;
   segment: string | null;
 }
