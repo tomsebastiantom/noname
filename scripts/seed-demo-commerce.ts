@@ -36,8 +36,6 @@ const productContentType = {
   ],
 };
 
-const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
-
 function catalogProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
   config: TConfig,
   labels: TLabels,
@@ -104,10 +102,52 @@ interface ContentEntryRow {
 }
 
 function orgHeaders(): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-org-id": DEMO_ORG_ID,
   };
+  if (seedAdminToken) {
+    headers.Authorization = `Bearer ${seedAdminToken}`;
+  }
+  return headers;
+}
+
+let seedAdminToken: string | null = null;
+
+async function obtainSeedAdminToken(): Promise<void> {
+  const clientId = process.env.ZITADEL_CLIENT_ID?.trim();
+  if (!clientId) {
+    console.warn("ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)");
+    return;
+  }
+
+  const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
+  const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
+  const { randomBytes } = await import("node:crypto");
+  const { loginWithCredentials } = await import(
+    "../packages/server/src/domains/auth/adapters/zitadel/client.ts"
+  );
+
+  try {
+    const result = await loginWithCredentials({
+      orgId: DEMO_ORG_ID,
+      email,
+      password,
+      clientId,
+      redirectUri,
+      codeVerifier: randomBytes(32).toString("base64url"),
+    });
+    if (result.status !== "success") {
+      console.warn("Seed admin login requires MFA — complete MFA manually or disable for seed user");
+      return;
+    }
+    seedAdminToken = result.accessToken;
+    console.log(`Seed admin JWT obtained for ${email}`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`Could not obtain seed admin JWT: ${message}`);
+  }
 }
 
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
@@ -228,6 +268,8 @@ async function main() {
     throw new Error("API server not reachable — start with: pnpm dev");
   }
 
+  await obtainSeedAdminToken();
+
   await api("PUT", `/api/tenants/${DEMO_STORE_SLUG}/catalog`, {
     platform: { version: "1", hash: "commerce-demo" },
     extensions: ["commerce"],
@@ -251,10 +293,13 @@ async function main() {
     `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
 
-  const productProps = schema.layout?.elements?.product1?.props;
-  if (!productProps || productProps.title !== "Blue Sneakers") {
+  const productProps = schema.layout?.elements?.product1?.props as
+    | { config?: { title?: unknown }; title?: unknown }
+    | undefined;
+  const resolvedTitle = productProps?.config?.title ?? productProps?.title;
+  if (!productProps || resolvedTitle !== "Blue Sneakers") {
     throw new Error(
-      `Edge did not resolve product content — got title: ${String(productProps?.title ?? "missing")}`,
+      `Edge did not resolve product content — got title: ${String(resolvedTitle ?? "missing")}`,
     );
   }
 
