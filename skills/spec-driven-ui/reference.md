@@ -1,6 +1,7 @@
 # Spec-Driven UI — Reference
 
-Canonical doc: `docs/2026-07-25/SPEC-DRIVEN-UI.md`
+Canonical doc: `docs/2026-07-25/SPEC-DRIVEN-UI.md`  
+**Catalog props:** [props-contract.md](props-contract.md) — `config` + `labels` only; all copy in `labels`.
 
 ---
 
@@ -34,7 +35,7 @@ main.tsx
 | What | Storage | Edge / client |
 |------|---------|---------------|
 | Page structure | `layout` document | Spec tree |
-| Login/admin copy (titles, descriptions, **buttons**) | Layout **props** | Passed into component — not hardcoded in React |
+| Login/admin copy (titles, descriptions, **buttons**) | Layout **`props.labels`** | Passed into component — not hardcoded in React |
 | Org content on public site | `content` document | `$state` + resolve |
 | Provider toggles | `tenant_settings.auth` | Client merge |
 | Locale | `tenant_settings.locales` + layout props | Per-org language without TSX changes |
@@ -168,8 +169,9 @@ New UI need
 | `FormEvent` typed submit handlers | Inline `e.preventDefault(); void handleSave()` |
 | Per-org config in `.env` | `tenant_settings` or layout |
 | Separate admin SPA package | Same `packages/client` Renderer |
-| `"Save & publish"` in component TSX | `publishLabel` (and peers) in layout spec props |
-| English-only strings in React | Props from layout JSON; locale via `tenant_settings.locales` |
+| `"Save & publish"` in component TSX | `props.labels.publishLabel` in layout spec |
+| English-only strings in React | `props.labels` from layout JSON; locale via per-locale layouts |
+| Flat `title`, `saveLabel` at props root (legacy) | `labels.title`, `labels.saveLabel` — see [props-contract.md](props-contract.md) |
 
 ---
 

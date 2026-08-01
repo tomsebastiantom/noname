@@ -4,7 +4,8 @@ description: >-
   Builds org-facing UI through the Noname spec pipeline (layout document →
   edge schema → json-render Renderer). Use for any spec-driven surface: login,
   public storefront, extensions, admin panels, catalog components, actions,
-  and layout seeds — not hand-written React routes.
+  and layout seeds — not hand-written React routes. Catalog props: config +
+  labels only — read props-contract.md before schemas/seeds/components.
 ---
 
 # Spec-Driven UI
@@ -18,6 +19,8 @@ URL → templateFromPath → layout document → GET /api/edge/schema → <Rende
 ```
 
 Read [reference.md](reference.md) for data-source rules, [json-render example map](reference.md#json-render-examples--noname), and anti-patterns. See [examples.md](examples.md) for shipped patterns.
+
+**Props contract (required):** Every catalog component uses **`config` + `labels` only** — all copy in `labels`, no top-level `title`/`saveLabel`/`label`. Read [props-contract.md](props-contract.md) before changing schemas, seeds, or components.
 
 ---
 
@@ -124,7 +127,7 @@ Use watchers to replace `useEffect` load triggers where the spec owns lifecycle.
 
 | Concern | Prefer in layout spec | Still in custom component |
 |---------|----------------------|---------------------------|
-| Copy (titles, labels) | Layout **props** | — |
+| Copy (titles, labels) | Layout **props** → `labels` bucket | — |
 | Tab/nav highlight | `$state` + `$cond` on props | — |
 | Load list on mount | `MountAction` in layout spec or `useMountAction()` | `useEffect` + `execute` in panel (avoid) |
 | Form field state | `$bindState` | Local `useState` (complex editors) |
@@ -305,6 +308,7 @@ Implementation: `core/use-catalog-submit.ts`.
 ## Build checklist (copy and track)
 
 ```
+- [ ] 0. Props — config + labels only ([props-contract.md](props-contract.md))
 - [ ] 1. Schema — catalog-schemas.ts (component + actions)
 - [ ] 2. Component — `core/components/`, `admin/components/`, or `extensions/`; register in the matching registry
 - [ ] 3. Actions — core/actions/*.ts → register in platform/registry.ts
@@ -328,7 +332,7 @@ Add Zod props for the component and params for any new actions.
 - **Operator tools**: `admin/components/{feature}/` → `admin/registry.ts`
 - **Storefront widgets**: `extensions/src/{name}/`
 - **Editable draft:** [Editable draft panels](#editable-draft-panels). **Otherwise:** `execute({ action, params })`
-- Copy in layout **props** or CMS/`$state` — not hardcoded in TSX
+- Copy in layout **`props.labels`** or CMS/`$state` — not hardcoded in TSX ([props-contract.md](props-contract.md))
 
 ### 3. Action handler
 
@@ -358,12 +362,18 @@ Store json-render tree as a **layout** template (Postgres / seed):
   "elements": {
     "shell": {
       "type": "AdminShell",
-      "props": { "title": "…", "activeNav": "…" },
+      "props": {
+        "config": { "activeNav": "…" },
+        "labels": { "title": "…", "nav": { "home": "Dashboard" } }
+      },
       "children": ["panel"]
     },
     "panel": {
       "type": "MyPanel",
-      "props": { "title": "…", "description": "…" }
+      "props": {
+        "config": { "locale": "en" },
+        "labels": { "title": "…", "description": "…", "saveLabel": "Save draft" }
+      }
     }
   }
 }
@@ -383,19 +393,20 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 
 ### 6. Where copy lives
 
-**No user-visible text in React.** Components render `props` and resolved CMS/`$state` — they do not own copy.
+**No user-visible text in React.** Components render `props.labels` and resolved CMS/`$state` — they do not own copy. Full rules: [props-contract.md](props-contract.md).
 
 | UI kind | Text source | Example |
 |---------|-------------|---------|
-| Admin / login chrome (titles, descriptions, **button labels**) | Layout spec **props** | `title`, `saveLabel`, `publishLabel` on `LayoutEntryAdmin` |
+| Admin / login chrome | Layout **`props.labels`** | `labels.title`, `labels.saveLabel`, `labels.views.login.title` |
 | Storefront body | CMS **content** → `$state` | Product title, hero text (commerce examples) |
-| Auth behavior labels | `tenant_settings.auth` + layout props | Provider toggles |
-| Locale / language | `tenant_settings.locales` + layout props (v1) or i18n catalog (later) | Per-org language without TSX changes |
+| Auth behavior (enabled providers) | API + **`$state`** | Which buttons show — not button copy |
+| Locale / language | Per-locale layout docs or `labels` in spec (v1) | No TSX changes |
 | Side effects | **Actions** via `useActions().execute` | `execute({ action: "publishLayoutEntry", params: { id } })` |
 | Admin list/detail data | **$state** (load actions write, components read) | `useStateValue("/admin/team/users")` |
 
 **Wrong:** `"Save & publish"` inside `LayoutEntryAdmin.tsx`  
-**Right:** `props.publishLabel` from layout JSON (org- or locale-specific without code changes)
+**Wrong:** top-level `props.publishLabel` (legacy flat props)  
+**Right:** `props.labels.publishLabel` from layout JSON
 
 ---
 

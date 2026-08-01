@@ -97,22 +97,25 @@ Admin routes only add: JWT gate → redirect to `/login?redirect=…`. No separa
 
 Pick **one** source per kind of data — mixing them causes drift and wrong cache behavior.
 
+**Catalog props contract:** [skills/spec-driven-ui/props-contract.md](../../skills/spec-driven-ui/props-contract.md) — every component uses **`config` + `labels`**; all copy in `labels` (including `labels.title` for panels; `labels.views.*` for multi-view forms).
+
 | What | Storage | Example | Resolved on |
 |------|---------|---------|-------------|
 | **Page structure** (which components, order) | `layout` document | `AdminShell` → `ContentEntryAdmin` | Edge returns spec as-is (login/admin) or after content merge (storefront) |
-| **Layout chrome copy** (titles, descriptions, button labels in spec props) | Layout spec **props** | `LoginForm.title`, `LayoutEntryAdmin.publishLabel` | Edge — no CMS |
+| **Layout chrome copy** | Layout **`props.labels`** | `labels.title`, `labels.saveLabel`, `labels.views.login.title` | Edge — no CMS |
+| **Static behavior in spec** | Layout **`props.config`** | `redirectPath`, `locale`, `activeNav`, `variant` | Edge — no CMS |
 | **Org content** (entries, page body, any content type) | `content` document | `page`, `product`, … entry fields | Edge `$state` + `resolveElementProps` |
-| **Auth behavior** (providers on/off) | `tenant_settings.auth` | `providers: ["google"]` | Client merges into `LoginForm` / `AuthSettingsForm` via API |
+| **Auth behavior** (providers on/off) | `tenant_settings.auth` + API | Which IdP buttons show | Client `$state` / merge — not button copy |
 | **Side effects** | Action handlers | `saveAuthConfig`, `addToCart` | `executeAction` → `core/actions` or extension |
 
-**No user-visible text in React.** Components receive copy via props (from layout JSON) or CMS/`$state`. Language/locale changes = different layout props or per-locale layout documents — not edits to `.tsx`.
+**No user-visible text in React.** Components read **`props.labels`** (from layout JSON) or CMS/`$state`. Language/locale changes = different layout documents or `labels` in spec — not edits to `.tsx`.
 
-**v1 debt:** Some admin widgets still hardcode platform strings (e.g. `"Save & publish"`). New work must use spec props; migrate when touching those components.
+**v1 debt:** Shipped code still uses **flat** props (`title`, `saveLabel` at root). New work and migrations must use **config + labels** per props-contract. Migrate when touching a component.
 
 See [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) § “Two page types”.
 
-**Login / admin:** copy in layout props or settings — **not** CMS content entries.  
-**Public site:** copy in CMS — **not** baked into layout JSON.
+**Login / admin:** copy in **`props.labels`** or settings — **not** CMS content entries.  
+**Public site:** copy in CMS — **not** baked into layout JSON (except layout chrome via `labels`).
 
 ---
 
@@ -126,7 +129,10 @@ Declare the component and any new actions in Zod:
 
 ```typescript
 MyAdminPanel: {
-  props: z.object({ title: z.string(), description: z.string().nullable() }),
+  props: catalogProps(
+    { title: z.string(), description: z.string().nullable() },
+    { locale: z.string().default("en") },
+  ),
   description: "…",
 },
 saveMySettings: {
@@ -134,6 +140,8 @@ saveMySettings: {
   description: "…",
 },
 ```
+
+See [props-contract.md](../../skills/spec-driven-ui/props-contract.md) for `catalogProps` and label key conventions.
 
 ### 2. Component (`core/components/` + `components.tsx`)
 
@@ -153,12 +161,18 @@ Add or extend a **layout template** — json-render tree stored via documents AP
   "elements": {
     "shell": {
       "type": "AdminShell",
-      "props": { "title": "My settings", "activeNav": "my" },
+      "props": {
+        "config": { "activeNav": "my" },
+        "labels": { "title": "My settings" }
+      },
       "children": ["panel"]
     },
     "panel": {
       "type": "MyAdminPanel",
-      "props": { "title": "…", "description": "…" }
+      "props": {
+        "config": { "locale": "en" },
+        "labels": { "title": "…", "description": "…" }
+      }
     }
   }
 }
@@ -209,7 +223,7 @@ Both render with `<Renderer spec={…} />`. Admin is not a separate SPA.
 | Direct `fetch("/api/…")` in buttons | `executeAction("…")` with Zod params |
 | Duplicate login UI outside `LoginForm` | Login layout spec + `LoginForm` in core catalog |
 | Building `/admin` in a new package | Stay in `packages/client` — one bundle, one renderer |
-| User-visible strings in `.tsx` | Layout spec props, `tenant_settings`, or CMS — see copy table above |
+| User-visible strings in `.tsx` | `props.labels` in layout spec — see [props-contract.md](../../skills/spec-driven-ui/props-contract.md) |
 
 ---
 
@@ -221,12 +235,13 @@ Both render with `<Renderer spec={…} />`. Admin is not a separate SPA.
 | New platform action | `core/actions/*.ts`, `platform/registry.ts`, server domain if needed |
 | New admin page layout | `scripts/seed-demo.ts` (or documents API), `main.tsx` if new template |
 | New extension widget | `packages/extensions/src/{name}/` (same 4-file pattern) |
-| Where copy goes | Layout spec props **or** CMS — see table above |
+| Where copy goes | Layout **`props.labels`** or CMS — see [props-contract.md](../../skills/spec-driven-ui/props-contract.md) |
 
 ---
 
 ## References
 
+- [`skills/spec-driven-ui/props-contract.md`](../../skills/spec-driven-ui/props-contract.md) — **config + labels** prop naming (required for new work)
 - [`skills/spec-driven-ui/SKILL.md`](../../skills/spec-driven-ui/SKILL.md) — agent skill (editor-agnostic checklist + workflow)
 - [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) — core vs extension folder layout
 - [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — `executeAction` flow

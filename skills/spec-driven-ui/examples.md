@@ -12,7 +12,7 @@ Shipped references in this repo. Copy the pattern, not the commerce-specific fie
 
 ```
 AdminShell (activeNav: "auth")
-  └── AuthSettingsForm (title, description from layout props)
+  └── AuthSettingsForm (labels.title, labels.description from layout props)
         └── useMountAction("loadAuthSettings") → $state loaded + loadedAt
         └── AuthSettingsFields key={loaded.loadedAt}
               └── useCatalogSubmit().submit({ action: "saveAuthConfig", params: { … } })
@@ -65,12 +65,12 @@ AdminShell (activeNav: "content")
 **Layout:** `login`
 
 ```
-LoginForm (props from layout spec)
+LoginForm (props.config + props.labels from layout spec)
   └── execute({ action: "login", params: { email, password, redirectPath } })
         └── core/actions/auth.ts
 ```
 
-Copy in layout **props**. Providers from `GET /api/auth/:orgId/config`.
+Copy in layout **`props.labels`**. Provider visibility from `GET /api/auth/:orgId/config` → `$state` / local merge — button **text** still from spec `labels.providers.*`.
 
 ---
 
@@ -129,19 +129,24 @@ Use **`useCatalogSubmit` + `loadedAt`/`key`** when the component matches [editab
 
 ### catalog-schemas.ts
 
+Target shape — see [props-contract.md](props-contract.md). Legacy code may still use flat props until migrated.
+
 ```typescript
+import { catalogProps } from "../../schemas/shared"; // when schemas/shared.ts exists
+
 MySettingsPanel: {
-  props: z.object({
-    title: z.string(),
-    description: z.string().nullable(),
-    saveLabel: z.string().optional(),
-    publishLabel: z.string().optional(),
-  }),
+  props: catalogProps(
+    {
+      title: z.string(),
+      description: z.string().nullable(),
+      saveLabel: z.string(),
+      publishLabel: z.string(),
+    },
+    {
+      locale: z.string().default("en"),
+    },
+  ),
   description: "Example settings panel",
-},
-saveMySettings: {
-  params: z.object({ enabled: z.boolean() }),
-  description: "Save example settings",
 },
 ```
 
@@ -153,16 +158,22 @@ const adminMySpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: { title: "My settings", activeNav: "my" },
+      props: {
+        config: { activeNav: "my" },
+        labels: { title: "My settings", nav: { my: "My settings" } },
+      },
       children: ["panel"],
     },
     panel: {
       type: "MySettingsPanel",
       props: {
-        title: "My settings",
-        description: null,
-        saveLabel: "Save draft",
-        publishLabel: "Save & publish",
+        config: { locale: "en" },
+        labels: {
+          title: "My settings",
+          description: null,
+          saveLabel: "Save draft",
+          publishLabel: "Save & publish",
+        },
       },
     },
   },
@@ -182,14 +193,16 @@ function MySettingsFields({ loaded, props, loadError }: { loaded: MySettingsLoad
     await submit({
       action: "saveMySettings",
       params: { enabled },
-      successMessage: props.savedMessage,
+      successMessage: props.labels.savedMessage,
     });
   }
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
       {/* fields */}
-      <Button type="submit" disabled={pending}>{pending ? props.savingLabel : props.saveLabel}</Button>
+      <Button type="submit" disabled={pending}>
+        {pending ? props.labels.savingLabel : props.labels.saveLabel}
+      </Button>
       {mergeCatalogError(error, loadError) && <Alert … />}
     </form>
   );
