@@ -4,8 +4,9 @@ description: >-
   Builds org-facing UI through the Noname spec pipeline (layout document →
   edge schema → json-render Renderer). Use for any spec-driven surface: login,
   public storefront, extensions, admin panels, catalog components, actions,
-  and layout seeds — not hand-written React routes. Catalog props: config +
-  labels only — read props-contract.md before schemas/seeds/components.
+  layout seeds, content types, and visual editor — not hand-written React routes.
+  Catalog props: config + labels only — read props-contract.md before
+  schemas/seeds/components.
 ---
 
 # Spec-Driven UI
@@ -18,9 +19,9 @@ description: >-
 URL → templateFromPath → layout document → GET /api/edge/schema → <Renderer spec={…} />
 ```
 
-Read [reference.md](reference.md) for data-source rules, [json-render example map](reference.md#json-render-examples--noname), and anti-patterns. See [examples.md](examples.md) for shipped patterns.
+**Skill files:** [reference.md](reference.md) · [props-contract.md](props-contract.md) · [examples.md](examples.md). Skills describe **how to build** — discover repo paths in the project, not here.
 
-**Props contract (required):** Every catalog component uses **`config` + `labels` only** — all copy in `labels`, no top-level `title`/`saveLabel`/`label`. Read [props-contract.md](props-contract.md) before changing schemas, seeds, or components.
+**Props (required):** Every catalog component uses **`config` + `labels` only** — all copy in `labels`, no top-level `title`/`saveLabel`/`label`.
 
 ---
 
@@ -29,34 +30,27 @@ Read [reference.md](reference.md) for data-source rules, [json-render example ma
 - Adding `/admin/*`, `/login`, or public-site UI
 - Creating a new catalog component or action
 - Seeding or publishing layout documents
+- Registering a **content type** or content entries (CMS)
+- Storefront visual editor (`?edit=true`)
 - User asks for "admin page", "settings form", "CMS editor", or "new screen"
 
-**Stop and reject** if the approach is: react-router page, `packages/client/src/pages/*`, or commerce-specific admin forms.
+**Stop and reject** if the approach is: hand-written React route per screen, a `pages/` tree for org UI, or commerce-specific one-off admin forms.
 
 ---
 
-## Skeleton (core catalog)
+## Skeleton (catalog layers)
 
 ```
-packages/client/src/core/
-├── catalog-schemas.ts       # Zod component props + action params
-├── components.tsx             # layout + auth shell only (Grid, LoginForm, MountAction)
-├── components/*.tsx           # login views, AuthBar, MountAction
-├── admin-state.ts           # $state path constants for admin data
-├── use-catalog-submit.ts    # pending/error/success for editable draft panels
-└── actions/*.ts             # executeAction handlers
-
-packages/client/src/admin/
-├── registry.ts                # admin panel components → json-render map
-├── schemas/actions.ts         # admin action Zod schemas
-└── components/                # feature folders (auth-settings/, content/, shell/, …)
-         ↓
-platform/catalog.ts + platform/registry.ts + platform/catalog-ui-shell.tsx
+catalog-schemas     # Zod component props + action params
+components          # render props.labels / $state; MountAction, forms, shells
+actions             # (params, setState, state) handlers
+registry            # component + action map → json-render defineRegistry
+runtime shell       # JSONUIProvider + sync handlers + Renderer
+layout documents    # json-render tree (seed or CMS)
+host                # template routing, auth gate, load spec + catalog
+admin panels        # feature components + admin registry (operator tools)
+extensions          # optional storefront packs (schema, components, actions, registry)
 ```
-
-Extensions: same four files under `packages/extensions/src/{name}/`.
-
-Host only: `main.tsx` (template routing, auth gate, loading shell). Exception: `/auth/callback`.
 
 ---
 
@@ -139,20 +133,18 @@ Use watchers to replace `useEffect` load triggers where the spec owns lifecycle.
 
 ## Action wiring (follow json-render official pattern)
 
-**Official catalog:** [json-render/examples](https://github.com/vercel-labs/json-render/tree/main/examples) — full map in [reference.md — json-render examples → Noname](reference.md#json-render-examples--noname).
-
-Follow json-render for catalog, registry, handlers, and expressions. Noname adds layout documents, edge fetch, and a few lifecycle helpers (see map below).
+**Pattern map:** [reference.md § UI patterns](reference.md#ui-patterns). Follow json-render for catalog, registry, handlers, and expressions.
 
 ### The three-layer split (same as json-render)
 
-| Layer | Where | Responsibility |
-|-------|-------|----------------|
-| **Catalog schema** | `catalog-schemas.ts` | Zod params per action — validates spec + `execute` calls |
-| **Handler impl** | `core/actions/*.ts` | `(params, setState, state) => Promise<void>` — fetch, then `setState(path, value)` |
-| **Runtime wiring** | `platform/registry.ts` + `catalog-ui-shell.tsx` | `defineRegistry` → `handlers()` → `JSONUIProvider handlers={…}` |
+| Layer | Module | Responsibility |
+|-------|--------|----------------|
+| **Catalog schema** | catalog schemas | Zod params per action — validates spec + `execute` calls |
+| **Handler impl** | action handlers | `(params, setState, state) => Promise<void>` — fetch, then `setState(path, value)` |
+| **Runtime wiring** | registry + runtime shell | `defineRegistry` → `handlers()` → `JSONUIProvider handlers={…}` |
 
 ```typescript
-// platform/registry.ts — same as json-render docs
+// catalog registry — same as json-render docs
 export const { registry, handlers, executeAction } = defineRegistry(catalog, {
   components: coreComponents,
   actions: coreActionHandlers,
@@ -168,10 +160,10 @@ json-render's `handlers(getSetState, getState)` factory must be available **on f
 | **no-ai** | Static `handlers={…}` on `JSONUIProvider` (no `$state`) |
 | **dashboard** | `handlers()` factory + refs on `ActionProvider` |
 | **devtools** | Shared store + `$state` paths; inspect via `@json-render/devtools` |
-| **Noname** | `createStateStore` + `handlers()` passed to `JSONUIProvider` in `catalog-ui-shell.tsx` |
+| **Noname** | `createStateStore` + `handlers()` on `JSONUIProvider` in runtime shell |
 
 ```tsx
-// platform/catalog-ui-shell.tsx (dashboard pattern — handlers ready before children mount)
+// runtime shell (dashboard pattern — handlers ready before children mount)
 const store = createStateStore({});
 const actionHandlers = useMemo(
   () => createHandlers(() => store.set.bind(store) as SetState, () => store.getSnapshot()),
@@ -186,7 +178,7 @@ const actionHandlers = useMemo(
 Do **not** use `registerHandler` in `useEffect` for initial catalog handlers.
 
 ```tsx
-// main.tsx
+// host shell
 <CatalogUiShell spec={spec} registry={registry} />
 ```
 
@@ -210,11 +202,11 @@ So panels that **load remote data into `$state`** are outside what stock json-re
 | **`MountAction` in layout spec** | Static load (e.g. team members list) |
 | **`useMountAction(action, params?)` in panel** | Load depends on URL or other React state |
 
-Implementation: `packages/client/src/core/components/MountAction.tsx`
+Implementation: `MountAction` component + `useMountAction` hook in your catalog.
 
 - `execute` stays on a **ref** — never in the effect deps (json-render recreates it when `loadingActions` updates → infinite loop)
 - Effect deps: **`[action, params]`** only
-- Inline `params` objects must be **`useMemo`**-stable at the call site (e.g. `{ pageKey }` in `PageEntryAdmin`)
+- Inline `params` objects must be **`useMemo`**-stable at the call site (e.g. `{ pageKey }` from route params)
 
 **Layout spec (team members):**
 
@@ -277,7 +269,7 @@ function FormFields({ loaded }: { loaded: MyLoaded }) {
 
 **Forms:** inline `onSubmit` with `preventDefault` — no `FormEvent`.
 
-Implementation: `core/use-catalog-submit.ts`.
+Implementation: shared `useCatalogSubmit` hook.
 
 ### What to call from components
 
@@ -286,17 +278,17 @@ Implementation: `core/use-catalog-submit.ts`.
 | Catalog component — single-shot or mount load | `useActions().execute({ action, params })` | Goes through `ActionProvider` |
 | Catalog component — editable draft save | `useCatalogSubmit()` | Pending/error/success around `execute` |
 | Layout spec (`watch`, `action` on Pressable) | Same — resolved by `ActionProvider` | Spec-driven side effects |
-| Outside React tree (tests, one-off scripts) | `executeAction(name, params, set, state)` from `registry.ts` | Imperative, no provider context |
-| **Never** in components | `fetch("/api/…")` directly | Bypasses catalog validation; use action handler that calls `auth/*` or `admin/*` helpers |
+| Outside React tree (tests, one-off scripts) | `executeAction(name, params, set, state)` from registry | Imperative, no provider context |
+| **Never** in components | `fetch("/api/…")` directly | Bypasses catalog validation; use action handler helpers |
 
-**Helpers** under `auth/`, `admin/` are fine — but only **action handlers** (or server) should call them, not components.
+**Domain helpers** — only **action handlers** (or server) may call them, not components.
 
 ### Checklist when adding an action
 
 ```
-- [ ] Params schema in catalog-schemas.ts
-- [ ] Handler in core/actions/{domain}.ts — (params, setState, state)
-- [ ] Merged into coreActionHandlers → platform/registry.ts
+- [ ] Params schema in catalog
+- [ ] Handler — (params, setState, state)
+- [ ] Merged into catalog registry
 - [ ] Component shape: editable draft → `loadedAt` + `key` + `useCatalogSubmit`; else → `execute`
 - [ ] Load actions write $state; reads use useStateValue(path)
 - [ ] Prefer layout watch/$bindState over useEffect where feasible
@@ -309,12 +301,13 @@ Implementation: `core/use-catalog-submit.ts`.
 
 ```
 - [ ] 0. Props — config + labels only ([props-contract.md](props-contract.md))
-- [ ] 1. Schema — catalog-schemas.ts (component + actions)
-- [ ] 2. Component — `core/components/`, `admin/components/`, or `extensions/`; register in the matching registry
-- [ ] 3. Actions — core/actions/*.ts → register in platform/registry.ts
-- [ ] 4. Server — domain route if action needs backend (packages/server)
+- [ ] 0b. Content type (if CMS) — [reference.md § Content types](reference.md#content-types)
+- [ ] 1. Schema — catalog (component props + action params)
+- [ ] 2. Component — register in matching catalog registry
+- [ ] 3. Actions — handler module → catalog registry
+- [ ] 4. Server — domain route if action needs backend
 - [ ] 5. Layout — json-render tree in seed or documents API
-- [ ] 6. Template — main.tsx templateFromPath only if new layout name
+- [ ] 6. Template — host template map only if new layout name
 - [ ] 7. Validate — typecheck, seed, load page in browser
 ```
 
@@ -328,9 +321,9 @@ Add Zod props for the component and params for any new actions.
 
 ### 2. Component
 
-- **Platform** (login, layout): `core/components/` → `core/components.tsx`
-- **Operator tools**: `admin/components/{feature}/` → `admin/registry.ts`
-- **Storefront widgets**: `extensions/src/{name}/`
+- **Platform** (login, layout): core catalog components
+- **Operator tools**: admin catalog components + admin registry
+- **Storefront widgets**: extension pack
 - **Editable draft:** [Editable draft panels](#editable-draft-panels). **Otherwise:** `execute({ action, params })`
 - Copy in layout **`props.labels`** or CMS/`$state` — not hardcoded in TSX ([props-contract.md](props-contract.md))
 
@@ -338,13 +331,13 @@ Add Zod props for the component and params for any new actions.
 
 Follow [Action wiring](#action-wiring-follow-json-render-official-pattern) above.
 
-- Add handler in `core/actions/{domain}.ts` — signature `(params, setState, state) => Promise<void>`
+- Add handler in domain actions module — signature `(params, setState, state) => Promise<void>`
 - Load actions **write results to `$state`** via `setState(path, value)`; components read with `useStateValue(path)`
-- Merge in `platform/registry.ts` via `coreActionHandlers`
+- Merge in platform registry
 - In components: **`useCatalogSubmit`** for editable drafts; **`useActions().execute`** otherwise — never `fetch`
 - **`executeAction`** from `registry.ts` — tests/scripts only
 
-Admin `$state` paths live in `core/admin-state.ts` (e.g. `/admin/team/users`).
+Admin `$state` paths: use a shared constants module (e.g. `/admin/team/users`).
 
 ```
 MountAction / useMountAction → execute({ action: "listTeamUsers" })
@@ -379,15 +372,11 @@ Store json-render tree as a **layout** template (Postgres / seed):
 }
 ```
 
-Seed: `scripts/seed-demo.ts` (`adminDashboardSpec`, `adminContentSpec`).
+Persist layout via seed script or documents API.
 
-### 5. Template routing (`main.tsx`)
+### 5. Template routing (host)
 
-Only when a **new layout template name** is required:
-
-```typescript
-if (pathname.startsWith("/admin/my")) return "admin_my";
-```
+Only when a **new layout template name** is required in the host template map.
 
 Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 
@@ -404,19 +393,19 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 | Side effects | **Actions** via `useActions().execute` | `execute({ action: "publishLayoutEntry", params: { id } })` |
 | Admin list/detail data | **$state** (load actions write, components read) | `useStateValue("/admin/team/users")` |
 
-**Wrong:** `"Save & publish"` inside `LayoutEntryAdmin.tsx`  
+**Wrong:** `"Save & publish"` hardcoded in a layout admin component  
 **Wrong:** top-level `props.publishLabel` (legacy flat props)  
 **Right:** `props.labels.publishLabel` from layout JSON
 
 ---
 
-## Extension UI (commerce, etc.)
+## Extension UI
 
-1. `packages/extensions/src/{name}/catalog-schemas.ts`
-2. `components.tsx`, `actions.ts`, `registry.ts`
-3. Register loader in `packages/extensions/src/index.ts`
-4. Enable in tenant catalog manifest — not hardcoded in client routes
-5. Reference in layout spec (`ProductCard`, not a custom page)
+1. Extension catalog schema
+2. Components, actions, registry
+3. Register in extension loader / manifest
+4. Enable in tenant catalog manifest — not a custom route
+5. Reference component type in layout spec
 
 ---
 
@@ -425,17 +414,7 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 ```bash
 pnpm typecheck
 pnpm test          # if actions/schemas changed
-pnpm seed:demo     # if layout/seed changed
+# re-run layout/content seed if spec changed
 ```
 
-Manual: load `yogastore.localhost:5173/{path}` — page must render from edge schema, not a blank React shell.
-
----
-
-## Docs (repo)
-
-- Full guide: `docs/2026-07-25/SPEC-DRIVEN-UI.md`
-- Routing: `docs/2026-07-25/PAGE-ROUTING.md`
-- Admin routes: `docs/2026-07-25/ADMIN-UI-LATER.md`
-- Actions: `docs/2026-07-25/CLIENT-ACTIONS.md`
-- Layers: `docs/2026-07-25/CLIENT-CATALOG-LAYERS.md`
+Manual: load the org URL — page must render from edge schema, not a blank shell.

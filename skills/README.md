@@ -1,30 +1,33 @@
 # Agent skills (editor-agnostic)
 
-Workflow instructions for AI coding agents. **Not tied to Cursor** — any editor or agent (Cursor, Kilo, Claude Code, Copilot, etc.) can read these files.
+Workflow instructions for AI coding agents. **Not tied to Cursor.**
+
+Skills ship **without the codebase** — they describe **how to build**, not where files live in one repo. When working inside a project, discover paths by searching the tree; do not maintain file maps in skills.
 
 ## Layout
 
 ```
 skills/
-├── README.md                 ← this file
+├── README.md
 └── spec-driven-ui/
-    ├── SKILL.md              ← main workflow (start here)
-    ├── reference.md          ← pipeline, file map, anti-patterns
-    └── examples.md           ← shipped patterns in this repo
+    ├── SKILL.md           ← start here (workflow)
+    ├── props-contract.md  ← config + labels invariant
+    ├── reference.md       ← pipeline, data model, patterns
+    └── examples.md        ← pattern recipes (generic)
 ```
 
-Human-readable docs live in `docs/2026-07-25/` (e.g. `SPEC-DRIVEN-UI.md`). Skills are the **action checklist** agents follow when implementing.
+## Linking rules
+
+| Target | OK? | Purpose |
+|--------|-----|---------|
+| **Sibling files in `skills/`** | Yes | Workflow and rules |
+| **GitHub URLs** (upstream libs, e.g. json-render) | Yes | External API the agent can read |
+| **Repo code paths** | **No in skills** | Repo-specific; agent finds these in the project |
+| **`docs/` or other repo folders** | **No** | Human notes — not agent workflow |
 
 ## How to use
 
-| Tool | How to point the agent at a skill |
-|------|-----------------------------------|
-| **Any** | Add to prompt: “Follow `skills/spec-driven-ui/SKILL.md`” |
-| **Cursor** | Optional: symlink so Cursor auto-discovers — `ln -s ../../skills/spec-driven-ui .cursor/skills/spec-driven-ui` |
-| **Kilo / other** | Reference `skills/<name>/SKILL.md` in project rules or plan files |
-
-## Adding a skill
-
-1. Create `skills/<skill-name>/SKILL.md` with YAML frontmatter (`name`, `description`)
-2. Keep SKILL.md under ~500 lines; put detail in sibling `reference.md` / `examples.md`
-3. Link from the matching doc under `docs/` if one exists
+| Tool | How |
+|------|-----|
+| **Any agent** | “Follow `skills/spec-driven-ui/SKILL.md`” |
+| **Cursor** | Optional: `ln -s ../../skills/spec-driven-ui .cursor/skills/spec-driven-ui` |

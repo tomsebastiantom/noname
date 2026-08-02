@@ -1,7 +1,7 @@
 # Catalog props contract
 
 **Status:** Target architecture — migrate existing flat props when touching a component.  
-**Rule:** Layout spec is the **only** source for copy and static behavior. No user-visible string literals in `.tsx` (except host shell loading/errors in `main.tsx`).
+**Rule:** Layout spec is the **only** source for copy and static behavior. No user-visible string literals in components (except host shell loading/errors).
 
 ---
 
@@ -134,7 +134,7 @@ Use descriptive camelCase in `labels`:
 
 ## Zod (when implementing schemas)
 
-Target helper in `packages/client/src/schemas/shared.ts`:
+Target helper — `catalogProps(labelsShape, configShape)`:
 
 ```typescript
 export function catalogProps<TLabels extends z.ZodRawShape, TConfig extends z.ZodRawShape>(

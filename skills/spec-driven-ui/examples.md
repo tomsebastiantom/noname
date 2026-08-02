@@ -1,60 +1,47 @@
 # Spec-Driven UI — Examples
 
-Shipped references in this repo. Copy the pattern, not the commerce-specific fields.
+Pattern recipes. Copy the **shape**, not domain-specific field names.
 
 ---
 
-## Example 1: Editable draft panel (auth settings)
+## Example 1: Editable draft panel (settings)
 
-**Component:** `AuthSettingsForm` (`admin/components/auth-settings/`)  
+**Component:** `AuthSettingsForm` (admin catalog)  
 **Action:** `saveAuthConfig`  
-**Layout:** `admin_dashboard` in `scripts/seed-demo.ts`
+**Layout template:** `admin_dashboard`
 
 ```
 AdminShell (activeNav: "auth")
-  └── AuthSettingsForm (labels.title, labels.description from layout props)
+  └── AuthSettingsForm (labels from layout props)
         └── useMountAction("loadAuthSettings") → $state loaded + loadedAt
         └── AuthSettingsFields key={loaded.loadedAt}
               └── useCatalogSubmit().submit({ action: "saveAuthConfig", params: { … } })
-                    └── ActionProvider → handlers() → core/actions/auth.ts
+                    └── handler → setState after save
 ```
 
-**Route:** `/admin/settings/auth` → template `admin_dashboard` (no extra main.tsx line — `/admin*` matches).
+**Route:** `/admin/settings/auth` → existing `admin_dashboard` template.
 
-**Files:**
-- `packages/client/src/admin/schemas/actions.ts` — `saveAuthConfig` params
-- `packages/client/src/admin/components/auth-settings/AuthSettingsForm.tsx`
-- `packages/client/src/core/use-catalog-submit.ts`
-- `packages/client/src/core/actions/auth.ts` — `AuthSettingsLoaded` + `loadedAt`
-- `packages/client/src/admin/registry.ts`
-- `scripts/seed-demo.ts` — `adminDashboardSpec`
+**Build:** catalog schema (props + action params) → component + registry → load handler writes `$state` with `loadedAt` → layout JSON with labels → action handler for save.
 
 ---
 
-## Example 2: Editable draft panel (content CMS)
+## Example 2: Editable draft panel (CMS)
 
-**Component:** `ContentEntryAdmin` (`admin/components/content/`)  
+**Component:** `ContentEntryAdmin`  
 **Actions:** `loadContentAdmin`, `createContentEntry`, `saveContentEntry`, `publishContentEntry`  
-**Layout:** `admin_content`
+**Layout template:** `admin_content`
 
 ```
 AdminShell (activeNav: "content")
   └── ContentEntryAdmin
         └── useMountAction("loadContentAdmin", { contentType, locale })
         └── ContentEntryEntriesPanel key={loaded.loadedAt}
-              └── useCatalogSubmit + use-content-entry-actions.ts
+              └── useCatalogSubmit + entry action helpers
 ```
 
-**Route:** `/admin/content`, `/admin/content/:type` → template `admin_content`.
+**Route:** `/admin/content`, `/admin/content/:type` → `admin_content`.
 
-**Why not a ProductAdmin:** Content type schema drives fields — works for `page`, `product`, any type.
-
-**Files:**
-- `packages/client/src/admin/components/content/ContentEntryAdmin.tsx`
-- `packages/client/src/admin/components/content/use-content-entry-actions.ts`
-- `packages/client/src/admin/content-entries.ts` — API helpers (called from action handlers)
-- `packages/client/src/core/actions/content.ts` — `ContentAdminLoaded` + `loadedAt`
-- `scripts/seed-demo.ts` — `adminContentSpec`, `pageContentType`
+**Why not a per-type admin page:** Content type schema drives fields — one panel for `page`, `product`, any type.
 
 ---
 
@@ -62,23 +49,22 @@ AdminShell (activeNav: "content")
 
 **Components:** `AuthLayout` → `LoginForm`  
 **Actions:** `login`, `idpLogin` — **`execute` directly**, no `useCatalogSubmit`  
-**Layout:** `login`
+**Layout template:** `login`
 
 ```
 LoginForm (props.config + props.labels from layout spec)
   └── execute({ action: "login", params: { email, password, redirectPath } })
-        └── core/actions/auth.ts
 ```
 
-Copy in layout **`props.labels`**. Provider visibility from `GET /api/auth/:orgId/config` → `$state` / local merge — button **text** still from spec `labels.providers.*`.
+Copy in layout **`props.labels`**. Which providers show comes from API → `$state`; button **text** still from spec `labels.providers.*`.
 
 ---
 
-## Example 4: Read-only list (team members)
+## Example 4: Read-only list (team)
 
-**Components:** `MountAction` (spec) + `UsersAdminForm` (display only)  
+**Components:** `MountAction` (in spec) + `UsersAdminForm`  
 **Action:** `listTeamUsers` → writes `$state` at `/admin/team/users`  
-**Layout:** `admin_users` in `scripts/seed-demo.ts`
+**Layout template:** `admin_users`
 
 ```json
 "shell": { "children": ["loadTeam", "usersAdmin"] },
@@ -87,19 +73,13 @@ Copy in layout **`props.labels`**. Provider visibility from `GET /api/auth/:orgI
 ```
 
 ```
-MountAction → useMountAction → listTeamUsers handler → setState("/admin/team/users", rows)
+MountAction → handler → setState("/admin/team/users", rows)
 UsersAdminForm → useStateValue("/admin/team/users") → table
 ```
 
-**Dynamic loads** (URL-dependent): `useMountAction` inside the panel — see `PageEntryAdmin.tsx` (`useMemo` for params).
+**Dynamic loads** (URL-dependent): `useMountAction` in the panel with **stable** `useMemo` params.
 
-**No editable draft** — table reads `$state`; invite uses `useCatalogSubmit`.
-
-**Files:**
-- `packages/client/src/core/components/MountAction.tsx`
-- `packages/client/src/admin/components/team/UsersAdminForm.tsx`
-- `packages/client/src/core/actions/team.ts`
-- `scripts/seed-demo.ts` — `adminUsersSpec`
+**No editable draft** for the table — invite/submit actions use `useCatalogSubmit` where needed.
 
 ---
 
@@ -113,27 +93,21 @@ layout home spec
         └── Button action: "addToCart"
 ```
 
-Extension files only — no new client route. Enabled via catalog manifest `"extensions": ["commerce"]`.
+Extension catalog only — **no new client route**. Enable via tenant catalog manifest.
 
-**Files:**
-- `packages/extensions/src/commerce/catalog-schemas.ts`
-- `packages/extensions/src/commerce/components.tsx`
-- `packages/extensions/src/commerce/actions.ts`
-- `packages/extensions/src/commerce/registry.ts`
+**Build:** extension schema + components + actions + registry + manifest entry + block in layout spec.
 
 ---
 
 ## Minimal new panel (template)
 
-Use **`useCatalogSubmit` + `loadedAt`/`key`** when the component matches [editable draft panels](SKILL.md#editable-draft-panels). Otherwise `execute` directly.
+Use **`useCatalogSubmit` + `loadedAt`/`key`** for [editable draft panels](SKILL.md#editable-draft-panels). Otherwise `execute` directly.
 
-### catalog-schemas.ts
+### Catalog schema
 
-Target shape — see [props-contract.md](props-contract.md). Legacy code may still use flat props until migrated.
+`config` + `labels` only ([props-contract.md](props-contract.md)):
 
 ```typescript
-import { catalogProps } from "../../schemas/shared"; // when schemas/shared.ts exists
-
 MySettingsPanel: {
   props: catalogProps(
     {
@@ -142,18 +116,15 @@ MySettingsPanel: {
       saveLabel: z.string(),
       publishLabel: z.string(),
     },
-    {
-      locale: z.string().default("en"),
-    },
+    { locale: z.string().default("en") },
   ),
-  description: "Example settings panel",
 },
 ```
 
-### seed layout snippet
+### Layout snippet
 
 ```typescript
-const adminMySpec = {
+{
   root: "shell",
   elements: {
     shell: {
@@ -177,16 +148,14 @@ const adminMySpec = {
       },
     },
   },
-};
+}
 ```
 
-### component (save via useCatalogSubmit)
+### Component (save via useCatalogSubmit)
 
 ```typescript
-import { mergeCatalogError, useCatalogSubmit } from "../core/use-catalog-submit";
-
-function MySettingsFields({ loaded, props, loadError }: { loaded: MySettingsLoaded; … }) {
-  const { submit, pending, error, success } = useCatalogSubmit();
+function MySettingsFields({ loaded, props, loadError }) {
+  const { submit, pending, error } = useCatalogSubmit();
   const [enabled, setEnabled] = useState(loaded.enabled);
 
   async function handleSave() {
@@ -199,25 +168,18 @@ function MySettingsFields({ loaded, props, loadError }: { loaded: MySettingsLoad
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
-      {/* fields */}
       <Button type="submit" disabled={pending}>
         {pending ? props.labels.savingLabel : props.labels.saveLabel}
       </Button>
-      {mergeCatalogError(error, loadError) && <Alert … />}
     </form>
   );
 }
 
-// Parent after load:
 <MySettingsFields key={loaded.loadedAt} loaded={loaded} … />
 ```
 
-Load handler must attach `loadedAt: Date.now()` when writing `$state`. Handler lives in `core/actions/…`, registered via `coreActionHandlers` → `platform/registry.ts`.
+Load handler attaches `loadedAt` when writing `$state`. Register handler in catalog registry.
 
-### main.tsx (only if new template name)
+### New template (only if needed)
 
-```typescript
-if (pathname.startsWith("/admin/my")) return "admin_my";
-```
-
-Then `await upsertLayout("admin_my", adminMySpec)` in seed.
+Extend host template map with a new layout name, then upsert that layout document in seed/bootstrap.
