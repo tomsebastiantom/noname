@@ -1,8 +1,18 @@
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
+import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
 import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
-import { ReferenceFieldInput } from "./ReferenceFieldInput";
+import { ReferenceFieldInput, type ReferenceFieldLabels } from "./ReferenceFieldInput";
+
+const defaultReferenceLabels: ReferenceFieldLabels = {
+  entriesLoadingLabel: "Loading entries…",
+  emptyLabel: "No {type} entries yet.",
+  selectedPrefix: "Selected:",
+  clearLabel: "Clear",
+  missingTargetMessage:
+    'Reference field "{label}" is missing schema references (target content type).',
+};
 
 export function ContentEntryFieldInput({
   field,
@@ -10,12 +20,16 @@ export function ContentEntryFieldInput({
   onChange,
   locale,
   mediaLabels,
+  referenceLabels = defaultReferenceLabels,
+  referenceOptions,
 }: {
   field: ContentFieldSchema;
   value: string;
   onChange: (value: string) => void;
   locale: string;
   mediaLabels: MediaFieldLabels;
+  referenceLabels?: ReferenceFieldLabels;
+  referenceOptions?: Record<string, ReferenceFieldOptions>;
 }) {
   if (field.type === "boolean") {
     return (
@@ -44,14 +58,17 @@ export function ContentEntryFieldInput({
   }
 
   if (field.type === "reference") {
+    const targetContentType = field.references ?? "";
     return (
       <ReferenceFieldInput
         label={field.label}
         required={field.required}
-        targetContentType={field.references ?? ""}
+        targetContentType={targetContentType}
         locale={locale}
         value={value}
         onChange={onChange}
+        labels={referenceLabels}
+        referenceOptions={targetContentType ? referenceOptions?.[targetContentType] : undefined}
       />
     );
   }

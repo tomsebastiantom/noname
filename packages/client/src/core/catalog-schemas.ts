@@ -108,6 +108,12 @@ export const coreComponentSchemas = {
 };
 
 export const coreActionSchemas = {
+  loadLoginConfig: {
+    params: z.object({
+      storeSlug: z.string().min(1),
+    }),
+    description: "Load org auth provider config for login form",
+  },
   navigate: {
     params: z.object({
       path: z.string(),
@@ -168,5 +174,8 @@ export const coreActionSchemas = {
       code: z.string().min(1),
     }),
     description: "Confirm TOTP enrollment with a verification code",
+  },
+  loadAccountSecuritySession: {
+    description: "Load MFA enrollment status for the signed-in user",
   },
 };

@@ -1,12 +1,12 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
-import { createContext, type ReactNode, useContext } from "react";
+import { createContext, type ReactNode, useContext, useMemo, useRef } from "react";
 import type { ContentDraftEditor } from "../components/panel/PropsPanel";
 import type { LayerReorderPlacement } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
 import type { EditorShellLabels } from "../schemas/components";
 
-export type EditorSessionValue = {
+export type EditorSessionData = {
   templateName: string;
   pageContentRef: string | null;
   registry: ComponentRegistry;
@@ -24,6 +24,9 @@ export type EditorSessionValue = {
   saveConflict: boolean;
   canUndo: boolean;
   canRedo: boolean;
+};
+
+export type EditorSessionActions = {
   setSelection: (selection: EditSelection | null) => void;
   stageAdd: (componentType: string, parentId?: string, insertIndex?: number) => void;
   handleStoredChange: (next: Spec) => void;
@@ -42,24 +45,72 @@ export type EditorSessionValue = {
   isStoredElement: (elementId: string) => boolean;
 };
 
-const EditorSessionContext = createContext<EditorSessionValue | null>(null);
+/** @deprecated Use useEditorSessionData + useEditorSessionActions */
+export type EditorSessionValue = EditorSessionData & EditorSessionActions;
 
-export function EditorSessionProvider({
-  value,
-  children,
-}: {
-  value: EditorSessionValue;
+const EditorSessionDataContext = createContext<EditorSessionData | null>(null);
+const EditorSessionActionsContext = createContext<EditorSessionActions | null>(null);
+
+type EditorSessionProviderProps = {
+  data: EditorSessionData;
+  actions: EditorSessionActions;
   children: ReactNode;
-}) {
-  return <EditorSessionContext.Provider value={value}>{children}</EditorSessionContext.Provider>;
+};
+
+export function EditorSessionProvider({ data, actions, children }: EditorSessionProviderProps) {
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+
+  const stableActions = useMemo(
+    (): EditorSessionActions => ({
+      setSelection: (selection) => actionsRef.current.setSelection(selection),
+      stageAdd: (type, parentId, insertIndex) =>
+        actionsRef.current.stageAdd(type, parentId, insertIndex),
+      handleStoredChange: (next) => actionsRef.current.handleStoredChange(next),
+      patchPendingProps: (path, value) => actionsRef.current.patchPendingProps(path, value),
+      handleSave: () => actionsRef.current.handleSave(),
+      handlePublish: () => actionsRef.current.handlePublish(),
+      handleDiscard: () => actionsRef.current.handleDiscard(),
+      handleRefreshConflict: () => actionsRef.current.handleRefreshConflict(),
+      undo: () => actionsRef.current.undo(),
+      redo: () => actionsRef.current.redo(),
+      exitEditMode: () => actionsRef.current.exitEditMode(),
+      cancelPendingAdd: () => actionsRef.current.cancelPendingAdd(),
+      handleDelete: (id) => actionsRef.current.handleDelete(id),
+      handleDuplicate: (id) => actionsRef.current.handleDuplicate(id),
+      handleReorder: (elementId, targetId, placement) =>
+        actionsRef.current.handleReorder(elementId, targetId, placement),
+      isStoredElement: (id) => actionsRef.current.isStoredElement(id),
+    }),
+    [],
+  );
+
+  return (
+    <EditorSessionActionsContext.Provider value={stableActions}>
+      <EditorSessionDataContext.Provider value={data}>{children}</EditorSessionDataContext.Provider>
+    </EditorSessionActionsContext.Provider>
+  );
 }
 
-export function useEditorSession(): EditorSessionValue {
-  const ctx = useContext(EditorSessionContext);
+export function useEditorSessionData(): EditorSessionData {
+  const ctx = useContext(EditorSessionDataContext);
   if (!ctx) {
-    throw new Error("useEditorSession must be used within EditorSessionProvider");
+    throw new Error("useEditorSessionData must be used within EditorSessionProvider");
   }
   return ctx;
+}
+
+export function useEditorSessionActions(): EditorSessionActions {
+  const ctx = useContext(EditorSessionActionsContext);
+  if (!ctx) {
+    throw new Error("useEditorSessionActions must be used within EditorSessionProvider");
+  }
+  return ctx;
+}
+
+/** Full session — re-renders on any data change. Prefer split hooks in hot paths. */
+export function useEditorSession(): EditorSessionValue {
+  return { ...useEditorSessionData(), ...useEditorSessionActions() };
 }
 
 /** Merge runtime page context into the loaded visual_editor shell spec. */

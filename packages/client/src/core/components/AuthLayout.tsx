@@ -19,8 +19,8 @@ export function AuthLayout({
 
   if (config.layout === "split") {
     return (
-      <div className="flex min-h-screen">
-        <aside className="hidden w-1/2 flex-col justify-between bg-muted p-12 lg:flex">
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <aside className="hidden w-1/2 flex-col justify-between overflow-y-auto bg-muted p-8 lg:flex lg:p-12">
           <div>
             {labels.brandTitle && (
               <p className="text-lg font-semibold tracking-tight">{labels.brandTitle}</p>
@@ -35,24 +35,28 @@ export function AuthLayout({
             )}
           </div>
         </aside>
-        <main className="flex flex-1 items-center justify-center p-6">{children as ReactNode}</main>
+        <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-4 sm:p-6">
+          <div className="my-auto w-full max-w-md">{children as ReactNode}</div>
+        </main>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-muted/30 p-6">
-      {(labels.brandTitle || labels.brandSubtitle) && (
-        <div className="mb-8 text-center">
-          {labels.brandTitle && (
-            <h1 className="text-2xl font-bold tracking-tight">{labels.brandTitle}</h1>
-          )}
-          {labels.brandSubtitle && (
-            <p className="mt-1 text-sm text-muted-foreground">{labels.brandSubtitle}</p>
-          )}
-        </div>
-      )}
-      <div className="w-full max-w-md">{children as ReactNode}</div>
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-muted/30 p-4 sm:p-6">
+      <div className="my-auto flex w-full flex-col items-center">
+        {(labels.brandTitle || labels.brandSubtitle) && (
+          <div className="mb-6 max-w-md text-center sm:mb-8">
+            {labels.brandTitle && (
+              <h1 className="text-2xl font-bold tracking-tight">{labels.brandTitle}</h1>
+            )}
+            {labels.brandSubtitle && (
+              <p className="mt-1 text-sm text-muted-foreground">{labels.brandSubtitle}</p>
+            )}
+          </div>
+        )}
+        <div className="w-full max-w-md">{children as ReactNode}</div>
+      </div>
     </div>
   );
 }

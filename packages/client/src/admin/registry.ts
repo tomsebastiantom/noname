@@ -4,7 +4,6 @@ import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 import { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 import { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 import { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
-import { PageRoutingAdmin } from "./components/pages/PageRoutingAdmin";
 import { PageTreeAdmin } from "./components/pages/PageTreeAdmin";
 import { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
 import { AdminHome } from "./components/shell/AdminHome";
@@ -18,7 +17,6 @@ export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 export { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 export { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 export { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
-export { PageRoutingAdmin } from "./components/pages/PageRoutingAdmin";
 export { PageTreeAdmin } from "./components/pages/PageTreeAdmin";
 export { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
 export { AdminHome } from "./components/shell/AdminHome";
@@ -39,7 +37,6 @@ export const adminComponents = {
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,
-  PageRoutingAdmin,
   PageTreeAdmin,
   AdminHome,
   SessionReplayAdmin,

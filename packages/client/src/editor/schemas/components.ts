@@ -115,8 +115,8 @@ const editorShellConfig = {
 export const editorComponentSchemas = {
   VisualEditorShell: {
     props: catalogProps(editorShellLabelsShape, editorShellConfig),
-    slots: ["palette", "canvas", "panel"],
-    description: "Storefront page visual editor chrome with three zones",
+    slots: ["palette", "layers", "canvas", "panel"],
+    description: "Storefront page visual editor chrome with four zones",
   },
   EditorPalette: {
     props: catalogProps({}, {}),

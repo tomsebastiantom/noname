@@ -113,6 +113,9 @@ export const adminActionSchemas = {
     }),
     description: "Delete a CMS content entry",
   },
+  loadMediaAssets: {
+    description: "Load asset library for media field picker",
+  },
   saveLayoutEntry: {
     params: z.object({
       id: z.string().min(1),

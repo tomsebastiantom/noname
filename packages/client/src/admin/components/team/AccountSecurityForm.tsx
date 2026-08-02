@@ -1,7 +1,7 @@
+import { useStateValue } from "@json-render/react";
 import { type ReactNode, useEffect, useState } from "react";
 import { startTotpEnrollment } from "../../../auth/account-flows";
 import { isLoggedIn } from "../../../auth/session";
-import { fetchAuthSessionStatus } from "../../../auth/team-users";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -15,13 +15,41 @@ import {
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import type { ComponentCtx } from "../../../core/components/types";
+import {
+  ACCOUNT_SECURITY_STATE,
+  type AccountSecuritySessionState,
+} from "../../../core/login-state";
 import { useCatalogSubmit } from "../../../core/use-catalog-submit";
 import type { CatalogProps } from "../../../schemas/shared";
 
 type Step = "idle" | "setup" | "enabled";
 
+type AccountSecurityLabels = {
+  title: string;
+  description: string | null;
+  signInRequiredDescription: string;
+  signInLinkLabel: string;
+  backToStorefrontLabel: string;
+  enabledBadgeLabel: string;
+  enabledDescription: string;
+  checkingLabel: string;
+  mfaRequiredAlert: string;
+  idleDescription: string;
+  idleButtonLabel: string;
+  idleButtonPendingLabel: string;
+  setupDescription: string;
+  qrAltText: string;
+  verificationCodeLabel: string;
+  verificationCodePlaceholder: string;
+  confirmSetupLabel: string;
+  confirmSetupPendingLabel: string;
+  enabledStepDescription: string;
+  continueToAdminLabel: string;
+};
+
 function mfaStepContent(options: {
   step: Step;
+  labels: AccountSecurityLabels;
   redirectPath: string | null | undefined;
   qrUrl: string | null;
   secret: string;
@@ -31,15 +59,14 @@ function mfaStepContent(options: {
   onVerify: () => void;
   onStart: () => void;
 }): ReactNode {
+  const { labels } = options;
   if (options.step === "enabled") {
     return (
       <div className="flex flex-col gap-3">
-        <p className="text-sm text-muted-foreground">
-          Sign-in may ask for a code from your authenticator app after your password.
-        </p>
+        <p className="text-sm text-muted-foreground">{labels.enabledStepDescription}</p>
         {options.redirectPath?.startsWith("/") ? (
           <Button asChild variant="default">
-            <a href={options.redirectPath}>Continue to admin →</a>
+            <a href={options.redirectPath}>{labels.continueToAdminLabel}</a>
           </Button>
         ) : null}
       </div>
@@ -48,14 +75,11 @@ function mfaStepContent(options: {
   if (options.step === "setup") {
     return (
       <>
-        <p className="text-sm text-muted-foreground">
-          Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter the secret
-          manually.
-        </p>
+        <p className="text-sm text-muted-foreground">{labels.setupDescription}</p>
         {options.qrUrl ? (
           <img
             src={options.qrUrl}
-            alt="TOTP QR code"
+            alt={labels.qrAltText}
             width={180}
             height={180}
             className="self-center rounded-md border bg-white p-2"
@@ -70,19 +94,19 @@ function mfaStepContent(options: {
           className="flex flex-col gap-3"
         >
           <div className="flex flex-col gap-1.5">
-            <Label htmlFor="totp-code">Verification code</Label>
+            <Label htmlFor="totp-code">{labels.verificationCodeLabel}</Label>
             <Input
               id="totp-code"
               inputMode="numeric"
               autoComplete="one-time-code"
               value={options.code}
               onChange={(e) => options.onCodeChange(e.target.value)}
-              placeholder="123456"
+              placeholder={labels.verificationCodePlaceholder}
               required
             />
           </div>
           <Button type="submit" disabled={options.loading}>
-            {options.loading ? "Verifying…" : "Confirm setup"}
+            {options.loading ? labels.confirmSetupPendingLabel : labels.confirmSetupLabel}
           </Button>
         </form>
       </>
@@ -90,11 +114,9 @@ function mfaStepContent(options: {
   }
   return (
     <>
-      <p className="text-sm text-muted-foreground">
-        Add an authenticator app for an extra sign-in step after your password.
-      </p>
+      <p className="text-sm text-muted-foreground">{labels.idleDescription}</p>
       <Button type="button" onClick={() => options.onStart()} disabled={options.loading}>
-        {options.loading ? "Starting…" : "Set up authenticator app"}
+        {options.loading ? labels.idleButtonPendingLabel : labels.idleButtonLabel}
       </Button>
     </>
   );
@@ -102,18 +124,18 @@ function mfaStepContent(options: {
 
 type AccountSecurityConfig = Record<string, never>;
 
-type AccountSecurityLabels = {
-  title: string;
-  description: string | null;
-};
-
 export function AccountSecurityForm({
   props,
 }: ComponentCtx<CatalogProps<AccountSecurityConfig, AccountSecurityLabels>>) {
   const { labels } = props;
   const { submit, run, error, success } = useCatalogSubmit();
+  const session = useStateValue(ACCOUNT_SECURITY_STATE.session) as
+    | AccountSecuritySessionState
+    | null
+    | undefined;
+  const sessionLoading =
+    (useStateValue(ACCOUNT_SECURITY_STATE.loading) as boolean | undefined) ?? true;
   const [step, setStep] = useState<Step>("idle");
-  const [sessionLoading, setSessionLoading] = useState(true);
   const [uri, setUri] = useState("");
   const [secret, setSecret] = useState("");
   const [code, setCode] = useState("");
@@ -123,31 +145,23 @@ export function AccountSecurityForm({
   const redirectPath = searchParams.get("redirect");
 
   useEffect(() => {
-    if (!isLoggedIn()) {
-      setSessionLoading(false);
-      return;
-    }
-    void fetchAuthSessionStatus()
-      .then((status) => {
-        if (status.mfaEnrolled) setStep("enabled");
-      })
-      .catch(() => {})
-      .finally(() => setSessionLoading(false));
-  }, []);
+    if (sessionLoading) return;
+    if (session?.mfaEnrolled) setStep("enabled");
+  }, [session, sessionLoading]);
 
   if (!isLoggedIn()) {
     return (
       <Card className="mx-auto max-w-lg">
         <CardHeader>
           <CardTitle>{labels.title}</CardTitle>
-          <CardDescription>Sign in to manage your account security settings.</CardDescription>
+          <CardDescription>{labels.signInRequiredDescription}</CardDescription>
         </CardHeader>
         <CardContent>
           <a
             href="/login?redirect=%2Faccount%2Fsecurity"
             className="text-sm font-medium text-primary hover:underline"
           >
-            Sign in →
+            {labels.signInLinkLabel}
           </a>
         </CardContent>
       </Card>
@@ -190,7 +204,7 @@ export function AccountSecurityForm({
   const showSetupDescription = step !== "enabled" && !sessionLoading;
   const cardDescription =
     step === "enabled"
-      ? "Your account is protected with an authenticator app."
+      ? labels.enabledDescription
       : showSetupDescription
         ? labels.description
         : null;
@@ -198,7 +212,7 @@ export function AccountSecurityForm({
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4">
       <a href="/" className="text-sm text-muted-foreground hover:text-foreground">
-        ← Back to storefront
+        {labels.backToStorefrontLabel}
       </a>
 
       <Card>
@@ -209,24 +223,23 @@ export function AccountSecurityForm({
               {cardDescription && <CardDescription>{cardDescription}</CardDescription>}
             </div>
             {step === "enabled" && !sessionLoading ? (
-              <Badge variant="success">Enabled</Badge>
+              <Badge variant="success">{labels.enabledBadgeLabel}</Badge>
             ) : null}
           </div>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {sessionLoading ? (
-            <p className="text-sm text-muted-foreground">Checking security settings…</p>
+            <p className="text-sm text-muted-foreground">{labels.checkingLabel}</p>
           ) : (
             <>
               {mfaRequired && step !== "enabled" && (
                 <Alert>
-                  <AlertDescription>
-                    Your store requires an authenticator app before you can use the admin dashboard.
-                  </AlertDescription>
+                  <AlertDescription>{labels.mfaRequiredAlert}</AlertDescription>
                 </Alert>
               )}
               {mfaStepContent({
                 step,
+                labels,
                 redirectPath,
                 qrUrl,
                 secret,

@@ -52,6 +52,6 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
-    @apply min-h-screen bg-muted/40 text-foreground;
+    @apply h-dvh overflow-hidden bg-muted/40 text-foreground;
   }
 }

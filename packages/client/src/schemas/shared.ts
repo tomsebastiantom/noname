@@ -34,6 +34,14 @@ export const mediaFieldLabelsSchema = z.object({
   clearLabel: z.string(),
 });
 
+export const referenceFieldLabelsSchema = z.object({
+  entriesLoadingLabel: z.string(),
+  emptyLabel: z.string(),
+  selectedPrefix: z.string(),
+  clearLabel: z.string(),
+  missingTargetMessage: z.string(),
+});
+
 /** Nav row structure — display name in labels.nav[id] */
 export const navItemConfigSchema = z.object({
   id: z.string(),

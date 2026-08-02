@@ -16,9 +16,10 @@ export { EditorCanvas } from "./components/canvas/EditorCanvas";
 export { ComponentPalette } from "./components/palette/ComponentPalette";
 export { PropsPanel } from "./components/panel/PropsPanel";
 export { EditorHost } from "./components/shell/EditorHost";
-export { EditPageView } from "./components/shell/EditPageView";
 export { SaveBar } from "./components/shell/SaveBar";
 export { VisualEditorShell } from "./components/shell/VisualEditorShell";
+
+import { editorActionHandlers } from "./actions";
 
 const editorCatalog = defineCatalog(schema, {
   components: editorComponentSchemas,
@@ -34,10 +35,13 @@ const editorComponentMap = {
   EditorPropsPanel: EditorPropsPanelSlot,
 };
 
-export const { registry: editorRegistry } = defineRegistry(editorCatalog, {
-  components: editorComponentMap,
-  actions: {} as never,
-});
+export const { registry: editorRegistry, handlers: editorHandlers } = defineRegistry(
+  editorCatalog,
+  {
+    components: editorComponentMap,
+    actions: editorActionHandlers as never,
+  },
+);
 
 /** json-render component map for a spec-driven visual editor shell. */
 export const editorComponents = editorComponentMap;

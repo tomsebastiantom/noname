@@ -22,10 +22,6 @@ export interface RoutingPageView {
 
 export const ROUTING_DEFAULT_LOCALE = "en-US";
 
-export function isPageTreePath(pathname: string): boolean {
-  return pathname === "/admin/pages/tree" || pathname.endsWith("/pages/tree");
-}
-
 export function routingPageKeyFromPath(pathname: string): string {
   const match = pathname.match(/^\/admin\/pages\/?([^/]+)/);
   const segment = match?.[1]?.trim() ?? "";

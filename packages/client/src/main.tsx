@@ -76,7 +76,7 @@ function AppShell({
         lockViewport
           ? "flex h-dvh flex-col overflow-hidden bg-background"
           : isLoginTemplate(template)
-            ? "noname-auth flex min-h-screen flex-col"
+            ? "noname-auth flex h-dvh flex-col overflow-hidden"
             : "min-h-screen bg-background"
       }
     >
@@ -358,7 +358,15 @@ function App() {
           />
         </div>
       ) : (
-        spec && <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+        spec && (
+          <div
+            className={
+              isLoginTemplate(template) ? "flex min-h-0 flex-1 flex-col overflow-hidden" : undefined
+            }
+          >
+            <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+          </div>
+        )
       )}
     </AppShell>
   );

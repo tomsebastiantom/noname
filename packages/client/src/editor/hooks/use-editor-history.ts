@@ -30,13 +30,43 @@ function cloneSnapshot(snapshot: EditorHistorySnapshot): EditorHistorySnapshot {
   };
 }
 
-function snapshotsEqual(a: EditorHistorySnapshot, b: EditorHistorySnapshot): boolean {
+function recordsEqual(a: Record<string, string>, b: Record<string, string>): boolean {
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  for (const key of aKeys) {
+    if (a[key] !== b[key]) return false;
+  }
+  return true;
+}
+
+function pendingEqual(a: PendingBlockAdd | null, b: PendingBlockAdd | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
   return (
-    JSON.stringify(a.storedSpec) === JSON.stringify(b.storedSpec) &&
-    JSON.stringify(a.contentValues) === JSON.stringify(b.contentValues) &&
-    JSON.stringify(a.pendingAdd) === JSON.stringify(b.pendingAdd) &&
-    JSON.stringify(a.selection) === JSON.stringify(b.selection)
+    a.tempElementId === b.tempElementId &&
+    a.componentType === b.componentType &&
+    JSON.stringify(a.props) === JSON.stringify(b.props)
   );
+}
+
+function selectionEqual(a: EditSelection | null, b: EditSelection | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  return a.elementId === b.elementId && a.componentType === b.componentType;
+}
+
+function snapshotsEqual(a: EditorHistorySnapshot, b: EditorHistorySnapshot): boolean {
+  if (
+    a.storedSpec !== b.storedSpec &&
+    JSON.stringify(a.storedSpec) !== JSON.stringify(b.storedSpec)
+  ) {
+    return false;
+  }
+  if (!recordsEqual(a.contentValues, b.contentValues)) return false;
+  if (!pendingEqual(a.pendingAdd, b.pendingAdd)) return false;
+  if (!selectionEqual(a.selection, b.selection)) return false;
+  return true;
 }
 
 export function useEditorHistory({

@@ -24,6 +24,7 @@ import { ContentEntryEditor } from "./content-entry-editor";
 import { ContentEntryTypeList } from "./content-entry-type-list";
 import { emptyValuesForSchema, newEntryCardDescription } from "./content-entry-utils";
 import type { MediaFieldLabels } from "./MediaFieldInput";
+import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
 import { useContentEntryAdminActions } from "./use-content-entry-actions";
 
 type ContentEntryConfig = {
@@ -52,6 +53,10 @@ type ContentEntryLabels = {
   pickExistingLabel: string;
   loadingAssetsLabel: string;
   clearLabel: string;
+  entriesLoadingLabel: string;
+  emptyLabel: string;
+  selectedPrefix: string;
+  missingTargetMessage: string;
 };
 
 type ContentEntryAdminProps = ComponentCtx<CatalogProps<ContentEntryConfig, ContentEntryLabels>>;
@@ -65,6 +70,16 @@ function mediaLabelsFrom(labels: ContentEntryLabels): MediaFieldLabels {
     pickExistingLabel: labels.pickExistingLabel,
     loadingAssetsLabel: labels.loadingAssetsLabel,
     clearLabel: labels.clearLabel,
+  };
+}
+
+function referenceLabelsFrom(labels: ContentEntryLabels): ReferenceFieldLabels {
+  return {
+    entriesLoadingLabel: labels.entriesLoadingLabel,
+    emptyLabel: labels.emptyLabel,
+    selectedPrefix: labels.selectedPrefix,
+    clearLabel: labels.clearLabel,
+    missingTargetMessage: labels.missingTargetMessage,
   };
 }
 
@@ -85,6 +100,8 @@ function ContentEntryEntriesPanel({
   const schema = loaded.schema;
 
   const mediaLabels = mediaLabelsFrom(labels);
+  const referenceLabels = referenceLabelsFrom(labels);
+  const referenceOptions = loaded.referenceOptions;
 
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(loaded.initialSelectedId);
@@ -147,6 +164,8 @@ function ContentEntryEntriesPanel({
         values={values}
         locale={locale}
         mediaLabels={mediaLabels}
+        referenceLabels={referenceLabels}
+        referenceOptions={referenceOptions}
         error={displayError}
         success={catalog.success}
         creating={creating}
@@ -172,6 +191,8 @@ function ContentEntryEntriesPanel({
       selectedId={selectedId}
       values={values}
       mediaLabels={mediaLabels}
+      referenceLabels={referenceLabels}
+      referenceOptions={referenceOptions}
       error={displayError}
       success={catalog.success}
       saving={saving}

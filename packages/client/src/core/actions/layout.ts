@@ -1,3 +1,5 @@
+import { extractLoginBranding, type LoginBrandingValues } from "../../admin/login-branding";
+import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
   getLayoutForTemplate,
   type LayoutSummary,
@@ -6,9 +8,7 @@ import {
   publishLayout,
   saveLayout,
   specToJson,
-} from "../../admin/layout-entries";
-import { extractLoginBranding, type LoginBrandingValues } from "../../admin/login-branding";
-import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
+} from "../../documents/layout-entries";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
 

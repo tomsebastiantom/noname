@@ -1,19 +1,26 @@
 import { emptyValuesForSchema } from "../../admin/components/content/content-entry-utils";
+import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
+  type AssetSummary,
   type ContentEntryRow,
   type ContentTypeSchema,
   createContentEntry,
   deleteContentEntry,
   getContentType,
+  listAssets,
   listContentTypes,
   listEntries,
   loadEntryFields,
   publishContentEntry,
   saveContentEntry,
-} from "../../admin/content-entries";
-import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
+} from "../../documents/content-entries";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
+
+export type ReferenceFieldOptions = {
+  entries: ContentEntryRow[];
+  schema: ContentTypeSchema | null;
+};
 
 export type ContentAdminLoaded =
   | {
@@ -33,6 +40,7 @@ export type ContentAdminLoaded =
       initialValues: Record<string, string>;
       initialStatus: string;
       canPublish: boolean;
+      referenceOptions: Record<string, ReferenceFieldOptions>;
     };
 
 export const contentActions = {
@@ -74,12 +82,34 @@ export const contentActions = {
           initialValues: {},
           initialStatus: "draft",
           canPublish,
+          referenceOptions: {},
         };
         setState(ADMIN_STATE.content.loaded, loaded);
         return;
       }
 
       const rows = await listEntries(contentType);
+      const referenceTypes = [
+        ...new Set(
+          typeDef.schema.fields
+            .filter((field) => field.type === "reference" && field.references)
+            .map((field) => field.references as string),
+        ),
+      ];
+      const referenceOptions: Record<string, ReferenceFieldOptions> = {};
+      await Promise.all(
+        referenceTypes.map(async (refType) => {
+          const [refRows, refTypeDef] = await Promise.all([
+            listEntries(refType),
+            getContentType(refType),
+          ]);
+          referenceOptions[refType] = {
+            entries: refRows,
+            schema: refTypeDef?.schema ?? null,
+          };
+        }),
+      );
+
       const first = rows[0];
       let initialSelectedId: string | null = null;
       let initialValues = emptyValuesForSchema(typeDef.schema);
@@ -102,6 +132,7 @@ export const contentActions = {
         initialValues,
         initialStatus,
         canPublish,
+        referenceOptions,
       };
       setState(ADMIN_STATE.content.loaded, loaded);
     } catch (err) {
@@ -141,5 +172,18 @@ export const contentActions = {
   deleteContentEntry: (async (params) => {
     const { contentType, id } = params as { contentType: string; id: string };
     await deleteContentEntry(contentType, id);
+  }) satisfies CatalogActionHandler,
+
+  loadMediaAssets: (async (_params, setState) => {
+    setState(ADMIN_STATE.content.mediaAssetsLoading, true);
+    try {
+      const assets = await listAssets();
+      setState(ADMIN_STATE.content.mediaAssets, assets);
+    } catch (err) {
+      setState(ADMIN_STATE.content.error, err instanceof Error ? err.message : String(err));
+      setState(ADMIN_STATE.content.mediaAssets, [] as AssetSummary[]);
+    } finally {
+      setState(ADMIN_STATE.content.mediaAssetsLoading, false);
+    }
   }) satisfies CatalogActionHandler,
 };

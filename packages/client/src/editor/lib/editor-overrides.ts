@@ -1,11 +1,11 @@
-import { adminComponentSchemas } from "../../admin/catalog-schemas";
+import { ADMIN_PALETTE_EXCLUDED_TYPES } from "./admin-palette-excluded";
 
 /** Not draggable in the storefront visual editor. */
 export const PALETTE_EXCLUDED_TYPES = new Set([
   "MountAction",
   "LoginForm",
   "AuthLayout",
-  ...Object.keys(adminComponentSchemas),
+  ...ADMIN_PALETTE_EXCLUDED_TYPES,
 ]);
 
 export type EditorComponentOverride = {

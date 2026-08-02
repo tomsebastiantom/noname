@@ -1,10 +1,11 @@
-/** CMS entry API used by the visual editor (same backend as admin content panels). */
-
-export type { ContentFieldSchema, ContentTypeSchema } from "@noname/documents";
+/** Content document API — shared by admin panels and visual editor. */
 export {
   CONTENT_DEFAULT_LOCALE,
+  type ContentEntryRow,
+  type ContentTypeSummary,
+  createContentEntry,
   getContentType,
   loadEntryFields,
   publishContentEntry,
   saveContentEntry,
-} from "../admin/content-entries";
+} from "../documents/content-entries";

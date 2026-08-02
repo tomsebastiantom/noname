@@ -35,6 +35,24 @@ type PageEntryLabels = {
   editUrlTreeLabel: string;
   allPagesLinkLabel: string;
   urlTreeLinkLabel: string;
+  pageKeyLabel: string;
+  statusSeparator: string;
+  layoutRefLabel: string;
+  layoutRefPlaceholder: string;
+  contentRefLabel: string;
+  contentRefPlaceholder: string;
+  contentRefHint: string;
+  newPageTitle: string;
+  newPageDescription: string;
+  newPageKeyLabel: string;
+  newPageKeyPlaceholder: string;
+  emptyListMessage: string;
+  pageKeyColumnHeader: string;
+  layoutColumnHeader: string;
+  contentRefColumnHeader: string;
+  statusColumnHeader: string;
+  pageNotFoundPrefix: string;
+  pageNotFoundSuffix: string;
 };
 
 type PageEntryAdminProps = ComponentCtx<CatalogProps<PageEntryConfig, PageEntryLabels>>;
@@ -72,8 +90,8 @@ function PageEntryDetailFields({
   return (
     <div className="max-w-xl">
       <p className="mb-4 text-sm text-muted-foreground">
-        Page key <span className="font-mono">{pageKey}</span>
-        {status ? ` · ${status}` : ""}
+        {labels.pageKeyLabel} <span className="font-mono">{pageKey}</span>
+        {status ? `${labels.statusSeparator}${status}` : ""}
       </p>
 
       {displayError ? (
@@ -95,26 +113,24 @@ function PageEntryDetailFields({
         className="space-y-4"
       >
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="layout-ref">Layout template</Label>
+          <Label htmlFor="layout-ref">{labels.layoutRefLabel}</Label>
           <Input
             id="layout-ref"
             value={layoutRef}
             onChange={(e) => setLayoutRef(e.target.value)}
-            placeholder="home"
+            placeholder={labels.layoutRefPlaceholder}
             required
           />
         </div>
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="content-ref">Content ref</Label>
+          <Label htmlFor="content-ref">{labels.contentRefLabel}</Label>
           <Input
             id="content-ref"
             value={contentRef}
             onChange={(e) => setContentRef(e.target.value)}
-            placeholder="page:uuid or product:uuid"
+            placeholder={labels.contentRefPlaceholder}
           />
-          <p className="text-xs text-muted-foreground">
-            Optional. Format: type:id — merged into layout via $state on the edge.
-          </p>
+          <p className="text-xs text-muted-foreground">{labels.contentRefHint}</p>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -200,10 +216,8 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
 
         <Card className="mb-6">
           <CardHeader>
-            <CardTitle className="text-base">New page document</CardTitle>
-            <CardDescription>
-              Key used by page_tree entries (e.g. home, product-demo)
-            </CardDescription>
+            <CardTitle className="text-base">{labels.newPageTitle}</CardTitle>
+            <CardDescription>{labels.newPageDescription}</CardDescription>
           </CardHeader>
           <CardContent>
             <form
@@ -214,12 +228,12 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
               className="flex flex-wrap items-end gap-3"
             >
               <div className="flex min-w-[200px] flex-1 flex-col gap-1.5">
-                <Label htmlFor="new-page-key">Page key</Label>
+                <Label htmlFor="new-page-key">{labels.newPageKeyLabel}</Label>
                 <Input
                   id="new-page-key"
                   value={newPageKey}
                   onChange={(e) => setNewPageKey(e.target.value)}
-                  placeholder="about"
+                  placeholder={labels.newPageKeyPlaceholder}
                   required
                 />
               </div>
@@ -231,7 +245,7 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
         </Card>
 
         {pages.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No routing page documents yet.</p>
+          <p className="text-sm text-muted-foreground">{labels.emptyListMessage}</p>
         ) : (
           <DataTable
             rows={pages}
@@ -242,18 +256,22 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
             columns={[
               {
                 key: "key",
-                header: "Page key",
+                header: labels.pageKeyColumnHeader,
                 cell: (row) => <span className="font-medium">{row.key}</span>,
               },
-              { key: "layout", header: "Layout", cell: (row) => row.layoutRef || "—" },
+              {
+                key: "layout",
+                header: labels.layoutColumnHeader,
+                cell: (row) => row.layoutRef || "—",
+              },
               {
                 key: "content",
-                header: "Content ref",
+                header: labels.contentRefColumnHeader,
                 cell: (row) => row.contentRef || "—",
               },
               {
                 key: "status",
-                header: "Status",
+                header: labels.statusColumnHeader,
                 cell: (row) => (
                   <Badge variant={row.status === "published" ? "success" : "muted"}>
                     {row.status}
@@ -270,7 +288,8 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
   if (!currentPage) {
     return (
       <p className="text-sm text-muted-foreground">
-        Page <span className="font-mono">{pageKey}</span> not found.
+        {labels.pageNotFoundPrefix} <span className="font-mono">{pageKey}</span>{" "}
+        {labels.pageNotFoundSuffix}
       </p>
     );
   }

@@ -157,6 +157,39 @@ const mediaFieldLabels = {
   clearLabel: "Clear",
 };
 
+const referenceFieldLabels = {
+  entriesLoadingLabel: "Loading entries…",
+  emptyLabel: "No {type} entries yet.",
+  selectedPrefix: "Selected:",
+  missingTargetMessage: 'Reference field "{label}" is missing schema references (target content type).',
+};
+
+const accountSecurityLabels = {
+  title: "Two-factor authentication",
+  description: "Use an authenticator app for an extra sign-in step after your password.",
+  signInRequiredDescription: "Sign in to manage your account security settings.",
+  signInLinkLabel: "Sign in →",
+  backToStorefrontLabel: "← Back to storefront",
+  enabledBadgeLabel: "Enabled",
+  enabledDescription: "Your account is protected with an authenticator app.",
+  checkingLabel: "Checking security settings…",
+  mfaRequiredAlert:
+    "Your store requires an authenticator app before you can use the admin dashboard.",
+  idleDescription: "Add an authenticator app for an extra sign-in step after your password.",
+  idleButtonLabel: "Set up authenticator app",
+  idleButtonPendingLabel: "Starting…",
+  setupDescription:
+    "Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter the secret manually.",
+  qrAltText: "TOTP QR code",
+  verificationCodeLabel: "Verification code",
+  verificationCodePlaceholder: "123456",
+  confirmSetupLabel: "Confirm setup",
+  confirmSetupPendingLabel: "Verifying…",
+  enabledStepDescription:
+    "Sign-in may ask for a code from your authenticator app after your password.",
+  continueToAdminLabel: "Continue to admin →",
+};
+
 const authSettingsLabels = {
   saveLabel: "Save settings",
   savingLabel: "Saving…",
@@ -231,6 +264,7 @@ const loginBrandingLabels = {
 const contentAdminLabels = {
   ...draftPublishLabels,
   ...mediaFieldLabels,
+  ...referenceFieldLabels,
   deleteLabel: "Delete",
   deletingLabel: "Deleting…",
   createDraftLabel: "Create draft",
@@ -248,9 +282,25 @@ const layoutAdminLabels = {
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
   publishedMessage: "Layout published. Site and login will use the new spec on next load.",
+  allLayoutsLinkLabel: "← All layouts",
+  contentRefLabel: "contentRef (optional)",
+  contentRefPlaceholder: "product:uuid or page:uuid — CMS merge on storefront",
+  contentRefHint: "Storefront templates only. Login/admin specs usually leave this empty.",
+  specJsonLabel: "json-render spec (JSON)",
+  templateMetaTemplateLabel: "Template:",
+  templateMetaSegmentLabel: "Segment:",
+  templateMetaStatusLabel: "Status:",
+  metaSeparator: "·",
+  emptyLayoutsMessage: "No layout templates yet. Seed with pnpm seed:demo.",
+  templateColumnHeader: "Template",
+  statusColumnHeader: "Status",
+  contentRefColumnHeader: "Content ref",
+  hasContentRefYes: "Yes",
+  templateNotFoundPrefix: "Template",
+  templateNotFoundSuffix: "not found.",
 };
 
-const pagesAdminLabels = {
+const pageEntryAdminLabels = {
   saveLabel: "Save",
   savingLabel: "Saving…",
   pageSavedMessage: "Page document saved.",
@@ -260,6 +310,27 @@ const pagesAdminLabels = {
   editUrlTreeLabel: "Edit URL tree →",
   allPagesLinkLabel: "← All pages",
   urlTreeLinkLabel: "URL tree",
+  pageKeyLabel: "Page key",
+  statusSeparator: " · ",
+  layoutRefLabel: "Layout template",
+  layoutRefPlaceholder: "home",
+  contentRefLabel: "Content ref",
+  contentRefPlaceholder: "page:uuid or product:uuid",
+  contentRefHint: "Optional. Format: type:id — merged into layout via $state on the edge.",
+  newPageTitle: "New page document",
+  newPageDescription: "Key used by page_tree entries (e.g. home, product-demo)",
+  newPageKeyLabel: "Page key",
+  newPageKeyPlaceholder: "about",
+  emptyListMessage: "No routing page documents yet.",
+  pageKeyColumnHeader: "Page key",
+  layoutColumnHeader: "Layout",
+  contentRefColumnHeader: "Content ref",
+  statusColumnHeader: "Status",
+  pageNotFoundPrefix: "Page",
+  pageNotFoundSuffix: "not found.",
+};
+
+const pageTreeAdminLabels = {
   saveTreeLabel: "Save page tree",
   savingTreeLabel: "Saving…",
   treeSavedMessage: "Page tree saved.",
@@ -583,15 +654,19 @@ const accountSecuritySpec = {
         { layout: "centered" },
         { brandTitle: "Account security", brandSubtitle: "Protect your account" },
       ),
-      children: ["security"],
+      children: ["loadSession", "security"],
+    },
+    loadSession: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadAccountSecuritySession" }, {}),
     },
     security: {
       type: "AccountSecurityForm",
       props: panelProps(
         {},
-        "Two-factor authentication",
-        "Use an authenticator app for an extra sign-in step after your password.",
-        {},
+        accountSecurityLabels.title,
+        accountSecurityLabels.description,
+        accountSecurityLabels,
       ),
     },
   },
@@ -641,12 +716,24 @@ const adminPagesSpec = adminPanelSpec(["loadPages", "pagesAdmin"], {
     props: catalogProps({ action: "listRoutingPages" }, {}),
   },
   pagesAdmin: {
-    type: "PageRoutingAdmin",
+    type: "PageEntryAdmin",
+    props: panelProps(
+      {},
+      "Pages",
+      "Routing page documents (layout + contentRef). Use URL tree for storefront path mappings.",
+      pageEntryAdminLabels,
+    ),
+  },
+});
+
+const adminPagesTreeSpec = adminPanelSpec(["treeAdmin"], {
+  treeAdmin: {
+    type: "PageTreeAdmin",
     props: panelProps(
       { locale: "en-US" },
-      "Pages",
-      "Routing page documents (layout + contentRef) and the URL tree that maps paths to them.",
-      pagesAdminLabels,
+      "URL tree",
+      "Maps storefront paths to page document keys.",
+      pageTreeAdminLabels,
     ),
   },
 });
@@ -965,6 +1052,10 @@ async function main() {
   });
   await upsertLayout("admin_home", adminHomeSpec, { renderAs: "panel", shellRef: "admin_shell" });
   await upsertLayout("admin_pages", adminPagesSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_pages_tree", adminPagesTreeSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
   await upsertLayout("account_security", accountSecuritySpec, { renderAs: "standalone" });
 
   await ensurePageContentType();
@@ -995,7 +1086,7 @@ async function main() {
   console.log("Demo seed complete.");
   console.log(`  Org:     ${DEMO_ORG_ID}`);
   console.log(`  Slug:    yogastore`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_dashboard + admin_replay`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_replay`);
   console.log(`  Client:  http://yogastore.localhost:5173`);
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);

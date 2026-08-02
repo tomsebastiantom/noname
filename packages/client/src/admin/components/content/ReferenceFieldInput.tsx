@@ -1,29 +1,42 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Label } from "../../../components/ui/label";
+import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import {
   type ContentEntryRow,
+  type ContentTypeSchema,
   documentIdFromFieldValue,
   entryLabel,
   getContentType,
   listEntries,
 } from "../../content-entries";
 
+export type ReferenceFieldLabels = {
+  entriesLoadingLabel: string;
+  emptyLabel: string;
+  selectedPrefix: string;
+  clearLabel: string;
+  missingTargetMessage: string;
+};
+
 function entryPickerBody(options: {
   loading: boolean;
   entries: ContentEntryRow[];
   targetContentType: string;
-  targetSchema: Awaited<ReturnType<typeof getContentType>>;
+  targetSchema: ContentTypeSchema | null;
   locale: string;
   selectedDocumentId: string | null;
+  labels: ReferenceFieldLabels;
   onChange: (value: string) => void;
 }): ReactNode {
   if (options.loading) {
-    return <p className="text-sm text-muted-foreground">Loading entries…</p>;
+    return <p className="text-sm text-muted-foreground">{options.labels.entriesLoadingLabel}</p>;
   }
   if (options.entries.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No {options.targetContentType} entries yet.</p>
+      <p className="text-sm text-muted-foreground">
+        {options.labels.emptyLabel.replace("{type}", options.targetContentType)}
+      </p>
     );
   }
   return (
@@ -40,7 +53,7 @@ function entryPickerBody(options: {
           }
         >
           {options.targetSchema
-            ? entryLabel(entry, options.targetSchema.schema, options.locale)
+            ? entryLabel(entry, options.targetSchema, options.locale)
             : entry.id}
           <span className="ml-2 text-xs uppercase">{entry.status}</span>
         </button>
@@ -56,6 +69,8 @@ export function ReferenceFieldInput({
   locale,
   value,
   onChange,
+  labels,
+  referenceOptions,
 }: Readonly<{
   label: string;
   required: boolean;
@@ -63,10 +78,13 @@ export function ReferenceFieldInput({
   locale: string;
   value: string;
   onChange: (value: string) => void;
+  labels: ReferenceFieldLabels;
+  referenceOptions?: ReferenceFieldOptions;
 }>) {
-  const [entries, setEntries] = useState<ContentEntryRow[]>([]);
-  const [targetSchema, setTargetSchema] =
-    useState<Awaited<ReturnType<typeof getContentType>>>(null);
+  const [entries, setEntries] = useState<ContentEntryRow[]>(referenceOptions?.entries ?? []);
+  const [targetSchema, setTargetSchema] = useState<ContentTypeSchema | null>(
+    referenceOptions?.schema ?? null,
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -76,6 +94,14 @@ export function ReferenceFieldInput({
     : undefined;
 
   useEffect(() => {
+    if (referenceOptions) {
+      setEntries(referenceOptions.entries);
+      setTargetSchema(referenceOptions.schema);
+      setLoading(false);
+      setError(null);
+      return;
+    }
+
     let cancelled = false;
     if (!targetContentType) return;
 
@@ -85,7 +111,7 @@ export function ReferenceFieldInput({
       .then(([rows, typeDef]) => {
         if (!cancelled) {
           setEntries(rows);
-          setTargetSchema(typeDef);
+          setTargetSchema(typeDef?.schema ?? null);
         }
       })
       .catch((err) => {
@@ -98,12 +124,12 @@ export function ReferenceFieldInput({
     return () => {
       cancelled = true;
     };
-  }, [targetContentType]);
+  }, [targetContentType, referenceOptions]);
 
   if (!targetContentType) {
     return (
       <p className="text-sm text-destructive">
-        Reference field &quot;{label}&quot; is missing schema references (target content type).
+        {labels.missingTargetMessage.replace("{label}", label)}
       </p>
     );
   }
@@ -120,7 +146,7 @@ export function ReferenceFieldInput({
 
       {selectedEntry && targetSchema && (
         <p className="text-sm text-muted-foreground">
-          Selected: {entryLabel(selectedEntry, targetSchema.schema, locale)}
+          {labels.selectedPrefix} {entryLabel(selectedEntry, targetSchema, locale)}
         </p>
       )}
 
@@ -131,6 +157,7 @@ export function ReferenceFieldInput({
         targetSchema,
         locale,
         selectedDocumentId,
+        labels,
         onChange,
       })}
 
@@ -142,7 +169,7 @@ export function ReferenceFieldInput({
           className="self-start"
           onClick={() => onChange("")}
         >
-          Clear
+          {labels.clearLabel}
         </Button>
       )}
 

@@ -1,11 +1,12 @@
+import { useActions, useStateValue } from "@json-render/react";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Label } from "../../../components/ui/label";
+import { ADMIN_STATE } from "../../../core/admin-state";
 import {
   type AssetSummary,
   documentIdFromFieldValue,
   getAsset,
-  listAssets,
   uploadAsset,
 } from "../../content-entries";
 
@@ -30,12 +31,16 @@ export function MediaFieldInput({
   onChange: (value: string) => void;
   labels: MediaFieldLabels;
 }>) {
+  const { execute } = useActions();
   const fileRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<AssetSummary | null>(null);
-  const [assets, setAssets] = useState<AssetSummary[]>([]);
-  const [loadingAssets, setLoadingAssets] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const assets =
+    (useStateValue(ADMIN_STATE.content.mediaAssets) as AssetSummary[] | undefined) ?? [];
+  const loadingAssets =
+    (useStateValue(ADMIN_STATE.content.mediaAssetsLoading) as boolean | undefined) ?? false;
 
   const selectedDocumentId = documentIdFromFieldValue(value);
 
@@ -74,14 +79,12 @@ export function MediaFieldInput({
   }
 
   async function loadAssetLibrary() {
-    setLoadingAssets(true);
+    setPickerOpen(true);
     setError(null);
     try {
-      setAssets(await listAssets());
+      await execute({ action: "loadMediaAssets" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setLoadingAssets(false);
     }
   }
 
@@ -134,7 +137,7 @@ export function MediaFieldInput({
         }}
       />
 
-      {assets.length > 0 && (
+      {pickerOpen && assets.length > 0 && (
         <div className="flex max-h-40 flex-wrap gap-2 overflow-y-auto rounded-md border p-2">
           {assets.map((asset) => (
             <button

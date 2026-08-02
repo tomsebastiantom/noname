@@ -1,7 +1,11 @@
 import { Children } from "react";
 import type { ComponentCtx } from "../../../core/components/types";
 import type { CatalogProps } from "../../../schemas/shared";
-import { useEditorSession } from "../../hooks/editor-session";
+import {
+  useEditorSession,
+  useEditorSessionActions,
+  useEditorSessionData,
+} from "../../hooks/editor-session";
 import { useEditorPrefs } from "../../hooks/use-editor-prefs";
 import { editorShellLabelsSchema } from "../../schemas/components";
 import { EditorCanvas } from "../canvas/EditorCanvas";
@@ -91,81 +95,92 @@ export function VisualEditorShell({
 VisualEditorShell.displayName = "VisualEditorShell";
 
 export function EditorPaletteSlot() {
-  const session = useEditorSession();
-  return (
-    <ComponentPalette
-      registry={session.registry}
-      labels={session.shellLabels}
-      onAdd={session.stageAdd}
-    />
-  );
+  const { registry, shellLabels } = useEditorSessionData();
+  const { stageAdd } = useEditorSessionActions();
+  return <ComponentPalette registry={registry} labels={shellLabels} onAdd={stageAdd} />;
 }
-EditorPaletteSlot.displayName = "EditorPalette";
 
 export function EditorLayerTreeSlot() {
-  const session = useEditorSession();
+  const { shellLabels, previewSpec, storedSpec, selection, pendingAdd } = useEditorSessionData();
+  const { isStoredElement, setSelection, handleReorder } = useEditorSessionActions();
   return (
     <LayerTreePanel
       hideHeader
-      labels={session.shellLabels}
-      displaySpec={session.previewSpec}
-      structureSpec={session.storedSpec ?? session.previewSpec}
-      selection={session.selection}
-      pendingElementId={session.pendingAdd?.tempElementId ?? null}
-      isStoredElement={session.isStoredElement}
-      onSelect={session.setSelection}
-      onReorder={session.handleReorder}
+      labels={shellLabels}
+      displaySpec={previewSpec}
+      structureSpec={storedSpec ?? previewSpec}
+      selection={selection}
+      pendingElementId={pendingAdd?.tempElementId ?? null}
+      isStoredElement={isStoredElement}
+      onSelect={setSelection}
+      onReorder={handleReorder}
     />
   );
 }
-EditorLayerTreeSlot.displayName = "EditorLayerTree";
 
 export function EditorCanvasSlot() {
-  const session = useEditorSession();
+  const {
+    previewSpec,
+    registry,
+    storedSpec,
+    pendingAdd,
+    selection,
+    shellLabels,
+    canUndo,
+    canRedo,
+  } = useEditorSessionData();
+  const { undo, redo, setSelection, stageAdd, handleDelete, handleDuplicate } =
+    useEditorSessionActions();
   const { layout } = useEditorPrefs();
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <EditorCanvasPreviewBar labels={session.shellLabels} />
+      <EditorCanvasPreviewBar labels={shellLabels} />
       <EditorCanvas
-        previewSpec={session.previewSpec}
-        registry={session.registry}
-        storedSpec={session.storedSpec}
-        pendingElementId={session.pendingAdd?.tempElementId ?? null}
-        pendingComponentType={session.pendingAdd?.componentType ?? null}
-        selection={session.selection}
-        shellLabels={session.shellLabels}
+        previewSpec={previewSpec}
+        registry={registry}
+        storedSpec={storedSpec}
+        pendingElementId={pendingAdd?.tempElementId ?? null}
+        pendingComponentType={pendingAdd?.componentType ?? null}
+        selection={selection}
+        shellLabels={shellLabels}
         canvasPreview={layout.canvasPreview}
-        canUndo={session.canUndo}
-        canRedo={session.canRedo}
-        onUndo={session.undo}
-        onRedo={session.redo}
-        onSelect={session.setSelection}
-        onClearSelection={() => session.setSelection(null)}
-        onAdd={session.stageAdd}
-        onDelete={session.handleDelete}
-        onDuplicate={session.handleDuplicate}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onSelect={setSelection}
+        onClearSelection={() => setSelection(null)}
+        onAdd={stageAdd}
+        onDelete={handleDelete}
+        onDuplicate={handleDuplicate}
       />
     </div>
   );
 }
-EditorCanvasSlot.displayName = "EditorCanvas";
 
 export function EditorPropsPanelSlot() {
-  const session = useEditorSession();
+  const { selection, storedSpec, pendingAdd, contentDraft, shellLabels } = useEditorSessionData();
+  const {
+    handleStoredChange,
+    patchPendingProps,
+    handleSave,
+    cancelPendingAdd,
+    handleDelete,
+    handleDuplicate,
+  } = useEditorSessionActions();
   return (
     <PropsPanel
-      selection={session.selection}
-      storedSpec={session.storedSpec}
-      pendingAdd={session.pendingAdd}
-      contentDraft={session.contentDraft}
-      shellLabels={session.shellLabels}
-      onChangeSpec={session.handleStoredChange}
-      onPatchPending={session.patchPendingProps}
-      onSavePending={session.handleSave}
-      onCancelPending={session.cancelPendingAdd}
-      onDelete={session.handleDelete}
-      onDuplicate={session.handleDuplicate}
+      selection={selection}
+      storedSpec={storedSpec}
+      pendingAdd={pendingAdd}
+      contentDraft={contentDraft}
+      shellLabels={shellLabels}
+      onChangeSpec={handleStoredChange}
+      onPatchPending={patchPendingProps}
+      onSavePending={handleSave}
+      onCancelPending={cancelPendingAdd}
+      onDelete={handleDelete}
+      onDuplicate={handleDuplicate}
     />
   );
 }
-EditorPropsPanelSlot.displayName = "EditorPropsPanel";

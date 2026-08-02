@@ -8,11 +8,13 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentEntryRow, ContentTypeSchema } from "../../content-entries";
 import { entryLabel, isEditableField } from "../../content-entries";
 import { DataTable } from "../shared/DataTable";
 import { ContentEntryFieldInput } from "./content-entry-field-input";
 import type { MediaFieldLabels } from "./MediaFieldInput";
+import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
 
 export function ContentEntryEditor({
   contentType,
@@ -23,6 +25,8 @@ export function ContentEntryEditor({
   selectedId,
   values,
   mediaLabels,
+  referenceLabels,
+  referenceOptions,
   error,
   success,
   saving,
@@ -45,6 +49,8 @@ export function ContentEntryEditor({
   selectedId: string | null;
   values: Record<string, string>;
   mediaLabels: MediaFieldLabels;
+  referenceLabels: ReferenceFieldLabels;
+  referenceOptions?: Record<string, ReferenceFieldOptions>;
   error: string | null;
   success: string | null;
   saving: boolean;
@@ -136,6 +142,8 @@ export function ContentEntryEditor({
                   value={values[field.key] ?? ""}
                   onChange={(v) => onValuesChange({ ...values, [field.key]: v })}
                   mediaLabels={mediaLabels}
+                  referenceLabels={referenceLabels}
+                  referenceOptions={referenceOptions}
                 />
               ))}
 

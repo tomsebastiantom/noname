@@ -7,9 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
 import { ContentEntryFieldInput } from "./content-entry-field-input";
 import type { MediaFieldLabels } from "./MediaFieldInput";
+import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
 
 export function ContentEntryCreateForm({
   entryCount,
@@ -19,6 +21,8 @@ export function ContentEntryCreateForm({
   values,
   locale,
   mediaLabels,
+  referenceLabels,
+  referenceOptions,
   error,
   success,
   creating,
@@ -34,6 +38,8 @@ export function ContentEntryCreateForm({
   values: Record<string, string>;
   locale: string;
   mediaLabels: MediaFieldLabels;
+  referenceLabels: ReferenceFieldLabels;
+  referenceOptions?: Record<string, ReferenceFieldOptions>;
   error: string | null;
   success: string | null;
   creating: boolean;
@@ -68,6 +74,8 @@ export function ContentEntryCreateForm({
                 value={values[field.key] ?? ""}
                 onChange={(v) => onValuesChange({ ...values, [field.key]: v })}
                 mediaLabels={mediaLabels}
+                referenceLabels={referenceLabels}
+                referenceOptions={referenceOptions}
               />
             ))}
 

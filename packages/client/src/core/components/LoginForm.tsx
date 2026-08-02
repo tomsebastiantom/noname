@@ -1,6 +1,6 @@
-import { useActions } from "@json-render/react";
+import { useActions, useStateValue } from "@json-render/react";
 import { storeSlugFromHost } from "@noname/shared";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "../../components/ui/alert";
 import {
   Card,
@@ -12,6 +12,7 @@ import {
 import type { CatalogProps } from "../../schemas/shared";
 import type { CoreActionName } from "../actions";
 import type { LoginViewFields } from "../login-form-labels";
+import { LOGIN_STATE, type LoginAuthConfigState } from "../login-state";
 import {
   type AuthProvider,
   type LoginView,
@@ -25,6 +26,7 @@ import {
   LoginResetView,
   LoginSignupView,
 } from "./login-views";
+import { useMountAction } from "./MountAction";
 import type { ComponentCtx } from "./types";
 
 type LoginFormConfig = {
@@ -59,14 +61,28 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [enabledProviders, setEnabledProviders] = useState<string[]>([]);
-  const [providerLabels, setProviderLabels] = useState<Record<string, string>>({});
-  const [providerIcons, setProviderIcons] = useState<Record<string, string>>({});
-  const [allowPassword, setAllowPassword] = useState(true);
-  const [allowSignUp, setAllowSignUp] = useState(false);
-  const [allowPasswordReset, setAllowPasswordReset] = useState(true);
 
   const storeSlug = storeSlugFromHost(window.location.hostname);
+  const loadParams = useMemo(() => (storeSlug ? { storeSlug } : null), [storeSlug]);
+  useMountAction("loadLoginConfig", loadParams);
+
+  const authConfig = useStateValue(LOGIN_STATE.authConfig) as LoginAuthConfigState | null;
+
+  const enabledProviders = useMemo(() => {
+    const serverProviders = authConfig?.providers ?? [];
+    const fromSpec = (config.providers ?? []) as string[];
+    if (fromSpec.length === 0) return serverProviders;
+    return serverProviders.filter(
+      (p) => fromSpec.includes(p as AuthProvider) || p.startsWith("custom:"),
+    );
+  }, [authConfig?.providers, config.providers]);
+
+  const allowPassword = authConfig?.allowPassword !== false;
+  const allowSignUp = authConfig?.allowSignUp === true;
+  const allowPasswordReset = authConfig?.allowPasswordReset !== false;
+  const providerLabels = authConfig?.providerLabels ?? {};
+  const providerIcons = authConfig?.providerIcons ?? {};
+
   const search = useMemo(() => new URLSearchParams(window.location.search), []);
   const [view, setView] = useState<LoginView>(() => viewFromSearch(search));
 
@@ -75,49 +91,6 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
 
   const resetUserId = search.get("userID") ?? "";
   const resetCode = search.get("code") ?? "";
-
-  useEffect(() => {
-    if (!storeSlug) return;
-    void fetch(`/api/auth/${storeSlug}/config`)
-      .then((res) =>
-        res.ok
-          ? (res.json() as Promise<{
-              data?: {
-                providers?: string[];
-                allowPassword?: boolean;
-                allowSignUp?: boolean;
-                allowPasswordReset?: boolean;
-                providerLabels?: Record<string, string>;
-                providerIcons?: Record<string, string>;
-              };
-            }>)
-          : null,
-      )
-      .then((body) => {
-        const serverProviders = body?.data?.providers ?? [];
-        const fromSpec = (config.providers ?? []) as string[];
-        const merged =
-          fromSpec.length > 0
-            ? serverProviders.filter(
-                (p) => fromSpec.includes(p as AuthProvider) || p.startsWith("custom:"),
-              )
-            : serverProviders;
-        setEnabledProviders(merged);
-        setAllowPassword(body?.data?.allowPassword !== false);
-        setAllowSignUp(body?.data?.allowSignUp === true);
-        setAllowPasswordReset(body?.data?.allowPasswordReset !== false);
-        setProviderLabels(body?.data?.providerLabels ?? {});
-        setProviderIcons(body?.data?.providerIcons ?? {});
-      })
-      .catch(() => {
-        setEnabledProviders([]);
-        setAllowPassword(true);
-        setAllowSignUp(false);
-        setAllowPasswordReset(true);
-        setProviderLabels({});
-        setProviderIcons({});
-      });
-  }, [storeSlug, config.providers]);
 
   const mergedProviderLabels = useMemo(() => {
     const merged: Record<string, string> = { ...providerLabels };

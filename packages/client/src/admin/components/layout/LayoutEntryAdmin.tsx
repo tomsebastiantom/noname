@@ -35,6 +35,22 @@ type LayoutEntryLabels = {
   loadingLabel: string;
   draftSavedMessage: string;
   publishedMessage: string;
+  allLayoutsLinkLabel: string;
+  contentRefLabel: string;
+  contentRefPlaceholder: string;
+  contentRefHint: string;
+  specJsonLabel: string;
+  templateMetaTemplateLabel: string;
+  templateMetaSegmentLabel: string;
+  templateMetaStatusLabel: string;
+  metaSeparator: string;
+  emptyLayoutsMessage: string;
+  templateColumnHeader: string;
+  statusColumnHeader: string;
+  contentRefColumnHeader: string;
+  hasContentRefYes: string;
+  templateNotFoundPrefix: string;
+  templateNotFoundSuffix: string;
 };
 
 type LayoutEntryAdminProps = ComponentCtx<CatalogProps<LayoutEntryConfig, LayoutEntryLabels>>;
@@ -108,7 +124,7 @@ function LayoutEntryDetailFields({
   return (
     <div className="flex max-w-4xl flex-col gap-4">
       <a href="/admin/layout" className="text-sm text-muted-foreground hover:text-foreground">
-        ← All layouts
+        {labels.allLayoutsLinkLabel}
       </a>
 
       <Card>
@@ -116,7 +132,11 @@ function LayoutEntryDetailFields({
           <CardTitle>{labels.title}</CardTitle>
           {labels.description && <CardDescription>{labels.description}</CardDescription>}
           <p className="text-xs text-muted-foreground">
-            Template: {templateName} · Segment: {segment} · Status: {status}
+            {labels.templateMetaTemplateLabel} {templateName}
+            {labels.metaSeparator}
+            {labels.templateMetaSegmentLabel} {segment}
+            {labels.metaSeparator}
+            {labels.templateMetaStatusLabel} {status}
           </p>
         </CardHeader>
         <CardContent>
@@ -128,20 +148,18 @@ function LayoutEntryDetailFields({
             className="flex flex-col gap-4"
           >
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="contentRef">contentRef (optional)</Label>
+              <Label htmlFor="contentRef">{labels.contentRefLabel}</Label>
               <Input
                 id="contentRef"
                 value={contentRef}
                 onChange={(e) => setContentRef(e.target.value)}
-                placeholder="product:uuid or page:uuid — CMS merge on storefront"
+                placeholder={labels.contentRefPlaceholder}
               />
-              <p className="text-xs text-muted-foreground">
-                Storefront templates only. Login/admin specs usually leave this empty.
-              </p>
+              <p className="text-xs text-muted-foreground">{labels.contentRefHint}</p>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <Label htmlFor="specJson">json-render spec (JSON)</Label>
+              <Label htmlFor="specJson">{labels.specJsonLabel}</Label>
               <textarea
                 id="specJson"
                 value={specJson}
@@ -217,16 +235,16 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
             onRowClick={(layout) => {
               window.location.href = `/admin/layout/${layout.templateName}`;
             }}
-            emptyMessage="No layout templates yet. Seed with pnpm seed:demo."
+            emptyMessage={labels.emptyLayoutsMessage}
             columns={[
               {
                 key: "template",
-                header: "Template",
+                header: labels.templateColumnHeader,
                 cell: (layout) => <span className="font-medium">{layout.templateName}</span>,
               },
               {
                 key: "status",
-                header: "Status",
+                header: labels.statusColumnHeader,
                 cell: (layout) => (
                   <Badge variant={layout.status === "published" ? "success" : "muted"}>
                     {layout.status}
@@ -235,8 +253,8 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
               },
               {
                 key: "contentRef",
-                header: "Content ref",
-                cell: (layout) => (layout.hasContentRef ? "Yes" : "—"),
+                header: labels.contentRefColumnHeader,
+                cell: (layout) => (layout.hasContentRef ? labels.hasContentRefYes : "—"),
               },
             ]}
           />
@@ -251,7 +269,8 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
         <CardHeader>
           <CardTitle>{labels.title}</CardTitle>
           <CardDescription>
-            Template <strong>{templateName}</strong> not found.
+            {labels.templateNotFoundPrefix} <strong>{templateName}</strong>{" "}
+            {labels.templateNotFoundSuffix}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -259,7 +278,7 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
             href="/admin/layout"
             className="text-sm text-primary underline-offset-4 hover:underline"
           >
-            ← All layouts
+            {labels.allLayoutsLinkLabel}
           </a>
         </CardContent>
       </Card>

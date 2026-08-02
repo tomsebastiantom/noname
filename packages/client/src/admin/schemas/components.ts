@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { catalogProps } from "../../schemas/shared";
+import {
+  catalogProps,
+  mediaFieldLabelsSchema,
+  referenceFieldLabelsSchema,
+} from "../../schemas/shared";
 import { navItemConfigSchema } from "./shared";
 
 const panelLabels = {
@@ -95,6 +99,24 @@ export const adminComponentSchemas = {
           .string()
           .nullable()
           .default("Set up an authenticator app for two-factor sign-in."),
+        signInRequiredDescription: z.string(),
+        signInLinkLabel: z.string(),
+        backToStorefrontLabel: z.string(),
+        enabledBadgeLabel: z.string(),
+        enabledDescription: z.string(),
+        checkingLabel: z.string(),
+        mfaRequiredAlert: z.string(),
+        idleDescription: z.string(),
+        idleButtonLabel: z.string(),
+        idleButtonPendingLabel: z.string(),
+        setupDescription: z.string(),
+        qrAltText: z.string(),
+        verificationCodeLabel: z.string(),
+        verificationCodePlaceholder: z.string(),
+        confirmSetupLabel: z.string(),
+        confirmSetupPendingLabel: z.string(),
+        enabledStepDescription: z.string(),
+        continueToAdminLabel: z.string(),
       },
       {},
     ),
@@ -176,11 +198,8 @@ export const adminComponentSchemas = {
         savingLabel: z.string(),
         publishLabel: z.string(),
         publishingLabel: z.string(),
-        uploadFileLabel: z.string(),
-        uploadingLabel: z.string(),
-        pickExistingLabel: z.string(),
-        loadingAssetsLabel: z.string(),
-        clearLabel: z.string(),
+        ...mediaFieldLabelsSchema.shape,
+        ...referenceFieldLabelsSchema.shape,
       },
       {
         locale: z.string(),
@@ -199,6 +218,22 @@ export const adminComponentSchemas = {
         savingLabel: z.string(),
         publishLabel: z.string(),
         publishingLabel: z.string(),
+        allLayoutsLinkLabel: z.string(),
+        contentRefLabel: z.string(),
+        contentRefPlaceholder: z.string(),
+        contentRefHint: z.string(),
+        specJsonLabel: z.string(),
+        templateMetaTemplateLabel: z.string(),
+        templateMetaSegmentLabel: z.string(),
+        templateMetaStatusLabel: z.string(),
+        metaSeparator: z.string(),
+        emptyLayoutsMessage: z.string(),
+        templateColumnHeader: z.string(),
+        statusColumnHeader: z.string(),
+        contentRefColumnHeader: z.string(),
+        hasContentRefYes: z.string(),
+        templateNotFoundPrefix: z.string(),
+        templateNotFoundSuffix: z.string(),
       },
       {
         segment: z.string(),
@@ -228,33 +263,6 @@ export const adminComponentSchemas = {
       },
     ),
     description: "Admin overview with links to platform settings",
-  },
-  PageRoutingAdmin: {
-    props: catalogProps(
-      {
-        ...panelLabels,
-        saveLabel: z.string(),
-        savingLabel: z.string(),
-        pageSavedMessage: z.string(),
-        createLabel: z.string(),
-        creatingLabel: z.string(),
-        loadingLabel: z.string(),
-        editUrlTreeLabel: z.string(),
-        allPagesLinkLabel: z.string(),
-        urlTreeLinkLabel: z.string(),
-        saveTreeLabel: z.string(),
-        savingTreeLabel: z.string(),
-        treeSavedMessage: z.string(),
-        addEntryLabel: z.string(),
-        removeEntryLabel: z.string(),
-        pageDocumentsLinkLabel: z.string(),
-        treeLoadingLabel: z.string(),
-      },
-      {
-        locale: z.string(),
-      },
-    ),
-    description: "Routing page list/editor and page_tree URL map",
   },
   PageTreeAdmin: {
     props: catalogProps(
@@ -287,6 +295,24 @@ export const adminComponentSchemas = {
         editUrlTreeLabel: z.string(),
         allPagesLinkLabel: z.string(),
         urlTreeLinkLabel: z.string(),
+        pageKeyLabel: z.string(),
+        statusSeparator: z.string(),
+        layoutRefLabel: z.string(),
+        layoutRefPlaceholder: z.string(),
+        contentRefLabel: z.string(),
+        contentRefPlaceholder: z.string(),
+        contentRefHint: z.string(),
+        newPageTitle: z.string(),
+        newPageDescription: z.string(),
+        newPageKeyLabel: z.string(),
+        newPageKeyPlaceholder: z.string(),
+        emptyListMessage: z.string(),
+        pageKeyColumnHeader: z.string(),
+        layoutColumnHeader: z.string(),
+        contentRefColumnHeader: z.string(),
+        statusColumnHeader: z.string(),
+        pageNotFoundPrefix: z.string(),
+        pageNotFoundSuffix: z.string(),
       },
       {},
     ),
@@ -294,4 +320,8 @@ export const adminComponentSchemas = {
   },
 };
 
-export { draftPublishLabelsSchema, mediaFieldLabelsSchema } from "../../schemas/shared";
+export {
+  draftPublishLabelsSchema,
+  mediaFieldLabelsSchema,
+  referenceFieldLabelsSchema,
+} from "../../schemas/shared";

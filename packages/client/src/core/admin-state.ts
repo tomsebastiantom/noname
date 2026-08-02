@@ -35,6 +35,8 @@ export const ADMIN_STATE = {
     loaded: "/admin/content/loaded",
     loading: "/admin/content/loading",
     error: "/admin/content/error",
+    mediaAssets: "/admin/content/mediaAssets",
+    mediaAssetsLoading: "/admin/content/mediaAssetsLoading",
   },
   layout: {
     loaded: "/admin/layout/loaded",
