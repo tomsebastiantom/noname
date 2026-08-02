@@ -4,6 +4,7 @@ import type { ComponentRegistry } from "@json-render/react";
 import { fetchWithTimeout } from "@noname/auth";
 import { storeSlugFromHost } from "@noname/shared";
 import {
+  lazy,
   type ReactNode,
   useCallback,
   useEffect,
@@ -12,17 +13,18 @@ import {
   useSyncExternalStore,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { apiHeaders, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
+import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
-import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
+import { isAuthError } from "./lib/api";
 import {
   adminShellPropsFromSpec,
   assertAdminPanelSpec,
   mergeAdminShellWithPanelChrome,
 } from "./platform/admin-layout";
 import { AdminPlatformView } from "./platform/admin-platform-view";
+import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
 import {
   initBrowserObservability,
   subscribeFlagLayoutRefresh,
@@ -31,8 +33,8 @@ import {
 } from "./platform/browser-observability";
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
 import { registry as platformRegistry } from "./platform/registry";
-import type { CatalogProps } from "./schemas/shared";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
+import type { CatalogProps } from "./schemas/shared";
 
 type LayoutRenderAs = "standalone" | "shell" | "panel";
 type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
@@ -40,12 +42,16 @@ type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unkn
 interface EdgeSchemaResponse {
   siteId?: string;
   layout?: Spec;
+  templateName?: string;
+  contentRef?: string | null;
   renderAs?: LayoutRenderAs;
   shell?: Spec;
   shellRef?: string | null;
   flags?: Record<string, unknown>;
   segment?: string;
 }
+
+const EditorHost = lazy(() => import("./editor").then((m) => ({ default: m.EditorHost })));
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
 
@@ -59,13 +65,19 @@ function redirectTo(
   window.location.href = url;
 }
 
-function AppShell({ children, template }: Readonly<{ children: ReactNode; template: string }>) {
+function AppShell({
+  children,
+  template,
+  lockViewport,
+}: Readonly<{ children: ReactNode; template: string; lockViewport?: boolean }>) {
   return (
     <div
       className={
-        isLoginTemplate(template)
-          ? "noname-auth flex min-h-screen flex-col"
-          : "min-h-screen bg-background"
+        lockViewport
+          ? "flex h-dvh flex-col overflow-hidden bg-background"
+          : isLoginTemplate(template)
+            ? "noname-auth flex min-h-screen flex-col"
+            : "min-h-screen bg-background"
       }
     >
       {children}
@@ -80,6 +92,9 @@ function App() {
   const [adminShellProps, setAdminShellProps] = useState<AdminShellProps | null>(null);
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
   const [shellKey, setShellKey] = useState("");
+  const [layoutTemplateName, setLayoutTemplateName] = useState("");
+  const [pageContentRef, setPageContentRef] = useState<string | null>(null);
+  const [layoutRenderAs, setLayoutRenderAs] = useState<LayoutRenderAs>("standalone");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [navigating, setNavigating] = useState(false);
@@ -138,7 +153,13 @@ function App() {
           );
           return;
         }
-      } catch {
+      } catch (err) {
+        if (editMode && isAuthError(err)) {
+          clearSession();
+          const redirect = encodeURIComponent(window.location.pathname + window.location.search);
+          redirectTo(`/login?redirect=${redirect}`, setLoading, setNavigating);
+          return;
+        }
         // Session check failed — still load page; API calls will 401 if needed.
       }
     }
@@ -188,6 +209,10 @@ function App() {
       }
 
       const renderAs = body?.data?.renderAs ?? "standalone";
+      const resolvedTemplateName = body?.data?.templateName ?? template;
+      setLayoutTemplateName(resolvedTemplateName);
+      setPageContentRef(body?.data?.contentRef ?? null);
+      setLayoutRenderAs(renderAs);
 
       if (renderAs === "panel") {
         const shellTree = body?.data?.shell as Spec | undefined;
@@ -197,7 +222,7 @@ function App() {
         }
 
         const panelSpec = assertAdminPanelSpec(tree);
-        let baseShellProps =
+        const baseShellProps =
           adminShellCacheRef.current?.shellRef === shellRef
             ? adminShellCacheRef.current.props
             : adminShellPropsFromSpec(shellTree);
@@ -246,6 +271,12 @@ function App() {
   }, [loadPage]);
 
   useEffect(() => {
+    if (editMode && route.kind === "storefront") {
+      void import("./editor");
+    }
+  }, [editMode, route.kind]);
+
+  useEffect(() => {
     return subscribeFlagLayoutRefresh(() => {
       void loadPage();
     });
@@ -285,16 +316,19 @@ function App() {
 
   const shellRouteKey = shellKey || `${template}:${pathname}`;
 
+  const storefrontRoute = route.kind === "storefront";
+  const storefrontEditMode =
+    editMode &&
+    storefrontRoute &&
+    layoutRenderAs === "standalone" &&
+    !panelRoute &&
+    composeMode === "full";
+
   return (
-    <AppShell template={template}>
-      {editMode && (
-        <div className="border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-950">
-          Edit mode active — component overlay and save bar ship in the next editor slice.
-        </div>
-      )}
-      {!adminRoute && !editMode && <AuthBar onAuthChange={() => void loadPage()} />}
+    <AppShell template={template} lockViewport={storefrontEditMode}>
+      {!adminRoute && storefrontRoute ? <AuthBar onAuthChange={() => void loadPage()} /> : null}
       {error ? (
-        <div className="border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
+        <div className="shrink-0 border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
           {error}
         </div>
       ) : null}
@@ -313,6 +347,16 @@ function App() {
           panelLoading={navigating}
           registry={registry}
         />
+      ) : storefrontEditMode && spec && layoutTemplateName ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          <EditorHost
+            displaySpec={spec}
+            templateName={layoutTemplateName}
+            pageContentRef={pageContentRef}
+            registry={registry}
+            onReload={() => void loadPage()}
+          />
+        </div>
       ) : (
         spec && <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
       )}

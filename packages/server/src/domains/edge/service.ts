@@ -36,6 +36,7 @@ export function createEdgeService(
       }
 
       const resolved = await layout.resolve(siteId, template, segment);
+      const effectiveContentRef = contentRef ?? resolved?.contentRef ?? null;
 
       const flags = await flagService.evaluate(siteId, {
         orgId: siteId,
@@ -59,7 +60,7 @@ export function createEdgeService(
 
       if (layoutSpec) {
         layoutSpec = await mergeContentIntoSpec(siteId, layoutSpec, {
-          contentRef: contentRef ?? resolved?.contentRef ?? null,
+          contentRef: effectiveContentRef,
           locale,
           tenantSettings,
           content,
@@ -69,11 +70,13 @@ export function createEdgeService(
       return {
         siteId,
         layout: layoutSpec,
+        templateName: template,
         renderAs,
         shell: shellSpec,
         shellRef,
         flags: flagMap,
         segment,
+        contentRef: effectiveContentRef,
       };
     },
 
@@ -110,6 +113,7 @@ export function createEdgeService(
         siteId: input.siteId,
         segment: segment.hash,
         layout: layoutSpec,
+        templateName: "home",
         renderAs: resolved?.renderAs ?? "standalone",
         shell: null,
         shellRef: resolved?.shellRef ?? null,

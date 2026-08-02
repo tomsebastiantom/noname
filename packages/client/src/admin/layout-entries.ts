@@ -1,10 +1,12 @@
-import { apiFetch, apiFetchVoid } from "../lib/api";
+import { apiFetch, apiFetchVoid, unwrapData } from "../lib/api";
 
 export interface LayoutRow {
   id: string;
   key: string;
   segment: string;
   status: string;
+  version: number;
+  updatedAt: string;
   data: {
     spec?: Record<string, unknown>;
     contentRef?: string | null;
@@ -82,7 +84,8 @@ export async function saveLayout(input: {
   id: string;
   spec: Record<string, unknown>;
   contentRef?: string | null;
-}): Promise<void> {
+  ifMatchUpdatedAt?: string;
+}): Promise<LayoutRow> {
   const body: { spec: Record<string, unknown>; contentRef?: string | null } = {
     spec: input.spec,
   };
@@ -90,11 +93,17 @@ export async function saveLayout(input: {
     body.contentRef = input.contentRef === "" ? null : input.contentRef;
   }
 
-  await apiFetchVoid(`/api/documents/layout/${input.id}`, {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (input.ifMatchUpdatedAt) {
+    headers["If-Match"] = `"${input.ifMatchUpdatedAt}"`;
+  }
+
+  const response = await apiFetch<{ data?: LayoutRow }>(`/api/documents/layout/${input.id}`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers,
     body: JSON.stringify(body),
   });
+  return unwrapData(response);
 }
 
 export async function publishLayout(id: string): Promise<void> {

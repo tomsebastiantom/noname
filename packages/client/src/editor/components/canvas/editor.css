@@ -1,0 +1,133 @@
+.editor-canvas:focus-visible {
+  outline: 2px solid hsl(var(--primary) / 0.25);
+  outline-offset: -2px;
+}
+
+.editor-canvas {
+  overscroll-behavior: contain;
+}
+
+.editor-canvas [data-jr-key] {
+  cursor: pointer;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  border-radius: 4px;
+  transition: outline-color 0.12s ease, background-color 0.12s ease;
+}
+
+.editor-canvas [data-jr-key]:hover:not([data-editor-selected="true"]) {
+  outline-color: hsl(var(--primary) / 0.45);
+}
+
+.editor-canvas [data-jr-key][data-editor-selected="true"] {
+  outline-color: hsl(var(--primary));
+  outline-style: solid;
+  outline-width: 2px;
+  background-color: hsl(var(--primary) / 0.06);
+  transition: background-color 0.12s ease;
+}
+
+.editor-canvas [data-jr-key][data-editor-selected="true"][data-editor-pending="true"] {
+  outline-style: dashed;
+  outline-color: hsl(var(--amber-500) / 0.85);
+  background-color: hsl(var(--amber-500) / 0.06);
+}
+
+.editor-canvas [data-jr-key][data-editor-pending="true"]:not([data-editor-selected="true"]) {
+  outline-style: dashed;
+  outline-color: hsl(var(--amber-500) / 0.85);
+}
+
+
+/* While dragging from palette — show all valid drop containers */
+.editor-canvas[data-canvas-drag-over="true"] [data-jr-key][data-editor-drop-zone="true"] {
+  outline-color: hsl(var(--primary) / 0.35);
+  outline-style: dashed;
+  background-color: hsl(var(--primary) / 0.04);
+}
+
+.editor-canvas[data-canvas-drag-over="true"] [data-jr-key][data-editor-drop-target="true"] {
+  outline-color: hsl(var(--primary));
+  outline-style: solid;
+  outline-width: 2px;
+  background-color: hsl(var(--primary) / 0.08);
+}
+
+.editor-canvas[data-canvas-drag-over="true"] {
+  outline: 2px dashed hsl(var(--primary) / 0.2);
+  outline-offset: -2px;
+}
+
+/* Insertion line / empty-container target */
+.editor-drop-indicator {
+  background: hsl(var(--primary));
+  border-radius: 2px;
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 10px hsl(var(--primary) / 0.55);
+}
+
+.editor-drop-indicator:not(.editor-drop-indicator--empty)::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 9999px;
+  background: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--background));
+}
+
+.editor-drop-indicator--empty {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+.editor-drop-ghost {
+  border: 2px dashed hsl(var(--primary) / 0.75);
+  border-radius: 6px;
+  background: hsl(var(--primary) / 0.08);
+}
+
+.editor-drop-ghost-label {
+  padding: 2px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: hsl(var(--primary));
+  background: hsl(var(--background) / 0.92);
+  border-radius: 4px;
+  box-shadow: 0 1px 4px hsl(var(--foreground) / 0.08);
+}
+
+.editor-drop-label {
+  max-width: min(20rem, 90vw);
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border-radius: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.12);
+}
+
+.editor-selection-chip {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: hsl(var(--primary-foreground));
+  background: hsl(var(--primary));
+  border-radius: 4px;
+  box-shadow: 0 2px 8px hsl(var(--foreground) / 0.12);
+  z-index: 25;
+}
+
+.editor-palette-unpin {
+  top: 0;
+  bottom: 0;
+  height: auto;
+}

@@ -3,11 +3,15 @@ export type LayoutRenderAs = "standalone" | "shell" | "panel";
 export interface EdgeSchemaResponse {
   siteId: string;
   layout: Record<string, unknown> | null;
+  /** Resolved layout template key (e.g. home) — for visual editor save target. */
+  templateName: string;
   renderAs: LayoutRenderAs;
   shell: Record<string, unknown> | null;
   shellRef: string | null;
   flags: Record<string, unknown>;
   segment: string | null;
+  /** Content entry merged into layout for this URL (e.g. product:uuid). */
+  contentRef: string | null;
 }
 
 export interface PersonalizeRequest {

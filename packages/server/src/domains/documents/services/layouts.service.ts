@@ -1,5 +1,5 @@
 import { flushEvents } from "../../../shared/aggregate-root";
-import { ValidationError } from "../../../shared/domain-error";
+import { ConflictError, ValidationError } from "../../../shared/domain-error";
 import { LayoutDocument } from "../entity";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
@@ -51,8 +51,18 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       return saved as unknown as LayoutDTO;
     },
 
-    async update(orgId, id, input) {
+    async update(orgId, id, input, options) {
       const existing = await requireLayoutDocument(storage, id, orgId);
+      if (options?.ifMatchUpdatedAt) {
+        const expected = options.ifMatchUpdatedAt.replace(/^W\//, "").replace(/^"|"$/g, "");
+        const actual = existing.updatedAt.toISOString();
+        if (expected !== actual && expected !== String(existing.updatedAt.getTime())) {
+          throw new ConflictError("Someone else saved this layout — refresh to see their changes", {
+            id,
+            updatedAt: actual,
+          });
+        }
+      }
       validateSpec(input.spec);
 
       const entity = toLayoutEntity(existing as LayoutDTO);

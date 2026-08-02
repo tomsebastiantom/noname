@@ -46,12 +46,18 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       renderAs?: "standalone" | "shell" | "panel";
       shellRef?: string | null;
     }>();
-    const updated = await layout.update(orgId, c.req.param("id"), {
-      spec: body.spec,
-      contentRef: body.contentRef,
-      renderAs: body.renderAs,
-      shellRef: body.shellRef,
-    });
+    const ifMatch = c.req.header("If-Match");
+    const updated = await layout.update(
+      orgId,
+      c.req.param("id"),
+      {
+        spec: body.spec,
+        contentRef: body.contentRef,
+        renderAs: body.renderAs,
+        shellRef: body.shellRef,
+      },
+      ifMatch ? { ifMatchUpdatedAt: ifMatch } : undefined,
+    );
     return ok(c, updated);
   });
 

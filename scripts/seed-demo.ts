@@ -353,6 +353,146 @@ const adminShellSpec = {
   },
 };
 
+/** Spec-driven editor chrome labels (loaded by client via loadEditorShellLabels). */
+const visualEditorShellSpec = {
+  root: "shell",
+  elements: {
+    shell: {
+      type: "VisualEditorShell",
+      props: catalogProps(
+        { templateName: "", pageContentRef: null },
+        {
+          title: "Edit page",
+          exitEditLabel: "Exit edit",
+          discardLabel: "Discard",
+          unsavedLabel: "Unsaved changes",
+          draftSavedLabel: "Draft saved",
+          publishedLabel: "Published",
+          saveLabel: "Save draft",
+          savingLabel: "Saving…",
+          publishLabel: "Publish",
+          publishingLabel: "Publishing…",
+          publishAdminOnlyHint: "Publish (admin only)",
+          chromeRailTitle: "Editor tools",
+          hideToolbarLabel: "Hide editor toolbar",
+          saveHelpText: "Saves layout changes and page content fields.",
+          pendingBlockHelpText:
+            "For a new block preview, use Save to page in the right panel first (or Save draft commits it too).",
+          uploadFileLabel: "Upload file",
+          uploadingLabel: "Uploading…",
+          pickExistingLabel: "Pick existing",
+          loadingAssetsLabel: "Loading assets…",
+          clearLabel: "Clear",
+          layoutBadgeLabel: "Layout",
+          contentBadgeLabel: "Content",
+          scopeLayoutTitle: "Layout template:",
+          scopeLayoutBody:
+            "block structure and layout fields apply to all pages using this template.",
+          scopeContentTitle: "Page content:",
+          scopeContentBody:
+            "fields marked Content in the panel save for this page only.",
+          scopeNoContentBody:
+            "This page has no linked content entry — all fields save to the layout.",
+          propsSelectBlockHint:
+            "Select a block on the page, or drop one from the palette. Use Save to page in this panel for new blocks; Save draft in the top bar for everything else.",
+          propsElementMissing: "Selected element not found in layout.",
+          propsNoFieldsHint: "No editor fields for this component yet.",
+          propsPendingHint: "Preview only — not saved until you commit.",
+          propsSaveToPageLabel: "Save to page",
+          propsSavingLabel: "Saving…",
+          propsSaveToPageHelp:
+            "Commits this block to the layout and runs the same save as Save draft above.",
+          propsCancelLabel: "Cancel",
+          propsDuplicateLabel: "Duplicate block",
+          propsRemoveLabel: "Remove from layout",
+          propsRemoveHelp:
+            "Removes this block from the page layout when you save. Does not delete CMS content.",
+          propsNoContentRef: "This page has no content entry linked.",
+          propsLoadingContent: "Loading content…",
+          propsFieldSaveHint: "Saved with Save draft in the top bar.",
+          blocksPanelTitle: "Blocks",
+          layersPanelTitle: "Layers",
+          propertiesPanelTitle: "Properties",
+          hideLayersLabel: "Hide layers",
+          showLayersLabel: "Show layers",
+          hideBlocksLabel: "Hide blocks",
+          layerTreePendingBadge: "draft",
+          layerTreeDragTemplate: "Drag {label}",
+          layerTreeExpandTemplate: "Expand {label} children",
+          layerTreeCollapseTemplate: "Collapse {label} children",
+          loadingLayoutHint: "Loading layout for edit…",
+          loadingEditorHint: "Loading editor…",
+          labelsMissingHint:
+            "Editor chrome labels missing — seed or publish the visual_editor layout (VisualEditorShell.props.labels).",
+          closePanelLabel: "Close",
+          leftPanelsAriaLabel: "Left panels",
+          rightPanelsAriaLabel: "Right panels",
+          resizePanelAriaLabel: "Resize panel",
+          chromeRailAriaLabel: "Editor toolbar collapsed",
+          chromeRailSaveErrorTitle: "Save error — expand to view",
+          publishPermissionTitle: "Publish requires admin permission",
+          propsBlockSuffix: "block",
+          paletteCatalogSuffix: "in catalog · drag blocks into Pinned to keep them handy.",
+          palettePinnedAriaLabel: "Pinned blocks — drop here to pin",
+          palettePinnedTitle: "Pinned",
+          palettePinnedEmpty: "Drop a block here to pin it.",
+          palettePinsLoading: "Loading pins…",
+          paletteAllBlocksTitle: "All blocks",
+          paletteFilterPlaceholder: "Filter all blocks…",
+          paletteFilterAriaLabel: "Filter all blocks",
+          paletteNoMatchPrefix: "No blocks match",
+          paletteAllPinnedHint: "Every block is pinned — unpin one to see it here.",
+          paletteUnpinLabel: "Unpin",
+          paletteDragToAddHint: "Drag to canvas or into Pinned, or click to add",
+          palettePinOnlyHint: "Drag to pin; add editor defaults to use on canvas.",
+          layerTreeAriaLabel: "Layer tree",
+          layerTreeHint: "Drag ⠿ left to reorder. Chevron right expands or collapses children.",
+          layerTreeEmpty: "No layout structure loaded.",
+          layerTreeRootMissing: "Layout root missing.",
+          layerTreeExpandedTitle: "Expanded",
+          layerTreeCollapsedTitle: "Collapsed",
+          canvasAriaLabel:
+            "Visual editor canvas — click a block to select it, Delete to remove, or drop a block from the palette",
+          canvasBlockFallbackLabel: "Block",
+          dropInsideEmptyTemplate: "Drop {block} inside {parent}",
+          dropAtTopTemplate: "Drop {block} at top of {parent}",
+          dropAtBottomTemplate: "Drop {block} at bottom of {parent}",
+          dropAtSlotTemplate: "Drop {block} — slot {slot} in {parent}",
+          saveConflictMessage:
+            "Someone else saved this layout — refresh to see their changes.",
+          refreshLayoutLabel: "Refresh",
+          previewBarAriaLabel: "Canvas preview width",
+          previewFullLabel: "Desktop",
+          previewTabletLabel: "Tablet",
+          previewMobileLabel: "Mobile",
+          actionNoneLabel: "None",
+        },
+      ),
+      children: ["palette", "layers", "canvas", "panel"],
+    },
+    palette: {
+      type: "EditorPalette",
+      props: catalogProps({}, {}),
+      children: [],
+    },
+    layers: {
+      type: "EditorLayerTree",
+      props: catalogProps({}, {}),
+      children: [],
+    },
+    canvas: {
+      type: "EditorCanvas",
+      props: catalogProps({}, {}),
+      children: [],
+    },
+    panel: {
+      type: "EditorPropsPanel",
+      props: catalogProps({}, {}),
+      children: [],
+    },
+  },
+};
+
 function panelProps(
   config: Record<string, unknown>,
   title: string,
@@ -515,6 +655,33 @@ const pageContentType = {
   fields: [
     { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
     { key: "body", type: "longText", required: false, isLocalizable: true, label: "Body" },
+  ],
+};
+
+const editorPrefsContentType = {
+  fields: [
+    { key: "userId", type: "text", required: true, isLocalizable: false, label: "User ID" },
+    {
+      key: "palettePins",
+      type: "json",
+      required: false,
+      isLocalizable: false,
+      label: "Pinned palette component types",
+    },
+    {
+      key: "layout",
+      type: "json",
+      required: false,
+      isLocalizable: false,
+      label: "Editor panel layout (widths, open state)",
+    },
+    {
+      key: "layersTreeCollapsed",
+      type: "json",
+      required: false,
+      isLocalizable: false,
+      label: "Collapsed layer-tree branches per template",
+    },
   ],
 };
 
@@ -771,6 +938,7 @@ async function main() {
   });
 
   await upsertLayout("admin_shell", adminShellSpec, { renderAs: "shell" });
+  await upsertLayout("visual_editor", visualEditorShellSpec, { renderAs: "standalone" });
   await upsertLayout("home", demoSpec, { renderAs: "standalone" });
   await upsertLayout("login", loginSpec, { renderAs: "standalone" });
   await upsertLayout("admin_dashboard", adminDashboardSpec, {
@@ -800,6 +968,7 @@ async function main() {
   await upsertLayout("account_security", accountSecuritySpec, { renderAs: "standalone" });
 
   await ensurePageContentType();
+  await ensureEditorPrefsContentType();
   await ensureAuthProviderContentType();
   await ensureBuiltinAuthProviders({ googleEnabled: Boolean(googleIdpId) });
   if (googleIdpId) {
@@ -951,6 +1120,35 @@ interface ContentEntryRow {
   id: string;
   status: string;
   data: Record<string, unknown>;
+}
+
+async function ensureEditorPrefsContentType(): Promise<void> {
+  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const existing = types.find((t) => t.name === "editor_prefs");
+
+  if (existing) {
+    const { data: typeDef } = await api<{ data: { schema: typeof editorPrefsContentType } }>(
+      "GET",
+      "/api/documents/content-types/editor_prefs",
+    );
+    const fieldKeys = new Set(typeDef.schema.fields.map((field) => field.key));
+    const needsSync = !fieldKeys.has("layout") || !fieldKeys.has("layersTreeCollapsed");
+    if (needsSync) {
+      await api("PUT", "/api/documents/content-types/editor_prefs", {
+        schema: editorPrefsContentType,
+      });
+      console.log("editor_prefs content type schema synced.");
+    } else {
+      console.log("editor_prefs content type already exists.");
+    }
+    return;
+  }
+
+  await api("POST", "/api/documents/content-types", {
+    name: "editor_prefs",
+    schema: editorPrefsContentType,
+  });
+  console.log("editor_prefs content type created.");
 }
 
 async function ensurePageContentType(): Promise<void> {

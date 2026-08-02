@@ -32,11 +32,15 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
 export async function validateJwt(request: Request, env: Env): Promise<EdgeContext | Response> {
   const ctx = await tryParseJwt(request, env);
   if (ctx) return ctx;
-  return redirectToLogin(request, env);
+  return unauthenticatedResponse(request, env);
 }
 
-function redirectToLogin(request: Request, env: Env): Response {
+function unauthenticatedResponse(request: Request, env: Env): Response {
   const url = new URL(request.url);
+  // fetch() cannot follow cross-origin login redirects — API clients need 401 JSON.
+  if (url.pathname.startsWith("/api/")) {
+    return Response.json({ error: "Unauthorized — sign in required" }, { status: 401 });
+  }
   const authRequestId = encodeURIComponent(url.pathname + url.search);
   return Response.redirect(
     `${env.ZITADEL_ISSUER}/ui/v2/login/login?authRequest=${authRequestId}`,

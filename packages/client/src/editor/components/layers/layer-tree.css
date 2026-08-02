@@ -1,0 +1,187 @@
+.layer-tree {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.layer-tree-header {
+  padding: 0.5rem 0.75rem 0.35rem;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-empty {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-hint {
+  padding: 0 0.75rem 0.35rem;
+  font-size: 0.62rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  min-height: 1.75rem;
+  padding-right: 0.35rem;
+  position: relative;
+}
+
+.layer-tree-drag-handle {
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.5rem;
+  cursor: grab;
+  border-radius: 0.2rem;
+  font-size: 0.75rem;
+  line-height: 1.5rem;
+  text-align: center;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-drag-handle:active {
+  cursor: grabbing;
+}
+
+.layer-tree-drag-handle:hover {
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.5);
+}
+
+.layer-tree-drag-spacer {
+  flex-shrink: 0;
+  width: 1.25rem;
+}
+
+.layer-tree-row--dragging {
+  opacity: 0.45;
+}
+
+.layer-tree-row--drop-before::before,
+.layer-tree-row--drop-after::after,
+.layer-tree-row--drop-inside {
+  pointer-events: none;
+}
+
+.layer-tree-row--drop-before::before {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  top: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 1px;
+}
+
+.layer-tree-row--drop-after::after {
+  content: "";
+  position: absolute;
+  left: 0.35rem;
+  right: 0.35rem;
+  bottom: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  border-radius: 1px;
+}
+
+.layer-tree-row--drop-inside {
+  outline: 1px dashed hsl(var(--primary) / 0.75);
+  outline-offset: -1px;
+  background: hsl(var(--primary) / 0.06);
+}
+
+.layer-tree--dragging .layer-tree-row-label {
+  pointer-events: none;
+}
+
+.layer-tree-row--selected {
+  background: hsl(var(--primary) / 0.08);
+}
+
+.layer-tree-row--pending .layer-tree-row-type {
+  font-style: italic;
+}
+
+.layer-tree-row-label {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.2rem 0.35rem;
+  border-radius: 0.25rem;
+  text-align: left;
+  font-size: 0.75rem;
+}
+
+.layer-tree-row-label:hover {
+  background: hsl(var(--muted) / 0.45);
+}
+
+.layer-tree-row-type {
+  font-weight: 500;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+}
+
+.layer-tree-row-id {
+  font-family: ui-monospace, monospace;
+  font-size: 0.62rem;
+  color: hsl(var(--muted-foreground));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.layer-tree-row-badge {
+  font-size: 0.58rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: hsl(var(--primary));
+}
+
+.layer-tree-expand-btn {
+  flex-shrink: 0;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-chevron-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
+.layer-tree-expand-spacer {
+  flex-shrink: 0;
+  width: 1.75rem;
+}
+
+.layer-tree-reparent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.25rem 0.35rem 0.5rem;
+}
+
+.layer-tree-reparent-label {
+  font-size: 0.62rem;
+  color: hsl(var(--muted-foreground));
+}
+
+.layer-tree-reparent-select {
+  height: 1.75rem;
+  width: 100%;
+  border-radius: 0.375rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--background));
+  padding: 0 0.35rem;
+  font-size: 0.72rem;
+  color: hsl(var(--foreground));
+}

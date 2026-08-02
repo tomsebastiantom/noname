@@ -80,6 +80,10 @@ export default {
       "@": join(dir, "src"),
       "@/": join(dir, "src/"),
       "@noname/extensions": join(dir, "../extensions/src/index.ts"),
+      "@noname/extensions/commerce/catalog-schemas": join(
+        dir,
+        "../extensions/src/commerce/catalog-schemas.ts",
+      ),
     },
   },
   plugins: [
@@ -91,6 +95,11 @@ export default {
     splitChunks: {
       chunks: "all",
       cacheGroups: {
+        editor: {
+          test: /[\\/]src[\\/]editor[\\/]/,
+          name: "editor",
+          chunks: "async",
+        },
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name: "vendor",

@@ -336,7 +336,12 @@ export interface ContentDocumentService {
 
 export interface LayoutDocumentService {
   create(orgId: string, input: CreateLayoutInput): Promise<LayoutDTO>;
-  update(orgId: string, id: string, input: UpdateLayoutInput): Promise<LayoutDTO>;
+  update(
+    orgId: string,
+    id: string,
+    input: UpdateLayoutInput,
+    options?: { ifMatchUpdatedAt?: string },
+  ): Promise<LayoutDTO>;
   addVariant(
     orgId: string,
     templateName: string,

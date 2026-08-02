@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./commerce": "./src/commerce/registry.ts"
+    "./commerce": "./src/commerce/registry.ts",
+    "./commerce/catalog-schemas": "./src/commerce/catalog-schemas.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

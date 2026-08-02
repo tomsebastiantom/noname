@@ -49,7 +49,7 @@ const commerceSpec = {
     main: {
       type: "Stack",
       props: catalogProps({ direction: "column", gap: 24, align: "stretch" }, {}),
-      children: ["hero", "products"],
+      children: ["hero", "intro", "products"],
     },
     hero: {
       type: "Hero",
@@ -61,6 +61,13 @@ const commerceSpec = {
           ctaText: "Explore",
           imageAlt: null,
         },
+      ),
+    },
+    intro: {
+      type: "Text",
+      props: catalogProps(
+        { variant: "body", align: "center" },
+        { content: "Click blocks in ?edit=true to change layout copy. Product fields edit in Content admin." },
       ),
     },
     products: {
@@ -207,7 +214,11 @@ async function publishHomeLayout(spec: Record<string, unknown>, contentRef: stri
   const existing = layouts.find((row) => row.key === "home");
 
   if (existing) {
-    await api("PUT", `/api/documents/layout/${existing.id}`, { spec, contentRef });
+    await api("PUT", `/api/documents/layout/${existing.id}`, {
+      spec,
+      contentRef,
+      renderAs: "standalone",
+    });
     if (existing.status !== "published") {
       await api("PUT", `/api/documents/layout/${existing.id}/publish`);
     }
@@ -219,6 +230,7 @@ async function publishHomeLayout(spec: Record<string, unknown>, contentRef: stri
     templateName: "home",
     segment: "default",
     spec,
+    renderAs: "standalone",
   });
   await api("PUT", `/api/documents/layout/${created.id}`, { spec, contentRef });
   await api("PUT", `/api/documents/layout/${created.id}/publish`);
