@@ -27,12 +27,21 @@ export async function createReplayModule(
   let stopFn: (() => void) | null = null;
   let buffer: unknown[] = [];
   let bytesSinceFullSnapshot = 0;
-  let timeSinceFullSnapshot = 0;
+  let timeSinceFullSnapshot = Date.now();
   let lastFlushTime = Date.now();
+  let hasRecordedFirstEvent = false;
 
   function takeFullSnapshot() {
-    if (rrweb.record && typeof (rrweb.record as any).takeFullSnapshot === "function") {
-      (rrweb.record as any).takeFullSnapshot();
+    if (!recording || !stopFn) return;
+    try {
+      if (
+        rrweb.record &&
+        typeof (rrweb.record as { takeFullSnapshot?: () => void }).takeFullSnapshot === "function"
+      ) {
+        (rrweb.record as { takeFullSnapshot: () => void }).takeFullSnapshot();
+      }
+    } catch {
+      // rrweb throws if called before its initial full snapshot completes.
     }
     bytesSinceFullSnapshot = 0;
     timeSinceFullSnapshot = Date.now();
@@ -58,6 +67,10 @@ export async function createReplayModule(
   function startRecording() {
     if (stopFn || recording) return;
 
+    timeSinceFullSnapshot = Date.now();
+    bytesSinceFullSnapshot = 0;
+    hasRecordedFirstEvent = false;
+
     const handler = rrweb.record({
       emit(event) {
         buffer.push(event);
@@ -66,7 +79,11 @@ export async function createReplayModule(
         const size = JSON.stringify(event).length;
         bytesSinceFullSnapshot += size;
 
-        if (
+        if (!hasRecordedFirstEvent) {
+          hasRecordedFirstEvent = true;
+          timeSinceFullSnapshot = Date.now();
+          bytesSinceFullSnapshot = size;
+        } else if (
           bytesSinceFullSnapshot > FULL_SNAPSHOT_BYTES ||
           Date.now() - timeSinceFullSnapshot > FULL_SNAPSHOT_MS
         ) {

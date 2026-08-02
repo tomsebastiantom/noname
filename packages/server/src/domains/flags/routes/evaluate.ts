@@ -10,8 +10,6 @@ export function registerFlagEvaluateRoutes(routes: Hono, deps: FlagRouteDeps): v
   const { service } = deps;
 
   routes.post("/evaluate", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.STOREFRONT_VIEW);
-    if (denied) return denied;
     const body = await c.req.json<{
       context?: Partial<FlagEvaluationContext>;
       flagKeys?: string[];
