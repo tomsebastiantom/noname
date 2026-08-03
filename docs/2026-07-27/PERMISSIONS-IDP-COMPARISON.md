@@ -2,7 +2,7 @@
 
 > **Date:** 2026-07-27  
 > **Status:** Reference — why we expand roles in the backend  
-> **Related:** [`PERMISSIONS-MASTER-PLAN.md`](./PERMISSIONS-MASTER-PLAN.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md)
+> **Related:** [`PERMISSIONS-MASTER-PLAN.md`](./PERMISSIONS-MASTER-PLAN.md) · [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md)
 
 ---
 
@@ -152,7 +152,7 @@ Switching to Auth0/Logto for “permissions in token” is optional later; it do
 ZITADEL     → identity + role keys in JWT (admin | editor | customer)
 Backend     → ROLE_PERMISSIONS expand + requirePermission() guards
 Session     → cache permissions[]; invalidate on role change or deploy
-Postgres    → field rules now; tuples later (not IdP)
+Postgres    → auth policy + (later) tuples — not field rules ([`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md))
 NOT v1      → switching IdP for permission-in-token; merchant permission UI
 ```
 

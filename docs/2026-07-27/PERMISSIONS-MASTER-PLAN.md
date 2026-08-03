@@ -1,6 +1,6 @@
 # Permissions Master Plan
 
-> **Date:** 2026-07-27 (updated after architecture brainstorm)  
+> **Date:** 2026-07-27 (updated 2026-08-03 — document unit; field ACL cancelled)  
 > **Status:** **Active — canonical permission model; start here**  
 > **Rule:** **Permissions before editor UI.** One guard pipeline for admin, API, and `?edit=true`.  
 > **Supersedes:** role-assignment parts of [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) — that doc’s “no teamRoles in Postgres” still holds; this doc defines **granular permissions + where each layer lives**.  
@@ -10,7 +10,7 @@
 
 ## One-line summary
 
-**Permissions** (platform) = what APIs/actions you can perform, scoped by resource type (`content`, `layout`, `page`). **Roles** (platform defaults) = bundles of permissions. **ZITADEL** (per org) = users, groups, and who gets which role. **Postgres** = rules only (field ACLs, auth policy) — **not** who has which role. **Tuples** (later, [Zanzibar-shaped](#zanzibar-pattern--examples)) = which **part of the store** someone can touch — one doc, a tag/collection branch, or a content type — on top of permissions.
+**Permissions** (platform) = what APIs/actions you can perform, scoped by resource type (`content`, `layout`, `page`). **Roles** (platform defaults) = bundles of permissions. **ZITADEL** (per org) = users, groups, and who gets which role. **Postgres** = auth policy + (later) tuple rules — **not** who has which role. **Tuples** (later, [Zanzibar-shaped](#zanzibar-pattern--examples)) = which **part of the store** someone can touch — one doc, a tag/collection branch, or a content type — on top of permissions. **Field ACL** — **not planned**; smallest access unit = **document** (split content types / references). See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md).
 
 ---
 
@@ -66,10 +66,10 @@ Example:
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────┐
 │  POSTGRES (rules — NOT people)                                           │
-│  • Field ACLs: which permission keys may write field `price`             │
 │  • tenant_settings.auth: MFA policy, IdP flags (config, not RBAC)         │
-│  • relation_tuples (later): per-document share                           │
+│  • relation_tuples (later): per-document / tag / collection scope        │
 │  • document_ops (later): edit audit log                                  │
+│  • ~~Field ACLs~~ — **not planned**; split content docs/types instead     │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -79,7 +79,7 @@ Example:
 | Which org (store)? | ZITADEL org / edge resolve | — |
 | Who has role `editor`? | ZITADEL Role Assignment | Postgres `teamRoles` JSON |
 | What does `content:publish` mean? | Platform permission catalog | ZITADEL |
-| Can they edit field `price`? | Postgres field rule + user’s permissions | ZITADEL |
+| Can they edit pricing data? | Separate **content entry/type** + role/tuple scope (later) | Per-field rules on one doc |
 | Share layout `home` with Bob only? | Postgres tuple (later) | Permission key alone |
 | Marketing group → blog content only? | Tuple on `tag:blog` or `collection:marketing` (later) | v1 org-wide editor |
 
@@ -205,9 +205,9 @@ Even if Dave can edit product content, price needs publish-level permission unle
 | One doc share | ❌ | `document:{uuid}#editor@user:` |
 | Tag / collection branch | ❌ | `tag:` / `collection:` + `parent` on documents |
 | ZITADEL groups → scoped access | ❌ | Group id as subject or userset |
-| OpenFGA / SpiceDB service | Design in Playground only | When in-app `Check()` grows |
+| OpenFGA / SpiceDB service | Design in Playground only | **Ory Keto** on same Postgres (see [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md)); SpiceDB only if Keto outgrown |
 
-Design tuples in [OpenFGA Playground](https://play.fga.dev) first; copy relation names into Postgres schema when Phase 1 ships. Full op-log detail: [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md).
+Design tuple **models** in [OpenFGA Playground](https://play.fga.dev) first; store relationships in **Ory Keto** (DB `keto` on same Postgres server) when Phase B ships. Full op-log detail: [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md).
 
 ### Combined Check (later — target pseudocode)
 
@@ -271,29 +271,20 @@ Implementation: JWT role keys → expand via `ROLE_PERMISSIONS` map in app code 
 
 ---
 
-## Postgres field rules (not user assignment)
+## Document-level access (not field rules)
 
-Content-type fields reference **permission keys**, not user ids:
+> **Updated 2026-08-03:** Field-level `permissions` on schema fields are **not planned** for product/UI. Smallest access unit = **document** (content entry / content type). Split sensitive data into separate types or entries; compose with **reference** fields in layout. See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md).
 
-```jsonc
-{
-  "key": "price",
-  "permissions": { "write": ["content:admin"] }   // or require admin role’s full bundle
-}
-{
-  "key": "description",
-  "permissions": { "write": ["content:draft_write"] }
-}
-```
-
-Runtime:
+Example instead of field ACL on `product.price`:
 
 ```
-userPermissions = expandRoles(jwtRoles)
-allowed = field.permissions.write.every(p => userPermissions.includes(p))
+product_display   → title, description   (editors)
+product_pricing   → price, SKU           (admins)
 ```
 
-Migrate legacy `permissions.write: ["admin", "editor"]` role strings → permission keys during Phase 0.
+Runtime (v1): route guards on content APIs by platform permission keys. Runtime (later): tuple `Check()` for which documents a user may touch.
+
+Legacy code may still expose `fields[].permissions` helpers — do not wire editor/admin UI unless product decision changes.
 
 ---
 
@@ -303,9 +294,8 @@ Migrate legacy `permissions.write: ["admin", "editor"]` role strings → permiss
 1. Validate JWT (ZITADEL) → userId, orgId, roleKeys[]
 2. Expand roleKeys → Set<permissionKey>  (platform map)
 3. Route guard: requirePermission("content:publish")
-4. Optional: field guard from Postgres schema
-5. Optional (later): tuple Check for document:id
-6. Allow or 403
+4. Optional (later): tuple Check for document:id or content_type:tag
+5. Allow or 403
 ```
 
 **One pipeline** for `/admin/content`, `/admin/layout`, `?edit=true`, documents API, future AI publish approval.
@@ -360,7 +350,8 @@ Read-only admin preview (JSON → `<Renderer>`) is OK before Phase 0. **Any save
 | Which doc types | From permissions (`content:*` vs `layout:*`) — no tuples needed |
 | Default roles | `admin`, `editor`, `customer` on ZITADEL project |
 | Publish rule | Editors draft; **admin** (or role with `*:publish` keys) publishes |
-| Field ACLs | Postgres schema; reference permission keys |
+| Field ACLs | **Skip** — document/content-type unit; [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
+| Sensitive CMS data | Split into separate content types/entries + references |
 | Groups in ZITADEL | Optional v1 — direct user → role assignment is enough to start |
 | Tuples | **Not v1** |
 | Per-page editable roles | **Not v1** — maybe never; use tuples or tags if needed |
@@ -454,9 +445,9 @@ Prefer **tags + collection tuples** over per-page role inventing. Single-doc sha
 | Publish content | `content:publish` | ✅ | ❌ | ❌ |
 | Publish layout | `layout:publish` | ✅ | ❌ | ❌ |
 | Auth / invite | `auth:manage` | ✅ | ❌ | ❌ |
-| Write field `price` | field rule + permission | ✅ | ❌* | ❌ |
+| Edit pricing content | `content:draft_write` on **pricing doc/type** (later: tuple scope) | ✅ | ❌* | ❌ |
 
-\*Unless field rule allows `content:draft_write` and editor has it.
+\*Editors draft content they’re scoped to; use separate `product_pricing` type or tuple scope — not field ACL on one doc.
 
 ---
 
@@ -466,10 +457,10 @@ Prefer **tags + collection tuples** over per-page role inventing. Single-doc sha
 |------|-------|--------|
 | Authorization | Coarse `teamRoles` JSON in Postgres | ZITADEL roles → platform permission expansion |
 | Guards | `requireTeamAdmin` reads Postgres | `requirePermission("auth:manage")` etc. |
-| Documents API | No permission checks on write/publish | Per-route permission keys |
-| Field ACLs | Role strings `admin`/`editor` | Permission keys |
-| Edge `?edit=true` | Ungated | Permission or role check |
-| Client | No permission list in session | `session.permissions[]` drives Publish visibility |
+| Documents API | No permission checks on write/publish | Per-route permission keys ✅ |
+| Sensitive CMS fields | ~~Field ACL~~ | Split documents + tuple scope (later) |
+| Edge `?edit=true` | Ungated | Permission or role check ✅ |
+| Client | No permission list in session | `session.permissions[]` drives Publish ✅ |
 
 ---
 
@@ -497,6 +488,9 @@ pnpm seed:demo && pnpm test && pnpm typecheck
 | Topic | Doc | Note |
 |-------|-----|------|
 | **This file** | Canonical model | Overrides July 25 role-only framing |
+| Field ACL (cancelled) | [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) | Document unit — not per-field |
+| Identity, agents, IdP choice | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) | Nostr-inspired delegation; OSS IdP |
+| Live multi-editor (later) | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) | After tuples stable |
 | **IdP comparison** | [`PERMISSIONS-IDP-COMPARISON.md`](./PERMISSIONS-IDP-COMPARISON.md) | ZITADEL vs Auth0/Keycloak/Logto; token refresh |
 | Tuple design (later) | [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md) | Phase 1+ |
 | OSS references | [`PERMISSIONS-OSS-REFERENCES.md`](../2026-07-25/PERMISSIONS-OSS-REFERENCES.md) | |
@@ -513,7 +507,7 @@ pnpm seed:demo && pnpm test && pnpm typecheck
 v1 NOW
   Platform permission keys + ROLE_PERMISSIONS map
   ZITADEL: users + role assignment (admin | editor | customer)
-  Postgres: field rules + auth policy flags only
+  Postgres: auth policy flags; Phase B → Ory Keto (same server, DB keto)
   Guards on every write/publish API + ?edit=true
   Session cache permissions[]; invalidate on deploy / role change
   Delete teamRoles JSON
@@ -528,7 +522,7 @@ LATER (Zanzibar-shaped — design in OpenFGA Playground first)
   collection: / tag: / content_type: tuples + parent inheritance
   document:{uuid} share (one file)
   Scoped access inside store (marketing branch — not whole org)
-  document_ops, visual editor, optional OpenFGA/SpiceDB service
+  document_ops, visual editor; SpiceDB only if Keto limits hit
 ```
 
 ---

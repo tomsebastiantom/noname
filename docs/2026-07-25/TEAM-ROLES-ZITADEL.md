@@ -19,7 +19,7 @@ Postgres                       →  only what ZITADEL cannot do
 | User → `admin` / `editor` / `customer` | ✅ Role Assignment | ❌ **never** `teamRoles` |
 | Roles in JWT | ✅ | ❌ |
 | Invite / change role | ✅ API | ❌ |
-| Which CMS **field** editors may write | ❌ (no concept) | ✅ content-type schema |
+| Which CMS **document** editors may touch | ❌ (no concept) | ✅ (later) tags + `relation_tuples` — **not** per-field |
 | Google on/off, MFA policy flag | ❌ (store config) | ✅ `tenant_settings.auth` |
 | Layouts, content, pages | ❌ | ✅ documents |
 
@@ -82,28 +82,19 @@ Path: `tenant_settings.data.auth`
 
 **Not in this object:** ~~`teamRoles`~~ — remove from schema and code.
 
-### 2. Field ACL rules — app domain ZITADEL has no model for
+### 2. Document scope (later) — not field ACL
 
-Path: `content_type.schema.fields[].permissions`
+> **Updated 2026-08-03:** Per-field `permissions` on content types are **not planned**. Smallest access unit = **document** (split types/entries + references). See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md).
+
+**Later:** Postgres `relation_tuples` (Zanzibar-shaped) — which user/group may edit which content type, tag, or document UUID.
 
 ```jsonc
-{
-  "key": "price",
-  "permissions": {
-    "read":  ["admin", "editor", "customer"],
-    "write": ["admin"]
-  }
-}
+// Prefer separate documents, not field rules on one product:
+// product_display  → title, description  (editors)
+// product_pricing  → price, SKU          (admins)
 ```
 
-This is **not** storing who has a role — it is **which role keys may touch this field**. ZITADEL cannot express “field `price` on content type `product`”. Only our documents domain can.
-
-Runtime:
-
-```
-role = from JWT (ZITADEL)
-allowed = field.permissions.write.includes(role)   // Postgres rule
-```
+Legacy `fields[].permissions` may exist in schema/code — do not wire editor UI.
 
 ### 3. Business data (unchanged)
 
@@ -160,7 +151,7 @@ Edge HMAC: use resolved `admin` | `editor` | `customer` in `x-role`, not a stale
 3. **Remove `teamRoles`** from Postgres read/write paths  
 4. **`teamRoleFromJwt`** in server + worker  
 5. **`GET /api/auth/:slug/session`** — `teamRole` from JWT (or re-fetch from ZITADEL if claim missing)  
-6. **Documents API** — guards use JWT role; pass role into service for field ACLs  
+6. **Documents API** — guards use JWT + platform permission keys (not field ACL)  
 7. **`seed:demo`** — grant seed user `admin` in ZITADEL  
 
 Visual editor Phase 0 ([`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md)) should use **JWT roles**, not Postgres `teamRoles`.
@@ -190,4 +181,4 @@ Until removed, `packages/server/src/domains/auth/service.ts` still mirrors roles
 
 ---
 
-*Postgres = store config + field rules + documents. ZITADEL = identity + every team role and permission assignment.*
+*Postgres = store config + documents + (later) tuples. ZITADEL = identity + every team role and permission assignment.*

@@ -243,7 +243,7 @@ EditPageView → EditorSessionProvider → Renderer(editorRegistry) → VisualEd
 | Full editor via edge schema (no `EditorHost` bypass) | Aligns with skill; larger host refactor |
 | OAuth callback as layout | Thin handler may stay exception |
 | `platform-routes.ts` → page_tree | Routing product roadmap |
-| Field ACL in PropsPanel | See [FIELD-ACL.md](./FIELD-ACL.md) |
+| Field ACL in PropsPanel | **Skip** — document-level access; [FIELD-ACL.md](./FIELD-ACL.md) |
 | Collab / CRDT | See [VISUAL-EDITOR-COLLAB-CRDT.md](./VISUAL-EDITOR-COLLAB-CRDT.md) |
 
 ---
@@ -272,7 +272,7 @@ Use when touching client UI:
 | **This audit** | **this file** |
 | Editor feature status | [VISUAL-EDITOR-GAP-ANALYSIS.md](./VISUAL-EDITOR-GAP-ANALYSIS.md) |
 | Agent build rules | [skills/spec-driven-ui/SKILL.md](../../skills/spec-driven-ui/SKILL.md) |
-| Field ACL backlog | [FIELD-ACL.md](./FIELD-ACL.md) |
+| Field ACL backlog | **Cancelled** — [FIELD-ACL.md](./FIELD-ACL.md) (document unit) |
 | Smoke test log | [EDITOR-SMOKE-PRODUCT-DETAIL.md](./EDITOR-SMOKE-PRODUCT-DETAIL.md) |
 
 ---

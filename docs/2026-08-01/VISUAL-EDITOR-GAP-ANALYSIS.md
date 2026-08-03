@@ -25,7 +25,8 @@ We have a **hybrid builder editor** with palette + layer tree + live canvas + pr
 | **Responsive preview** | **Done** | Desktop / tablet / mobile toggle |
 | **Collab / CRDT / presence** | **Skip** | See [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) — only when simultaneous multi-editor is real |
 | **`document_ops` op log** | **Skip** | v2 audit path; before live collab |
-| **Field ACL — what to track & wiring** | [`FIELD-ACL.md`](./FIELD-ACL.md) |
+| **Field ACL — what to track & wiring** | **Skip** — [`FIELD-ACL.md`](./FIELD-ACL.md) |
+| **Identity, agents, OSS IdP, delegation** | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) |
 | Collab / CRDT — when to build | [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) |
 | **D2c per-template block allowlists** | **Skip** | Only if palette noise becomes a problem |
 | **Reorder shell slots from admin UI** | **Skip** | Spec tree supports it; no merchant need yet |
@@ -102,7 +103,7 @@ The visual editor is **not** a general page builder. It is a **strict composer**
 | **Action binding picker** (D8) | ✅ | Dropdown for `ctaAction` / `action` from catalog (`addToCart`, `checkout`, `navigate`, …) |
 | Undo / redo | ✅ | Session ⌘Z / ⌘⇧Z before save; cleared on save/discard — not cross-device |
 | Version conflict (409 / If-Match) | ✅ | Layout PUT + refresh banner |
-| Field-level CMS ACL in panel | ⚠️ Defer | See [`FIELD-ACL.md`](./FIELD-ACL.md) — UI simple; needs role on API + schema |
+| Field-level CMS ACL in panel | **Skip** | Split content docs/types instead — [`FIELD-ACL.md`](./FIELD-ACL.md) |
 | Responsive preview | ✅ | Desktop / tablet (768px) / mobile (390px) toolbar |
 | Live collab / CRDT | ⏸ Skip | [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) |
 
@@ -199,7 +200,7 @@ See [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md) — cor
 | Item | Why defer |
 |------|-----------|
 | **D7** inline canvas text | Panel editing sufficient; high UX complexity |
-| **Field ACL in PropsPanel** | See [`FIELD-ACL.md`](./FIELD-ACL.md) — defer until schemas use `permissions` |
+| **Field ACL in PropsPanel** | **Skip** — document unit; [`FIELD-ACL.md`](./FIELD-ACL.md) |
 | **D2c** per-template palette allowlists | No merchant pain yet |
 | **Admin shell slot reorder** | Spec-ready; no UI need |
 
@@ -219,15 +220,13 @@ See [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md) — cor
 
 Short explanations of backlog items — what they are, what exists today, and what “done” looks like.
 
-### Field-level CMS ACL (in props panel)
+### Field-level CMS ACL (in props panel) — **Skip**
 
-**What it is:** Per-field read/write rules on a **content type schema**, not whole-page roles.
+**Decision (2026-08-03):** Not building. **Document / content type** is the smallest access unit — split sensitive fields into separate entries or types and use **reference** bindings in layout.
 
-**Full guide:** [`FIELD-ACL.md`](./FIELD-ACL.md) — what to track, server/client gaps, implementation checklist.
+**Full guide (archival):** [`FIELD-ACL.md`](./FIELD-ACL.md)
 
-**Today:** Schema supports `permissions`; server helpers exist but editor uses `/resolve` without `role` and PropsPanel shows all fields.
-
-**Done looks like:** Same role key end-to-end (`session.teamRole` → `?role=` → PropsPanel hide/read-only).
+**Instead:** e.g. `product_display` (editors) + `product_pricing` (admins). Roles + future tag/tuple scope cover bigger teams.
 
 ---
 
@@ -318,7 +317,8 @@ All merchant-visible editor strings live in **`visual_editor` layout** → `Visu
 | Click UX target | [`VISUAL-EDITOR-UX.md`](../2026-07-25/VISUAL-EDITOR-UX.md) |
 | **This gap list & current status** | **this file** |
 | Dated tasks & checkboxes | [`VISUAL-EDITOR-BUILD-PLAN.md`](./VISUAL-EDITOR-BUILD-PLAN.md) |
-| **Field ACL — what to track & wiring** | [`FIELD-ACL.md`](./FIELD-ACL.md) |
+| **Field ACL — what to track & wiring** | **Skip** — [`FIELD-ACL.md`](./FIELD-ACL.md) |
+| **Identity, agents, OSS IdP, delegation** | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) |
 | Collab / CRDT — when to build | [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) |
 | Collab setup examples | [`COLLAB-EDITOR-SETUP.md`](./COLLAB-EDITOR-SETUP.md) |
 | Shell label keys (Zod + seed) | `packages/client/src/editor/schemas/components.ts`, `scripts/seed-demo.ts` |

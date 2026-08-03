@@ -259,8 +259,8 @@ Client receives: [ver=44], [ver=43]
 ### Phase 0 — JWT roles only (current next step)
 
 - ZITADEL Role Assignments; remove Postgres `teamRoles`
-- Guards: store `editor` / `admin` from JWT
-- Field ACLs from content-type schema
+- Guards: store `editor` / `admin` from JWT + platform permission keys
+- ~~Field ACLs~~ — **skip**; document-level split + tuples later ([`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md))
 
 ### Phase 1 — Tuple table + Check (Zanzibar-lite)
 
@@ -297,7 +297,7 @@ Client receives: [ver=44], [ver=43]
 | ZITADEL only for team RBAC | [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) |
 | Visual editor UX | [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) |
 | Permission gates before UI | [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) |
-| Document types + field ACLs | [`documents-domain.md`](../2026-07-10/documents-domain.md) |
+| Document types + document-level access | [`documents-domain.md`](../2026-07-10/documents-domain.md) · [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
 | Zanzibar paper | [USENIX ATC 2019](https://www.usenix.org/system/files/atc19-pang.pdf) |
 
 ---

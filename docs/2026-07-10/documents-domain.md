@@ -576,11 +576,11 @@ of the same file return the existing asset (idempotent).
 
 ---
 
-## Content Permissions — Field-Level
+## Content Permissions — Field-Level (schema only — not product)
 
-The content type schema supports field-level permissions via a `permissions` object
-on each field definition. This controls which roles can read or write specific fields
-within a content entry.
+> **Product decision (2026-08-03):** Field-level `permissions` on schema fields are **not planned** for editor/admin UI. Use **document-level** access: split sensitive data into separate content types or entries; compose with **reference** fields. See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md). Helpers below may exist in code for legacy/experimental use.
+
+The content type schema supports an optional `permissions` object on each field definition.
 
 ```jsonc
 {
@@ -1585,9 +1585,9 @@ Our `documents` domain follows the **Contentful pattern**:
 
 1. ✅ **Real content validation** — Zod-based validator reads `documentTypes.schema`,
    generates Zod schemas from field definitions, validates content entries on
-   create/update. Field-level permissions filter fields on read (`filterReadFields`)
-   and reject unauthorized writes (`validateFieldWritePermissions`). Caller role
-   passed via `?role=` query param.
+   create/update. Optional field-level permission helpers exist in code (`filterReadFields`,
+   `validateFieldWritePermissions`) — **not productized**; use document-level access instead
+   ([`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md)).
 2. ✅ **Rich text schema + validation** — `richtext.ts` defines `RichTextDocument`
    type with Zod schemas for the full node/mark tree. Rich text field type in
    validator. Per-field node type and mark allowlists via `constraints.allowedNodeTypes`
@@ -1702,7 +1702,7 @@ No migration. No deploy. Content entries for that type are validated on next wri
 | Segment resolution | `context_cache` (visitorId→segment) | Behavior signals from analytics/session data. Per-tenant. |
 | KV edge cache | Cloudflare Workers KV | Keys include orgId. Per-segment layout + per-key content + prerendered HTML. |
 | Per-user personalization | json-render `$state` bindings | Injected at edge render time from JWT/cart/recommendations. NOT part of segment hash. NOT cached by segment. |
-| Field permissions | `documentTypes.schema.fields[].permissions` | read/write arrays of role strings. Enforced by service layer. |
+| Field permissions (schema) | `documentTypes.schema.fields[].permissions` | Optional in schema; **not planned** for UI — document unit instead ([`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md)) |
 | Locale configuration | `documents` (type: tenant_settings) | Per-tenant locale list + default locale. One source of truth. |
 | Locale validation | `ContentValidator` → tenant settings | Rejects writes with `?locale=X` when X is not in tenant's `locales` list. |
 | isLocalizable fields | `documentTypes.schema.fields[].isLocalizable` | When true: field accepts per-locale values via `?locale=X` writes. Values accumulate as `{ "en-US": ..., "fr": ... }`. When false: plain value shared across all locales. |

@@ -5,10 +5,11 @@ set -e
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
     SELECT 'CREATE DATABASE zitadel' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'zitadel')\gexec
     SELECT 'CREATE DATABASE nango' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'nango')\gexec
+    SELECT 'CREATE DATABASE keto' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'keto')\gexec
 EOSQL
 
 # enable common extensions for each DB
-for DB in app zitadel nango; do
+for DB in app zitadel nango keto; do
   echo "Enabling extensions in $DB"
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$DB" <<-EOSQL
       CREATE EXTENSION IF NOT EXISTS "pgcrypto";

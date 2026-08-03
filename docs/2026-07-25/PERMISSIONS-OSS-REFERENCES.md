@@ -11,8 +11,8 @@
 | Phase | Need | Use | Skip for now |
 |-------|------|-----|--------------|
 | **0** | Team `admin` / `editor` in JWT | **ZITADEL** Role Assignments | Postgres `teamRoles` |
-| **1** | Doc share + `Check()` | **Postgres tuples** in-app (Zanzibar-shaped) | SpiceDB / OpenFGA service |
-| **2** | Scale ReBAC, playground | **OpenFGA** (self-host) or **SpiceDB** | Ory Keto (unless full Ory stack) |
+| **1** | Doc share + `Check()` | **Ory Keto** on same Postgres (`keto` schema) + `AuthorizationPort` | SpiceDB; plain in-app tuple table |
+| **2** | Scale ReBAC beyond Keto | **SpiceDB** or **OpenFGA** (only if Keto limits hit) | — |
 | **1** | Draft conflict | **`If-Match` / document.version`** — no library | — |
 | **2** | Edit log + dedup | Custom `document_ops` table | — |
 | **3** | Live collab on **JSON spec** | **Automerge** | Yjs for whole spec tree |
@@ -39,10 +39,13 @@ These implement Google Zanzibar-style **relation tuples** and **Check(user, rela
 - **Use when:** You need “Alice was removed as editor → next Check must not see stale allow” without building token logic yourself.
 - **Trade-off:** Heavier ops (Postgres/Cockroach/Spanner); gRPC-first.
 
-### Ory Keto
+### Ory Keto — **our Phase B choice (2026-08-03)**
 
 - **Repo:** [ory/keto](https://github.com/ory/keto)
-- **Use only if:** You already run Ory Hydra/Kratos stack. Otherwise OpenFGA or SpiceDB are simpler for greenfield.
+- **Why start here:** Same Postgres **server** as CMS; separate DB `keto` (like `zitadel` / `app`); lighter K8s ops than SpiceDB; standalone — **does not require** Hydra or Kratos.
+- **With ZITADEL:** JWT proves identity; app passes `user:{sub}` or `agent:{id}` to Keto `Check()`.
+- **Deploy:** Keto as stateless pods in K8s/Vela; Postgres managed or external to cluster.
+- **Migrate later:** Keep Zanzibar tuple shape; swap adapter to SpiceDB/OpenFGA only if ListObjects/consistency at scale hurts.
 
 ### Permify
 
@@ -57,7 +60,7 @@ These implement Google Zanzibar-style **relation tuples** and **Check(user, rela
 | **OPA** | Policy engine (Rego) — great for K8s, awkward for Docs-style sharing |
 | **Cerbos** | Resource policies — good for “action on resource type”, less natural for nested folder/doc inheritance |
 
-**v1 decision (ours):** Postgres `relation_tuples` + in-app Check — same semantics, zero new service. **Copy OpenFGA model files** as spec; optionally migrate to OpenFGA server in Phase 2.
+**Phase B decision (2026-08-03):** **Ory Keto** on shared Postgres + `AuthorizationPort` adapter. Design models in **OpenFGA Playground** (spec only); store tuples in Keto. **SpiceDB deferred** — heavier ops, not the starting path.
 
 ---
 

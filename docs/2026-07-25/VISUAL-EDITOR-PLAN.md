@@ -8,7 +8,7 @@
 
 ## One-line summary
 
-The visual editor opens the **same storefront URL** with `?edit=true`, **click a component on the page** (Google Docs–style — see [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md)), edit props in `PropsPanel`, save/publish via the **documents API**. **ZITADEL** owns identity **and team roles** (JWT); Postgres only holds what ZITADEL cannot (field ACL rules, store policy). See [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md). Close permission gaps on the server and edge **before** wiring the edit overlay.
+The visual editor opens the **same storefront URL** with `?edit=true`, **click a component on the page** (Google Docs–style — see [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md)), edit props in `PropsPanel`, save/publish via the **documents API**. **ZITADEL** owns identity **and team roles** (JWT); Postgres holds store policy and documents. **Field ACL — not planned**; use document-level split. See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) and [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md).
 
 ---
 
@@ -45,7 +45,7 @@ Login pages (`/login`) and platform admin shells are **out of scope** for v1 vis
 | Role resolution | JWT project roles claim | `teamRoleFromJwt` (replace `teamRoleForUser` reading DB) |
 | Admin-only auth routes | `auth/api.ts` | `requireTeamAdmin` — must use JWT role |
 | MFA for admin | `requireMfaForAdmin` in Postgres | **Policy flag**, not a role assignment |
-| Field-level CMS ACLs | `content_type` schema in Postgres | ZITADEL cannot model per-field rules — references same role **strings** |
+| Field-level CMS ACLs | — | **Skip** — split content docs/types; [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
 | Editor shell | `packages/client/src/editor/` | `PropsPanel` + basic field types ✅ |
 | Admin nav extract | `AdminNav`, `AdminPageHeader` | ✅ |
 
@@ -53,7 +53,11 @@ Login pages (`/login`) and platform admin shells are **out of scope** for v1 vis
 
 ## Permission model (ZITADEL only for team RBAC)
 
-**Decision:** Team roles and user permissions live in **ZITADEL only**. Postgres stores **store config** and **field ACL rules** (things ZITADEL has no API for). Full split: [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md).
+**Decision:** Team roles and user permissions live in **ZITADEL only**. Postgres stores **store config** and **documents** (later: tuple scope). Full split: [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md).
+
+### Document-level access (not field ACL)
+
+> **Updated 2026-08-03:** Do not build per-field PropsPanel ACL. Restrict sensitive CMS data by **separate content types/entries** + layout references. Granular team scope later via tags + Zanzibar tuples.
 
 ### Roles (v1)
 
@@ -73,10 +77,6 @@ Effective role = JWT project roles claim → **`admin` | `editor` | null**. Lega
 | `requireMfaForAdmin` | Block admin/edit surfaces until TOTP enrolled |
 
 **Extend for editor:** same MFA gate on `?edit=true` when policy is on.
-
-### Field-level ACLs (Postgres — ZITADEL cannot do this)
-
-Content-type schema `permissions.read` / `permissions.write` lists role **keys** (`admin`, `editor`). Enforcement: JWT role from ZITADEL + field rule from Postgres.
 
 ---
 
@@ -125,7 +125,7 @@ From [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) — still open:
 1. **`init:zitadel`** — project roles + token claims  
 2. **Invite / role APIs** — ZITADEL Role Assignment only; stop writing `teamRoles`  
 3. **`teamRoleFromJwt`** — server + worker + `GET /api/auth/:slug/session`  
-4. **Documents API** — guards + field ACL enforcement using JWT role  
+4. **Documents API** — guards using platform permission keys (field ACL not planned)  
 5. **Edge** — `?edit=true` requires JWT with `editor` or `admin`  
 6. **Client** — edit-mode gate from session `teamRole`  
 7. **Delete** `teamRoles` from schema, migrations, seed

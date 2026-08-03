@@ -161,12 +161,12 @@ Map Google Docs sharing to org team roles ([`VISUAL-EDITOR-PLAN.md`](./VISUAL-ED
 | UI element | editor | admin |
 |------------|--------|-------|
 | Hover/click outlines | ✅ | ✅ |
-| PropsPanel | ✅ (fields allowed by schema permissions) | ✅ |
+| PropsPanel | ✅ (all schema fields for bound content — scope via document/type, not field ACL) | ✅ |
 | Save draft | ✅ | ✅ |
 | Publish button | Hidden or disabled + “Ask an admin” | ✅ |
 | Save bar “who can publish” hint | ✅ | — |
 
-Field-level CMS permissions (`permissions.write: ["admin"]`) hide or read-only fields in PropsPanel — like Docs restricting who can edit a certain section.
+**Document-level access (not field ACL):** Restrict sensitive CMS data by splitting into separate content types/entries (e.g. `product_pricing` for admins only). Later: Zanzibar tuples for tag/collection scope. See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md).
 
 ---
 

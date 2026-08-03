@@ -142,7 +142,7 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 |------|------|
 | `requirePermission(c, orgId, key)` helper | `auth/api.ts` or `auth/guards.ts` |
 | Wire documents routes | `packages/server/src/domains/documents/api.ts` |
-| Pass expanded permissions into field ACL checks | `documents/service.ts` (when field rules exist) |
+| Pass expanded permissions into document scope checks | `documents/service.ts` (when tuples exist) |
 | Replace `requireTeamAdmin` with `auth:manage` | `auth/api.ts` |
 
 **Ship criteria:** editor JWT → draft 200, publish 403; admin → publish 200.
@@ -166,14 +166,14 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 
 ---
 
-### Slice 5 — Field ACL migration (optional same release)
+### Slice 5 — Field ACL migration — **Cancelled**
+
+**Decision (2026-08-03):** Use document-level composition instead. See [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md).
 
 | Task | Detail |
 |------|--------|
-| Migrate content-type `permissions.write: ["admin"]` → permission keys | Seed + schema docs |
-| Enforce in `ContentDocumentService` using `hasPermission` | documents service |
-
-Can ship after Slice 3 if field rules are not blocking.
+| ~~Migrate content-type `permissions.write`~~ | Split content types / entries |
+| ~~Enforce in PropsPanel~~ | Not planned |
 
 ---
 

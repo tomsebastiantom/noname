@@ -1,12 +1,41 @@
-# Field-level CMS ACL — what to track & how
+# Field-level CMS ACL — deferred (not building)
 
-> **Date:** 2026-08-01  
-> **Status:** Schema + server helpers exist · **visual editor + admin UI not wired** · defer until content types use `permissions`  
-> **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md) § Content Permissions · [`VISUAL-EDITOR-GAP-ANALYSIS.md`](./VISUAL-EDITOR-GAP-ANALYSIS.md) · [`reference.md` § Content types](../../skills/spec-driven-ui/reference.md#content-types)
+> **Date:** 2026-08-01 · **Updated:** 2026-08-03  
+> **Status:** **Not planned for product** — use **document-level** access instead (see below). Legacy schema helpers exist in code but will not be wired in editor/admin UI.  
+> **Related:** [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`documents-domain.md`](../2026-07-10/documents-domain.md)
 
 ---
 
-## One-line summary
+## Product decision (2026-08-03)
+
+**We do not need field-level permissions.**
+
+| Instead of… | Do this… |
+|-------------|----------|
+| One `product` doc with field ACL on `price` | Split into smaller **content entries / types** (e.g. `product_display` vs `product_pricing`) |
+| PropsPanel hide/read-only per field | Control **who can draft which document** via roles + (later) content-type / tag scope |
+| `fields[].permissions.read/write` in schema | **`reference`** fields — layout blocks bind to the doc the user is allowed to edit |
+
+**Smallest unit of access control = document (content entry / content type), not field.**
+
+Example:
+
+```
+product_display   → title, description, hero     (editors)
+product_pricing   → price, SKU, cost             (admins)
+```
+
+Layout composes both via `$state` / reference bindings. Platform roles (`admin` / `editor`) + future **document/tag scope** (tuples) cover bigger teams without per-field rules.
+
+**When field ACL might revisit:** only if an external system forces a **single** content payload and splitting documents is impossible. Until then, skip PropsPanel field ACL, client `?role=`, and `/resolve` field filtering.
+
+---
+
+## Legacy note (code only — do not implement UI)
+
+The following was explored for field ACL; kept for reference if the decision ever changes.
+
+### One-line summary (original)
 
 **Track read/write role lists on each CMS field in the content-type schema.** Enforcement is **role key + field rule** (today `admin` / `editor`), not layout props. Server can filter/strip/reject — but the **editor must pass `role` and PropsPanel must hide/read-only** for a good UX.
 
@@ -207,9 +236,12 @@ Minimum viable field ACL = **UI + `?role=` on load/save + resolve/filter on read
 
 | Signal | Action |
 |--------|--------|
-| No content types use `permissions` in seed | **Skip** — nothing to enforce |
-| Agency hires “content editors” who must not change price/SKU | Implement checklist above |
-| Only admins use the editor today | Defer; platform permissions enough |
+| No content types use `permissions` in seed | **Skip** — use split documents instead |
+| Agency hires “content editors” who must not change price/SKU | **Split content type** or separate entry; admin-only type for pricing |
+| Only admins use the editor today | **Roles enough** — no field ACL |
+| External API requires one doc, mixed sensitivity | Revisit field ACL (last resort) |
+
+**Preferred model:** document / content-type as unit — not field rules. See [Product decision](#product-decision-2026-08-03) above.
 
 ---
 
@@ -225,4 +257,4 @@ Minimum viable field ACL = **UI + `?role=` on load/save + resolve/filter on read
 
 ---
 
-*Field ACL is a **schema + role + UI + API param** feature. The model is simple; correctness requires tracking the same role key end-to-end — not PropsPanel alone.*
+*Field ACL is **not planned**. Use document-level composition + roles; see [Product decision](#product-decision-2026-08-03). Legacy checklist below is archival only.*

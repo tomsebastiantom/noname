@@ -170,7 +170,7 @@ Editor chrome is spec-driven like other platform surfaces.
 | 409 / If-Match | **Done** | Layout draft |
 | Responsive preview | **Done** | canvasPreview toggle |
 | Collab / CRDT / presence | **Skip** | [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) |
-| Field ACL in PropsPanel | **Defer** | Server enforces |
+| Field ACL in PropsPanel | **Skip** | Document / content-type as unit — [FIELD-ACL.md](./FIELD-ACL.md) |
 | D2c per-template allowlists | **Skip** | If palette too noisy |
 | `accepts: string[]` on schemas | **Skip/TBD** | If `slots` too permissive |
 

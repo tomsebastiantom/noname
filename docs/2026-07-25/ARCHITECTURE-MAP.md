@@ -108,7 +108,7 @@ Login flow skips content resolve — see [`LOGIN-UI.md`](./LOGIN-UI.md).
 | [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) | Forgot password, sign-up, MFA verify + enrollment |
 | [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) | Per-org providers — **no env shortcuts** |
 | [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) | Auth hardening: issues, fixes, test checklist |
-| [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) | **Team RBAC** — ZITADEL only; Postgres for field ACLs + store config |
+| [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) | **Team RBAC** — ZITADEL only; Postgres for store config + (later) tuples |
 | [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) | **Zanzibar-style** doc ACL, editor capabilities, op log, consistency model |
 | [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](./VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) | **Build order 0→10** — OpenFGA design, ZITADEL, editor, Automerge, Hocuspocus |
 | [`SPEC-STORAGE-MERGE.md`](./SPEC-STORAGE-MERGE.md) | **Layout spec** — catalog Zod validation, partial storage, merge on read |
