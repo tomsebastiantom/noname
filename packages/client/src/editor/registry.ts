@@ -15,7 +15,7 @@ import { editorComponentSchemas } from "./schemas/components";
 export { EditorCanvas } from "./components/canvas/EditorCanvas";
 export { ComponentPalette } from "./components/palette/ComponentPalette";
 export { PropsPanel } from "./components/panel/PropsPanel";
-export { EditorHost } from "./components/shell/EditorHost";
+export { EditPageView } from "./components/shell/EditPageView";
 export { SaveBar } from "./components/shell/SaveBar";
 export { VisualEditorShell } from "./components/shell/VisualEditorShell";
 

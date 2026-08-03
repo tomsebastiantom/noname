@@ -6,6 +6,7 @@ import { storeSlugFromHost } from "@noname/shared";
 import {
   lazy,
   type ReactNode,
+  Suspense,
   useCallback,
   useEffect,
   useRef,
@@ -36,7 +37,7 @@ import { registry as platformRegistry } from "./platform/registry";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
 import type { CatalogProps } from "./schemas/shared";
 
-type LayoutRenderAs = "standalone" | "shell" | "panel";
+type LayoutRenderAs = "standalone" | "shell" | "panel" | "editor";
 type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
 
 interface EdgeSchemaResponse {
@@ -51,7 +52,7 @@ interface EdgeSchemaResponse {
   segment?: string;
 }
 
-const EditorHost = lazy(() => import("./editor").then((m) => ({ default: m.EditorHost })));
+const EditPageView = lazy(() => import("./editor").then((m) => ({ default: m.EditPageView })));
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
 
@@ -95,6 +96,7 @@ function App() {
   const [layoutTemplateName, setLayoutTemplateName] = useState("");
   const [pageContentRef, setPageContentRef] = useState<string | null>(null);
   const [layoutRenderAs, setLayoutRenderAs] = useState<LayoutRenderAs>("standalone");
+  const [editorShellSpec, setEditorShellSpec] = useState<Spec | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [navigating, setNavigating] = useState(false);
@@ -182,9 +184,10 @@ function App() {
       .then((body) => body?.data ?? null)
       .catch(() => null);
 
+    const editQuery = editMode && !platformRoute ? "&edit=true" : "";
     const schemaQuery = platformRoute
       ? `segment=default&template=${encodeURIComponent(template)}`
-      : `segment=default&url=${encodeURIComponent(pathname)}`;
+      : `segment=default&url=${encodeURIComponent(pathname)}${editQuery}`;
 
     const specPromise = fetchWithTimeout(
       `/api/edge/schema/${storeSlug}?${schemaQuery}`,
@@ -214,7 +217,22 @@ function App() {
       setPageContentRef(body?.data?.contentRef ?? null);
       setLayoutRenderAs(renderAs);
 
-      if (renderAs === "panel") {
+      if (renderAs === "editor") {
+        const shellTree = body?.data?.shell as Spec | undefined;
+        const shellRef = body?.data?.shellRef ?? null;
+        if (!shellTree || !shellRef) {
+          throw new Error("Editor layout missing shellRef or shell spec");
+        }
+
+        adminShellCacheRef.current = null;
+        setComposeMode("full");
+        setAdminShellProps(null);
+        setAdminPanelSpec(null);
+        setEditorShellSpec(shellTree);
+        setSpec(tree);
+        setShellKey(`${template}:${pathname}:edit`);
+        contentRef.current = tree;
+      } else if (renderAs === "panel") {
         const shellTree = body?.data?.shell as Spec | undefined;
         const shellRef = body?.data?.shellRef ?? null;
         if (!shellTree || !shellRef) {
@@ -241,11 +259,13 @@ function App() {
         setSpec(null);
         setShellKey(template);
         contentRef.current = mergedShell;
+        setEditorShellSpec(null);
       } else {
         adminShellCacheRef.current = null;
         setComposeMode("full");
         setAdminShellProps(null);
         setAdminPanelSpec(null);
+        setEditorShellSpec(null);
         setSpec(tree);
         setShellKey(`${template}:${pathname}`);
         contentRef.current = tree;
@@ -271,10 +291,10 @@ function App() {
   }, [loadPage]);
 
   useEffect(() => {
-    if (editMode && route.kind === "storefront") {
+    if (layoutRenderAs === "editor") {
       void import("./editor");
     }
-  }, [editMode, route.kind]);
+  }, [layoutRenderAs]);
 
   useEffect(() => {
     return subscribeFlagLayoutRefresh(() => {
@@ -317,15 +337,10 @@ function App() {
   const shellRouteKey = shellKey || `${template}:${pathname}`;
 
   const storefrontRoute = route.kind === "storefront";
-  const storefrontEditMode =
-    editMode &&
-    storefrontRoute &&
-    layoutRenderAs === "standalone" &&
-    !panelRoute &&
-    composeMode === "full";
+  const editorRoute = layoutRenderAs === "editor";
 
   return (
-    <AppShell template={template} lockViewport={storefrontEditMode}>
+    <AppShell template={template} lockViewport={editorRoute}>
       {!adminRoute && storefrontRoute ? <AuthBar onAuthChange={() => void loadPage()} /> : null}
       {error ? (
         <div className="shrink-0 border-b border-destructive/30 bg-destructive/5 px-4 py-2 text-sm text-destructive">
@@ -347,15 +362,18 @@ function App() {
           panelLoading={navigating}
           registry={registry}
         />
-      ) : storefrontEditMode && spec && layoutTemplateName ? (
+      ) : editorRoute && spec && editorShellSpec && layoutTemplateName ? (
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <EditorHost
-            displaySpec={spec}
-            templateName={layoutTemplateName}
-            pageContentRef={pageContentRef}
-            registry={registry}
-            onReload={() => void loadPage()}
-          />
+          <Suspense fallback={<p className="p-8 text-muted-foreground">Loading editor…</p>}>
+            <EditPageView
+              displaySpec={spec}
+              shellSpec={editorShellSpec}
+              templateName={layoutTemplateName}
+              pageContentRef={pageContentRef}
+              registry={registry}
+              onReload={() => void loadPage()}
+            />
+          </Suspense>
         </div>
       ) : (
         spec && (

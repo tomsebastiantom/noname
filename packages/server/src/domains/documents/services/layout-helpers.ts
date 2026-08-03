@@ -24,7 +24,12 @@ export function readContentRef(data: Record<string, unknown>): string | null {
 
 export function readRenderAs(data: Record<string, unknown>): LayoutRenderAs {
   const renderAs = data.renderAs;
-  if (renderAs === "standalone" || renderAs === "shell" || renderAs === "panel") {
+  if (
+    renderAs === "standalone" ||
+    renderAs === "shell" ||
+    renderAs === "panel" ||
+    renderAs === "editor"
+  ) {
     return renderAs;
   }
   return "standalone";

@@ -48,7 +48,7 @@ Work through tasks **in order**. Mark done in this file as each lands.
 
 | Item | Notes |
 |------|-------|
-| Full editor via edge schema (remove `EditorHost` bypass) | Host refactor |
+| Full editor via edge schema (remove `EditorHost` bypass) | ✅ `renderAs: editor` on edge; client uses `EditPageView` |
 | OAuth callback as layout | Thin exception OK |
 | Virtualize layer tree | When layouts exceed ~50 nodes |
 | Field ACL in PropsPanel | [FIELD-ACL.md](./FIELD-ACL.md) |

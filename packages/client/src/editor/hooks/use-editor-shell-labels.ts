@@ -9,7 +9,7 @@ import {
 
 export type { EditorShellLabels };
 
-function parseShellFromSpec(spec: Spec | null | undefined): {
+export function parseShellFromSpec(spec: Spec | null | undefined): {
   labels: EditorShellLabels | null;
   valid: boolean;
 } {
@@ -38,7 +38,7 @@ export async function loadEditorShellLabels(): Promise<EditorShellLabels | null>
   return parseShellFromSpec(spec).labels;
 }
 
-export function useEditorShell(): {
+export function useEditorShell(options?: { skip?: boolean }): {
   spec: Spec | null;
   labels: EditorShellLabels | null;
   missing: boolean;
@@ -46,8 +46,10 @@ export function useEditorShell(): {
 } {
   const [spec, setSpec] = useState<Spec | null>(null);
   const [missing, setMissing] = useState(false);
+  const skip = options?.skip ?? false;
 
   useEffect(() => {
+    if (skip) return;
     void loadEditorShellSpec().then((loaded) => {
       if (loaded && parseShellFromSpec(loaded).labels) {
         setSpec(loaded);
@@ -55,11 +57,16 @@ export function useEditorShell(): {
         setMissing(true);
       }
     });
-  }, []);
+  }, [skip]);
 
   const labels = spec ? parseShellFromSpec(spec).labels : null;
 
-  return { spec, labels, missing, loading: spec === null && !missing };
+  return {
+    spec,
+    labels,
+    missing: skip ? false : missing,
+    loading: skip ? false : spec === null && !missing,
+  };
 }
 
 /** @deprecated Prefer useEditorShell */

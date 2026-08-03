@@ -939,7 +939,7 @@ async function upsertLayout(
   spec: Record<string, unknown>,
   options?: {
     skipIfExists?: boolean;
-    renderAs?: "standalone" | "shell" | "panel";
+    renderAs?: "standalone" | "shell" | "panel" | "editor";
     shellRef?: string;
   },
 ): Promise<void> {
@@ -1025,7 +1025,7 @@ async function main() {
   });
 
   await upsertLayout("admin_shell", adminShellSpec, { renderAs: "shell" });
-  await upsertLayout("visual_editor", visualEditorShellSpec, { renderAs: "standalone" });
+  await upsertLayout("visual_editor", visualEditorShellSpec, { renderAs: "shell" });
   await upsertLayout("home", demoSpec, { renderAs: "standalone" });
   await upsertLayout("login", loginSpec, { renderAs: "standalone" });
   await upsertLayout("admin_dashboard", adminDashboardSpec, {

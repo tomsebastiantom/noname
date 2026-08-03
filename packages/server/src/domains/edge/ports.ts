@@ -1,4 +1,4 @@
-export type LayoutRenderAs = "standalone" | "shell" | "panel";
+export type LayoutRenderAs = "standalone" | "shell" | "panel" | "editor";
 
 export interface EdgeSchemaResponse {
   siteId: string;
@@ -34,6 +34,8 @@ export interface GetSchemaOptions {
   url?: string;
   contentRef?: string | null;
   locale?: string;
+  /** Storefront visual editor — returns page layout + visual_editor shell. */
+  edit?: boolean;
 }
 
 export interface EdgeService {

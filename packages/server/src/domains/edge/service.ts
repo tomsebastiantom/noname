@@ -10,6 +10,8 @@ import { evaluationsToFlagMap } from "./flags-map";
 import type { EdgeService, GetSchemaOptions } from "./ports";
 import { parseContentRef, resolveSpecWithState } from "./resolve-spec";
 
+const VISUAL_EDITOR_SHELL_REF = "visual_editor";
+
 export function createEdgeService(
   layout: LayoutDocumentService,
   content: ContentDocumentService,
@@ -65,6 +67,30 @@ export function createEdgeService(
           tenantSettings,
           content,
         });
+      }
+
+      if (options.edit) {
+        const editorShellResolved = await layout.resolve(
+          siteId,
+          VISUAL_EDITOR_SHELL_REF,
+          segment,
+        );
+        const shellSpec = editorShellResolved?.spec ?? null;
+        if (!shellSpec) {
+          throw new Error(`Editor shell layout "${VISUAL_EDITOR_SHELL_REF}" not found`);
+        }
+
+        return {
+          siteId,
+          layout: layoutSpec,
+          templateName: template,
+          renderAs: "editor",
+          shell: shellSpec,
+          shellRef: VISUAL_EDITOR_SHELL_REF,
+          flags: flagMap,
+          segment,
+          contentRef: effectiveContentRef,
+        };
       }
 
       return {

@@ -43,7 +43,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
     const body = await c.req.json<{
       spec: Record<string, unknown>;
       contentRef?: string | null;
-      renderAs?: "standalone" | "shell" | "panel";
+      renderAs?: "standalone" | "shell" | "panel" | "editor";
       shellRef?: string | null;
     }>();
     const ifMatch = c.req.header("If-Match");

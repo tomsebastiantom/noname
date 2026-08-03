@@ -134,7 +134,7 @@ export interface LayoutDTO extends DocumentDTO {
   type: "layout";
 }
 
-export type LayoutRenderAs = "standalone" | "shell" | "panel";
+export type LayoutRenderAs = "standalone" | "shell" | "panel" | "editor";
 
 export interface CreateLayoutInput {
   templateName: string;

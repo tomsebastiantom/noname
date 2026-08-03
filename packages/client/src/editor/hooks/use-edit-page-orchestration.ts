@@ -30,7 +30,7 @@ import {
 } from "./editor-session";
 import { useContentDraft } from "./use-content-draft";
 import { useEditorHistory } from "./use-editor-history";
-import { useEditorShell } from "./use-editor-shell-labels";
+import { parseShellFromSpec, useEditorShell } from "./use-editor-shell-labels";
 import { useLayoutDraft } from "./use-layout-draft";
 
 const editorShellStore = createStateStore({});
@@ -41,12 +41,15 @@ export function useEditPageOrchestration({
   pageContentRef,
   registry,
   onReload,
+  shellSpec: shellSpecFromEdge,
 }: Readonly<{
   displaySpec: Spec;
   templateName: string;
   pageContentRef: string | null;
   registry: ComponentRegistry;
   onReload: () => void;
+  /** Edge-composed visual_editor shell — preferred over client layout fetch. */
+  shellSpec?: Spec | null;
 }>) {
   const {
     draft,
@@ -70,11 +73,18 @@ export function useEditPageOrchestration({
   const [saveConflict, setSaveConflict] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
   const {
-    spec: shellSpec,
-    labels: shellLabels,
-    missing: shellLabelsMissing,
+    spec: fetchedShellSpec,
+    labels: fetchedShellLabels,
+    missing: fetchedShellMissing,
     loading: shellLabelsLoading,
-  } = useEditorShell();
+  } = useEditorShell({ skip: Boolean(shellSpecFromEdge) });
+
+  const shellSpec = shellSpecFromEdge ?? fetchedShellSpec;
+  const parsedShell = parseShellFromSpec(shellSpec);
+  const shellLabels = shellSpecFromEdge ? parsedShell.labels : fetchedShellLabels;
+  const shellLabelsMissing = shellSpecFromEdge
+    ? !parsedShell.labels
+    : fetchedShellMissing;
 
   useEffect(() => {
     activateEditorDevtools();

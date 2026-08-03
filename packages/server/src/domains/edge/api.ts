@@ -19,6 +19,7 @@ export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSet
       url: c.req.query("url") ?? undefined,
       contentRef: c.req.query("contentRef") ?? undefined,
       locale: c.req.query("locale") ?? undefined,
+      edit: c.req.query("edit") === "true",
     });
     return ok(c, schema);
   });
