@@ -55,6 +55,15 @@ export const ADMIN_STATE = {
     loading: "/admin/analytics/loading",
     error: "/admin/analytics/error",
   },
+  traces: {
+    traces: "/admin/traces/rows",
+    loading: "/admin/traces/loading",
+    error: "/admin/traces/error",
+    selectedTraceId: "/admin/traces/selectedTraceId",
+    detailSpans: "/admin/traces/detailSpans",
+    detailLoading: "/admin/traces/detailLoading",
+    detailError: "/admin/traces/detailError",
+  },
   authSettings: {
     loaded: "/admin/auth/settings/loaded",
     loading: "/admin/auth/settings/loading",

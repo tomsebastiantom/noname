@@ -22,6 +22,7 @@ const PLATFORM_PROJECT_ROLES = [
   { roleKey: "analyst", displayName: "Analyst", group: "Team" },
   { roleKey: "replay_viewer", displayName: "Replay viewer", group: "Team" },
   { roleKey: "flags_manager", displayName: "Flags manager", group: "Team" },
+  { roleKey: "trace_viewer", displayName: "Trace viewer", group: "Team" },
   { roleKey: "customer", displayName: "Customer", group: "Shopper" },
 ] as const;
 const REDIRECT_URI = "http://localhost:5173/auth/callback";

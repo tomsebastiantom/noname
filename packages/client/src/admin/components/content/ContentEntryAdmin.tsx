@@ -1,5 +1,7 @@
 import { useStateValue } from "@json-render/react";
 import { useMemo, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
+import { Alert, AlertDescription } from "../../../components/ui/alert";
 import {
   Card,
   CardContent,
@@ -50,6 +52,7 @@ type ContentEntryLabels = ContentEntryFormLabels & {
   emptyLabel: string;
   selectedPrefix: string;
   missingTargetMessage: string;
+  forbiddenLabel: string;
 };
 
 type ContentEntryAdminProps = ComponentCtx<CatalogProps<ContentEntryConfig, ContentEntryLabels>>;
@@ -214,6 +217,7 @@ function ContentEntryEntriesPanel({
 
 export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
   const { config, labels } = props;
+  const canAccessContent = useAdminRouteAccess("content");
   const locale = config.locale || CONTENT_DEFAULT_LOCALE;
   const contentType = contentTypeFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ contentType, locale }), [contentType, locale]);
@@ -225,6 +229,18 @@ export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
 
   const types = loaded?.mode === "types" ? loaded.types : [];
   const schema = loaded?.mode === "entries" ? (loaded.schema ?? null) : null;
+
+  if (canAccessContent === null) {
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canAccessContent === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-muted-foreground">{labels.loadingLabel}</p>;

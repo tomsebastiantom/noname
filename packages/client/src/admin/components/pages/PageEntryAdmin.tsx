@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { useMemo, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -53,6 +54,7 @@ type PageEntryLabels = {
   statusColumnHeader: string;
   pageNotFoundPrefix: string;
   pageNotFoundSuffix: string;
+  forbiddenLabel: string;
 };
 
 type PageEntryAdminProps = ComponentCtx<CatalogProps<PageEntryConfig, PageEntryLabels>>;
@@ -157,6 +159,7 @@ function PageEntryDetailFields({
 
 export function PageEntryAdmin({ props }: PageEntryAdminProps) {
   const { labels } = props;
+  const canAccessPages = useAdminRouteAccess("pages");
   const pageKey = routingPageKeyFromPath(window.location.pathname);
   const createCatalog = useCatalogSubmit();
   const loadAction = pageKey ? "loadRoutingPage" : "listRoutingPages";
@@ -187,6 +190,18 @@ export function PageEntryAdmin({ props }: PageEntryAdminProps) {
   }
 
   const listDisplayError = mergeCatalogError(createCatalog.error, loadError);
+
+  if (canAccessPages === null) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canAccessPages === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;

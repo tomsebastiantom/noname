@@ -161,8 +161,8 @@ Publish: **admin platform permission only** — no Keto. See [`ROLES-AND-SCOPE.m
 ## Quick reference
 
 ```
-DONE    N8–N10: tags column, scope admin UI, Keto bindings + seed
-NEXT    doc-level publisher share UI; collections
-ALSO    Phase A′ agents (parallel)
-NEVER   field ACL / Keto on edge / second authz product
+DONE    N8–N10 + doc share UI: tags, scope admin, editor/publisher share
+NEXT    B2 collections OR B3 list perf OR A′ agent POC (see ROADMAP-PHASES-B-A-C.md)
+ALSO    Phase A′ agents (parallel after AuthorizationPort — done)
+NEVER   field ACL / Keto on edge / Nostr as auth core / CRDT before product gate
 ```

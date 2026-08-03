@@ -79,6 +79,14 @@ export function demoTeamUserSpecs(): DemoTeamUserSpec[] {
       role: "flags_manager",
       access: "Feature flags only",
     },
+    {
+      email: process.env.ZITADEL_DEMO_TRACE_EMAIL?.trim() ?? "trace@zitadel.localhost",
+      password: process.env.ZITADEL_DEMO_TRACE_PASSWORD?.trim() ?? "NonameTrace1!",
+      givenName: "Henry",
+      familyName: "Trace",
+      role: "trace_viewer",
+      access: "Distributed traces only (traces:view)",
+    },
   ];
 }
 

@@ -17,7 +17,9 @@ export {
   adminRouteIdFromHref,
   adminRouteVisibleWhileLoading,
   canAccessAdminRoute,
+  hasStaffAdminAccess,
   isAdminRouteId,
+  OBSERVABILITY_ROUTE_IDS,
 } from "./admin-routes";
 
 export const ANALYTICS_ADMIN_PATH = ADMIN_ROUTE_PATHS.analytics;

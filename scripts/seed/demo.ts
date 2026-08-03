@@ -125,10 +125,13 @@ const adminShellNavConfig = {
     { id: "auth", href: "/admin/settings/auth" },
     { id: "users", href: "/admin/settings/users" },
     { id: "scope", href: "/admin/settings/scope" },
+    { id: "login", href: "/admin/settings/login" },
+  ],
+  observabilityItems: [
     { id: "analytics", href: "/admin/settings/analytics" },
     { id: "flags", href: "/admin/settings/flags" },
     { id: "replay", href: "/admin/settings/replay" },
-    { id: "login", href: "/admin/settings/login" },
+    { id: "traces", href: "/admin/settings/traces" },
   ],
   accountSecurityHref: "/admin/settings/security",
   storefrontHref: "/",
@@ -138,6 +141,8 @@ const adminShellNavLabels = {
   sidebarTitle: "Admin",
   productName: "Noname",
   settingsSectionLabel: "Settings",
+  observabilitySectionLabel: "Observability",
+  accountSectionLabel: "Account",
   nav: {
     home: "Overview",
     pages: "Pages",
@@ -148,10 +153,13 @@ const adminShellNavLabels = {
     auth: "Auth settings",
     users: "Team members",
     scope: "Content access",
+    login: "Login appearance",
+  },
+  observability: {
     analytics: "Analytics",
     flags: "Feature flags",
     replay: "Session replay",
-    login: "Login appearance",
+    traces: "Distributed traces",
   },
   accountSecurity: "Account security",
   storefront: "← Site",
@@ -174,17 +182,32 @@ const documentTagsLabels = {
 };
 
 const documentShareLabels = {
-  shareTitle: "Share with",
-  shareHint: "Give a team member edit access to this document only.",
+  shareTitle: "Editor access",
+  shareHint: "Grant edit access to this document only (draft + save).",
   shareUserLabel: "Team member",
-  shareGrantLabel: "Share",
+  shareGrantLabel: "Share editor access",
   shareGrantingLabel: "Sharing…",
   shareRevokeLabel: "Remove",
   shareRevokingLabel: "Removing…",
-  shareGrantSuccessMessage: "Access granted.",
-  shareRevokeSuccessMessage: "Access removed.",
-  shareEmptyMessage: "Not shared with anyone directly yet.",
+  shareGrantSuccessMessage: "Editor access granted.",
+  shareRevokeSuccessMessage: "Editor access removed.",
+  shareEmptyMessage: "No direct editor shares yet.",
   shareLoadingLabel: "Loading share list…",
+};
+
+const documentPublisherShareLabels = {
+  publisherShareTitle: "Publisher access",
+  publisherShareHint:
+    "Grant publish access to this document only. Only users with the publisher or admin role can be added.",
+  publisherShareUserLabel: "Publisher or admin",
+  publisherShareGrantLabel: "Share publish access",
+  publisherShareGrantingLabel: "Sharing…",
+  publisherShareRevokeLabel: "Remove",
+  publisherShareRevokingLabel: "Removing…",
+  publisherShareGrantSuccessMessage: "Publish access granted.",
+  publisherShareRevokeSuccessMessage: "Publish access removed.",
+  publisherShareEmptyMessage: "No direct publisher shares yet.",
+  publisherShareLoadingLabel: "Loading publisher shares…",
 };
 
 const mediaFieldLabels = {
@@ -309,6 +332,8 @@ const analyticsEventsAdminLabels = {
   sourceColumnHeader: "Source",
   sessionColumnHeader: "Session",
   schemaColumnHeader: "Schema",
+  traceColumnHeader: "Trace",
+  viewTraceLabel: "View trace",
 };
 
 const loginBrandingLabels = {
@@ -326,6 +351,8 @@ const contentAdminLabels = {
   ...referenceFieldLabels,
   ...documentTagsLabels,
   ...documentShareLabels,
+  ...documentPublisherShareLabels,
+  forbiddenLabel: "Content requires the editor or store admin role.",
   deleteLabel: "Delete",
   deletingLabel: "Deleting…",
   createDraftLabel: "Create draft",
@@ -342,6 +369,8 @@ const layoutAdminLabels = {
   ...draftPublishLabels,
   ...documentTagsLabels,
   ...documentShareLabels,
+  ...documentPublisherShareLabels,
+  forbiddenLabel: "Layouts require the editor or store admin role.",
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
   publishedMessage: "Layout published. Site and login will use the new spec on next load.",
@@ -391,6 +420,7 @@ const pageEntryAdminLabels = {
   statusColumnHeader: "Status",
   pageNotFoundPrefix: "Page",
   pageNotFoundSuffix: "not found.",
+  forbiddenLabel: "Pages require the editor or store admin role.",
 };
 
 const pageTreeAdminLabels = {
@@ -401,6 +431,7 @@ const pageTreeAdminLabels = {
   removeEntryLabel: "Remove entry",
   pageDocumentsLinkLabel: "← Page documents",
   treeLoadingLabel: "Loading page tree…",
+  forbiddenLabel: "Pages require the editor or store admin role.",
 };
 
 const featureFlagsAdminLabels = {
@@ -412,6 +443,32 @@ const featureFlagsAdminLabels = {
   forbiddenLabel: "Feature flags require the flags manager or store admin role.",
 };
 
+const tracesAdminLabels = {
+  loadingLabel: "Loading traces…",
+  empty: "No traces in the last hour for this store. Browse the site or use admin to generate traffic.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "Distributed traces require the trace viewer or store admin role.",
+  operationColumnHeader: "Operation",
+  durationColumnHeader: "Duration",
+  spansColumnHeader: "Spans",
+  statusColumnHeader: "Status",
+  timeColumnHeader: "Time",
+  traceIdColumnHeader: "Trace ID",
+  detailTitle: "Span waterfall",
+  detailHint:
+    "One trace ID ties together every span for a single request (browser → API → DB). Copy it for logs, or open Jaeger for the full timeline.",
+  detailLoadingLabel: "Loading spans…",
+  detailEmptyLabel: "No spans for this trace.",
+  okLabel: "OK",
+  errorLabel: "Error",
+  serviceColumnHeader: "Service",
+  spanTagsLabel: "Attributes",
+  copyTraceIdLabel: "Copy trace ID",
+  copiedTraceIdLabel: "Copied",
+  openJaegerLabel: "Open in Jaeger",
+};
+
 const adminHomeLinkConfig = [
   { id: "pages", href: "/admin/pages" },
   { id: "auth_providers", href: "/admin/content/auth_provider" },
@@ -421,6 +478,7 @@ const adminHomeLinkConfig = [
   { id: "analytics", href: "/admin/settings/analytics" },
   { id: "flags", href: "/admin/settings/flags" },
   { id: "replay", href: "/admin/settings/replay" },
+  { id: "traces", href: "/admin/settings/traces" },
   { id: "auth", href: "/admin/settings/auth" },
   { id: "account_security", href: "/admin/settings/security" },
   { id: "login", href: "/admin/settings/login" },
@@ -452,6 +510,10 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   replay: {
     label: "Session replay",
     description: "Browse recorded browser sessions (replay viewer or admin)",
+  },
+  traces: {
+    label: "Distributed traces",
+    description: "OpenTelemetry request traces for this store (Jaeger proxy)",
   },
   auth: {
     label: "Auth settings",
@@ -703,6 +765,22 @@ const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdmin"], {
       "Analytics",
       "Browse tracked storefront events and summary counts by event type.",
       analyticsEventsAdminLabels,
+    ),
+  },
+});
+
+const adminTracesSpec = adminPanelSpec(["loadTraces", "tracesAdmin"], {
+  loadTraces: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadTracesAdmin" }, {}),
+  },
+  tracesAdmin: {
+    type: "TracesAdmin",
+    props: panelProps(
+      {},
+      "Distributed traces",
+      "Server request traces for this store (last hour). Click a row to inspect spans.",
+      tracesAdminLabels,
     ),
   },
 });
@@ -1215,6 +1293,10 @@ async function main() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_analytics", adminAnalyticsSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_traces", adminTracesSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });

@@ -121,13 +121,15 @@ export function SessionReplayAdmin({
           {loading ? (
             <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>
           ) : (
-            <DataTable
-              columns={columns}
-              rows={sessions}
-              rowKey={(row) => row.sessionId}
-              onRowClick={handleSelectSession}
-              emptyMessage={labels.empty}
-            />
+            <div className="max-h-[28rem] overflow-y-auto">
+              <DataTable
+                columns={columns}
+                rows={sessions}
+                rowKey={(row) => row.sessionId}
+                onRowClick={handleSelectSession}
+                emptyMessage={labels.empty}
+              />
+            </div>
           )}
         </CardContent>
       </Card>

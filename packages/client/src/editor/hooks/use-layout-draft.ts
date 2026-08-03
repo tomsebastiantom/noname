@@ -11,6 +11,7 @@ import {
 } from "../layout-entries";
 import { cloneSpec } from "../lib/spec-utils";
 import type { LayoutDraft } from "../lib/types";
+import { getLayoutDraftCache, setLayoutDraftCache } from "./layout-draft-cache";
 
 export function useLayoutDraft(templateName: string, displaySpec: Spec, segment = "default") {
   const [draft, setDraft] = useState<LayoutDraft | null>(null);
@@ -24,15 +25,23 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
 
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
     setLoadError(null);
+
+    const cached = getLayoutDraftCache(templateName, segment);
+    if (cached) {
+      setDraft(cached.draft);
+      setStoredSpec(cloneSpec(cached.storedSpec));
+      setCanPublish(cached.canPublish);
+      setDirty(false);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     void (async () => {
       try {
         const session = await fetchAuthSessionStatus().catch(() => null);
-        if (!cancelled) {
-          setCanPublish(sessionHasPermission(session, PERMISSIONS.LAYOUT_PUBLISH));
-        }
+        const publishAllowed = sessionHasPermission(session, PERMISSIONS.LAYOUT_PUBLISH);
 
         const row = await getLayoutForTemplate(templateName, segment);
         if (!row) {
@@ -50,15 +59,23 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
           updatedAt: row.updatedAt,
         };
         if (!cancelled) {
+          setLayoutDraftCache(templateName, segment, {
+            draft: loaded,
+            storedSpec: spec,
+            canPublish: publishAllowed,
+          });
           setDraft(loaded);
           setStoredSpec(cloneSpec(spec));
+          setCanPublish(publishAllowed);
           setDirty(false);
         }
       } catch (err) {
         if (!cancelled) {
           setLoadError(formatApiError(err, "Could not load layout for editing"));
-          setDraft(null);
-          setStoredSpec(cloneSpec(displaySpecRef.current));
+          if (!cached) {
+            setDraft(null);
+            setStoredSpec(cloneSpec(displaySpecRef.current));
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -88,19 +105,27 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
         ifMatchUpdatedAt: draft.updatedAt,
       });
       setDirty(false);
-      setDraft((d) =>
-        d
+      setDraft((d) => {
+        const next = d
           ? {
               ...d,
-              status: "draft",
+              status: "draft" as const,
               storedSpec: cloneSpec(specToSave),
               updatedAt: saved.updatedAt,
             }
-          : d,
-      );
+          : d;
+        if (next) {
+          setLayoutDraftCache(next.templateName, next.segment, {
+            draft: next,
+            storedSpec: cloneSpec(specToSave),
+            canPublish,
+          });
+        }
+        return next;
+      });
       setStoredSpec(cloneSpec(specToSave));
     },
-    [draft, storedSpec],
+    [draft, storedSpec, canPublish],
   );
 
   const publishDraft = useCallback(
@@ -117,19 +142,27 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
       });
       await publishLayout(draft.layoutId);
       setDirty(false);
-      setDraft((d) =>
-        d
+      setDraft((d) => {
+        const next = d
           ? {
               ...d,
-              status: "published",
+              status: "published" as const,
               storedSpec: cloneSpec(specToSave),
               updatedAt: saved.updatedAt,
             }
-          : d,
-      );
+          : d;
+        if (next) {
+          setLayoutDraftCache(next.templateName, next.segment, {
+            draft: next,
+            storedSpec: cloneSpec(specToSave),
+            canPublish,
+          });
+        }
+        return next;
+      });
       setStoredSpec(cloneSpec(specToSave));
     },
-    [draft, storedSpec],
+    [draft, storedSpec, canPublish],
   );
 
   const discardChanges = useCallback(() => {

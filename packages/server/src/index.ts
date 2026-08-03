@@ -20,6 +20,7 @@ import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
 import { initEventBus } from "./shared/event-bus";
 import { orgMiddleware } from "./shared/org";
+import { orgTracingMiddleware } from "./shared/org-tracing";
 import { initSseManager } from "./shared/sse-manager";
 
 initEventBus();
@@ -28,6 +29,7 @@ initSseManager();
 const app = new Hono();
 
 app.use("*", orgMiddleware);
+app.use("*", orgTracingMiddleware);
 
 app.onError((err, c) => {
   const handled = handleDomainError(err, c);

@@ -9,6 +9,11 @@ import {
   saveContentEntry,
 } from "../content-entries";
 import { parseContentRef } from "../content-ref";
+import {
+  contentDraftCacheKey,
+  getContentDraftCache,
+  setContentDraftCache,
+} from "./content-draft-cache";
 
 export function useContentDraft(pageContentRef: string | null, locale = CONTENT_DEFAULT_LOCALE) {
   const parsed = useMemo(
@@ -32,8 +37,18 @@ export function useContentDraft(pageContentRef: string | null, locale = CONTENT_
     }
 
     let cancelled = false;
-    setLoading(true);
     setLoadError(null);
+
+    const cacheKey = contentDraftCacheKey(parsed.contentType, parsed.entryId, locale);
+    const cached = getContentDraftCache(cacheKey);
+    if (cached) {
+      setSchema(cached.schema);
+      setBaseline(cached.fields);
+      setValues(cached.fields);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     void (async () => {
       try {
@@ -43,15 +58,18 @@ export function useContentDraft(pageContentRef: string | null, locale = CONTENT_
         }
         const fields = await loadEntryFields(parsed.contentType, parsed.entryId, locale);
         if (cancelled) return;
+        setContentDraftCache(cacheKey, { schema: typeDef.schema, fields });
         setSchema(typeDef.schema);
         setBaseline(fields);
         setValues(fields);
       } catch (err) {
         if (!cancelled) {
           setLoadError(formatApiError(err, "Could not load page content"));
-          setSchema(null);
-          setBaseline({});
-          setValues({});
+          if (!cached) {
+            setSchema(null);
+            setBaseline({});
+            setValues({});
+          }
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -82,6 +100,10 @@ export function useContentDraft(pageContentRef: string | null, locale = CONTENT_
       locale,
     });
     setBaseline({ ...values });
+    setContentDraftCache(contentDraftCacheKey(parsed.contentType, parsed.entryId, locale), {
+      schema,
+      fields: { ...values },
+    });
   }, [parsed, schema, values, locale]);
 
   const publishContent = useCallback(async () => {

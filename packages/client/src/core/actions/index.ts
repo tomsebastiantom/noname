@@ -8,6 +8,7 @@ import { replayActions } from "./replay";
 import { routingActions } from "./routing";
 import { scopeActions } from "./scope";
 import { teamActions } from "./team";
+import { tracesActions } from "./traces";
 import type { CatalogActionMap } from "./types";
 
 export const coreActionHandlers = {
@@ -20,6 +21,7 @@ export const coreActionHandlers = {
   ...routingActions,
   ...replayActions,
   ...analyticsActions,
+  ...tracesActions,
   ...flagActions,
 } satisfies CatalogActionMap;
 

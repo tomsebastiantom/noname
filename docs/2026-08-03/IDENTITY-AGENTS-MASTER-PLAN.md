@@ -244,6 +244,7 @@ Security:
 
 | Question | Read |
 |----------|------|
+| **Approval brief (B / A′ / C)** | [`ROADMAP-PHASES-B-A-C.md`](./ROADMAP-PHASES-B-A-C.md) |
 | **This file** | IdP choice, agents, Nostr-inspired delegation, phases |
 | Platform permissions | [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) |
 | IdP comparison | [`PERMISSIONS-IDP-COMPARISON.md`](../2026-07-27/PERMISSIONS-IDP-COMPARISON.md) |

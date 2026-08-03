@@ -62,6 +62,20 @@ export const documentShareLabelsSchema = z.object({
   shareLoadingLabel: z.string(),
 });
 
+export const documentPublisherShareLabelsSchema = z.object({
+  publisherShareTitle: z.string(),
+  publisherShareHint: z.string(),
+  publisherShareUserLabel: z.string(),
+  publisherShareGrantLabel: z.string(),
+  publisherShareGrantingLabel: z.string(),
+  publisherShareRevokeLabel: z.string(),
+  publisherShareRevokingLabel: z.string(),
+  publisherShareGrantSuccessMessage: z.string(),
+  publisherShareRevokeSuccessMessage: z.string(),
+  publisherShareEmptyMessage: z.string(),
+  publisherShareLoadingLabel: z.string(),
+});
+
 /** Nav row structure — display name in labels.nav[id] */
 export const navItemConfigSchema = z.object({
   id: z.string(),

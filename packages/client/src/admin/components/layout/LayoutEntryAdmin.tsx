@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { useMemo, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -54,6 +55,7 @@ type LayoutEntryLabels = {
   hasContentRefYes: string;
   templateNotFoundPrefix: string;
   templateNotFoundSuffix: string;
+  forbiddenLabel: string;
 } & DocumentAccessLabels;
 
 type LayoutEntryAdminProps = ComponentCtx<CatalogProps<LayoutEntryConfig, LayoutEntryLabels>>;
@@ -221,6 +223,7 @@ function LayoutEntryDetailFields({
 
 export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
   const { config, labels } = props;
+  const canAccessLayout = useAdminRouteAccess("layout");
   const segment = config.segment || "default";
   const templateName = layoutTemplateFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ templateName, segment }), [templateName, segment]);
@@ -231,6 +234,18 @@ export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
   const loadError = useStateValue(ADMIN_STATE.layout.error) as string | null | undefined;
 
   const layouts = loaded?.mode === "list" ? loaded.layouts : [];
+
+  if (canAccessLayout === null) {
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canAccessLayout === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-muted-foreground">{labels.loadingLabel}</p>;

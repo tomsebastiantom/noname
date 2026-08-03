@@ -6,7 +6,8 @@ import {
   sessionUserEmail,
   sessionUserId,
 } from "../auth/session";
-import { apiFetchData } from "../lib/api";
+
+type LayoutFlagKey = { key: string; schemaId: string | null; variantId: string | null };
 
 let sdk: BrowserSDK | null = null;
 let flagsSnapshot: Record<string, unknown> = {};
@@ -63,12 +64,17 @@ function installFlagBridge(): void {
   });
 }
 
-async function loadLayoutFlagKeys(_orgId: string): Promise<void> {
+async function loadLayoutFlagKeys(orgId: string): Promise<void> {
   try {
-    const flags =
-      await apiFetchData<Array<{ key: string; schemaId: string | null; variantId: string | null }>>(
-        "/api/flags",
-      );
+    const headers: Record<string, string> = {
+      "x-org-id": orgId,
+      ...(apiHeaders() as Record<string, string>),
+    };
+    const res = await fetch("/api/flags/layout-keys", { headers });
+    if (!res.ok) return;
+
+    const body = (await res.json()) as { data?: LayoutFlagKey[] };
+    const flags = body.data ?? [];
     const keys = new Set<string>();
     for (const flag of flags) {
       if (flag.schemaId || flag.variantId) {
@@ -103,7 +109,12 @@ export function initBrowserObservability(): Promise<void> {
         getHeaders,
         privacy: { respectDNT: false },
         replay: { sampleRate: isLocalDevHost() ? 1 : 0 },
-        trace: { propagateFetch: true },
+        trace: {
+          propagateFetch: true,
+          exportSpans: true,
+          sampleRate: isLocalDevHost() ? 1 : 0.1,
+          serviceName: "noname-browser",
+        },
       });
       installFlagBridge();
       void loadLayoutFlagKeys(orgId);

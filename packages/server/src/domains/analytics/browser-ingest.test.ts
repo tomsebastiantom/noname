@@ -214,4 +214,45 @@ describe("analytics browser ingest routes", () => {
     expect(res.status).toBe(400);
     expect(track).not.toHaveBeenCalled();
   });
+
+  it("POST /spans accepts browser span batch", async () => {
+    const track = vi.fn();
+    const trackBatch = vi.fn();
+    const app = testApp({ track, trackBatch } as unknown as AnalyticsService);
+    const traceId = "a".repeat(32);
+    const spanId = "b".repeat(16);
+
+    const res = await app.request("/api/analytics/spans", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-org-id": "org-1" },
+      body: JSON.stringify({
+        spans: [
+          {
+            traceId,
+            spanId,
+            name: "document.load",
+            startTimeMs: Date.now() - 100,
+            durationMs: 100,
+            attributes: { "browser.service": "noname-browser" },
+            status: "ok",
+          },
+          {
+            traceId,
+            spanId: "c".repeat(16),
+            parentSpanId: spanId,
+            name: "fetch GET /api/pages",
+            startTimeMs: Date.now() - 50,
+            durationMs: 50,
+            attributes: { "browser.service": "noname-browser", "http.method": "GET" },
+            status: "ok",
+          },
+        ],
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    const body = (await res.json()) as { data?: { accepted?: number } };
+    expect(body.data?.accepted).toBe(2);
+    expect(track).not.toHaveBeenCalled();
+  });
 });

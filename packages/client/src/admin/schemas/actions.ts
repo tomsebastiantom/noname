@@ -187,6 +187,15 @@ export const adminActionSchemas = {
   loadAnalyticsAdmin: {
     description: "Load recent analytics events and event-type aggregations",
   },
+  loadTracesAdmin: {
+    description: "Load recent distributed traces for this org",
+  },
+  loadTraceDetail: {
+    params: z.object({
+      traceId: z.string().min(1),
+    }),
+    description: "Load span waterfall for one trace",
+  },
   loadReplayChunk: {
     params: z.object({
       storageKey: z.string().min(1),

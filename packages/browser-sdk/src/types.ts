@@ -32,6 +32,18 @@ export interface SpanContext {
   setAttribute: (key: string, value: string) => void;
 }
 
+/** Finished browser span exported to the server OTLP proxy. */
+export interface BrowserSpanExport {
+  traceId: string;
+  spanId: string;
+  parentSpanId?: string;
+  name: string;
+  startTimeMs: number;
+  durationMs: number;
+  attributes?: Record<string, string>;
+  status?: "ok" | "error";
+}
+
 export interface WebVitalMetric {
   name: "LCP" | "INP" | "CLS" | "TTFB" | "FCP";
   value: number;
@@ -62,6 +74,7 @@ export interface ErrorsModule {
 export interface TraceModule {
   startSpan(name: string, attributes?: Record<string, string>): SpanContext;
   getTraceHeaders(): { traceparent: string; tracestate?: string };
+  flush(): Promise<void>;
 }
 
 export interface PerformanceModule {
@@ -119,6 +132,11 @@ export interface BrowserSDKOptions {
     enabled?: boolean;
     serviceName?: string;
     propagateFetch?: boolean;
+    exportSpans?: boolean;
+    sampleRate?: number;
+    endpoint?: string;
+    batchSize?: number;
+    flushIntervalMs?: number;
   };
   performance?: {
     enabled?: boolean;

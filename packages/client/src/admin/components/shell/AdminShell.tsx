@@ -12,6 +12,7 @@ type AdminShellConfig = {
   activeNav: string;
   navItems: { id: string; href: string }[];
   settingsItems: { id: string; href: string }[];
+  observabilityItems?: { id: string; href: string }[];
   accountSecurityHref: string;
   storefrontHref: string;
 };
@@ -22,8 +23,11 @@ type AdminShellLabels = {
   sidebarTitle: string;
   productName: string;
   settingsSectionLabel: string;
+  observabilitySectionLabel?: string;
   nav: Record<string, string>;
   settings: Record<string, string>;
+  observability?: Record<string, string>;
+  accountSectionLabel?: string;
   accountSecurity: string;
   storefront: string;
   signOut: string;
@@ -39,7 +43,7 @@ export function AdminShell({
   const activeNav = adminActiveNavFromPath(pathname) || config.activeNav;
 
   return (
-    <div className="flex min-h-screen bg-background">
+    <div className="flex h-dvh overflow-hidden bg-background">
       <AdminNav
         activeNav={activeNav}
         sidebarTitle={labels.sidebarTitle}
@@ -47,6 +51,12 @@ export function AdminShell({
         navItems={resolveNavItems(config.navItems, labels.nav)}
         settingsSectionLabel={labels.settingsSectionLabel}
         settingsItems={resolveNavItems(config.settingsItems, labels.settings)}
+        observabilitySectionLabel={labels.observabilitySectionLabel}
+        observabilityItems={resolveNavItems(
+          config.observabilityItems ?? [],
+          labels.observability ?? {},
+        )}
+        accountSectionLabel={labels.accountSectionLabel}
         accountSecurityLabel={labels.accountSecurity}
         accountSecurityHref={config.accountSecurityHref}
         storefrontLabel={labels.storefront}
@@ -54,9 +64,9 @@ export function AdminShell({
         signOutLabel={labels.signOut}
         signInLabel={labels.signIn}
       />
-      <main className="flex flex-1 flex-col">
+      <main className="flex min-h-0 flex-1 flex-col">
         <AdminPageHeader title={labels.title} description={labels.description} />
-        <div className="flex-1 p-8">{children as ReactNode}</div>
+        <div className="min-h-0 flex-1 overflow-y-auto p-8">{children as ReactNode}</div>
       </main>
     </div>
   );

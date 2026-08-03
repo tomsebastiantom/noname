@@ -2,6 +2,8 @@ import type { Hono } from "hono";
 import { getUserId, requireHeaderOrgId } from "../../../shared/org";
 import { created } from "../../../shared/respond";
 import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "../browser-ingest";
+import { recordBrowserSpans } from "../browser-span-export";
+import { parseSpanIngest } from "../browser-span-ingest";
 import type { AnalyticsRouteDeps } from "./deps";
 
 export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRouteDeps): void {
@@ -73,5 +75,17 @@ export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRoute
       }),
     });
     return created(c, { accepted: true, storageKey });
+  });
+
+  routes.post("/spans", async (c) => {
+    const body = await c.req.json();
+    const { spans } = parseSpanIngest(body);
+    const orgId = requireHeaderOrgId(c);
+    if (orgId instanceof Response) return orgId;
+    if (spans.length === 0) {
+      return c.json({ error: "no spans" }, 400);
+    }
+    const accepted = recordBrowserSpans(orgId, spans);
+    return created(c, { accepted });
   });
 }

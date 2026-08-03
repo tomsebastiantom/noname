@@ -94,6 +94,7 @@ export const staffRoleSchema = z.enum([
   "analyst",
   "replay_viewer",
   "flags_manager",
+  "trace_viewer",
 ]);
 
 export const staffInviteSchema = z.object({

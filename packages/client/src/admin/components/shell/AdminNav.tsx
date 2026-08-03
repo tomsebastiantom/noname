@@ -20,6 +20,9 @@ export type AdminNavProps = {
   navItems: AdminNavItem[];
   settingsSectionLabel: string;
   settingsItems: AdminNavItem[];
+  observabilitySectionLabel?: string;
+  observabilityItems?: AdminNavItem[];
+  accountSectionLabel?: string;
   accountSecurityLabel: string;
   accountSecurityHref: string;
   storefrontLabel: string;
@@ -75,10 +78,16 @@ export function AdminNav(props: AdminNavProps) {
   const { canAccessNavItem } = useAdminNavVisibility();
 
   const navItems = props.navItems.filter((item) => canAccessNavItem(item.id));
-  const settingsItems = props.settingsItems.filter((item) => canAccessNavItem(item.id));
+  const observabilityItems = (props.observabilityItems ?? []).filter((item) =>
+    canAccessNavItem(item.id),
+  );
+  const observabilityIds = new Set(observabilityItems.map((item) => item.id));
+  const settingsItems = props.settingsItems
+    .filter((item) => canAccessNavItem(item.id))
+    .filter((item) => !observabilityIds.has(item.id));
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
+    <aside className="flex h-full w-56 shrink-0 flex-col overflow-y-auto border-r bg-muted/30">
       <div className="px-4 py-5">
         <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {props.sidebarTitle}
@@ -93,15 +102,37 @@ export function AdminNav(props: AdminNavProps) {
           </AdminNavLink>
         ))}
 
-        <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          {props.settingsSectionLabel}
-        </p>
-        {settingsItems.map((item) => (
-          <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
-            {item.label}
-          </AdminNavLink>
-        ))}
+        {settingsItems.length > 0 ? (
+          <>
+            <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {props.settingsSectionLabel}
+            </p>
+            {settingsItems.map((item) => (
+              <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
+                {item.label}
+              </AdminNavLink>
+            ))}
+          </>
+        ) : null}
 
+        {observabilityItems.length > 0 && props.observabilitySectionLabel ? (
+          <>
+            <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {props.observabilitySectionLabel}
+            </p>
+            {observabilityItems.map((item) => (
+              <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
+                {item.label}
+              </AdminNavLink>
+            ))}
+          </>
+        ) : null}
+
+        {props.accountSectionLabel ? (
+          <p className="mb-1 mt-4 px-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            {props.accountSectionLabel}
+          </p>
+        ) : null}
         <AdminNavLink
           href={props.accountSecurityHref}
           active={props.activeNav === "account_security"}

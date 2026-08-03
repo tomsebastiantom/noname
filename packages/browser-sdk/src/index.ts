@@ -13,6 +13,7 @@ const DEFAULT_ANALYTICS_ENDPOINT = "/api/analytics/track";
 const DEFAULT_ERRORS_ENDPOINT = "/api/analytics/error";
 const DEFAULT_FLAGS_ENDPOINT = "/api/flags/evaluate";
 const DEFAULT_REPLAY_ENDPOINT = "/api/analytics/replay";
+const DEFAULT_SPANS_ENDPOINT = "/api/analytics/spans";
 
 export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
   if (typeof window === "undefined") {
@@ -50,6 +51,12 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
     enabled: options.trace?.enabled ?? true,
     serviceName: options.trace?.serviceName,
     propagateFetch: options.trace?.propagateFetch,
+    exportSpans: options.trace?.exportSpans,
+    sampleRate: options.trace?.sampleRate,
+    endpoint: options.trace?.endpoint ?? DEFAULT_SPANS_ENDPOINT,
+    getHeaders,
+    batchSize: options.trace?.batchSize,
+    flushIntervalMs: options.trace?.flushIntervalMs,
   });
 
   const analytics = createAnalyticsModule(
@@ -57,6 +64,7 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
     getAnalyticsContext,
     getHeaders,
     () => currentUser,
+    () => getCurrentTraceContext(),
     options.analytics?.batchSize,
     options.analytics?.flushIntervalMs,
   );
@@ -118,6 +126,7 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
     trace: {
       startSpan: trace.startSpan.bind(trace),
       getTraceHeaders: trace.getTraceHeaders.bind(trace),
+      flush: trace.flush.bind(trace),
     },
     performance: {
       report: performance.report.bind(performance),

@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
@@ -40,6 +41,7 @@ type PageTreeLabels = {
   removeEntryLabel: string;
   pageDocumentsLinkLabel: string;
   treeLoadingLabel: string;
+  forbiddenLabel: string;
 };
 
 type PageTreeAdminProps = ComponentCtx<CatalogProps<PageTreeConfig, PageTreeLabels>>;
@@ -179,6 +181,7 @@ function PageTreeFields({
 
 export function PageTreeAdmin({ props }: PageTreeAdminProps) {
   const { config, labels } = props;
+  const canAccessPages = useAdminRouteAccess("pages");
   const locale = config.locale || ROUTING_DEFAULT_LOCALE;
 
   const treePages = useStateValue(ADMIN_STATE.routing.treePages) as PageTreeEntry[] | undefined;
@@ -188,6 +191,18 @@ export function PageTreeAdmin({ props }: PageTreeAdminProps) {
   const loadError = useStateValue(ADMIN_STATE.routing.treeError) as string | null | undefined;
 
   useMountAction("loadMainTree");
+
+  if (canAccessPages === null) {
+    return <p className="text-sm text-muted-foreground">{labels.treeLoadingLabel}</p>;
+  }
+
+  if (canAccessPages === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{labels.treeLoadingLabel}</p>;

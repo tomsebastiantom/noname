@@ -5,6 +5,7 @@ import type { AnalyticsRouteDeps } from "./routes/deps";
 import { registerAnalyticsIngestRoutes } from "./routes/ingest";
 import { registerAnalyticsQueryRoutes } from "./routes/query";
 import { registerAnalyticsReplayRoutes } from "./routes/replay";
+import { registerAnalyticsTracesRoutes } from "./routes/traces";
 
 export function createAnalyticsRoutes(
   service: AnalyticsService,
@@ -16,6 +17,7 @@ export function createAnalyticsRoutes(
   registerAnalyticsIngestRoutes(routes, deps);
   registerAnalyticsQueryRoutes(routes, deps);
   registerAnalyticsReplayRoutes(routes, deps);
+  registerAnalyticsTracesRoutes(routes);
 
   return routes;
 }

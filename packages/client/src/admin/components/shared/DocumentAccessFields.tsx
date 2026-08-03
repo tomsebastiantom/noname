@@ -1,9 +1,9 @@
-import type { DocumentShareFieldLabels } from "./DocumentShareField";
+import type { DocumentShareSlotLabels } from "./DocumentShareField";
 import { DocumentShareField } from "./DocumentShareField";
 import type { DocumentTagsFieldLabels } from "./DocumentTagsField";
 import { DocumentTagsField } from "./DocumentTagsField";
 
-export type DocumentAccessLabels = DocumentTagsFieldLabels & DocumentShareFieldLabels;
+export type DocumentAccessLabels = DocumentTagsFieldLabels & DocumentShareSlotLabels;
 
 export function DocumentAccessFields({
   tagsFieldId,
@@ -28,7 +28,12 @@ export function DocumentAccessFields({
         onChange={onTagsInputChange}
         labels={labels}
       />
-      {showShare && documentId && <DocumentShareField documentId={documentId} labels={labels} />}
+      {showShare && documentId ? (
+        <div className="flex flex-col gap-4">
+          <DocumentShareField documentId={documentId} labels={labels} slot="editor" />
+          <DocumentShareField documentId={documentId} labels={labels} slot="publisher" />
+        </div>
+      ) : null}
     </>
   );
 }

@@ -29,6 +29,8 @@ export const PERMISSIONS = {
   ANALYTICS_VIEW: "analytics:view",
   /** Watch rrweb session replays (PII — separate from analytics). */
   SESSION_REPLAY: "session:replay",
+  /** Distributed traces (OpenTelemetry / Jaeger proxy). */
+  TRACES_VIEW: "traces:view",
   FLAGS_WRITE: "flags:write",
   TENANT_MANAGE: "tenant:manage",
   AGENT_MANAGE: "agent:manage",
@@ -45,6 +47,7 @@ export const PLATFORM_ROLES = [
   "analyst",
   "replay_viewer",
   "flags_manager",
+  "trace_viewer",
   "customer",
 ] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
@@ -96,6 +99,11 @@ const FLAGS_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.FLAGS_WRITE,
 ];
 
+const TRACE_VIEWER_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.STOREFRONT_VIEW,
+  PERMISSIONS.TRACES_VIEW,
+];
+
 const CUSTOMER_PERMISSIONS: readonly PermissionKey[] = [PERMISSIONS.STOREFRONT_VIEW];
 
 /** Platform-wide role → permission bundles. */
@@ -107,6 +115,7 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, readonly PermissionKey[]> = 
   analyst: ANALYST_PERMISSIONS,
   replay_viewer: REPLAY_VIEWER_PERMISSIONS,
   flags_manager: FLAGS_MANAGER_PERMISSIONS,
+  trace_viewer: TRACE_VIEWER_PERMISSIONS,
   customer: CUSTOMER_PERMISSIONS,
 };
 
@@ -177,6 +186,7 @@ export function primaryTeamRole(roles: Iterable<PlatformRole>): PlatformRole | n
   if (set.has("analyst")) return "analyst";
   if (set.has("replay_viewer")) return "replay_viewer";
   if (set.has("flags_manager")) return "flags_manager";
+  if (set.has("trace_viewer")) return "trace_viewer";
   if (set.has("customer")) return "customer";
   return null;
 }

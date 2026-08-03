@@ -69,6 +69,7 @@ describe("permissions", () => {
         "flags_manager",
         "publisher",
         "replay_viewer",
+        "trace_viewer",
       ].sort(),
     );
   });

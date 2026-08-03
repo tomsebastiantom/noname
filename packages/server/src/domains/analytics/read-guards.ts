@@ -15,6 +15,12 @@ export async function denyUnlessSessionReplay(c: Context): Promise<Response | nu
   return auth instanceof Response ? auth : null;
 }
 
+/** OpenTelemetry traces — trace_viewer role. */
+export async function denyUnlessTracesView(c: Context): Promise<Response | null> {
+  const auth = await requirePermission(c, PERMISSIONS.TRACES_VIEW);
+  return auth instanceof Response ? auth : null;
+}
+
 /** Org from edge HMAC — never trust client query/body org on read paths. */
 export function requireTrustedOrgId(c: Context): string | Response {
   const orgId = getOrgId(c);

@@ -8,7 +8,15 @@ import {
 describe("role-assignment", () => {
   it("access_manager may assign all staff roles except admin", () => {
     expect(ACCESS_MANAGER_ASSIGNABLE_ROLES.sort()).toEqual(
-      ["access_manager", "analyst", "editor", "flags_manager", "publisher", "replay_viewer"].sort(),
+      [
+        "access_manager",
+        "analyst",
+        "editor",
+        "flags_manager",
+        "publisher",
+        "replay_viewer",
+        "trace_viewer",
+      ].sort(),
     );
   });
 

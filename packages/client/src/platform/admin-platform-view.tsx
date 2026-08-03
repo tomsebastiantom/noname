@@ -5,9 +5,10 @@ import {
   JSONUIProvider,
   type SetState,
 } from "@json-render/react";
-import { useMemo } from "react";
+import { useDeferredValue, useMemo } from "react";
 import { AdminShell } from "../admin/components/shell/AdminShell";
 import type { CatalogProps } from "../schemas/shared";
+import { mergeAdminShellWithPanelChrome } from "./admin-layout";
 import { navigateApp } from "./app-navigation";
 import { CatalogUiShell } from "./catalog-ui-shell";
 import { handlers as createHandlers } from "./registry";
@@ -15,40 +16,49 @@ import { handlers as createHandlers } from "./registry";
 type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
 
 function AdminPanelContent({
-  panelLoading,
   panelSpec,
   panelKey,
   registry,
 }: Readonly<{
-  panelLoading: boolean;
   panelSpec: Spec | null;
   panelKey: string;
   registry: ComponentRegistry;
 }>) {
-  if (panelLoading) {
-    return <p className="text-muted-foreground">Loading…</p>;
-  }
-  if (!panelSpec) return null;
-  return <CatalogUiShell key={panelKey} spec={panelSpec} registry={registry} />;
+  const deferredSpec = useDeferredValue(panelSpec);
+  const deferredKey = useDeferredValue(panelKey);
+  const isStale = deferredSpec !== panelSpec;
+
+  if (!deferredSpec) return null;
+
+  return (
+    <div className="relative min-h-[12rem]">
+      {isStale ? (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-0.5 animate-pulse bg-primary/70"
+          aria-hidden
+        />
+      ) : null}
+      <CatalogUiShell key={deferredKey} spec={deferredSpec} registry={registry} />
+    </div>
+  );
 }
 
 /**
- * Stable admin chrome + keyed panel. Sidebar/header stay mounted; only the inner
- * CatalogUiShell remounts per layout template (fresh store + MountActions).
+ * Stable admin chrome + keyed panel. Sidebar stays mounted; panel swaps use
+ * deferred values so the previous screen stays visible until the next is ready.
  */
 export function AdminPlatformView({
-  shellProps,
+  baseShellProps,
   panelSpec,
   panelKey,
-  panelLoading,
   registry,
 }: Readonly<{
-  shellProps: AdminShellProps;
+  baseShellProps: AdminShellProps;
   panelSpec: Spec | null;
   panelKey: string;
-  panelLoading: boolean;
   registry: ComponentRegistry;
 }>) {
+  const deferredPanelSpec = useDeferredValue(panelSpec);
   const shellStore = useMemo(() => createStateStore({}), []);
   const shellHandlers = useMemo(
     () =>
@@ -60,6 +70,11 @@ export function AdminPlatformView({
   );
   const navigate = useMemo(() => (path: string) => navigateApp(path), []);
 
+  const shellProps = useMemo(
+    () => mergeAdminShellWithPanelChrome(baseShellProps, deferredPanelSpec),
+    [baseShellProps, deferredPanelSpec],
+  );
+
   return (
     <JSONUIProvider
       registry={registry}
@@ -68,12 +83,7 @@ export function AdminPlatformView({
       navigate={navigate}
     >
       <AdminShell props={shellProps as never} emit={() => {}}>
-        <AdminPanelContent
-          panelLoading={panelLoading}
-          panelSpec={panelSpec}
-          panelKey={panelKey}
-          registry={registry}
-        />
+        <AdminPanelContent panelSpec={panelSpec} panelKey={panelKey} registry={registry} />
       </AdminShell>
     </JSONUIProvider>
   );

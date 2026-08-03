@@ -23,6 +23,7 @@ export function createAnalyticsModule(
   getContext: () => AnalyticsContext,
   getHeaders: () => Record<string, string>,
   getUser: () => ObservabilityUser | null,
+  getTraceContext?: () => { traceId: string; spanId: string },
   batchSize = 50,
   flushIntervalMs = 5000,
 ): AnalyticsModule {
@@ -54,13 +55,18 @@ export function createAnalyticsModule(
     track(eventType, meta = {}) {
       const ctx = getContext();
       touchSession({ id: ctx.sessionId, startedAt: 0, lastActivity: Date.now() });
+      const traceMeta = getTraceContext?.() ?? null;
       batcher.push({
         eventType,
         sessionId: ctx.sessionId,
         schemaId: ctx.schemaId,
         variantId: ctx.variantId,
         contextHash: ctx.contextHash,
-        meta: { ...meta, ...userMeta(getUser()) },
+        meta: {
+          ...meta,
+          ...userMeta(getUser()),
+          ...(traceMeta ? { traceId: traceMeta.traceId, spanId: traceMeta.spanId } : {}),
+        },
         timestamp: Date.now(),
       });
     },

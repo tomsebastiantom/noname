@@ -2,8 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import {
   type DocumentEditor,
   fetchDocumentEditors,
+  fetchDocumentPublishers,
   grantDocumentEditor,
+  grantDocumentPublisher,
   revokeDocumentEditor,
+  revokeDocumentPublisher,
 } from "../../../auth/document-scope";
 import { fetchTeamUsers, type TeamUser } from "../../../auth/team-users";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
@@ -25,17 +28,103 @@ export type DocumentShareFieldLabels = {
   shareLoadingLabel: string;
 };
 
+export type DocumentPublisherShareFieldLabels = {
+  publisherShareTitle: string;
+  publisherShareHint: string;
+  publisherShareUserLabel: string;
+  publisherShareGrantLabel: string;
+  publisherShareGrantingLabel: string;
+  publisherShareRevokeLabel: string;
+  publisherShareRevokingLabel: string;
+  publisherShareGrantSuccessMessage: string;
+  publisherShareRevokeSuccessMessage: string;
+  publisherShareEmptyMessage: string;
+  publisherShareLoadingLabel: string;
+};
+
+export type DocumentShareSlotLabels = DocumentShareFieldLabels & DocumentPublisherShareFieldLabels;
+
+export type DocumentShareSlot = "editor" | "publisher";
+
+type ResolvedShareLabels = DocumentShareFieldLabels;
+
+function resolveShareLabels(
+  labels: DocumentShareSlotLabels,
+  slot: DocumentShareSlot,
+): ResolvedShareLabels {
+  if (slot === "editor") {
+    return {
+      shareTitle: labels.shareTitle,
+      shareHint: labels.shareHint,
+      shareUserLabel: labels.shareUserLabel,
+      shareGrantLabel: labels.shareGrantLabel,
+      shareGrantingLabel: labels.shareGrantingLabel,
+      shareRevokeLabel: labels.shareRevokeLabel,
+      shareRevokingLabel: labels.shareRevokingLabel,
+      shareGrantSuccessMessage: labels.shareGrantSuccessMessage,
+      shareRevokeSuccessMessage: labels.shareRevokeSuccessMessage,
+      shareEmptyMessage: labels.shareEmptyMessage,
+      shareLoadingLabel: labels.shareLoadingLabel,
+    };
+  }
+  return {
+    shareTitle: labels.publisherShareTitle,
+    shareHint: labels.publisherShareHint,
+    shareUserLabel: labels.publisherShareUserLabel,
+    shareGrantLabel: labels.publisherShareGrantLabel,
+    shareGrantingLabel: labels.publisherShareGrantingLabel,
+    shareRevokeLabel: labels.publisherShareRevokeLabel,
+    shareRevokingLabel: labels.publisherShareRevokingLabel,
+    shareGrantSuccessMessage: labels.publisherShareGrantSuccessMessage,
+    shareRevokeSuccessMessage: labels.publisherShareRevokeSuccessMessage,
+    shareEmptyMessage: labels.publisherShareEmptyMessage,
+    shareLoadingLabel: labels.publisherShareLoadingLabel,
+  };
+}
+
+const SLOT_API = {
+  editor: {
+    fetch: fetchDocumentEditors,
+    grant: grantDocumentEditor,
+    revoke: revokeDocumentEditor,
+  },
+  publisher: {
+    fetch: fetchDocumentPublishers,
+    grant: grantDocumentPublisher,
+    revoke: revokeDocumentPublisher,
+  },
+} as const;
+
+function grantableUsers(
+  users: TeamUser[],
+  sharedIds: Set<string>,
+  slot: DocumentShareSlot,
+): TeamUser[] {
+  return users.filter((user) => {
+    if (sharedIds.has(user.userId)) return false;
+    if (slot === "publisher") {
+      return user.role === "publisher" || user.role === "admin";
+    }
+    return true;
+  });
+}
+
 export function DocumentShareField({
   documentId,
   labels,
+  slot,
 }: {
   documentId: string;
-  labels: DocumentShareFieldLabels;
+  labels: DocumentShareSlotLabels;
+  slot: DocumentShareSlot;
 }) {
+  const resolved = resolveShareLabels(labels, slot);
+  const api = SLOT_API[slot];
+  const fieldId = `${slot}-share-user-${documentId}`;
   const { run, error, success, reset } = useCatalogSubmit();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [editors, setEditors] = useState<DocumentEditor[]>([]);
+  const [members, setMembers] = useState<DocumentEditor[]>([]);
   const [users, setUsers] = useState<TeamUser[]>([]);
   const [userId, setUserId] = useState("");
   const [granting, setGranting] = useState(false);
@@ -43,13 +132,10 @@ export function DocumentShareField({
 
   const reload = useCallback(async () => {
     setLoadError(null);
-    const [editorRows, teamUsers] = await Promise.all([
-      fetchDocumentEditors(documentId),
-      fetchTeamUsers(),
-    ]);
-    setEditors(editorRows);
+    const [rows, teamUsers] = await Promise.all([api.fetch(documentId), fetchTeamUsers()]);
+    setMembers(rows);
     setUsers(teamUsers);
-  }, [documentId]);
+  }, [api, documentId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,26 +164,27 @@ export function DocumentShareField({
     reset();
     await run(
       async () => {
-        await grantDocumentEditor(documentId, userId);
+        await api.grant(documentId, userId);
+        setUserId("");
         await reload();
       },
       {
-        successMessage: labels.shareGrantSuccessMessage,
+        successMessage: resolved.shareGrantSuccessMessage,
         onPendingChange: setGranting,
       },
     );
   }
 
-  async function handleRevoke(editorUserId: string) {
+  async function handleRevoke(memberUserId: string) {
     reset();
     await run(
       async () => {
-        await revokeDocumentEditor(documentId, editorUserId);
+        await api.revoke(documentId, memberUserId);
         await reload();
       },
       {
-        successMessage: labels.shareRevokeSuccessMessage,
-        onPendingChange: (pending) => setRevokingId(pending ? editorUserId : null),
+        successMessage: resolved.shareRevokeSuccessMessage,
+        onPendingChange: (pending) => setRevokingId(pending ? memberUserId : null),
       },
     );
   }
@@ -105,37 +192,39 @@ export function DocumentShareField({
   const displayError = mergeCatalogError(error, loadError);
 
   if (loading) {
-    return <p className="text-sm text-muted-foreground">{labels.shareLoadingLabel}</p>;
+    return <p className="text-sm text-muted-foreground">{resolved.shareLoadingLabel}</p>;
   }
 
-  const sharedIds = new Set(editors.map((e) => e.id));
-  const grantableUsers = users.filter((u) => !sharedIds.has(u.userId));
+  const sharedIds = new Set(members.map((member) => member.id));
+  const selectableUsers = grantableUsers(users, sharedIds, slot);
 
   return (
     <div className="flex flex-col gap-3 rounded-md border border-border p-4">
       <div>
-        <p className="text-sm font-medium text-foreground">{labels.shareTitle}</p>
-        <p className="text-xs text-muted-foreground">{labels.shareHint}</p>
+        <p className="text-sm font-medium text-foreground">{resolved.shareTitle}</p>
+        <p className="text-xs text-muted-foreground">{resolved.shareHint}</p>
       </div>
 
-      {editors.length === 0 ? (
-        <p className="text-sm text-muted-foreground">{labels.shareEmptyMessage}</p>
+      {members.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{resolved.shareEmptyMessage}</p>
       ) : (
         <ul className="flex flex-col gap-2">
-          {editors.map((editor) => (
+          {members.map((member) => (
             <li
-              key={editor.id}
+              key={member.id}
               className="flex flex-wrap items-center justify-between gap-2 text-sm"
             >
-              <span>{userLabel(editor.id)}</span>
+              <span>{userLabel(member.id)}</span>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 disabled={granting || revokingId !== null}
-                onClick={() => void handleRevoke(editor.id)}
+                onClick={() => void handleRevoke(member.id)}
               >
-                {revokingId === editor.id ? labels.shareRevokingLabel : labels.shareRevokeLabel}
+                {revokingId === member.id
+                  ? resolved.shareRevokingLabel
+                  : resolved.shareRevokeLabel}
               </Button>
             </li>
           ))}
@@ -143,15 +232,15 @@ export function DocumentShareField({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor={`share-user-${documentId}`}>{labels.shareUserLabel}</Label>
+        <Label htmlFor={fieldId}>{resolved.shareUserLabel}</Label>
         <select
-          id={`share-user-${documentId}`}
+          id={fieldId}
           className="rounded-md border border-input bg-background px-3 py-2 text-sm"
           value={userId}
           onChange={(e) => setUserId(e.target.value)}
         >
           <option value="">Select team member…</option>
-          {grantableUsers.map((user) => (
+          {selectableUsers.map((user) => (
             <option key={user.userId} value={user.userId}>
               {user.displayName} ({user.email})
             </option>
@@ -165,20 +254,20 @@ export function DocumentShareField({
         disabled={!userId || granting || revokingId !== null}
         onClick={() => void handleGrant()}
       >
-        {granting ? labels.shareGrantingLabel : labels.shareGrantLabel}
+        {granting ? resolved.shareGrantingLabel : resolved.shareGrantLabel}
       </Button>
 
-      {displayError && (
+      {displayError ? (
         <Alert variant="destructive">
           <AlertDescription>{displayError}</AlertDescription>
         </Alert>
-      )}
+      ) : null}
 
-      {success && (
+      {success ? (
         <Alert>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
-      )}
+      ) : null}
     </div>
   );
 }

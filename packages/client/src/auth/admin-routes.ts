@@ -14,13 +14,14 @@ export type AdminRouteId =
   | "scope"
   | "analytics"
   | "flags"
-  | "replay";
+  | "replay"
+  | "traces";
 
 type AccessRule = (session: AuthSessionStatus) => boolean;
 
 /** Single source: admin route → who may access it (UX mirror of server permissions). */
 export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
-  home: () => true,
+  home: (s) => hasStaffAdminAccess(s),
   pages: (s) => sessionHasPermission(s, PERMISSIONS.PAGE_DRAFT_WRITE),
   content: (s) => sessionHasPermission(s, PERMISSIONS.CONTENT_DRAFT_WRITE),
   layout: (s) => sessionHasPermission(s, PERMISSIONS.LAYOUT_DRAFT_WRITE),
@@ -35,6 +36,7 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
   analytics: (s) => sessionHasPermission(s, PERMISSIONS.ANALYTICS_VIEW),
   flags: (s) => sessionHasPermission(s, PERMISSIONS.FLAGS_WRITE),
   replay: (s) => sessionHasPermission(s, PERMISSIONS.SESSION_REPLAY),
+  traces: (s) => sessionHasPermission(s, PERMISSIONS.TRACES_VIEW),
 };
 
 export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
@@ -49,6 +51,7 @@ export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
   analytics: "/admin/settings/analytics",
   flags: "/admin/settings/flags",
   replay: "/admin/settings/replay",
+  traces: "/admin/settings/traces",
 };
 
 const PATH_ENTRIES = (Object.entries(ADMIN_ROUTE_PATHS) as [AdminRouteId, string][]).sort(
@@ -67,6 +70,21 @@ export function canAccessAdminRoute(
   return ADMIN_ROUTE_ACCESS[routeId](session);
 }
 
+/** True when the session may use any admin surface (not storefront-only customer). */
+export function hasStaffAdminAccess(session: AuthSessionStatus | null | undefined): boolean {
+  if (!session) return false;
+  return (Object.keys(ADMIN_ROUTE_ACCESS) as AdminRouteId[]).some(
+    (id) => id !== "home" && canAccessAdminRoute(session, id),
+  );
+}
+
+export const OBSERVABILITY_ROUTE_IDS: readonly AdminRouteId[] = [
+  "analytics",
+  "flags",
+  "replay",
+  "traces",
+];
+
 /** Map an admin href to a route id (longest path match). */
 export function adminRouteIdFromHref(href: string): AdminRouteId | null {
   for (const [id, path] of PATH_ENTRIES) {
@@ -81,7 +99,15 @@ export function adminRouteIdFromHref(href: string): AdminRouteId | null {
 
 /** Routes visible before session permissions finish loading. */
 export function adminRouteVisibleWhileLoading(routeId: AdminRouteId): boolean {
-  return routeId === "home";
+  if (routeId === "home") return true;
+  return (
+    routeId !== "replay" &&
+    routeId !== "flags" &&
+    routeId !== "analytics" &&
+    routeId !== "traces" &&
+    routeId !== "login" &&
+    routeId !== "auth"
+  );
 }
 
 export function adminNavItemVisible(
