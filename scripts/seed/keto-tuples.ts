@@ -86,10 +86,10 @@ export async function grantTeamEditor(team: string, userSub: string): Promise<vo
   });
 }
 
-export async function bindTagTeamEditors(tag: string, team: string): Promise<void> {
+export async function bindCollectionTeamEditors(collection: string, team: string): Promise<void> {
   await ketoPut({
-    namespace: "Tag",
-    object: tag,
+    namespace: "Collection",
+    object: collection,
     relation: "editors",
     subject_set: { namespace: "Team", object: team, relation: "editors" },
   });
@@ -104,21 +104,22 @@ export async function grantTeamPublisher(team: string, userSub: string): Promise
   });
 }
 
-export async function bindTagTeamPublishers(tag: string, team: string): Promise<void> {
+export async function bindCollectionTeamPublishers(collection: string, team: string): Promise<void> {
   await ketoPut({
-    namespace: "Tag",
-    object: tag,
+    namespace: "Collection",
+    object: collection,
     relation: "publishers",
     subject_set: { namespace: "Team", object: team, relation: "publishers" },
   });
 }
 
 export async function linkDocumentToTeam(_documentId: string, _team: string): Promise<void> {
-  // Deprecated — Postgres tags[] + Tag↔Team bindings replace Document#parents@Team.
+  // Deprecated — Postgres collection_id + Collection↔Team bindings replace Document#parents@Team.
 }
 
 interface DocumentRow {
   id: string;
+  key: string;
   type?: string;
 }
 
@@ -130,7 +131,10 @@ async function fetchJson<T>(url: string, headers: Record<string, string>): Promi
   return res.json() as Promise<T>;
 }
 
-async function fetchJsonOptional<T>(url: string, headers: Record<string, string>): Promise<T | null> {
+async function fetchJsonOptional<T>(
+  url: string,
+  headers: Record<string, string>,
+): Promise<T | null> {
   const res = await fetch(url, { headers });
   if (res.status === 404) return null;
   if (!res.ok) {
@@ -213,7 +217,7 @@ interface LayoutRow {
 export async function seedMarketingScopeDemo(options: {
   orgHeaders: () => Record<string, string>;
   storeSlug: string;
-  marketingTag?: string;
+  marketingCollection?: string;
   marketingTeam?: string;
   layoutTemplate?: string;
   editorSub: string;
@@ -221,7 +225,7 @@ export async function seedMarketingScopeDemo(options: {
 }): Promise<void> {
   await assertKetoReady();
 
-  const tag = options.marketingTag ?? "marketing";
+  const collection = options.marketingCollection ?? "marketing";
   const team = options.marketingTeam ?? "marketing-team";
   const template = options.layoutTemplate ?? "home";
   const headers = options.orgHeaders();
@@ -230,13 +234,13 @@ export async function seedMarketingScopeDemo(options: {
 
   const scopeHeaders = { ...headers, "Content-Type": "application/json" };
 
-  const tagRes = await fetch(`${scopeBase}/tags`, {
+  const collectionRes = await fetch(`${scopeBase}/collections`, {
     method: "POST",
     headers: scopeHeaders,
-    body: JSON.stringify({ slug: tag, label: "Marketing" }),
+    body: JSON.stringify({ slug: collection, label: "Marketing" }),
   });
-  if (!tagRes.ok && tagRes.status !== 409) {
-    const body = await tagRes.text();
+  if (!collectionRes.ok && collectionRes.status !== 409) {
+    const body = await collectionRes.text();
     let detail = body;
     try {
       const parsed = JSON.parse(body) as { error?: string; code?: string };
@@ -244,7 +248,7 @@ export async function seedMarketingScopeDemo(options: {
     } catch {
       // keep raw body
     }
-    console.warn(`Scope tag create: ${tagRes.status} ${detail}`);
+    console.warn(`Scope folder create: ${collectionRes.status} ${detail}`);
   }
 
   const teamRes = await fetch(`${scopeBase}/teams`, {
@@ -264,17 +268,26 @@ export async function seedMarketingScopeDemo(options: {
     console.warn(`Scope team create: ${teamRes.status} ${detail}`);
   }
 
-  await fetch(`${scopeBase}/tag/${encodeURIComponent(tag)}/teams/${encodeURIComponent(team)}/editors`, {
-    method: "PUT",
-    headers: scopeHeaders,
-  }).catch(() => undefined);
+  await fetch(
+    `${scopeBase}/collection/${encodeURIComponent(collection)}/teams/${encodeURIComponent(team)}/editors`,
+    { method: "PUT", headers: scopeHeaders },
+  ).catch(() => undefined);
 
-  await fetch(`${scopeBase}/tag/${encodeURIComponent(tag)}/teams/${encodeURIComponent(team)}/publishers`, {
-    method: "PUT",
-    headers: scopeHeaders,
-  }).catch(() => undefined);
+  await fetch(
+    `${scopeBase}/collection/${encodeURIComponent(collection)}/teams/${encodeURIComponent(team)}/publishers`,
+    { method: "PUT", headers: scopeHeaders },
+  ).catch(() => undefined);
 
-  const { data: layouts } = await fetchJson<{ data: LayoutRow[] }>(
+  const collections = await fetchJson<{ data: { id: string; slug: string }[] }>(
+    `${scopeBase}/collections`,
+    headers,
+  );
+  const marketingFolder = collections.data.find((row) => row.slug === collection);
+  if (!marketingFolder) {
+    throw new Error(`Folder "${collection}" not found after create`);
+  }
+
+  const { data: layouts } = await fetchJson<{ data: DocumentRow[] }>(
     `${API_BASE}/api/documents/layout?segment=default&templateName=${template}`,
     headers,
   );
@@ -291,21 +304,21 @@ export async function seedMarketingScopeDemo(options: {
   const putRes = await fetch(`${API_BASE}/api/documents/layout/${layout.id}`, {
     method: "PUT",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ spec, tags: [tag] }),
+    body: JSON.stringify({ spec, collectionId: marketingFolder.id }),
   });
   if (!putRes.ok) {
-    throw new Error(`Tag layout failed: ${putRes.status} ${await putRes.text()}`);
+    throw new Error(`Folder layout failed: ${putRes.status} ${await putRes.text()}`);
   }
 
-  await bindTagTeamEditors(tag, team);
-  await bindTagTeamPublishers(tag, team);
+  await bindCollectionTeamEditors(collection, team);
+  await bindCollectionTeamPublishers(collection, team);
   await grantTeamEditor(team, options.editorSub);
-  console.log(`Scope demo: Tag:${tag}#editors@Team:${team}#editors`);
-  console.log(`Scope demo: Tag:${tag}#publishers@Team:${team}#publishers`);
+  console.log(`Scope demo: Collection:${collection}#editors@Team:${team}#editors`);
+  console.log(`Scope demo: Collection:${collection}#publishers@Team:${team}#publishers`);
   console.log(`Scope demo: Team:${team}#editors@User:${options.editorSub}`);
   if (options.publisherSub) {
     await grantTeamPublisher(team, options.publisherSub);
     console.log(`Scope demo: Team:${team}#publishers@User:${options.publisherSub}`);
   }
-  console.log(`Scope demo: layout ${layout.id} tagged "${tag}"`);
+  console.log(`Scope demo: layout ${layout.id} in folder "${collection}"`);
 }

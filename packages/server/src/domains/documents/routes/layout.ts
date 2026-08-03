@@ -3,10 +3,10 @@ import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, notFound, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
-import { denyUnlessTagsAccess } from "../../auth/deny-unless-document-access";
-import { requirePermission } from "../../auth/guards";
+import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
+import { requireActorPermission } from "../../auth/guards";
 import type { CreateLayoutInput } from "../ports";
-import { normalizeTags } from "../shared/document-tags";
+import { parseCollectionId } from "../shared/document-collection";
 import type { DocumentsRouteDeps } from "./deps";
 import { denyUnlessDocumentPublish, denyUnlessDocumentWrite } from "./document-write-guard";
 import { layoutFiltersFrom } from "./helpers";
@@ -16,20 +16,24 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
   const { storage, authorization } = deps;
 
   routes.post("/layout", async (c) => {
-    const auth = await requirePermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
-    if (auth instanceof Response) return auth;
+    const actor = await requireActorPermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
     const orgId = getOrgId(c);
     const body = await c.req.json<CreateLayoutInput>();
-    const tags = normalizeTags(body.tags);
-    const tagDenied = await denyUnlessTagsAccess(c, auth, authorization, tags, "edit");
-    if (tagDenied) return tagDenied;
+    const collectionId = parseCollectionId(body.collectionId);
+    if (collectionId) {
+      const slug = await storage.findCollectionSlug(orgId, collectionId);
+      if (!slug) return notFound(c);
+      const denied = await denyUnlessCollectionAccess(c, actor, authorization, slug, "edit");
+      if (denied) return denied;
+    }
     const createdLayout = await layout.create(orgId, {
       templateName: body.templateName,
       segment: body.segment,
       spec: body.spec,
       renderAs: body.renderAs,
       shellRef: body.shellRef,
-      tags,
+      collectionId,
     });
     return created(c, createdLayout);
   });
@@ -48,6 +52,24 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
   routes.put("/layout/:id", async (c) => {
     const orgId = getOrgId(c);
     const layoutId = c.req.param("id");
+    const body = await c.req.json<{
+      spec: Record<string, unknown>;
+      contentRef?: string | null;
+      renderAs?: "standalone" | "shell" | "panel" | "editor";
+      shellRef?: string | null;
+      collectionId?: string | null;
+    }>();
+    if (body.collectionId !== undefined) {
+      const collectionId = parseCollectionId(body.collectionId);
+      if (collectionId) {
+        const slug = await storage.findCollectionSlug(orgId, collectionId);
+        if (!slug) return notFound(c);
+        const actor = await requireActorPermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+        if (actor instanceof Response) return actor;
+        const denied = await denyUnlessCollectionAccess(c, actor, authorization, slug, "edit");
+        if (denied) return denied;
+      }
+    }
     const denied = await denyUnlessDocumentWrite(
       c,
       PERMISSIONS.LAYOUT_DRAFT_WRITE,
@@ -57,13 +79,6 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       layoutId,
     );
     if (denied) return denied;
-    const body = await c.req.json<{
-      spec: Record<string, unknown>;
-      contentRef?: string | null;
-      renderAs?: "standalone" | "shell" | "panel" | "editor";
-      shellRef?: string | null;
-      tags?: string[];
-    }>();
     const ifMatch = c.req.header("If-Match");
     const updated = await layout.update(
       orgId,
@@ -73,7 +88,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
         contentRef: body.contentRef,
         renderAs: body.renderAs,
         shellRef: body.shellRef,
-        tags: body.tags,
+        collectionId: body.collectionId,
       },
       ifMatch ? { ifMatchUpdatedAt: ifMatch } : undefined,
     );

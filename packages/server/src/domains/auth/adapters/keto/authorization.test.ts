@@ -94,6 +94,36 @@ describe("createKetoAuthorizationAdapter", () => {
     });
   });
 
+  it("grants Collection parent via subject_set for OPL traverse", async () => {
+    const fetchImpl = vi.fn(async () => ({
+      ok: true,
+      text: async () => "",
+    })) as unknown as typeof fetch;
+    const authz = createKetoAuthorizationAdapter({
+      readUrl: "http://keto-read",
+      writeUrl: "http://keto-write",
+      fetchImpl,
+    });
+
+    await authz.grant({
+      namespace: "Collection",
+      objectId: "summer-campaign",
+      relation: "parents",
+      subject: { type: "Collection", id: "marketing" },
+    });
+
+    expect(fetchImpl).toHaveBeenCalledWith("http://keto-write/admin/relation-tuples", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        namespace: "Collection",
+        object: "summer-campaign",
+        relation: "parents",
+        subject_set: { namespace: "Collection", object: "marketing", relation: "" },
+      }),
+    });
+  });
+
   it("revokes via DELETE with query params", async () => {
     const fetchImpl = vi.fn(async () => ({
       ok: true,

@@ -1,31 +1,31 @@
+import type { DocumentFolderFieldLabels } from "./DocumentFolderField";
+import { DocumentFolderField } from "./DocumentFolderField";
 import type { DocumentShareSlotLabels } from "./DocumentShareField";
 import { DocumentShareField } from "./DocumentShareField";
-import type { DocumentTagsFieldLabels } from "./DocumentTagsField";
-import { DocumentTagsField } from "./DocumentTagsField";
 
-export type DocumentAccessLabels = DocumentTagsFieldLabels & DocumentShareSlotLabels;
+export type DocumentAccessLabels = DocumentFolderFieldLabels & DocumentShareSlotLabels;
 
 export function DocumentAccessFields({
-  tagsFieldId,
-  tagsInput,
-  onTagsInputChange,
+  folderFieldId,
+  folderInput,
+  onFolderInputChange,
   labels,
   documentId,
   showShare = false,
 }: {
-  tagsFieldId: string;
-  tagsInput: string;
-  onTagsInputChange: (value: string) => void;
+  folderFieldId: string;
+  folderInput: string;
+  onFolderInputChange: (value: string) => void;
   labels: DocumentAccessLabels;
   documentId?: string;
   showShare?: boolean;
 }) {
   return (
     <>
-      <DocumentTagsField
-        id={tagsFieldId}
-        value={tagsInput}
-        onChange={onTagsInputChange}
+      <DocumentFolderField
+        id={folderFieldId}
+        value={folderInput}
+        onChange={onFolderInputChange}
         labels={labels}
       />
       {showShare && documentId ? (

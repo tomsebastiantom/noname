@@ -10,7 +10,7 @@ scripts/
 │   ├── init-dbs.sh           # First postgres boot: create zitadel, nango, keto DBs
 │   └── ensure-extra-dbs.sh   # Every compose up: idempotent DB + extension setup
 ├── init/             # One-time setup (manual)
-│   └── zitadel-oidc.ts       # pnpm init:zitadel — OIDC app + .env
+│   └── zitadel-oidc.ts       # pnpm init:zitadel — OIDC app + .env + wrangler.toml
 └── seed/             # Demo data (manual, API must be running)
     ├── demo.ts               # pnpm seed:demo — layouts, admin, users, Keto scope
     ├── demo-commerce.ts      # pnpm seed:demo:commerce — optional commerce extension

@@ -37,7 +37,7 @@ export function demoTeamUserSpecs(): DemoTeamUserSpec[] {
       givenName: "Demo",
       familyName: "Marketing",
       role: "editor",
-      access: 'Marketing tag only — home layout tagged "marketing"',
+      access: 'Marketing folder only — home layout in "marketing" folder',
     },
     {
       email: process.env.ZITADEL_DEMO_PUBLISHER_EMAIL?.trim() ?? "publisher@zitadel.localhost",
@@ -45,7 +45,7 @@ export function demoTeamUserSpecs(): DemoTeamUserSpec[] {
       givenName: "Demo",
       familyName: "Publisher",
       role: "publisher",
-      access: "Publish marketing-tagged docs (Team#publishers + Tag bind)",
+      access: "Publish marketing-folder docs (Team#publishers + folder bind)",
     },
     {
       email: process.env.ZITADEL_DEMO_ACCESS_MANAGER_EMAIL?.trim() ?? "access@zitadel.localhost",
@@ -53,7 +53,7 @@ export function demoTeamUserSpecs(): DemoTeamUserSpec[] {
       givenName: "Carol",
       familyName: "Access",
       role: "access_manager",
-      access: "Tags, teams, bindings, invite (all staff except admin)",
+      access: "Folders, teams, bindings, invite (all staff except admin)",
     },
     {
       email: process.env.ZITADEL_DEMO_ANALYST_EMAIL?.trim() ?? "analyst@zitadel.localhost",

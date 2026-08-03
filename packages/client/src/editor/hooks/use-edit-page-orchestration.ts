@@ -138,18 +138,6 @@ export function useEditPageOrchestration({
     },
   });
 
-  const prevTemplateRef = useRef(templateName);
-  useEffect(() => {
-    if (prevTemplateRef.current === templateName) return;
-    prevTemplateRef.current = templateName;
-    setSelection(null);
-    setPendingAdd(null);
-    setSaveError(null);
-    setSaveSuccess(null);
-    setSaveConflict(false);
-    history.clearHistory();
-  }, [templateName, history]);
-
   const handleStoredChange = useCallback(
     (next: Spec) => {
       history.recordBeforeFieldChange();

@@ -1,6 +1,6 @@
 /**
  * Noname Zanzibar model for Ory Keto (OPL).
- * Tags = access buckets; Teams = people groups; Postgres owns doc ↔ tag labels.
+ * Folders (Collection) = access buckets; Teams = people groups; Postgres owns doc ↔ folder.
  * Spec: docs/2026-08-03/ACCESS-AND-ROLES.md
  */
 import { Namespace, Context, SubjectSet } from "@ory/keto-namespace-types";
@@ -68,16 +68,23 @@ class Collection implements Namespace {
   related: {
     parents: Collection[];
     editors: (User | Agent | SubjectSet<Team, "editors">)[];
+    publishers: (User | Agent | SubjectSet<Team, "publishers">)[];
     viewers: (User | Agent | SubjectSet<Team, "editors">)[];
   };
 
   permits = {
     view: (ctx: Context): boolean =>
       this.related.viewers.includes(ctx.subject) ||
+      this.related.publishers.includes(ctx.subject) ||
+      this.related.editors.includes(ctx.subject) ||
       this.related.parents.traverse((p) => p.permits.view(ctx)),
     edit: (ctx: Context): boolean =>
       this.related.editors.includes(ctx.subject) ||
       this.related.parents.traverse((p) => p.permits.edit(ctx)),
+    publish: (ctx: Context): boolean =>
+      this.related.publishers.includes(ctx.subject) ||
+      this.related.editors.includes(ctx.subject) ||
+      this.related.parents.traverse((p) => p.permits.publish(ctx)),
   };
 }
 

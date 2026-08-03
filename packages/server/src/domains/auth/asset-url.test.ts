@@ -19,7 +19,7 @@ describe("resolveProviderIconUrls", () => {
           baseVersion: null,
           data: { storageKey: "org-1/hash/google.svg" },
           meta: {},
-          tags: [],
+          collectionId: null,
           createdAt: new Date(),
           updatedAt: new Date(),
         }),

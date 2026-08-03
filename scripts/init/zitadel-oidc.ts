@@ -1,5 +1,6 @@
 /**
- * Creates (or reuses) a ZITADEL OIDC SPA app for local dev and writes ZITADEL_CLIENT_ID to .env.
+ * Creates (or reuses) a ZITADEL OIDC SPA app for local dev and writes ZITADEL_CLIENT_ID,
+ * ZITADEL_PROJECT_ID to .env and packages/workers/wrangler.toml.
  * Requires: podman compose up (ZITADEL healthy) + noname-backend machine key.
  *
  * Run: pnpm init:zitadel
@@ -374,6 +375,36 @@ function upsertEnvVar(filePath: string, key: string, value: string): void {
   writeFileSync(filePath, pattern.test(content) ? content.replace(pattern, line) : `${content.trimEnd()}\n${line}\n`);
 }
 
+/** Keep packages/workers/wrangler.toml [vars] in sync after compose down -v + init:zitadel. */
+function upsertWranglerVars(filePath: string, vars: Record<string, string>): boolean {
+  if (!existsSync(filePath)) return false;
+
+  let content = readFileSync(filePath, "utf8");
+  let changed = false;
+
+  for (const [key, value] of Object.entries(vars)) {
+    const line = `${key} = "${value}"`;
+    const pattern = new RegExp(`^${key} = .*$`, "m");
+    if (pattern.test(content)) {
+      const next = content.replace(pattern, line);
+      if (next !== content) changed = true;
+      content = next;
+      continue;
+    }
+
+    const afterClientId = /^ZITADEL_CLIENT_ID = .*$/m;
+    if (afterClientId.test(content)) {
+      content = content.replace(afterClientId, (match) => `${match}\n${line}`);
+    } else {
+      content = content.replace(/^(\[vars\]\n)/m, `$1${line}\n`);
+    }
+    changed = true;
+  }
+
+  if (changed) writeFileSync(filePath, content);
+  return changed;
+}
+
 async function main(): Promise<void> {
   console.log(`Initializing ZITADEL OIDC app via ${ZITADEL_ISSUER} ...`);
   await waitForZitadel();
@@ -406,16 +437,13 @@ async function main(): Promise<void> {
   upsertEnvVar(ENV_FILE, "ZITADEL_PROJECT_ID", projectId);
 
   const wranglerPath = join(ROOT, "packages/workers/wrangler.toml");
-  if (existsSync(wranglerPath)) {
-    const wrangler = readFileSync(wranglerPath, "utf8");
-    const updated = wrangler.replace(
-      /^ZITADEL_CLIENT_ID = .*$/m,
-      `ZITADEL_CLIENT_ID = "${clientId}"`,
-    );
-    if (updated !== wrangler) {
-      writeFileSync(wranglerPath, updated);
-      console.log(`Updated wrangler ZITADEL_CLIENT_ID → ${clientId}`);
-    }
+  if (
+    upsertWranglerVars(wranglerPath, {
+      ZITADEL_CLIENT_ID: clientId,
+      ZITADEL_PROJECT_ID: projectId,
+    })
+  ) {
+    console.log(`Updated wrangler.toml → CLIENT_ID=${clientId}, PROJECT_ID=${projectId}`);
   }
   upsertEnvVar(ENV_FILE, "ZITADEL_DEMO_ORG_ID", organizationId);
 
@@ -435,6 +463,7 @@ async function main(): Promise<void> {
   console.log(`  Client ID: ${clientId}`);
   console.log(`  Redirect:  ${REDIRECT_URI}`);
   console.log(`  Updated:   ${ENV_FILE}`);
+  console.log(`  Wrangler:  ${wranglerPath}`);
   console.log(`  OIDC JSON: ${oidcJsonPath}`);
   console.log(`  Login:     admin@zitadel.localhost / NonameAdmin1! (default instance admin)`);
 }

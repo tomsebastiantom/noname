@@ -74,7 +74,7 @@ describe("shared", () => {
     const json = vi.fn((_body: unknown, status: number) => new Response(null, { status }));
     const c = { json } as unknown as import("hono").Context;
 
-    handleDomainError({ cause: { code: "23505", constraint: "content_tags_org_slug" } }, c);
+    handleDomainError({ cause: { code: "23505", constraint: "content_collections_org_slug" } }, c);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "CONFLICT" }), 409);
   });
 });

@@ -1,4 +1,14 @@
-import { index, integer, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
 
 export const agentTaskType = pgEnum("agent_task_type", [
   "generate_layout",
@@ -35,5 +45,21 @@ export const agentTasks = pgTable(
   (t) => ({
     tenantStatus: index("agent_tasks_tenant_status").on(t.orgId, t.status),
     tenantType: index("agent_tasks_tenant_type").on(t.orgId, t.type),
+  }),
+);
+
+export const registeredAgents = pgTable(
+  "registered_agents",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    ownerUserId: text("owner_user_id").notNull(),
+    allowedTools: jsonb("allowed_tools").notNull().default([]),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueSlug: uniqueIndex("registered_agents_org_slug").on(t.orgId, t.slug),
   }),
 );

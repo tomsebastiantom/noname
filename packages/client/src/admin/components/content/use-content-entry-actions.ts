@@ -6,7 +6,7 @@ import {
   listEntries,
   loadEntryFields,
 } from "../../content-entries";
-import { formatTagsInput, parseTagsInput } from "../../document-tags";
+import { formatCollectionId, parseCollectionId } from "../../document-folder";
 
 export function useContentEntryAdminActions(options: {
   catalog: CatalogSubmit;
@@ -14,7 +14,7 @@ export function useContentEntryAdminActions(options: {
   locale: string;
   schema: ContentTypeSchema | null;
   values: Record<string, string>;
-  tagsInput: string;
+  folderInput: string;
   selectedId: string | null;
   localEntries: ContentEntryRow[];
   messages: {
@@ -32,7 +32,7 @@ export function useContentEntryAdminActions(options: {
   setStatus: (value: string) => void;
   setLocalEntries: (rows: ContentEntryRow[]) => void;
   setValues: (values: Record<string, string>) => void;
-  setTagsInput: (value: string) => void;
+  setFolderInput: (value: string) => void;
   reloadContent: () => Promise<void>;
 }) {
   const {
@@ -41,7 +41,7 @@ export function useContentEntryAdminActions(options: {
     locale,
     schema,
     values,
-    tagsInput,
+    folderInput,
     selectedId,
     localEntries,
     messages,
@@ -53,7 +53,7 @@ export function useContentEntryAdminActions(options: {
     setStatus,
     setLocalEntries,
     setValues,
-    setTagsInput,
+    setFolderInput,
     reloadContent,
   } = options;
 
@@ -67,7 +67,7 @@ export function useContentEntryAdminActions(options: {
     setStatus(row?.status ?? "draft");
     try {
       setValues(await loadEntryFields(contentType, id, locale));
-      setTagsInput(formatTagsInput(row?.tags));
+      setFolderInput(formatCollectionId(row?.collectionId));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -78,7 +78,7 @@ export function useContentEntryAdminActions(options: {
 
     await submit({
       action: "createContentEntry",
-      params: { contentType, schema, values, locale, tags: parseTagsInput(tagsInput) },
+      params: { contentType, schema, values, locale, collectionId: parseCollectionId(folderInput) },
       successMessage: messages.entryCreatedMessage,
       onPendingChange: setCreating,
       onSuccess: async () => {
@@ -103,7 +103,7 @@ export function useContentEntryAdminActions(options: {
         schema,
         values,
         locale,
-        tags: parseTagsInput(tagsInput),
+        collectionId: parseCollectionId(folderInput),
       },
       successMessage: messages.entrySavedMessage,
       onPendingChange: setSaving,
@@ -125,7 +125,7 @@ export function useContentEntryAdminActions(options: {
           schema,
           values,
           locale,
-          tags: parseTagsInput(tagsInput),
+          collectionId: parseCollectionId(folderInput),
         });
         await executeAction("publishContentEntry", { contentType, id: selectedId });
       },

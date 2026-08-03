@@ -15,7 +15,7 @@ function authProviderRow(
     segment: "default",
     baseVersion: null,
     meta: {},
-    tags: [],
+    collectionId: null,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

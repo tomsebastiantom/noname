@@ -44,8 +44,9 @@ export const ADMIN_STATE = {
     error: "/admin/layout/error",
   },
   scope: {
-    tags: "/admin/scope/tags",
+    collections: "/admin/scope/collections",
     teams: "/admin/scope/teams",
+    bindings: "/admin/scope/bindings",
     loading: "/admin/scope/loading",
     error: "/admin/scope/error",
   },

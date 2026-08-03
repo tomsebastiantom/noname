@@ -21,11 +21,13 @@ import {
   contentTypeFromPath,
   isEditableField,
 } from "../../content-entries";
+import { folderScopeIds } from "../../folder-tree";
 import { ContentEntryCreateForm } from "./content-entry-create-form";
 import { ContentEntryEditor } from "./content-entry-editor";
 import { ContentEntryTypeList } from "./content-entry-type-list";
 import type { ContentEntryFormLabels } from "./content-entry-types";
 import { emptyValuesForSchema, newEntryCardDescription } from "./content-entry-utils";
+import { ContentFolderNav } from "./content-folder-nav";
 import type { MediaFieldLabels } from "./MediaFieldInput";
 import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
 import { useContentEntryAdminActions } from "./use-content-entry-actions";
@@ -98,16 +100,24 @@ function ContentEntryEntriesPanel({
   const mediaLabels = mediaLabelsFrom(labels);
   const referenceLabels = referenceLabelsFrom(labels);
   const referenceOptions = loaded.referenceOptions;
+  const folders = loaded.folders;
 
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(loaded.initialSelectedId);
   const [values, setValues] = useState<Record<string, string>>(loaded.initialValues);
-  const [tagsInput, setTagsInput] = useState(loaded.initialTagsInput);
+  const [folderInput, setFolderInput] = useState(loaded.initialFolderInput);
   const [status, setStatus] = useState(loaded.initialStatus);
   const [localEntries, setLocalEntries] = useState<ContentEntryRow[]>(loaded.entries);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [deleting, setDeleting] = useState(false);
+
+  const filteredEntries = useMemo(() => {
+    if (!selectedFolderId) return localEntries;
+    const scope = folderScopeIds(folders, selectedFolderId);
+    return localEntries.filter((entry) => entry.collectionId && scope.has(entry.collectionId));
+  }, [folders, localEntries, selectedFolderId]);
 
   async function reloadContent() {
     await catalog.executeAction("loadContentAdmin", loadParams);
@@ -117,7 +127,7 @@ function ContentEntryEntriesPanel({
     if (!schema) return;
     setSelectedId(null);
     setValues(emptyValuesForSchema(schema));
-    setTagsInput("");
+    setFolderInput(selectedFolderId ?? "");
     setStatus("draft");
     catalog.reset();
   }
@@ -128,7 +138,7 @@ function ContentEntryEntriesPanel({
     locale,
     schema,
     values,
-    tagsInput,
+    folderInput,
     selectedId,
     localEntries,
     messages: {
@@ -146,23 +156,24 @@ function ContentEntryEntriesPanel({
     setStatus,
     setLocalEntries,
     setValues,
-    setTagsInput,
+    setFolderInput,
     reloadContent,
   });
 
   const displayError = mergeCatalogError(catalog.error, loadError);
   const editableFields = schema!.fields.filter((f) => isEditableField(f.type));
   const isNewEntry = selectedId === null;
+  const showFolderNav = folders.length > 0;
 
-  if (localEntries.length === 0 || isNewEntry) {
-    return (
+  const mainPanel =
+    localEntries.length === 0 || isNewEntry ? (
       <ContentEntryCreateForm
-        entryCount={localEntries.length}
+        entryCount={filteredEntries.length}
         isNewEntry={isNewEntry}
-        description={newEntryCardDescription(contentType, localEntries.length, isNewEntry)}
+        description={newEntryCardDescription(contentType, filteredEntries.length, isNewEntry)}
         editableFields={editableFields}
         values={values}
-        tagsInput={tagsInput}
+        folderInput={folderInput}
         locale={locale}
         mediaLabels={mediaLabels}
         referenceLabels={referenceLabels}
@@ -172,7 +183,7 @@ function ContentEntryEntriesPanel({
         creating={creating}
         labels={labels}
         onValuesChange={setValues}
-        onTagsInputChange={setTagsInput}
+        onFolderInputChange={setFolderInput}
         onSubmit={() => void onCreate()}
         onCancel={
           isNewEntry && localEntries.length > 0
@@ -180,38 +191,50 @@ function ContentEntryEntriesPanel({
             : undefined
         }
       />
+    ) : (
+      <ContentEntryEditor
+        contentType={contentType}
+        locale={locale}
+        status={status}
+        schema={schema!}
+        entries={filteredEntries}
+        selectedId={selectedId}
+        values={values}
+        folderInput={folderInput}
+        labels={labels}
+        mediaLabels={mediaLabels}
+        referenceLabels={referenceLabels}
+        referenceOptions={referenceOptions}
+        error={displayError}
+        success={catalog.success}
+        saving={saving}
+        publishing={publishing}
+        deleting={deleting}
+        canPublish={loaded.canPublish}
+        canManageAccess={loaded.canManageAccess}
+        onSelectEntry={(id) => void selectEntry(id)}
+        onStartNewEntry={startNewEntry}
+        onValuesChange={setValues}
+        onFolderInputChange={setFolderInput}
+        onSave={() => void onSave()}
+        onPublish={() => void onPublish()}
+        onDelete={() => void onDelete()}
+      />
     );
+
+  if (!showFolderNav) {
+    return mainPanel;
   }
 
   return (
-    <ContentEntryEditor
-      contentType={contentType}
-      locale={locale}
-      status={status}
-      schema={schema!}
-      entries={localEntries}
-      selectedId={selectedId}
-      values={values}
-      tagsInput={tagsInput}
-      labels={labels}
-      mediaLabels={mediaLabels}
-      referenceLabels={referenceLabels}
-      referenceOptions={referenceOptions}
-      error={displayError}
-      success={catalog.success}
-      saving={saving}
-      publishing={publishing}
-      deleting={deleting}
-      canPublish={loaded.canPublish}
-      canManageAccess={loaded.canManageAccess}
-      onSelectEntry={(id) => void selectEntry(id)}
-      onStartNewEntry={startNewEntry}
-      onValuesChange={setValues}
-      onTagsInputChange={setTagsInput}
-      onSave={() => void onSave()}
-      onPublish={() => void onPublish()}
-      onDelete={() => void onDelete()}
-    />
+    <div className="flex flex-col gap-6 lg:flex-row">
+      <ContentFolderNav
+        folders={folders}
+        selectedFolderId={selectedFolderId}
+        onSelectFolder={setSelectedFolderId}
+      />
+      <div className="min-w-0 flex-1">{mainPanel}</div>
+    </div>
   );
 }
 

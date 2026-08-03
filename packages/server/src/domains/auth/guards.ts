@@ -1,18 +1,30 @@
 import {
+  type AuthActor,
+  actorHasPermission,
   hasPermission,
+  PERMISSIONS,
   type PermissionKey,
   resolveAuthContextFromAccessToken,
   userIdFromAccessToken,
 } from "@noname/auth";
 import type { Context } from "hono";
-import { getUserId } from "../../shared/org";
+import { getOrgId, getUserId } from "../../shared/org";
+import { verifyAgentToken } from "../agent/agent-token";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
+import type { AuthSubject } from "./authorization-port";
 
 export function bearerToken(c: Context): string | null {
   const auth = c.req.header("Authorization") ?? "";
   const match = auth.match(/^Bearer\s+(.+)$/i);
   return match?.[1]?.trim() || null;
+}
+
+export function authSubjectFromActor(actor: AuthActor): AuthSubject {
+  if (actor.type === "agent") {
+    return { type: "Agent", id: actor.agentSlug };
+  }
+  return { type: "User", id: actor.userId };
 }
 
 export function requireAuthenticatedUser(
@@ -29,10 +41,32 @@ export function requireAuthenticatedUser(
   return { userId, userToken };
 }
 
-export async function requirePermission(
+export async function requireAuthenticatedActor(
   c: Context,
-  permission: PermissionKey,
-): Promise<{ userId: string; userToken: string; permissions: PermissionKey[] } | Response> {
+): Promise<(AuthActor & { userToken: string }) | Response> {
+  const token = bearerToken(c);
+  if (!token) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const agentSecret = process.env.AGENT_TOKEN_SECRET ?? "";
+  const agentClaims = verifyAgentToken(token, agentSecret);
+  if (agentClaims) {
+    const orgId = getOrgId(c);
+    if (!orgId || agentClaims.orgId !== orgId) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    return {
+      type: "agent",
+      agentId: agentClaims.agentId,
+      agentSlug: agentClaims.agentSlug,
+      onBehalfOf: agentClaims.onBehalfOf,
+      orgId: agentClaims.orgId,
+      permissions: agentClaims.permissions,
+      userToken: token,
+    };
+  }
+
   const auth = requireAuthenticatedUser(c);
   if (auth instanceof Response) return auth;
 
@@ -41,9 +75,46 @@ export async function requirePermission(
     projectId,
     issuer: zitadelIssuer(),
   });
-  if (!hasPermission(permissions, permission)) {
+  return {
+    type: "human",
+    userId: auth.userId,
+    permissions,
+    userToken: auth.userToken,
+  };
+}
+
+export async function requireActorPermission(
+  c: Context,
+  permission: PermissionKey,
+): Promise<(AuthActor & { userToken: string }) | Response> {
+  const actor = await requireAuthenticatedActor(c);
+  if (actor instanceof Response) return actor;
+  if (!actorHasPermission(actor, permission)) {
     return c.json({ error: "Forbidden" }, 403);
   }
+  return actor;
+}
 
-  return { ...auth, permissions };
+/** @deprecated Prefer requireActorPermission for routes that agents may call. */
+export async function requirePermission(
+  c: Context,
+  permission: PermissionKey,
+): Promise<{ userId: string; userToken: string; permissions: PermissionKey[] } | Response> {
+  const actor = await requireActorPermission(c, permission);
+  if (actor instanceof Response) return actor;
+  if (actor.type === "agent") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+  return { userId: actor.userId, userToken: actor.userToken, permissions: actor.permissions };
+}
+
+export async function requireHumanPermission(
+  c: Context,
+  permission: PermissionKey,
+): Promise<{ userId: string; userToken: string; permissions: PermissionKey[] } | Response> {
+  return requirePermission(c, permission);
+}
+
+export function isStoreAdmin(permissions: Iterable<PermissionKey>): boolean {
+  return hasPermission(permissions, PERMISSIONS.AUTH_MANAGE);
 }

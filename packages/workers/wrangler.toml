@@ -10,7 +10,9 @@ port = 8787
 [vars]
 API_ORIGIN = "http://localhost:3000"
 ZITADEL_ISSUER = "http://localhost:8080"
-ZITADEL_CLIENT_ID = "384683385269846026"
+# ZITADEL_CLIENT_ID / ZITADEL_PROJECT_ID — updated by pnpm init:zitadel
+ZITADEL_CLIENT_ID = "384693263224864778"
+ZITADEL_PROJECT_ID = "384693263057027082"
 
 [[kv_namespaces]]
 binding = "KV"

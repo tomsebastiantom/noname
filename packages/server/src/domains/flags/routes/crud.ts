@@ -1,6 +1,6 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
-import { getOrgId, requireHeaderOrgId } from "../../../shared/org";
+import { getOrgId } from "../../../shared/org";
 import { created, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
 import type { CreateFlagInput, FlagFilters, UpdateFlagInput } from "../ports";
@@ -16,21 +16,6 @@ export function registerFlagCrudRoutes(routes: Hono, deps: FlagRouteDeps): void 
     const body = await c.req.json<CreateFlagInput>();
     const flag = await service.create(orgId, body);
     return created(c, flag);
-  });
-
-  /** Public metadata for client layout refresh — no flag values or targeting rules. */
-  routes.get("/layout-keys", async (c) => {
-    const orgId = requireHeaderOrgId(c);
-    if (orgId instanceof Response) return orgId;
-    const flags = await service.list(orgId, { status: "active" });
-    const layoutKeys = flags
-      .filter((flag) => flag.schemaId || flag.variantId)
-      .map((flag) => ({
-        key: flag.key,
-        schemaId: flag.schemaId,
-        variantId: flag.variantId,
-      }));
-    return ok(c, layoutKeys);
   });
 
   routes.get("/", async (c) => {

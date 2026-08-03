@@ -1,3 +1,12 @@
+export {
+  type ActorType,
+  AGENT_ALLOWED_PERMISSIONS,
+  type AgentActor,
+  type AuthActor,
+  actorHasPermission,
+  type HumanActor,
+  intersectAgentPermissions,
+} from "./actors";
 export { EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "./edit-mode";
 export {
   DEFAULT_FETCH_TIMEOUT_MS,
@@ -51,3 +60,8 @@ export {
   canJoinTeamEditorSlot,
   canJoinTeamPublisherSlot,
 } from "./team-slot-validation";
+export {
+  writeAuditFromActor,
+  withWriteAudit,
+  type WriteAudit,
+} from "./write-audit";

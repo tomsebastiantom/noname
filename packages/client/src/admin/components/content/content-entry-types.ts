@@ -23,7 +23,7 @@ export type ContentEntryEditorProps = {
   entries: ContentEntryRow[];
   selectedId: string | null;
   values: Record<string, string>;
-  tagsInput: string;
+  folderInput: string;
   labels: ContentEntryFormLabels;
   mediaLabels: MediaFieldLabels;
   referenceLabels: ReferenceFieldLabels;
@@ -38,7 +38,7 @@ export type ContentEntryEditorProps = {
   onSelectEntry: (id: string) => void;
   onStartNewEntry: () => void;
   onValuesChange: (values: Record<string, string>) => void;
-  onTagsInputChange: (value: string) => void;
+  onFolderInputChange: (value: string) => void;
   onSave: () => void;
   onPublish: () => void;
   onDelete: () => void;

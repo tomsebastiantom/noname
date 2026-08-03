@@ -1,5 +1,7 @@
 import { emptyValuesForSchema } from "../../admin/components/content/content-entry-utils";
-import { formatTagsInput } from "../../admin/document-tags";
+import { formatCollectionId } from "../../admin/document-folder";
+import type { FolderCatalogEntry } from "../../admin/folder-tree";
+import { fetchScopeCollections } from "../../auth/document-scope";
 import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
   type AssetSummary,
@@ -37,9 +39,10 @@ export type ContentAdminLoaded =
       locale: string;
       schema: ContentTypeSchema | null;
       entries: ContentEntryRow[];
+      folders: FolderCatalogEntry[];
       initialSelectedId: string | null;
       initialValues: Record<string, string>;
-      initialTagsInput: string;
+      initialFolderInput: string;
       initialStatus: string;
       canPublish: boolean;
       canManageAccess: boolean;
@@ -82,9 +85,10 @@ export const contentActions = {
           locale,
           schema: null,
           entries: [],
+          folders: [],
           initialSelectedId: null,
           initialValues: {},
-          initialTagsInput: "",
+          initialFolderInput: "",
           initialStatus: "draft",
           canPublish,
           canManageAccess,
@@ -94,7 +98,18 @@ export const contentActions = {
         return;
       }
 
-      const rows = await listEntries(contentType);
+      const [rows, folderRows] = await Promise.all([
+        listEntries(contentType),
+        fetchScopeCollections().catch(() => []),
+      ]);
+      const folders: FolderCatalogEntry[] = folderRows
+        .filter((entry): entry is typeof entry & { id: string } => Boolean(entry.id))
+        .map((entry) => ({
+          id: entry.id,
+          slug: entry.slug,
+          label: entry.label,
+          parentId: entry.parentId ?? null,
+        }));
       const referenceTypes = [
         ...new Set(
           typeDef.schema.fields
@@ -119,13 +134,13 @@ export const contentActions = {
       const first = rows[0];
       let initialSelectedId: string | null = null;
       let initialValues = emptyValuesForSchema(typeDef.schema);
-      let initialTagsInput = "";
+      let initialFolderInput = "";
       let initialStatus = "draft";
 
       if (first) {
         initialSelectedId = first.id;
         initialStatus = first.status;
-        initialTagsInput = formatTagsInput(first.tags);
+        initialFolderInput = formatCollectionId(first.collectionId);
         initialValues = await loadEntryFields(contentType, first.id, locale);
       }
 
@@ -136,9 +151,10 @@ export const contentActions = {
         locale,
         schema: typeDef.schema,
         entries: rows,
+        folders,
         initialSelectedId,
         initialValues,
-        initialTagsInput,
+        initialFolderInput,
         initialStatus,
         canPublish,
         canManageAccess,
@@ -154,15 +170,15 @@ export const contentActions = {
   }) satisfies CatalogActionHandler,
 
   saveContentEntry: (async (params) => {
-    const { contentType, id, schema, values, locale, tags } = params as {
+    const { contentType, id, schema, values, locale, collectionId } = params as {
       contentType: string;
       id: string;
       schema: ContentTypeSchema;
       values: Record<string, string>;
       locale?: string;
-      tags?: string[];
+      collectionId?: string | null;
     };
-    await saveContentEntry({ contentType, id, schema, values, locale, tags });
+    await saveContentEntry({ contentType, id, schema, values, locale, collectionId });
   }) satisfies CatalogActionHandler,
 
   publishContentEntry: (async (params) => {
@@ -171,14 +187,14 @@ export const contentActions = {
   }) satisfies CatalogActionHandler,
 
   createContentEntry: (async (params) => {
-    const { contentType, schema, values, locale, tags } = params as {
+    const { contentType, schema, values, locale, collectionId } = params as {
       contentType: string;
       schema: ContentTypeSchema;
       values: Record<string, string>;
       locale?: string;
-      tags?: string[];
+      collectionId?: string | null;
     };
-    await createContentEntry({ contentType, schema, values, locale, tags });
+    await createContentEntry({ contentType, schema, values, locale, collectionId });
   }) satisfies CatalogActionHandler,
 
   deleteContentEntry: (async (params) => {

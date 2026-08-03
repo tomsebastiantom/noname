@@ -4,7 +4,6 @@ import { LayoutDocument } from "../entity";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
 import { isPublished } from "../shared/document-status";
-import { normalizeTags } from "../shared/document-tags";
 import { requireLayoutDocument, requirePublishedLayout } from "./document-guards";
 import {
   readContentRef,
@@ -47,7 +46,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         data,
         baseVersion: null,
         status: "draft",
-        tags: normalizeTags(input.tags),
+        collectionId: input.collectionId ?? null,
       });
       flushEvents(entity);
       return saved as unknown as LayoutDTO;
@@ -88,8 +87,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         }
       }
       validateLayoutMetadata(nextData);
-      const nextTags = input.tags !== undefined ? normalizeTags(input.tags) : undefined;
-      const updated = await storage.updateDocument(id, nextData, existing.meta, nextTags);
+      const updated = await storage.updateDocument(id, nextData, existing.meta, input.collectionId);
       flushEvents(entity);
       return updated as unknown as LayoutDTO;
     },

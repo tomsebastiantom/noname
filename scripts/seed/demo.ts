@@ -125,13 +125,10 @@ const adminShellNavConfig = {
     { id: "auth", href: "/admin/settings/auth" },
     { id: "users", href: "/admin/settings/users" },
     { id: "scope", href: "/admin/settings/scope" },
-    { id: "login", href: "/admin/settings/login" },
-  ],
-  observabilityItems: [
     { id: "analytics", href: "/admin/settings/analytics" },
     { id: "flags", href: "/admin/settings/flags" },
     { id: "replay", href: "/admin/settings/replay" },
-    { id: "traces", href: "/admin/settings/traces" },
+    { id: "login", href: "/admin/settings/login" },
   ],
   accountSecurityHref: "/admin/settings/security",
   storefrontHref: "/",
@@ -141,8 +138,6 @@ const adminShellNavLabels = {
   sidebarTitle: "Admin",
   productName: "Noname",
   settingsSectionLabel: "Settings",
-  observabilitySectionLabel: "Observability",
-  accountSectionLabel: "Account",
   nav: {
     home: "Overview",
     pages: "Pages",
@@ -153,13 +148,10 @@ const adminShellNavLabels = {
     auth: "Auth settings",
     users: "Team members",
     scope: "Content access",
-    login: "Login appearance",
-  },
-  observability: {
     analytics: "Analytics",
     flags: "Feature flags",
     replay: "Session replay",
-    traces: "Distributed traces",
+    login: "Login appearance",
   },
   accountSecurity: "Account security",
   storefront: "← Site",
@@ -174,40 +166,26 @@ const draftPublishLabels = {
   publishingLabel: "Publishing…",
 };
 
-const documentTagsLabels = {
-  tagsLabel: "Tags",
-  tagsPlaceholder: "marketing, landing",
-  tagsHint:
-    "Comma-separated content tags. Team members bound to these tags in Settings → Content access can edit matching documents.",
+const documentFolderLabels = {
+  folderLabel: "Folder",
+  folderPlaceholder: "Marketing",
+  folderNoneLabel: "No folder",
+  folderHint:
+    "One folder per document. Team access is granted on folders in Settings → Content access.",
 };
 
 const documentShareLabels = {
-  shareTitle: "Editor access",
-  shareHint: "Grant edit access to this document only (draft + save).",
+  shareTitle: "Share with",
+  shareHint: "Give a team member edit access to this document only.",
   shareUserLabel: "Team member",
-  shareGrantLabel: "Share editor access",
+  shareGrantLabel: "Share",
   shareGrantingLabel: "Sharing…",
   shareRevokeLabel: "Remove",
   shareRevokingLabel: "Removing…",
-  shareGrantSuccessMessage: "Editor access granted.",
-  shareRevokeSuccessMessage: "Editor access removed.",
-  shareEmptyMessage: "No direct editor shares yet.",
+  shareGrantSuccessMessage: "Access granted.",
+  shareRevokeSuccessMessage: "Access removed.",
+  shareEmptyMessage: "Not shared with anyone directly yet.",
   shareLoadingLabel: "Loading share list…",
-};
-
-const documentPublisherShareLabels = {
-  publisherShareTitle: "Publisher access",
-  publisherShareHint:
-    "Grant publish access to this document only. Only users with the publisher or admin role can be added.",
-  publisherShareUserLabel: "Publisher or admin",
-  publisherShareGrantLabel: "Share publish access",
-  publisherShareGrantingLabel: "Sharing…",
-  publisherShareRevokeLabel: "Remove",
-  publisherShareRevokingLabel: "Removing…",
-  publisherShareGrantSuccessMessage: "Publish access granted.",
-  publisherShareRevokeSuccessMessage: "Publish access removed.",
-  publisherShareEmptyMessage: "No direct publisher shares yet.",
-  publisherShareLoadingLabel: "Loading publisher shares…",
 };
 
 const mediaFieldLabels = {
@@ -332,8 +310,6 @@ const analyticsEventsAdminLabels = {
   sourceColumnHeader: "Source",
   sessionColumnHeader: "Session",
   schemaColumnHeader: "Schema",
-  traceColumnHeader: "Trace",
-  viewTraceLabel: "View trace",
 };
 
 const loginBrandingLabels = {
@@ -349,10 +325,8 @@ const contentAdminLabels = {
   ...draftPublishLabels,
   ...mediaFieldLabels,
   ...referenceFieldLabels,
-  ...documentTagsLabels,
+  ...documentFolderLabels,
   ...documentShareLabels,
-  ...documentPublisherShareLabels,
-  forbiddenLabel: "Content requires the editor or store admin role.",
   deleteLabel: "Delete",
   deletingLabel: "Deleting…",
   createDraftLabel: "Create draft",
@@ -367,10 +341,8 @@ const contentAdminLabels = {
 
 const layoutAdminLabels = {
   ...draftPublishLabels,
-  ...documentTagsLabels,
+  ...documentFolderLabels,
   ...documentShareLabels,
-  ...documentPublisherShareLabels,
-  forbiddenLabel: "Layouts require the editor or store admin role.",
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
   publishedMessage: "Layout published. Site and login will use the new spec on next load.",
@@ -420,7 +392,6 @@ const pageEntryAdminLabels = {
   statusColumnHeader: "Status",
   pageNotFoundPrefix: "Page",
   pageNotFoundSuffix: "not found.",
-  forbiddenLabel: "Pages require the editor or store admin role.",
 };
 
 const pageTreeAdminLabels = {
@@ -431,7 +402,6 @@ const pageTreeAdminLabels = {
   removeEntryLabel: "Remove entry",
   pageDocumentsLinkLabel: "← Page documents",
   treeLoadingLabel: "Loading page tree…",
-  forbiddenLabel: "Pages require the editor or store admin role.",
 };
 
 const featureFlagsAdminLabels = {
@@ -443,32 +413,6 @@ const featureFlagsAdminLabels = {
   forbiddenLabel: "Feature flags require the flags manager or store admin role.",
 };
 
-const tracesAdminLabels = {
-  loadingLabel: "Loading traces…",
-  empty: "No traces in the last hour for this store. Browse the site or use admin to generate traffic.",
-  refreshLabel: "Refresh",
-  refreshingLabel: "Refreshing…",
-  forbiddenLabel: "Distributed traces require the trace viewer or store admin role.",
-  operationColumnHeader: "Operation",
-  durationColumnHeader: "Duration",
-  spansColumnHeader: "Spans",
-  statusColumnHeader: "Status",
-  timeColumnHeader: "Time",
-  traceIdColumnHeader: "Trace ID",
-  detailTitle: "Span waterfall",
-  detailHint:
-    "One trace ID ties together every span for a single request (browser → API → DB). Copy it for logs, or open Jaeger for the full timeline.",
-  detailLoadingLabel: "Loading spans…",
-  detailEmptyLabel: "No spans for this trace.",
-  okLabel: "OK",
-  errorLabel: "Error",
-  serviceColumnHeader: "Service",
-  spanTagsLabel: "Attributes",
-  copyTraceIdLabel: "Copy trace ID",
-  copiedTraceIdLabel: "Copied",
-  openJaegerLabel: "Open in Jaeger",
-};
-
 const adminHomeLinkConfig = [
   { id: "pages", href: "/admin/pages" },
   { id: "auth_providers", href: "/admin/content/auth_provider" },
@@ -478,7 +422,6 @@ const adminHomeLinkConfig = [
   { id: "analytics", href: "/admin/settings/analytics" },
   { id: "flags", href: "/admin/settings/flags" },
   { id: "replay", href: "/admin/settings/replay" },
-  { id: "traces", href: "/admin/settings/traces" },
   { id: "auth", href: "/admin/settings/auth" },
   { id: "account_security", href: "/admin/settings/security" },
   { id: "login", href: "/admin/settings/login" },
@@ -497,7 +440,7 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   },
   scope: {
     label: "Content access",
-    description: "Tags, teams, and who can edit scoped content",
+    description: "Folders, teams, and who can edit scoped content",
   },
   analytics: {
     label: "Analytics",
@@ -510,10 +453,6 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   replay: {
     label: "Session replay",
     description: "Browse recorded browser sessions (replay viewer or admin)",
-  },
-  traces: {
-    label: "Distributed traces",
-    description: "OpenTelemetry request traces for this store (Jaeger proxy)",
   },
   auth: {
     label: "Auth settings",
@@ -769,57 +708,70 @@ const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdmin"], {
   },
 });
 
-const adminTracesSpec = adminPanelSpec(["loadTraces", "tracesAdmin"], {
-  loadTraces: {
-    type: "MountAction",
-    props: catalogProps({ action: "loadTracesAdmin" }, {}),
-  },
-  tracesAdmin: {
-    type: "TracesAdmin",
-    props: panelProps(
-      {},
-      "Distributed traces",
-      "Server request traces for this store (last hour). Click a row to inspect spans.",
-      tracesAdminLabels,
-    ),
-  },
-});
-
 const scopeAdminLabels = {
   loadingLabel: "Loading…",
-  tagLabel: "Tag",
-  tagPlaceholder: "marketing",
+  folderLabel: "Folder",
+  folderPlaceholder: "e.g. legal",
+  folderSelectLabel: "Select folder…",
   teamLabel: "Team",
-  teamPlaceholder: "marketing-team",
-  createTagLabel: "Add tag",
-  creatingTagLabel: "Adding…",
+  teamPlaceholder: "e.g. content-team",
+  teamSelectLabel: "Select team…",
+  createFolderLabel: "Add folder",
+  creatingFolderLabel: "Adding…",
   createTeamLabel: "Add team",
   creatingTeamLabel: "Adding…",
-  bindEditorsLabel: "Bind tag → team (edit)",
-  bindPublishersLabel: "Bind tag → team (publish)",
-  unbindEditorsLabel: "Unbind (edit)",
-  unbindPublishersLabel: "Unbind (publish)",
   bindingLabel: "Saving…",
-  deleteTagLabel: "Delete tag",
+  editAccessLabel: "Edit",
+  publishAccessLabel: "Publish",
+  accessOnLabel: "On",
+  accessOffLabel: "Off",
+  bindingsListTitle: "Current access",
+  emptyBindingsMessage: "No rules yet — pick a folder and team below, then turn access on.",
+  deleteFolderLabel: "Delete folder",
   deleteTeamLabel: "Delete team",
   deletingLabel: "Deleting…",
   deleteSuccessMessage: "Deleted.",
-  userLabel: "Team member",
-  slotEditorLabel: "Editor slot",
-  slotPublisherLabel: "Publisher slot",
-  grantLabel: "Add to team",
+  deleteFolderConfirm:
+    "Delete this folder? Documents in it will have no folder, and teams will lose access to it.",
+  deleteTeamConfirm:
+    "Delete this team? Members lose folder access granted through this team.",
+  userLabel: "Add people",
+  memberSearchPlaceholder: "Search by name or email…",
+  noMemberMatchesMessage: "No matching people.",
+  memberNoneSelectedLabel: "No one selected — pick from the list.",
+  memberSelectedLabel: "selected",
+  clearSelectionLabel: "Clear all",
+  membersListTitle: "People on this team",
+  emptyMembersMessage: "Nobody on this team yet — add someone below.",
+  memberNameColumnHeader: "Person",
+  orgRoleColumnHeader: "Org role",
+  onTeamColumnHeader: "On team as",
+  slotEditorLabel: "Add as editor",
+  slotPublisherLabel: "Add as publisher",
+  removeEditorLabel: "Remove editor",
+  removePublisherLabel: "Remove publisher",
+  grantOnePersonLabel: "Add 1 person to team",
+  grantManyPeopleLabel: "Add {count} people to team",
   grantingLabel: "Saving…",
   revokeLabel: "Remove from team",
   revokingLabel: "Removing…",
   grantSuccessMessage: "Saved.",
   revokeSuccessMessage: "Removed.",
-  bindSuccessMessage: "Tag ↔ team binding saved.",
-  knownTagsLabel: "Tags",
-  emptyTagsMessage: "No tags yet — create one above or tag content when editing.",
-  knownTeamsLabel: "Teams",
+  foldersSectionTitle: "Folders",
+  foldersSectionHint:
+    "Group content by area (Marketing, Legal, …). Each page or layout belongs to one folder.",
+  teamsSectionTitle: "Teams",
+  teamsSectionHint: "Named groups of people who work on content together.",
+  bindingsSectionTitle: "Folder access",
+  bindingsSectionHint:
+    "Connect a folder to a team. Edit = team members can change drafts in that folder. Publish = they can also go live.",
+  membershipSectionTitle: "Team members",
+  membershipSectionHint:
+    "Pick a team, then add org members. Org role (from Settings → Users) must allow editing or publishing. Editor = draft on folders this team can access; publisher = can go live too.",
+  emptyFoldersMessage: "No folders yet — create one above or pick a folder when editing content.",
   emptyTeamsMessage: "No teams yet — create one above.",
   helpText:
-    "Tags label documents in Postgres. Teams group people in Keto. Bind a tag to a team, then add members to editor or publisher slots.",
+    "1. Create folders and teams. 2. Connect a folder to a team (edit and/or publish). 3. Add people to the team.",
   forbiddenLabel: "Content access requires store admin or access manager role.",
 };
 
@@ -1293,10 +1245,6 @@ async function main() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_analytics", adminAnalyticsSpec, {
-    renderAs: "panel",
-    shellRef: "admin_shell",
-  });
-  await upsertLayout("admin_traces", adminTracesSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });

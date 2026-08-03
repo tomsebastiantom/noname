@@ -8,7 +8,7 @@ import type {
   TenantSettingsDTO,
 } from "../ports";
 import { parseDocumentRef } from "../refs";
-import { documents, documentTypes } from "../schema";
+import { contentCollections, documents, documentTypes } from "../schema";
 import { normalizeAuthConfig } from "../tenant/auth-config";
 
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
@@ -119,7 +119,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           baseVersion: input.baseVersion ?? null,
           data: input.data,
           meta: input.meta ?? {},
-          tags: input.tags ?? [],
+          collectionId: input.collectionId ?? null,
         })
         .returning();
       if (!row) throw new Error("Failed to create document");
@@ -154,15 +154,15 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const [row] = await db.select().from(documents).where(eq(documents.id, id));
       return row ? mapDocument(row) : null;
     },
-    async updateDocument(id, data, meta, tags) {
+    async updateDocument(id, data, meta, collectionId) {
       const patch: {
         data: Record<string, unknown>;
         updated_at: Date;
         meta?: Record<string, unknown>;
-        tags?: string[];
+        collectionId?: string | null;
       } = { data, updated_at: new Date() };
       if (meta !== undefined) patch.meta = meta;
-      if (tags !== undefined) patch.tags = tags;
+      if (collectionId !== undefined) patch.collectionId = collectionId;
       const [row] = await db.update(documents).set(patch).where(eq(documents.id, id)).returning();
       if (!row) throw new Error("Failed to update document");
       return mapDocument(row);
@@ -232,6 +232,15 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .limit(1);
       return row ? mapDocument(row) : null;
     },
+
+    async findCollectionSlug(orgId, collectionId) {
+      const [row] = await db
+        .select({ slug: contentCollections.slug })
+        .from(contentCollections)
+        .where(and(eq(contentCollections.orgId, orgId), eq(contentCollections.id, collectionId)))
+        .limit(1);
+      return row?.slug ?? null;
+    },
   };
 }
 
@@ -291,7 +300,7 @@ function mapDocument(row: DocumentRow): DocumentDTO {
     baseVersion: row.baseVersion ?? null,
     data: (row.data ?? {}) as Record<string, unknown>,
     meta: (row.meta ?? {}) as Record<string, unknown>,
-    tags: row.tags ?? [],
+    collectionId: row.collectionId ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

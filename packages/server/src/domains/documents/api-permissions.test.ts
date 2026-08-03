@@ -48,10 +48,11 @@ function mockStorage(): DocumentStorage {
       baseVersion: null,
       data: {},
       meta: {},
-      tags: ["marketing"],
+      collectionId: "col-marketing",
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
+    findCollectionSlug: vi.fn(async () => "marketing"),
   } as unknown as DocumentStorage;
 }
 
@@ -158,7 +159,7 @@ describe("documents API permission guards", () => {
     expect(authorization.check).toHaveBeenCalledWith({
       subject: { type: "User", id: "user-editor" },
       permission: "edit",
-      namespace: "Tag",
+      namespace: "Collection",
       objectId: "marketing",
     });
   });
@@ -173,7 +174,7 @@ describe("documents API permission guards", () => {
         Authorization: `Bearer ${editorToken()}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title: "Updated", tags: ["marketing"] }),
+      body: JSON.stringify({ title: "Updated", collectionId: "col-marketing" }),
     });
     expect(res.status).toBe(403);
     expect(content.updateById).not.toHaveBeenCalled();

@@ -13,7 +13,7 @@ function asset(data: Record<string, unknown>): AssetDTO {
     status: "published",
     baseVersion: null,
     meta: {},
-    tags: [],
+    collectionId: null,
     data,
     createdAt: new Date(),
     updatedAt: new Date(),

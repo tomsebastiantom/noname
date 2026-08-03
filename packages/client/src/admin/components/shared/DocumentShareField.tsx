@@ -222,9 +222,7 @@ export function DocumentShareField({
                 disabled={granting || revokingId !== null}
                 onClick={() => void handleRevoke(member.id)}
               >
-                {revokingId === member.id
-                  ? resolved.shareRevokingLabel
-                  : resolved.shareRevokeLabel}
+                {revokingId === member.id ? resolved.shareRevokingLabel : resolved.shareRevokeLabel}
               </Button>
             </li>
           ))}

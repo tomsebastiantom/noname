@@ -15,13 +15,10 @@ import {
   useTransition,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { hasStaffAdminAccess } from "./auth/admin-access";
 import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
-import { clearContentDraftCache } from "./editor/hooks/content-draft-cache";
-import { clearLayoutDraftCache } from "./editor/hooks/layout-draft-cache";
 import { isAuthError } from "./lib/api";
 import { adminShellPropsFromSpec, assertAdminPanelSpec } from "./platform/admin-layout";
 import { AdminPlatformView } from "./platform/admin-platform-view";
@@ -52,9 +49,7 @@ interface EdgeSchemaResponse {
   segment?: string;
 }
 
-const EditorPlatformView = lazy(() =>
-  import("./platform/editor-platform-view").then((m) => ({ default: m.EditorPlatformView })),
-);
+const EditPageView = lazy(() => import("./editor").then((m) => ({ default: m.EditPageView })));
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
 
@@ -100,12 +95,7 @@ function App() {
   const loadSeqRef = useRef(0);
   const adminShellCacheRef = useRef<{ shellRef: string; props: AdminShellProps } | null>(null);
   const adminPanelCacheRef = useRef(new Map<string, Spec>());
-  const editorShellCacheRef = useRef<Spec | null>(null);
-  const editorPageCacheRef = useRef(
-    new Map<string, { displaySpec: Spec; templateName: string; pageContentRef: string | null }>(),
-  );
   const [, startPanelTransition] = useTransition();
-  const [, startEditorTransition] = useTransition();
   const storeSlug = storeSlugFromHost(window.location.hostname);
 
   const pathname = useSyncExternalStore(subscribeAppLocation, getPathname, getPathname);
@@ -138,9 +128,8 @@ function App() {
     }
 
     const softAdminNav = adminRoute && contentRef.current !== null;
-    const softEditorNav = editMode && layoutRenderAs === "editor" && contentRef.current !== null;
 
-    if ((adminRoute || editMode) && isLoggedIn() && !softAdminNav && !softEditorNav) {
+    if ((adminRoute || editMode) && isLoggedIn() && !softAdminNav) {
       try {
         const session = await fetchAuthSessionStatus();
         if (editMode && !sessionCanDraft(session)) {
@@ -163,14 +152,6 @@ function App() {
           );
           return;
         }
-        if (
-          pathname.startsWith("/admin") &&
-          !hasStaffAdminAccess(session) &&
-          !pathname.startsWith(mfaEnrollPath)
-        ) {
-          redirectTo("/", setLoading, setNavigating);
-          return;
-        }
       } catch (err) {
         if (editMode && isAuthError(err)) {
           clearSession();
@@ -190,17 +171,6 @@ function App() {
           setShellKey(template);
         });
       }
-    } else if (softEditorNav) {
-      const editorPageKey = `${pathname}:${template}`;
-      const cachedPage = editorPageCacheRef.current.get(editorPageKey);
-      if (cachedPage) {
-        startEditorTransition(() => {
-          setSpec(cachedPage.displaySpec);
-          setLayoutTemplateName(cachedPage.templateName);
-          setPageContentRef(cachedPage.pageContentRef);
-          setShellKey(`${template}:${pathname}:edit`);
-        });
-      }
     } else if (contentRef.current !== null) {
       setNavigating(true);
     } else {
@@ -209,8 +179,7 @@ function App() {
     setError(null);
 
     const headers = apiHeaders();
-    const skipManifest = softAdminNav || softEditorNav;
-    const manifestPromise = skipManifest
+    const manifestPromise = softAdminNav
       ? Promise.resolve(null)
       : fetchWithTimeout(`/api/tenants/${storeSlug}/catalog`, { headers }, SCHEMA_FETCH_TIMEOUT_MS)
           .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
@@ -257,28 +226,15 @@ function App() {
           throw new Error("Editor layout missing shellRef or shell spec");
         }
 
-        if (!editorShellCacheRef.current) {
-          editorShellCacheRef.current = shellTree;
-        }
-
-        const editorPageKey = `${pathname}:${resolvedTemplateName}`;
-        editorPageCacheRef.current.set(editorPageKey, {
-          displaySpec: tree,
-          templateName: resolvedTemplateName,
-          pageContentRef: body?.data?.contentRef ?? null,
-        });
-
         adminShellCacheRef.current = null;
         adminPanelCacheRef.current.clear();
         setComposeMode("full");
         setAdminBaseShellProps(null);
         setAdminPanelSpec(null);
-        startEditorTransition(() => {
-          setEditorShellSpec(editorShellCacheRef.current);
-          setSpec(tree);
-          setShellKey(`${template}:${pathname}:edit`);
-          contentRef.current = tree;
-        });
+        setEditorShellSpec(shellTree);
+        setSpec(tree);
+        setShellKey(`${template}:${pathname}:edit`);
+        contentRef.current = tree;
       } else if (renderAs === "panel") {
         const shellTree = body?.data?.shell as Spec | undefined;
         const shellRef = body?.data?.shellRef ?? null;
@@ -308,18 +264,10 @@ function App() {
           setShellKey(template);
           contentRef.current = baseShellProps;
           setEditorShellSpec(null);
-          editorShellCacheRef.current = null;
-          editorPageCacheRef.current.clear();
-          clearLayoutDraftCache();
-          clearContentDraftCache();
         });
       } else {
         adminShellCacheRef.current = null;
         adminPanelCacheRef.current.clear();
-        editorShellCacheRef.current = null;
-        editorPageCacheRef.current.clear();
-        clearLayoutDraftCache();
-        clearContentDraftCache();
         setComposeMode("full");
         setAdminBaseShellProps(null);
         setAdminPanelSpec(null);
@@ -342,7 +290,7 @@ function App() {
         setNavigating(false);
       }
     }
-  }, [storeSlug, template, adminRoute, editMode, platformRoute, pathname, layoutRenderAs]);
+  }, [storeSlug, template, adminRoute, editMode, platformRoute, pathname]);
 
   useEffect(() => {
     void loadPage();
@@ -410,17 +358,18 @@ function App() {
     );
   } else if (editorRoute && spec && editorShellSpec && layoutTemplateName) {
     mainContent = (
-      <Suspense fallback={<p className="p-8 text-muted-foreground">Loading editor…</p>}>
-        <EditorPlatformView
-          key="editor"
-          shellSpec={editorShellSpec}
-          displaySpec={spec}
-          templateName={layoutTemplateName}
-          pageContentRef={pageContentRef}
-          registry={registry}
-          onReload={() => void loadPage()}
-        />
-      </Suspense>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={<p className="p-8 text-muted-foreground">Loading editor…</p>}>
+          <EditPageView
+            displaySpec={spec}
+            shellSpec={editorShellSpec}
+            templateName={layoutTemplateName}
+            pageContentRef={pageContentRef}
+            registry={registry}
+            onReload={() => void loadPage()}
+          />
+        </Suspense>
+      </div>
     );
   } else if (spec) {
     mainContent = (
@@ -443,7 +392,7 @@ function App() {
         </div>
       ) : null}
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {navigating && !adminRoute && !editMode ? (
+        {navigating && !adminRoute ? (
           <div
             className="pointer-events-none absolute inset-x-0 top-0 z-50 h-0.5 animate-pulse bg-primary"
             role="progressbar"

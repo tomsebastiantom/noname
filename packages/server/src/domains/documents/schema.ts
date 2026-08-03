@@ -58,8 +58,8 @@ export const documents = pgTable(
     // the type's schema in `documentTypes` (or the override model for layouts).
     data: jsonb("data").notNull(),
     meta: jsonb("meta").default({}),
-    // Content tags for scoped access (content entries + layouts).
-    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
+    // CMS folder for scoped access (content entries + layouts). Phase F1: flat folders only.
+    collectionId: uuid("collection_id"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -78,17 +78,19 @@ export const documents = pgTable(
 // schema describes the type's fields (type, isLocalizable, constraints, permissions);
 // documents of that type carry matching `data`. No ALTER TABLE to add a type or a
 // field — just insert/update a row.
-export const contentTags = pgTable(
-  "content_tags",
+export const contentCollections = pgTable(
+  "content_collections",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     orgId: text("org_id").notNull(),
     slug: text("slug").notNull(),
     label: text("label").notNull(),
+    /** Phase F2: nested folders. Null = top-level folder. */
+    parentId: uuid("parent_id"),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
-    uniqueSlug: uniqueIndex("content_tags_org_slug").on(t.orgId, t.slug),
+    uniqueSlug: uniqueIndex("content_collections_org_slug").on(t.orgId, t.slug),
   }),
 );
 
@@ -118,5 +120,24 @@ export const documentTypes = pgTable(
   },
   (t) => ({
     uniqueTypeName: uniqueIndex("document_types_tenant_name").on(t.orgId, t.name),
+  }),
+);
+
+/** Append-only audit log for content/layout document writes (A′.8). */
+export const documentOps = pgTable(
+  "document_ops",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    documentId: uuid("document_id").notNull(),
+    operation: text("operation").notNull(),
+    actorType: text("actor_type").notNull(),
+    actorId: text("actor_id").notNull(),
+    onBehalfOf: text("on_behalf_of"),
+    taskId: uuid("task_id"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    documentIdx: index("document_ops_document").on(t.orgId, t.documentId),
   }),
 );

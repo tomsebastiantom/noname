@@ -1,37 +1,46 @@
 import {
-  bindTagTeamEditors,
-  bindTagTeamPublishers,
-  createScopeTag,
+  bindCollectionTeamEditors,
+  bindCollectionTeamPublishers,
+  createScopeCollection,
   createScopeTeam,
-  deleteScopeTag,
+  deleteScopeCollection,
   deleteScopeTeam,
-  fetchScopeTags,
+  fetchScopeBindings,
+  fetchScopeCollections,
   fetchScopeTeams,
   grantTeamEditor,
   grantTeamPublisher,
   revokeTeamEditor,
   revokeTeamPublisher,
-  unbindTagTeamEditors,
-  unbindTagTeamPublishers,
+  unbindCollectionTeamEditors,
+  unbindCollectionTeamPublishers,
 } from "../../auth/document-scope";
 import { fetchTeamUsers } from "../../auth/team-users";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler, CatalogSetState } from "./types";
 
 async function refreshScopeCatalog(setState: CatalogSetState): Promise<void> {
-  const [tags, teams] = await Promise.all([fetchScopeTags(), fetchScopeTeams()]);
-  setState(ADMIN_STATE.scope.tags, tags);
+  const [collections, teams, bindings] = await Promise.all([
+    fetchScopeCollections(),
+    fetchScopeTeams(),
+    fetchScopeBindings(),
+  ]);
+  setState(ADMIN_STATE.scope.collections, collections);
   setState(ADMIN_STATE.scope.teams, teams);
+  setState(ADMIN_STATE.scope.bindings, bindings);
 }
 
 export const scopeActions = {
-  listScopeTags: (async (_params, setState) => {
+  listScopeCollections: (async (_params, setState) => {
     setState(ADMIN_STATE.scope.loading, true);
     setState(ADMIN_STATE.scope.error, null);
     try {
-      setState(ADMIN_STATE.scope.tags, await fetchScopeTags());
+      setState(ADMIN_STATE.scope.collections, await fetchScopeCollections());
     } catch (err) {
-      setState(ADMIN_STATE.scope.error, err instanceof Error ? err.message : "Failed to load tags");
+      setState(
+        ADMIN_STATE.scope.error,
+        err instanceof Error ? err.message : "Failed to load folders",
+      );
     } finally {
       setState(ADMIN_STATE.scope.loading, false);
     }
@@ -56,13 +65,15 @@ export const scopeActions = {
     setState(ADMIN_STATE.scope.loading, true);
     setState(ADMIN_STATE.scope.error, null);
     try {
-      const [tags, teams, users] = await Promise.all([
-        fetchScopeTags(),
+      const [collections, teams, bindings, users] = await Promise.all([
+        fetchScopeCollections(),
         fetchScopeTeams(),
+        fetchScopeBindings(),
         fetchTeamUsers(),
       ]);
-      setState(ADMIN_STATE.scope.tags, tags);
+      setState(ADMIN_STATE.scope.collections, collections);
       setState(ADMIN_STATE.scope.teams, teams);
+      setState(ADMIN_STATE.scope.bindings, bindings);
       setState(ADMIN_STATE.team.users, users);
     } catch (err) {
       setState(
@@ -74,9 +85,13 @@ export const scopeActions = {
     }
   }) satisfies CatalogActionHandler,
 
-  createScopeTag: (async (params, setState) => {
-    const { slug, label } = params as { slug: string; label?: string };
-    await createScopeTag(slug.trim(), label?.trim());
+  createScopeCollection: (async (params, setState) => {
+    const { slug, label, parentId } = params as {
+      slug: string;
+      label?: string;
+      parentId?: string | null;
+    };
+    await createScopeCollection(slug.trim(), label?.trim(), parentId ?? null);
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
@@ -86,33 +101,33 @@ export const scopeActions = {
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
-  bindTagTeamEditors: (async (params, setState) => {
-    const { tag, team } = params as { tag: string; team: string };
-    await bindTagTeamEditors(tag.trim(), team.trim());
+  bindCollectionTeamEditors: (async (params, setState) => {
+    const { collection, team } = params as { collection: string; team: string };
+    await bindCollectionTeamEditors(collection.trim(), team.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
-  bindTagTeamPublishers: (async (params, setState) => {
-    const { tag, team } = params as { tag: string; team: string };
-    await bindTagTeamPublishers(tag.trim(), team.trim());
+  bindCollectionTeamPublishers: (async (params, setState) => {
+    const { collection, team } = params as { collection: string; team: string };
+    await bindCollectionTeamPublishers(collection.trim(), team.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
-  unbindTagTeamEditors: (async (params, setState) => {
-    const { tag, team } = params as { tag: string; team: string };
-    await unbindTagTeamEditors(tag.trim(), team.trim());
+  unbindCollectionTeamEditors: (async (params, setState) => {
+    const { collection, team } = params as { collection: string; team: string };
+    await unbindCollectionTeamEditors(collection.trim(), team.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
-  unbindTagTeamPublishers: (async (params, setState) => {
-    const { tag, team } = params as { tag: string; team: string };
-    await unbindTagTeamPublishers(tag.trim(), team.trim());
+  unbindCollectionTeamPublishers: (async (params, setState) => {
+    const { collection, team } = params as { collection: string; team: string };
+    await unbindCollectionTeamPublishers(collection.trim(), team.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 
-  deleteScopeTag: (async (params, setState) => {
+  deleteScopeCollection: (async (params, setState) => {
     const { slug } = params as { slug: string };
-    await deleteScopeTag(slug.trim());
+    await deleteScopeCollection(slug.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 

@@ -39,7 +39,7 @@ describe("auth publicConfig", () => {
           segment: "default",
           baseVersion: null,
           meta: {},
-          tags: [],
+          collectionId: null,
           data: {
             name: "Sign in with Google",
             provider_key: "google",
@@ -65,7 +65,7 @@ describe("auth publicConfig", () => {
               segment: "default",
               baseVersion: null,
               meta: {},
-              tags: [],
+              collectionId: null,
               data: { storageKey: "org-1/icons/google.svg" },
               createdAt: new Date(),
               updatedAt: new Date(),

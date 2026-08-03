@@ -1,7 +1,7 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { ContentDocument } from "../entity";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
-import { extractTagsFromBody } from "../shared/document-tags";
+import { extractCollectionFromBody } from "../shared/document-collection";
 import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
 import { contentValidator } from "../validation/validator";
 import { filterReadFields, prepareContentWrite } from "./content-write";
@@ -18,7 +18,7 @@ export function createContentService(
 ): ContentDocumentService {
   return {
     async create(orgId, type, data, opts) {
-      const { tags, data: contentData } = extractTagsFromBody(data);
+      const { collectionId, data: contentData } = extractCollectionFromBody(data);
       const { data: builtData } = await prepareContentWrite(
         storage,
         validator,
@@ -39,7 +39,7 @@ export function createContentService(
         key: entity.id,
         data: entity.data,
         status: "draft",
-        tags,
+        collectionId,
       });
       flushEvents(entity);
       return saved;
@@ -60,7 +60,7 @@ export function createContentService(
 
     async updateById(orgId, type, id, data, opts) {
       const existing = await requireContentEntry(storage, orgId, type, id);
-      const { tags, data: contentData } = extractTagsFromBody(data);
+      const { collectionId, data: contentData } = extractCollectionFromBody(data);
 
       const { data: builtData } = await prepareContentWrite(
         storage,
@@ -80,7 +80,7 @@ export function createContentService(
         existing.id,
         builtData,
         undefined,
-        tags !== undefined ? tags : undefined,
+        collectionId !== undefined ? collectionId : undefined,
       );
       const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
       entity.update(updated.data);

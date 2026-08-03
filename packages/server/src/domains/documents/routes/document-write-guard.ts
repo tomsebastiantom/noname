@@ -21,13 +21,16 @@ export async function denyUnlessDocumentWrite(
   if (!doc || doc.orgId !== orgId) {
     return c.json({ error: "Not found" }, 404);
   }
+  const collectionSlug = doc.collectionId
+    ? await storage.findCollectionSlug(orgId, doc.collectionId)
+    : null;
   return denyUnlessDocumentAccess(
     c,
     platformPermission,
     authorization,
     {
       id: doc.id,
-      tags: doc.tags ?? [],
+      collectionSlug,
     },
     "edit",
   );
@@ -45,13 +48,16 @@ export async function denyUnlessDocumentPublish(
   if (!doc || doc.orgId !== orgId) {
     return c.json({ error: "Not found" }, 404);
   }
+  const collectionSlug = doc.collectionId
+    ? await storage.findCollectionSlug(orgId, doc.collectionId)
+    : null;
   return denyUnlessDocumentAccess(
     c,
     platformPermission,
     authorization,
     {
       id: doc.id,
-      tags: doc.tags ?? [],
+      collectionSlug,
     },
     "publish",
   );

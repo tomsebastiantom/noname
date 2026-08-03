@@ -12,30 +12,30 @@ export function registerAuthScopeRoutes(
 ): void {
   const { tenantSettings, scope } = deps;
 
-  routes.get("/:orgId/scope/tags", async (c) => {
+  routes.get("/:orgId/scope/collections", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    return ok(c, await scope.listTags(orgId));
+    return ok(c, await scope.listCollections(orgId));
   });
 
-  routes.post("/:orgId/scope/tags", async (c) => {
+  routes.post("/:orgId/scope/collections", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    const body = parseBody(scopeCatalogSchema.safeParse(await c.req.json()), "tag payload");
-    await scope.createTag(orgId, body.slug, body.label ?? body.slug);
+    const body = parseBody(scopeCatalogSchema.safeParse(await c.req.json()), "collection payload");
+    await scope.createCollection(orgId, body.slug, body.label ?? body.slug, body.parentId);
     return created(c, { ok: true });
   });
 
-  routes.delete("/:orgId/scope/tags/:slug", async (c) => {
+  routes.delete("/:orgId/scope/collections/:slug", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    await scope.deleteTag(orgId, c.req.param("slug"));
+    await scope.deleteCollection(orgId, c.req.param("slug"));
     return ok(c, { ok: true });
   });
 
@@ -66,40 +66,60 @@ export function registerAuthScopeRoutes(
     return ok(c, { ok: true });
   });
 
-  routes.put("/:orgId/scope/tag/:tag/teams/:team/editors", async (c) => {
+  routes.get("/:orgId/scope/bindings", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    await scope.bindTagTeamEditors(orgId, c.req.param("tag"), c.req.param("team"));
+    return ok(c, await scope.listCollectionTeamBindings(orgId));
+  });
+
+  routes.put("/:orgId/scope/collection/:collection/teams/:team/editors", async (c) => {
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = await requireScopeOrAuthManage(c);
+    if (auth instanceof Response) return auth;
+    await scope.bindCollectionTeamEditors(orgId, c.req.param("collection"), c.req.param("team"));
     return ok(c, { ok: true });
   });
 
-  routes.put("/:orgId/scope/tag/:tag/teams/:team/publishers", async (c) => {
+  routes.put("/:orgId/scope/collection/:collection/teams/:team/publishers", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    await scope.bindTagTeamPublishers(orgId, c.req.param("tag"), c.req.param("team"));
+    await scope.bindCollectionTeamPublishers(orgId, c.req.param("collection"), c.req.param("team"));
     return ok(c, { ok: true });
   });
 
-  routes.delete("/:orgId/scope/tag/:tag/teams/:team/editors", async (c) => {
+  routes.delete("/:orgId/scope/collection/:collection/teams/:team/editors", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    await scope.unbindTagTeamEditors(orgId, c.req.param("tag"), c.req.param("team"));
+    await scope.unbindCollectionTeamEditors(orgId, c.req.param("collection"), c.req.param("team"));
     return ok(c, { ok: true });
   });
 
-  routes.delete("/:orgId/scope/tag/:tag/teams/:team/publishers", async (c) => {
+  routes.delete("/:orgId/scope/collection/:collection/teams/:team/publishers", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
     const auth = await requireScopeOrAuthManage(c);
     if (auth instanceof Response) return auth;
-    await scope.unbindTagTeamPublishers(orgId, c.req.param("tag"), c.req.param("team"));
+    await scope.unbindCollectionTeamPublishers(
+      orgId,
+      c.req.param("collection"),
+      c.req.param("team"),
+    );
     return ok(c, { ok: true });
+  });
+
+  routes.get("/:orgId/scope/team/:team/members", async (c) => {
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = await requireScopeOrAuthManage(c);
+    if (auth instanceof Response) return auth;
+    return ok(c, await scope.listTeamMembers(orgId, c.req.param("team")));
   });
 
   routes.put("/:orgId/scope/team/:team/editors/:userId", async (c) => {

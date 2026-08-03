@@ -99,6 +99,7 @@ function pipelineTaskResult(r: { response: unknown; model: string; tokens: numbe
 
 const agent = createAgentDomain({
   db,
+  authorization,
   executor: {
     async execute(orgId, type, prompt, input) {
       switch (type) {

@@ -22,7 +22,7 @@ export function ContentEntryEditor(props: ContentEntryEditorProps) {
     entries,
     selectedId,
     values,
-    tagsInput,
+    folderInput,
     labels,
     mediaLabels,
     referenceLabels,
@@ -37,7 +37,7 @@ export function ContentEntryEditor(props: ContentEntryEditorProps) {
     onSelectEntry,
     onStartNewEntry,
     onValuesChange,
-    onTagsInputChange,
+    onFolderInputChange,
     onSave,
     onPublish,
     onDelete,
@@ -94,9 +94,9 @@ export function ContentEntryEditor(props: ContentEntryEditorProps) {
               ))}
 
               <DocumentAccessFields
-                tagsFieldId="content-entry-tags"
-                tagsInput={tagsInput}
-                onTagsInputChange={onTagsInputChange}
+                folderFieldId="content-entry-tags"
+                folderInput={folderInput}
+                onFolderInputChange={onFolderInputChange}
                 labels={labels}
                 documentId={selectedId ?? undefined}
                 showShare={canManageAccess}

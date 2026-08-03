@@ -1,5 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
-import { ADMIN_ROUTE_PATHS, useAdminRouteAccess } from "../../../auth/admin-access";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
@@ -11,17 +11,9 @@ import {
 } from "../../../components/ui/card";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
-import { navigateApp } from "../../../platform/app-navigation";
 import type { CatalogProps } from "../../../schemas/shared";
 import type { AnalyticsAggregationRow, AnalyticsEventRow } from "../../analytics";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
-
-function traceIdFromMeta(meta: Record<string, unknown>): string | null {
-  const id = meta.traceId;
-  if (typeof id !== "string") return null;
-  const normalized = id.toLowerCase();
-  return /^[0-9a-f]{32}$/.test(normalized) ? normalized : null;
-}
 
 function AnalyticsTableBody<T>({
   loading,
@@ -68,8 +60,6 @@ type AnalyticsEventsLabels = {
   sourceColumnHeader: string;
   sessionColumnHeader: string;
   schemaColumnHeader: string;
-  traceColumnHeader: string;
-  viewTraceLabel: string;
 };
 
 export function AnalyticsEventsAdmin({
@@ -77,7 +67,6 @@ export function AnalyticsEventsAdmin({
 }: Readonly<ComponentCtx<CatalogProps<AnalyticsEventsConfig, AnalyticsEventsLabels>>>) {
   const { labels } = props;
   const canViewAnalytics = useAdminRouteAccess("analytics");
-  const canViewTraces = useAdminRouteAccess("traces");
   const { execute } = useActions();
 
   const events =
@@ -127,27 +116,6 @@ export function AnalyticsEventsAdmin({
       header: labels.schemaColumnHeader,
       cell: (row) =>
         row.schemaId ? <span className="font-mono text-xs">{row.schemaId}</span> : "—",
-    },
-    {
-      key: "traceId",
-      header: labels.traceColumnHeader,
-      cell: (row) => {
-        const traceId = traceIdFromMeta(row.meta);
-        if (!traceId || canViewTraces !== true) return "—";
-        return (
-          <Button
-            type="button"
-            variant="link"
-            size="sm"
-            className="h-auto p-0 font-mono text-xs"
-            onClick={() => {
-              navigateApp(`${ADMIN_ROUTE_PATHS.traces}?traceId=${encodeURIComponent(traceId)}`);
-            }}
-          >
-            {labels.viewTraceLabel}
-          </Button>
-        );
-      },
     },
   ];
 
@@ -213,16 +181,14 @@ export function AnalyticsEventsAdmin({
           ) : null}
         </CardHeader>
         <CardContent>
-          <div className="max-h-[28rem] overflow-y-auto">
-            <AnalyticsTableBody
-              loading={loading}
-              loadingLabel={labels.loadingLabel}
-              emptyLabel={labels.emptyEvents}
-              rows={events}
-              columns={eventColumns}
-              rowKey={(row) => row.eventId}
-            />
-          </div>
+          <AnalyticsTableBody
+            loading={loading}
+            loadingLabel={labels.loadingLabel}
+            emptyLabel={labels.emptyEvents}
+            rows={events}
+            columns={eventColumns}
+            rowKey={(row) => row.eventId}
+          />
         </CardContent>
       </Card>
     </div>

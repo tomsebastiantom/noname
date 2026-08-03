@@ -42,10 +42,11 @@ export const referenceFieldLabelsSchema = z.object({
   missingTargetMessage: z.string(),
 });
 
-export const documentTagsLabelsSchema = z.object({
-  tagsLabel: z.string(),
-  tagsPlaceholder: z.string(),
-  tagsHint: z.string(),
+export const documentFolderLabelsSchema = z.object({
+  folderLabel: z.string(),
+  folderPlaceholder: z.string(),
+  folderHint: z.string(),
+  folderNoneLabel: z.string(),
 });
 
 export const documentShareLabelsSchema = z.object({

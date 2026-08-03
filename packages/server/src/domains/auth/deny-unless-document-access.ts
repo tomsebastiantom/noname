@@ -1,32 +1,35 @@
-import { hasPermission, PERMISSIONS, type PermissionKey } from "@noname/auth";
+import type { AuthActor, PermissionKey } from "@noname/auth";
 import type { Context } from "hono";
 import type { AuthorizationPort, ResourcePermission } from "./authorization-port";
-import { requirePermission } from "./guards";
+import { authSubjectFromActor, isStoreAdmin, requireActorPermission } from "./guards";
 
-/** Hybrid doc access: Postgres tags → Keto Tag check; fallback Document direct/share. */
+/** Hybrid doc access: Postgres folder → Keto Collection check; fallback Document direct/share. */
 export async function denyUnlessDocumentAccess(
   c: Context,
   platformPermission: PermissionKey,
   authorization: AuthorizationPort,
-  doc: { id: string; tags: string[] },
+  doc: { id: string; collectionSlug: string | null },
   action: ResourcePermission,
 ): Promise<Response | null> {
-  const auth = await requirePermission(c, platformPermission);
-  if (auth instanceof Response) return auth;
+  const actor = await requireActorPermission(c, platformPermission);
+  if (actor instanceof Response) return actor;
 
-  // Store admin bypass — no store-wide Keto tuples required.
-  if (hasPermission(auth.permissions, PERMISSIONS.AUTH_MANAGE)) {
+  if (action === "publish" && actor.type === "agent") {
+    return c.json({ error: "Forbidden" }, 403);
+  }
+
+  if (isStoreAdmin(actor.permissions)) {
     return null;
   }
 
-  const subject = { type: "User" as const, id: auth.userId };
+  const subject = authSubjectFromActor(actor);
 
-  for (const tag of doc.tags) {
+  if (doc.collectionSlug) {
     const allowed = await authorization.check({
       subject,
       permission: action,
-      namespace: "Tag",
-      objectId: tag,
+      namespace: "Collection",
+      objectId: doc.collectionSlug,
     });
     if (allowed) return null;
   }
@@ -42,28 +45,25 @@ export async function denyUnlessDocumentAccess(
   return c.json({ error: "Forbidden" }, 403);
 }
 
-/** When creating docs with tags, user must have Keto access on every tag (unless admin). */
-export async function denyUnlessTagsAccess(
+/** When creating docs in a folder, actor must have Keto access on that folder (unless admin). */
+export async function denyUnlessCollectionAccess(
   c: Context,
-  auth: { userId: string; permissions: PermissionKey[] },
+  actor: AuthActor,
   authorization: AuthorizationPort,
-  tags: string[],
+  collectionSlug: string | null | undefined,
   action: ResourcePermission,
 ): Promise<Response | null> {
-  if (tags.length === 0) return null;
-  if (hasPermission(auth.permissions, PERMISSIONS.AUTH_MANAGE)) return null;
+  if (!collectionSlug) return null;
+  if (isStoreAdmin(actor.permissions)) return null;
 
-  const subject = { type: "User" as const, id: auth.userId };
-  for (const tag of tags) {
-    const allowed = await authorization.check({
-      subject,
-      permission: action,
-      namespace: "Tag",
-      objectId: tag,
-    });
-    if (!allowed) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
+  const allowed = await authorization.check({
+    subject: authSubjectFromActor(actor),
+    permission: action,
+    namespace: "Collection",
+    objectId: collectionSlug,
+  });
+  if (!allowed) {
+    return c.json({ error: "Forbidden" }, 403);
   }
   return null;
 }

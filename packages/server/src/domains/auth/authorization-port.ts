@@ -1,9 +1,9 @@
 export type AuthSubjectType = "User" | "Agent";
 
 /** Keto subject namespaces for relation tuples. */
-export type TupleSubjectType = AuthSubjectType | "Team";
+export type TupleSubjectType = AuthSubjectType | "Team" | "Collection";
 
-export type AuthNamespace = "Document" | "Team" | "Tag" | "Collection" | "Store";
+export type AuthNamespace = "Document" | "Team" | "Tag" | "Collection" | "Store" | "Agent";
 
 export type ResourcePermission = "view" | "edit" | "publish";
 
@@ -22,7 +22,7 @@ export interface AuthorizationCheckInput {
 export interface TupleSubject {
   type: TupleSubjectType;
   id: string;
-  /** Team subject_set relation when binding Tag → Team (e.g. editors, publishers). */
+  /** Team subject_set relation when binding Collection → Team (e.g. editors, publishers). */
   relation?: string;
 }
 

@@ -21,7 +21,7 @@ export function ContentEntryCreateForm({
   description,
   editableFields,
   values,
-  tagsInput,
+  folderInput,
   locale,
   mediaLabels,
   referenceLabels,
@@ -31,7 +31,7 @@ export function ContentEntryCreateForm({
   creating,
   labels,
   onValuesChange,
-  onTagsInputChange,
+  onFolderInputChange,
   onSubmit,
   onCancel,
 }: {
@@ -40,7 +40,7 @@ export function ContentEntryCreateForm({
   description: string;
   editableFields: ContentFieldSchema[];
   values: Record<string, string>;
-  tagsInput: string;
+  folderInput: string;
   locale: string;
   mediaLabels: MediaFieldLabels;
   referenceLabels: ReferenceFieldLabels;
@@ -54,7 +54,7 @@ export function ContentEntryCreateForm({
     creatingLabel: string;
   };
   onValuesChange: (values: Record<string, string>) => void;
-  onTagsInputChange: (value: string) => void;
+  onFolderInputChange: (value: string) => void;
   onSubmit: () => void;
   onCancel?: () => void;
 }) {
@@ -90,9 +90,9 @@ export function ContentEntryCreateForm({
             ))}
 
             <DocumentAccessFields
-              tagsFieldId="content-create-tags"
-              tagsInput={tagsInput}
-              onTagsInputChange={onTagsInputChange}
+              folderFieldId="content-create-tags"
+              folderInput={folderInput}
+              onFolderInputChange={onFolderInputChange}
               labels={labels}
             />
 

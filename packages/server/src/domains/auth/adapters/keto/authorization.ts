@@ -74,18 +74,18 @@ function subjectId(subject: { type: string; id: string }): string {
   return `${subject.type}:${subject.id}`;
 }
 
-/** Tag → Team bindings use subject_set with Team#editors|publishers. */
+/** Collection → Team bindings and Collection → Collection parents use subject_set. */
 function tuplePayload(tuple: RelationTuple): Record<string, unknown> {
   const base = {
     namespace: tuple.namespace,
     object: tuple.objectId,
     relation: tuple.relation,
   };
-  if (tuple.subject.type === "Team") {
+  if (tuple.subject.type === "Team" || tuple.subject.type === "Collection") {
     return {
       ...base,
       subject_set: {
-        namespace: "Team",
+        namespace: tuple.subject.type,
         object: tuple.subject.id,
         relation: tuple.subject.relation ?? "",
       },

@@ -2,24 +2,37 @@ import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, deleted, notFound, ok } from "../../../shared/respond";
-import { denyUnlessTagsAccess } from "../../auth/deny-unless-document-access";
-import { requirePermission } from "../../auth/guards";
-import { extractTagsFromBody } from "../shared/document-tags";
+import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
+import { requireActorPermission } from "../../auth/guards";
+import { extractCollectionFromBody } from "../shared/document-collection";
 import type { DocumentsRouteDeps } from "./deps";
 import { denyUnlessDocumentPublish, denyUnlessDocumentWrite } from "./document-write-guard";
+
+async function resolveCollectionSlug(
+  storage: DocumentsRouteDeps["storage"],
+  orgId: string,
+  collectionId: string | null | undefined,
+): Promise<string | null> {
+  if (!collectionId) return null;
+  return storage.findCollectionSlug(orgId, collectionId);
+}
 
 export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): void {
   const { content } = deps.service;
   const { storage, authorization } = deps;
 
   routes.post("/:type", async (c) => {
-    const auth = await requirePermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
-    if (auth instanceof Response) return auth;
+    const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
     const orgId = getOrgId(c);
     const body = await c.req.json<Record<string, unknown>>();
-    const { tags } = extractTagsFromBody(body);
-    const tagDenied = await denyUnlessTagsAccess(c, auth, authorization, tags ?? [], "edit");
-    if (tagDenied) return tagDenied;
+    const { collectionId } = extractCollectionFromBody(body);
+    if (collectionId) {
+      const slug = await resolveCollectionSlug(storage, orgId, collectionId);
+      if (!slug) return notFound(c);
+      const denied = await denyUnlessCollectionAccess(c, actor, authorization, slug, "edit");
+      if (denied) return denied;
+    }
     const createdEntry = await content.create(orgId, c.req.param("type"), body, {
       locale: c.req.query("locale"),
       role: c.req.query("role"),
@@ -51,6 +64,18 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
   routes.put("/:type/:id", async (c) => {
     const orgId = getOrgId(c);
     const entryId = c.req.param("id");
+    const body = await c.req.json<Record<string, unknown>>();
+    const { collectionId } = extractCollectionFromBody(body);
+    if (collectionId !== undefined) {
+      if (collectionId) {
+        const slug = await resolveCollectionSlug(storage, orgId, collectionId);
+        if (!slug) return notFound(c);
+        const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+        if (actor instanceof Response) return actor;
+        const denied = await denyUnlessCollectionAccess(c, actor, authorization, slug, "edit");
+        if (denied) return denied;
+      }
+    }
     const denied = await denyUnlessDocumentWrite(
       c,
       PERMISSIONS.CONTENT_DRAFT_WRITE,
@@ -61,7 +86,6 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
     );
     if (denied) return denied;
     const { type } = c.req.param();
-    const body = await c.req.json<Record<string, unknown>>();
     const updated = await content.updateById(orgId, type, entryId, body, {
       locale: c.req.query("locale"),
       role: c.req.query("role"),

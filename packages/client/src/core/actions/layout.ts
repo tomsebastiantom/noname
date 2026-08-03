@@ -1,4 +1,4 @@
-import { formatTagsInput } from "../../admin/document-tags";
+import { formatCollectionId } from "../../admin/document-folder";
 import { extractLoginBranding, type LoginBrandingValues } from "../../admin/login-branding";
 import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
@@ -30,7 +30,7 @@ export type LayoutAdminLoaded =
       status: string;
       specJson: string;
       contentRef: string;
-      tagsInput: string;
+      folderInput: string;
       canPublish: boolean;
       canManageAccess: boolean;
     };
@@ -112,7 +112,7 @@ export const layoutActions = {
         status: row?.status ?? "draft",
         specJson: row ? specToJson(row.data.spec) : "",
         contentRef: row?.data.contentRef ?? "",
-        tagsInput: formatTagsInput(row?.tags),
+        folderInput: formatCollectionId(row?.collectionId),
         canPublish,
         canManageAccess,
       };
@@ -126,14 +126,14 @@ export const layoutActions = {
   }) satisfies CatalogActionHandler,
 
   saveLayoutEntry: (async (params) => {
-    const { id, specJson, contentRef, tags } = params as {
+    const { id, specJson, contentRef, collectionId } = params as {
       id: string;
       specJson: string;
       contentRef?: string | null;
-      tags?: string[];
+      collectionId?: string | null;
     };
     const spec = parseSpecJson(specJson);
-    await saveLayout({ id, spec, contentRef, tags });
+    await saveLayout({ id, spec, contentRef, collectionId });
   }) satisfies CatalogActionHandler,
 
   publishLayoutEntry: (async (params) => {

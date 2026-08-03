@@ -49,7 +49,17 @@ export type {
 } from "./authorization-port";
 export { createAuthorization, createTupleWriter } from "./create-authorization";
 export { denyUnless } from "./deny-unless";
-export { denyUnlessDocumentAccess, denyUnlessTagsAccess } from "./deny-unless-document-access";
-export { requireAuthenticatedUser, requirePermission } from "./guards";
+export {
+  denyUnlessCollectionAccess,
+  denyUnlessDocumentAccess,
+} from "./deny-unless-document-access";
+export {
+  authSubjectFromActor,
+  requireActorPermission,
+  requireAuthenticatedActor,
+  requireAuthenticatedUser,
+  requireHumanPermission,
+  requirePermission,
+} from "./guards";
 export type { AuthService, LoginCredentials, LoginResult } from "./ports";
 export { createAuthProviderPublishHandler } from "./providers/publish";

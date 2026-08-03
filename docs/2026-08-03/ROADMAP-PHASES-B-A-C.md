@@ -19,8 +19,8 @@ We split authorization into **four layers** and ship them in order: platform per
 Layer 1 — Platform permissions     ✅ DONE
   ZITADEL role → @noname/auth → requirePermission() on API
 
-Layer 2 — Document scope (Keto)    ✅ MOSTLY DONE — collections + prod hardening remain
-  Tag / Team / Document tuples → AuthorizationPort → Check on write/publish
+Layer 2 — Document scope (Keto)    🟡 TAGS TODAY → **FOLDERS PLANNED** (see FOLDERS-SCOPE-PLAN.md)
+  Team / Folder / Document tuples → AuthorizationPort → Check on write/publish
 
 Layer 3 — Actors & agents (A′)     🟡 SCAFFOLD — needs actor model + scoped tokens
   human | agent | machine; agent ⊆ creator; human approves publish
@@ -70,10 +70,12 @@ Answer: *“May **this user** edit or publish **this document**?”* — after p
 
 | ID | Work | Owner | Why |
 |----|------|-------|-----|
-| **B2** | **Collections** — folder-style groups, inherit access | Backend + admin UI | Merchants with many docs want “marketing folder” not 50 tag bindings |
-| **B3** | **List/filter** — “docs I can edit” without N+1 Keto calls | Backend | Admin lists may slow down at scale; batch Check / cache |
+| **B-F1** | **Flat folders** — replace tags; `collection_id` + Collection Keto checks | Backend + client | ~1 week — see [`FOLDERS-SCOPE-PLAN.md`](./FOLDERS-SCOPE-PLAN.md) |
+| **B-F2** | **Folder tree** — `parent_id`, nested admin, inherit access | Backend + client | +3–5 days after F1 |
+| **B-F3** | **CMS sidebar by folder** | Client | +3–5 days, optional polish |
+| **B3** | **List perf** — batch Keto Check on doc lists | Backend | When lists slow at scale |
 | **B4** | **Prod Keto** — K8s/Vela, internal-only, migrate job | Infra | Required before multi-tenant prod |
-| **B5** | **Agent tuples on docs/tags** | Backend (with A′) | `Agent:{id}#editor @ Tag:marketing` |
+| **B5** | **Agent tuples on folders/docs** | Backend (with A′) | `Agent:{id}#editor @ Collection:marketing` |
 
 ### What we are **avoiding** (simplicity)
 
@@ -82,7 +84,8 @@ Answer: *“May **this user** edit or publish **this document**?”* — after p
 | Second authz product (SpiceDB, OpenFGA service) | Keto on same Postgres is the only ReBAC engine |
 | Keto on Cloudflare edge | Document id + tags live in API; edge has no full context |
 | Field-level ACL | Document/content-type is enough; see `FIELD-ACL.md` |
-| Syncing doc parent chain into Keto on every save | Postgres `tags[]` is SoT; Keto checks tags + direct doc shares |
+| Tags **and** folders for access | One model: folders only (Phase F1 removes tags) |
+| Syncing doc parent chain into Keto on every save | Postgres `collection_id` is SoT; Keto checks folder + direct doc shares |
 | Publishing gated only by Keto | Publish still needs platform `*:publish` **and** doc access |
 
 ### Who does what (Phase B)
@@ -94,7 +97,19 @@ Answer: *“May **this user** edit or publish **this document**?”* — after p
 | **Infra** | Keto deploy, health, TLS, DB `keto` lifecycle |
 | **Product** | Approve B2 vs B3 priority (folders vs performance) |
 
-**Gate to start B2:** at least one merchant story requiring grouped docs (not just tags).
+**Gate to start B-F1:** approve [`FOLDERS-SCOPE-PLAN.md`](./FOLDERS-SCOPE-PLAN.md) — folders replace tags.
+
+---
+
+## Folders — three phases (simple)
+
+Full detail: [`FOLDERS-SCOPE-PLAN.md`](./FOLDERS-SCOPE-PLAN.md)
+
+| Phase | What merchant sees | Effort |
+|-------|-------------------|--------|
+| **F1 Flat folders** | “Marketing” folder dropdown instead of tags | ~1 week |
+| **F2 Tree** | `Marketing / Summer / Banners` — access inherits | +3–5 days |
+| **F3 Sidebar** | Browse content by folder in CMS nav | +3–5 days, optional |
 
 ---
 
@@ -215,10 +230,8 @@ Answer: *“Two humans editing the **same draft at the same time** without save 
 ```
 NOW     ✅ Layer 1 + most of Layer 2 (this sprint’s auth/observability work)
 
-NEXT    Choose one:
-        (1) B2 Collections — if merchants need folders
-        (2) B3 List perf — if scope lists are slow in prod
-        (3) A′.1–A′.4 — if agent POC is the business bet
+NEXT    B-F1 Flat folders (replace tags) — then B4 prod Keto before real tenants
+        OR A′.1–A′.4 if agent POC is the business bet (after F1)
 
 THEN    B5 + A′.5 — agent tuples on same Keto graph as humans
 
@@ -239,7 +252,7 @@ Please reply **approve / defer / change** on each:
 | 2 | **Document unit** — no field ACL | Keep |
 | 3 | **Agents ⊆ creator** — no agent publish, no admin | Keep |
 | 4 | **Not Nostr mode** — relays optional marketing bridge only | Keep |
-| 5 | **Phase B next** = Collections (B2) before agent UI | Or say A′ first |
+| 5 | **Folders replace tags** — F1 flat → F2 tree → F3 sidebar (optional) | See FOLDERS-SCOPE-PLAN.md |
 | 6 | **Phase C deferred** until explicit product ask | Keep defer |
 | 7 | **Stay on ZITADEL** until agent POC fails R6/R7 | Keep |
 
@@ -249,7 +262,8 @@ Please reply **approve / defer / change** on each:
 
 | Topic | Document |
 |-------|----------|
-| Roles, tags, teams, share | [`ACCESS-AND-ROLES.md`](./ACCESS-AND-ROLES.md) |
+| Folders replace tags (F1–F3) | [`FOLDERS-SCOPE-PLAN.md`](./FOLDERS-SCOPE-PLAN.md) |
+| Roles, teams, share (tags → folders) | [`ACCESS-AND-ROLES.md`](./ACCESS-AND-ROLES.md) |
 | Keto tasks & status | [`KETO-ZANZIBAR-ROADMAP.md`](./KETO-ZANZIBAR-ROADMAP.md) |
 | IdP, agents, Nostr table | [`IDENTITY-AGENTS-MASTER-PLAN.md`](./IDENTITY-AGENTS-MASTER-PLAN.md) |
 | Keto infra | [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) |

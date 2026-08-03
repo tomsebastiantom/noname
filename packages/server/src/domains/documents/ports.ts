@@ -35,7 +35,7 @@ export interface DocumentDTO {
   baseVersion: number | null;
   data: Record<string, unknown>;
   meta: Record<string, unknown>;
-  tags: string[];
+  collectionId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -145,7 +145,7 @@ export interface CreateLayoutInput {
   baseVersion?: number | null;
   renderAs?: LayoutRenderAs;
   shellRef?: string | null;
-  tags?: string[];
+  collectionId?: string | null;
 }
 
 export interface UpdateLayoutInput {
@@ -153,7 +153,7 @@ export interface UpdateLayoutInput {
   contentRef?: string | null;
   renderAs?: LayoutRenderAs;
   shellRef?: string | null;
-  tags?: string[];
+  collectionId?: string | null;
 }
 
 export interface ResolvedLayout {
@@ -242,7 +242,7 @@ export interface CreateDocumentInput {
   status?: DocumentStatus;
   baseVersion?: number | null;
   meta?: Record<string, unknown>;
-  tags?: string[];
+  collectionId?: string | null;
 }
 
 export interface DocumentStorage {
@@ -282,13 +282,20 @@ export interface DocumentStorage {
     id: string,
     data: Record<string, unknown>,
     meta?: Record<string, unknown>,
-    tags?: string[],
+    collectionId?: string | null,
   ): Promise<DocumentDTO>;
+  findCollectionSlug(orgId: string, collectionId: string): Promise<string | null>;
   publishDocument(id: string): Promise<DocumentDTO>;
   archiveDocument(id: string): Promise<DocumentDTO>;
   deleteDocument(id: string): Promise<void>;
   findAssetByHash(orgId: string, hash: string): Promise<DocumentDTO | null>;
   findDocumentsWithDataMentioning(orgId: string, needle: string): Promise<DocumentDTO[]>;
+  recordDocumentOp(input: {
+    orgId: string;
+    documentId: string;
+    operation: string;
+    audit: WriteAudit;
+  }): Promise<void>;
 }
 
 // ---------------------------------------------------------------------------
@@ -311,6 +318,7 @@ export interface TenantSettingsService {
 export interface ContentContentOpts {
   locale?: string;
   role?: string;
+  audit?: WriteAudit;
 }
 
 export interface ContentDocumentService {

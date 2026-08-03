@@ -84,6 +84,7 @@ export const mfaEnrollmentConfirmSchema = z.object({
 export const scopeCatalogSchema = z.object({
   slug: z.string().min(1),
   label: z.string().min(1).optional(),
+  parentId: z.string().uuid().nullable().optional(),
 });
 
 export const staffRoleSchema = z.enum([

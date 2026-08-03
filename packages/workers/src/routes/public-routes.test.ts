@@ -21,4 +21,8 @@ describe("edge public routes", () => {
   it("allows edge schema GET without JWT", () => {
     expect(isPublicGet("GET", "/api/edge/schema/yogastore")).toBe(true);
   });
+
+  it("requires JWT for auth session (same as other admin reads)", () => {
+    expect(isPublicGet("GET", "/api/auth/yogastore/session")).toBe(false);
+  });
 });
