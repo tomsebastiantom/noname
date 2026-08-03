@@ -58,6 +58,8 @@ export const documents = pgTable(
     // the type's schema in `documentTypes` (or the override model for layouts).
     data: jsonb("data").notNull(),
     meta: jsonb("meta").default({}),
+    // Content tags for scoped access (content entries + layouts).
+    tags: text("tags").array().notNull().default(sql`'{}'::text[]`),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
@@ -76,6 +78,34 @@ export const documents = pgTable(
 // schema describes the type's fields (type, isLocalizable, constraints, permissions);
 // documents of that type carry matching `data`. No ALTER TABLE to add a type or a
 // field — just insert/update a row.
+export const contentTags = pgTable(
+  "content_tags",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueSlug: uniqueIndex("content_tags_org_slug").on(t.orgId, t.slug),
+  }),
+);
+
+export const contentTeams = pgTable(
+  "content_teams",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueSlug: uniqueIndex("content_teams_org_slug").on(t.orgId, t.slug),
+  }),
+);
+
 export const documentTypes = pgTable(
   "document_types",
   {

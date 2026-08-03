@@ -57,10 +57,7 @@ function fieldValueSchema(field: FieldDefinition): z.ZodType<unknown> {
       base = z.array(z.union([z.string(), z.object({ documentId: z.string() }).strict()]));
       break;
     case "enum":
-      base =
-        field.options && field.options.length > 0
-          ? z.enum(field.options as [string, ...string[]])
-          : z.string();
+      base = field.options?.length ? z.enum(field.options as [string, ...string[]]) : z.string();
       break;
     case "json":
       base = z.any();

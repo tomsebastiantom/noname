@@ -1,7 +1,7 @@
 import {
   fetchTeamUsers,
   inviteTeamUser,
-  type TeamMemberRole,
+  type StaffRole,
   updateTeamUserRole,
 } from "../../auth/team-users";
 import { ADMIN_STATE } from "../admin-state";
@@ -30,14 +30,14 @@ export const teamActions = {
       email: string;
       givenName?: string;
       familyName?: string;
-      role: TeamMemberRole;
+      role: StaffRole;
     };
     await inviteTeamUser({ email, givenName, familyName, role });
     await refreshTeamUsers(setState);
   }) satisfies CatalogActionHandler,
 
   updateTeamUserRole: (async (params, setState) => {
-    const { userId, role } = params as { userId: string; role: TeamMemberRole };
+    const { userId, role } = params as { userId: string; role: StaffRole };
     await updateTeamUserRole(userId, role);
     await refreshTeamUsers(setState);
   }) satisfies CatalogActionHandler,

@@ -1,4 +1,4 @@
-import type { TeamMemberRole } from "../../ports";
+import { isStaffRole, type PlatformRole, primaryTeamRole, type StaffRole } from "@noname/auth";
 import { connectRequest } from "./management";
 
 interface AuthorizationRole {
@@ -36,26 +36,28 @@ export async function listProjectAuthorizations(
   );
 }
 
-/** userId → team role (admin beats editor when both present). */
+/** userId → primary staff role from ZITADEL project authorizations. */
 export async function teamRoleAssignments(
   orgId: string,
   projectId: string,
-): Promise<Map<string, TeamMemberRole>> {
+): Promise<Map<string, StaffRole>> {
   const rows = await listProjectAuthorizations(orgId, projectId);
-  const map = new Map<string, TeamMemberRole>();
+  const map = new Map<string, StaffRole>();
 
   for (const row of rows) {
     const userId = row.user?.id?.trim();
     if (!userId) continue;
 
-    const keys = (row.roles ?? [])
-      .map((role) => role.key?.trim())
-      .filter((key): key is string => Boolean(key));
-
-    if (keys.includes("admin")) {
-      map.set(userId, "admin");
-    } else if (keys.includes("editor")) {
-      map.set(userId, "editor");
+    const roles: PlatformRole[] = [];
+    for (const role of row.roles ?? []) {
+      const key = role.key?.trim();
+      if (key && isStaffRole(key)) {
+        roles.push(key);
+      }
+    }
+    const primary = primaryTeamRole(roles);
+    if (primary && isStaffRole(primary)) {
+      map.set(userId, primary);
     }
   }
 
@@ -72,12 +74,12 @@ async function findAuthorizationId(
   return match?.id?.trim() || null;
 }
 
-/** Create or update a user's team role (admin | editor) on the platform project. */
+/** Create or update a user's staff role on the platform project. */
 export async function upsertUserTeamRole(
   orgId: string,
   projectId: string,
   userId: string,
-  role: TeamMemberRole,
+  role: StaffRole,
 ): Promise<void> {
   const authorizationId = await findAuthorizationId(orgId, projectId, userId);
 

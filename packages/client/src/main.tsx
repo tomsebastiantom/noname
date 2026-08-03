@@ -66,24 +66,18 @@ function redirectTo(
   window.location.href = url;
 }
 
+function appShellClassName(template: string, lockViewport?: boolean): string {
+  if (lockViewport) return "flex h-dvh flex-col overflow-hidden bg-background";
+  if (isLoginTemplate(template)) return "noname-auth flex h-dvh flex-col overflow-hidden";
+  return "min-h-screen bg-background";
+}
+
 function AppShell({
   children,
   template,
   lockViewport,
 }: Readonly<{ children: ReactNode; template: string; lockViewport?: boolean }>) {
-  return (
-    <div
-      className={
-        lockViewport
-          ? "flex h-dvh flex-col overflow-hidden bg-background"
-          : isLoginTemplate(template)
-            ? "noname-auth flex h-dvh flex-col overflow-hidden"
-            : "min-h-screen bg-background"
-      }
-    >
-      {children}
-    </div>
-  );
+  return <div className={appShellClassName(template, lockViewport)}>{children}</div>;
 }
 
 function App() {
@@ -109,7 +103,7 @@ function App() {
   const route = resolveRoute(pathname);
   const platformRoute = route.kind === "platform";
   const template = platformRoute ? route.template : "storefront";
-  const adminRoute = platformRoute && route.requiresAuth;
+  const adminRoute = route.kind === "platform" ? route.requiresAuth : false;
   const editMode = new URLSearchParams(window.location.search).get("edit") === "true";
   const panelRoute = composeMode === "panel";
 
@@ -145,11 +139,13 @@ function App() {
           window.location.replace(url.pathname + url.search + url.hash);
           return;
         }
-        const needsMfaGate = editMode || pathname.startsWith("/admin");
+        const mfaEnrollPath = "/admin/settings/security";
+        const needsMfaGate =
+          (editMode || pathname.startsWith("/admin")) && !pathname.startsWith(mfaEnrollPath);
         if (needsMfaGate && session.requireMfaForAdmin && !session.mfaEnrolled) {
           const redirect = encodeURIComponent(pathname + window.location.search);
           redirectTo(
-            `/account/security?redirect=${redirect}&mfaRequired=1`,
+            `${mfaEnrollPath}?redirect=${redirect}&mfaRequired=1`,
             setLoading,
             setNavigating,
           );
@@ -339,6 +335,44 @@ function App() {
   const storefrontRoute = route.kind === "storefront";
   const editorRoute = layoutRenderAs === "editor";
 
+  let mainContent: ReactNode = null;
+  if (panelRoute && adminShellProps) {
+    mainContent = (
+      <AdminPlatformView
+        shellProps={adminShellProps}
+        panelSpec={adminPanelSpec}
+        panelKey={template}
+        panelLoading={navigating && adminPanelSpec === null}
+        registry={registry}
+      />
+    );
+  } else if (editorRoute && spec && editorShellSpec && layoutTemplateName) {
+    mainContent = (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <Suspense fallback={<p className="p-8 text-muted-foreground">Loading editor…</p>}>
+          <EditPageView
+            displaySpec={spec}
+            shellSpec={editorShellSpec}
+            templateName={layoutTemplateName}
+            pageContentRef={pageContentRef}
+            registry={registry}
+            onReload={() => void loadPage()}
+          />
+        </Suspense>
+      </div>
+    );
+  } else if (spec) {
+    mainContent = (
+      <div
+        className={
+          isLoginTemplate(template) ? "flex min-h-0 flex-1 flex-col overflow-hidden" : undefined
+        }
+      >
+        <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+      </div>
+    );
+  }
+
   return (
     <AppShell template={template} lockViewport={editorRoute}>
       {!adminRoute && storefrontRoute ? <AuthBar onAuthChange={() => void loadPage()} /> : null}
@@ -354,38 +388,7 @@ function App() {
           aria-label="Loading page"
         />
       ) : null}
-      {panelRoute && adminShellProps ? (
-        <AdminPlatformView
-          shellProps={adminShellProps}
-          panelSpec={navigating ? null : adminPanelSpec}
-          panelKey={template}
-          panelLoading={navigating}
-          registry={registry}
-        />
-      ) : editorRoute && spec && editorShellSpec && layoutTemplateName ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-          <Suspense fallback={<p className="p-8 text-muted-foreground">Loading editor…</p>}>
-            <EditPageView
-              displaySpec={spec}
-              shellSpec={editorShellSpec}
-              templateName={layoutTemplateName}
-              pageContentRef={pageContentRef}
-              registry={registry}
-              onReload={() => void loadPage()}
-            />
-          </Suspense>
-        </div>
-      ) : (
-        spec && (
-          <div
-            className={
-              isLoginTemplate(template) ? "flex min-h-0 flex-1 flex-col overflow-hidden" : undefined
-            }
-          >
-            <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
-          </div>
-        )
-      )}
+      {mainContent}
     </AppShell>
   );
 }

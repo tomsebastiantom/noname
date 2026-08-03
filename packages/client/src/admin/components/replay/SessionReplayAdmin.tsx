@@ -1,6 +1,6 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { useState } from "react";
-import { useAnalyticsViewPermission } from "../../../auth/analytics-access";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
@@ -40,7 +40,7 @@ export function SessionReplayAdmin({
   props,
 }: ComponentCtx<CatalogProps<SessionReplayConfig, SessionReplayLabels>>) {
   const { labels } = props;
-  const canViewReplay = useAnalyticsViewPermission();
+  const canViewReplay = useAdminRouteAccess("replay");
   const { execute } = useActions();
   const sessions =
     (useStateValue(ADMIN_STATE.replay.sessions) as ReplaySessionSummary[] | undefined) ?? [];

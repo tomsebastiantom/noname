@@ -1,4 +1,6 @@
 import type { Database } from "../../drizzle";
+import type { AuthorizationPort } from "../auth/authorization-port";
+import { createAuthorization } from "../auth/create-authorization";
 import { createPostgresDocumentStorage } from "./adapters/postgres";
 import { createDocumentsRoutes } from "./api";
 import type { AssetBinaryStorage } from "./assets/binary";
@@ -11,6 +13,7 @@ export interface DocumentsDomainDeps {
   storage?: DocumentStorage;
   validator?: ContentValidator;
   assetBinary?: AssetBinaryStorage;
+  authorization?: AuthorizationPort;
   onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
 }
 
@@ -19,6 +22,7 @@ export function createDocumentsDomain(deps: DocumentsDomainDeps) {
   const service = createDocumentsService(storage, deps.validator ?? contentValidator, {
     onContentPublished: deps.onContentPublished,
   });
-  const routes = createDocumentsRoutes(service, deps.assetBinary);
+  const authorization = deps.authorization ?? createAuthorization();
+  const routes = createDocumentsRoutes(service, storage, deps.assetBinary, authorization);
   return { storage, service, routes };
 }

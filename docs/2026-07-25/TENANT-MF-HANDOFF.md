@@ -113,7 +113,7 @@ open http://yogastore.localhost:5173/
 | File | Change |
 |------|--------|
 | `scripts/seed-tenant-remote.ts` | **New** — sync publish + patch home layout |
-| `scripts/seed-demo.ts` | `admin_tenant_remote` layout + nav |
+| `scripts/seed/demo.ts` | `admin_tenant_remote` layout + nav |
 | `package.json` | `seed:tenant-remote` script |
 
 ### Docs (new)

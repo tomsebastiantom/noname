@@ -40,10 +40,32 @@ pnpm seed:demo                          # idempotent
 | 1.1 | `pnpm fix` | exit 0 |
 | 1.2 | `pnpm typecheck` | exit 0 |
 | 1.3 | `pnpm test` | all pass |
-| 1.4 | `podman compose ps` | postgres, zitadel, dragonfly up |
+| 1.4 | `podman compose ps` | postgres, zitadel, dragonfly, keto up |
 | 1.5 | `curl -sf localhost:8080/.well-known/openid-configuration` | JSON |
 | 1.6 | `curl -sf localhost:3000/health` | 2xx |
 | 1.7 | `curl -sf localhost:8787/api/edge/schema/yogastore?template=home&segment=default` | layout JSON |
+| 1.8 | `curl -sf localhost:4466/health/ready` | `{"status":"ok"}` |
+| 1.9 | Keto REST check (deny without tuple) | see below |
+
+**Keto REST check (1.9):**
+
+```bash
+curl -s -X POST "http://localhost:4466/relation-tuples/check/openapi" \
+  -H "Content-Type: application/json" \
+  -d '{"namespace":"Document","object":"smoke-doc","relation":"edit","subject_id":"User:smoke-user"}'
+# → {"allowed":false}
+
+# Optional: grant + recheck
+curl -s -X PUT "http://localhost:4467/admin/relation-tuples" \
+  -H "Content-Type: application/json" \
+  -d '{"namespace":"Document","object":"smoke-doc","relation":"editors","subject_id":"User:smoke-user"}'
+curl -s -X POST "http://localhost:4466/relation-tuples/check/openapi" \
+  -H "Content-Type: application/json" \
+  -d '{"namespace":"Document","object":"smoke-doc","relation":"edit","subject_id":"User:smoke-user"}'
+# → {"allowed":true}
+```
+
+**Server:** Document scope always checked via Keto on guarded PUT routes. Start Keto: `curl -sf localhost:4466/health/ready`.
 
 ---
 

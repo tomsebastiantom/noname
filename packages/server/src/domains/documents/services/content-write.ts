@@ -128,10 +128,11 @@ export function filterReadFields(
   role?: string,
 ): DocumentDTO {
   if (!role) return doc;
-  const restricted = fields.filter(
-    (f) =>
-      f.permissions?.read && f.permissions.read.length > 0 && !f.permissions.read.includes(role),
-  );
+  const restricted = fields.filter((f) => {
+    const readRoles = f.permissions?.read;
+    if (!readRoles?.length) return false;
+    return !readRoles.includes(role);
+  });
   if (restricted.length === 0) return doc;
   const filtered = { ...doc.data };
   for (const f of restricted) {

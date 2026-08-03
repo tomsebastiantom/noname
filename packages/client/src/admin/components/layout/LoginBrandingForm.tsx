@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { useMemo, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -28,6 +29,7 @@ type LoginBrandingLabels = {
   draftSavedMessage: string;
   publishedMessage: string;
   loadingLabel: string;
+  forbiddenLabel: string;
 };
 
 type LoginBrandingFormProps = ComponentCtx<CatalogProps<LoginBrandingConfig, LoginBrandingLabels>>;
@@ -189,6 +191,7 @@ function LoginBrandingFields({
 
 export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
   const { config, labels } = props;
+  const canManageAuth = useAdminRouteAccess("login");
   const segment = config.segment || "default";
   const loadParams = useMemo(() => ({ segment }), [segment]);
   useMountAction("loadLoginBranding", loadParams);
@@ -199,6 +202,18 @@ export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
     | undefined;
   const loading = (useStateValue(ADMIN_STATE.loginBranding.loading) as boolean | undefined) ?? true;
   const loadError = useStateValue(ADMIN_STATE.loginBranding.error) as string | null | undefined;
+
+  if (canManageAuth === null) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canManageAuth === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;

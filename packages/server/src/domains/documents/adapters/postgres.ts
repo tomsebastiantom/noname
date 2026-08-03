@@ -18,6 +18,13 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const [row] = await db
         .insert(documentTypes)
         .values({ orgId, name, schema: schema as unknown as Record<string, unknown> })
+        .onConflictDoUpdate({
+          target: [documentTypes.orgId, documentTypes.name],
+          set: {
+            schema: schema as unknown as Record<string, unknown>,
+            updated_at: new Date(),
+          },
+        })
         .returning();
       if (!row) throw new Error("Failed to create content type");
       return mapContentType(row);
@@ -112,6 +119,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           baseVersion: input.baseVersion ?? null,
           data: input.data,
           meta: input.meta ?? {},
+          tags: input.tags ?? [],
         })
         .returning();
       if (!row) throw new Error("Failed to create document");
@@ -146,12 +154,16 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const [row] = await db.select().from(documents).where(eq(documents.id, id));
       return row ? mapDocument(row) : null;
     },
-    async updateDocument(id, data, meta) {
-      const [row] = await db
-        .update(documents)
-        .set({ data, meta: meta ?? undefined, updated_at: new Date() })
-        .where(eq(documents.id, id))
-        .returning();
+    async updateDocument(id, data, meta, tags) {
+      const patch: {
+        data: Record<string, unknown>;
+        updated_at: Date;
+        meta?: Record<string, unknown>;
+        tags?: string[];
+      } = { data, updated_at: new Date() };
+      if (meta !== undefined) patch.meta = meta;
+      if (tags !== undefined) patch.tags = tags;
+      const [row] = await db.update(documents).set(patch).where(eq(documents.id, id)).returning();
       if (!row) throw new Error("Failed to update document");
       return mapDocument(row);
     },
@@ -279,6 +291,7 @@ function mapDocument(row: DocumentRow): DocumentDTO {
     baseVersion: row.baseVersion ?? null,
     data: (row.data ?? {}) as Record<string, unknown>,
     meta: (row.meta ?? {}) as Record<string, unknown>,
+    tags: row.tags ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

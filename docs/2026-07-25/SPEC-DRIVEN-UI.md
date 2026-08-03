@@ -178,7 +178,7 @@ Add or extend a **layout template** — json-render tree stored via documents AP
 }
 ```
 
-Seed example: `scripts/seed-demo.ts` → `adminDashboardSpec`, `adminContentSpec`.
+Seed example: `scripts/seed/demo.ts` → `adminDashboardSpec`, `adminContentSpec`.
 
 ### 5. Template routing (`main.tsx`)
 
@@ -233,7 +233,7 @@ Both render with `<Renderer spec={…} />`. Admin is not a separate SPA.
 |--------|-------|
 | New platform component | `catalog-schemas.ts`, `components.tsx`, optionally `components/*.tsx` |
 | New platform action | `core/actions/*.ts`, `platform/registry.ts`, server domain if needed |
-| New admin page layout | `scripts/seed-demo.ts` (or documents API), `main.tsx` if new template |
+| New admin page layout | `scripts/seed/demo.ts` (or documents API), `main.tsx` if new template |
 | New extension widget | `packages/extensions/src/{name}/` (same 4-file pattern) |
 | Where copy goes | Layout **`props.labels`** or CMS — see [props-contract.md](../../skills/spec-driven-ui/props-contract.md) |
 

@@ -42,6 +42,26 @@ export const referenceFieldLabelsSchema = z.object({
   missingTargetMessage: z.string(),
 });
 
+export const documentTagsLabelsSchema = z.object({
+  tagsLabel: z.string(),
+  tagsPlaceholder: z.string(),
+  tagsHint: z.string(),
+});
+
+export const documentShareLabelsSchema = z.object({
+  shareTitle: z.string(),
+  shareHint: z.string(),
+  shareUserLabel: z.string(),
+  shareGrantLabel: z.string(),
+  shareGrantingLabel: z.string(),
+  shareRevokeLabel: z.string(),
+  shareRevokingLabel: z.string(),
+  shareGrantSuccessMessage: z.string(),
+  shareRevokeSuccessMessage: z.string(),
+  shareEmptyMessage: z.string(),
+  shareLoadingLabel: z.string(),
+});
+
 /** Nav row structure — display name in labels.nav[id] */
 export const navItemConfigSchema = z.object({
   id: z.string(),

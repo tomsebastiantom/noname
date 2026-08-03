@@ -123,7 +123,7 @@ Login for tests: `admin@zitadel.localhost` / `NonameAdmin1!` via `POST /api/auth
 | **Unknown store slug at edge** | Unresolvable slug → **400** “org id required”, not **404**. Edge proxy limitation when KV/API resolve fails. |
 | **TOTP full E2E in browser** | ✅ Verified 2026-07-25 — see E2E result below |
 | **Editor vs admin on CMS routes** | Team roles enforced on auth admin routes only; document write APIs do not yet distinguish editor vs admin. |
-| **Seed script and auth config PUT** | `seed-demo.ts` writes Google IdP via `PUT tenant_settings/default` (not auth config PUT) to avoid JWT requirement during seed. |
+| **Seed script and auth config PUT** | `scripts/seed/demo.ts` writes Google IdP via `PUT tenant_settings/default` (not auth config PUT) to avoid JWT requirement during seed. |
 
 ---
 

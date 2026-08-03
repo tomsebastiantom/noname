@@ -59,7 +59,10 @@ export function createR2AssetStorage(config?: R2Config): AssetBinaryStorage {
   const store = cfg;
 
   const isLocal = /localhost|127\.0\.0\.1/.test(store.endpoint);
-  const region = cfg.region ?? (isLocal ? "us-east-1" : "auto");
+  let region = cfg.region;
+  if (region == null) {
+    region = isLocal ? "us-east-1" : "auto";
+  }
 
   const client = new S3Client({
     region,

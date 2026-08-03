@@ -1,6 +1,6 @@
 import { useActions } from "@json-render/react";
 import type { MouseEvent, ReactNode } from "react";
-import { useAnalyticsViewPermission } from "../../../auth/analytics-access";
+import { useAdminNavVisibility } from "../../../auth/admin-access";
 import { isLoggedIn } from "../../../auth/session";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
@@ -72,11 +72,10 @@ function AdminNavLink({
 export function AdminNav(props: AdminNavProps) {
   const { execute } = useActions();
   const loggedIn = isLoggedIn();
-  const canViewReplay = useAnalyticsViewPermission();
+  const { canAccessNavItem } = useAdminNavVisibility();
 
-  const settingsItems = props.settingsItems.filter(
-    (item) => item.id !== "replay" || canViewReplay !== false,
-  );
+  const navItems = props.navItems.filter((item) => canAccessNavItem(item.id));
+  const settingsItems = props.settingsItems.filter((item) => canAccessNavItem(item.id));
 
   return (
     <aside className="flex w-56 shrink-0 flex-col border-r bg-muted/30">
@@ -88,7 +87,7 @@ export function AdminNav(props: AdminNavProps) {
       </div>
       <Separator />
       <nav className="flex flex-1 flex-col gap-1 p-3">
-        {props.navItems.map((item) => (
+        {navItems.map((item) => (
           <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
             {item.label}
           </AdminNavLink>

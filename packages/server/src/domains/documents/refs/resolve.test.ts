@@ -19,6 +19,7 @@ function row(
     baseVersion: null,
     data,
     meta: {},
+    tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   };

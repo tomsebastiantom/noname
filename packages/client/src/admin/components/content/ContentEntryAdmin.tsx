@@ -22,6 +22,7 @@ import {
 import { ContentEntryCreateForm } from "./content-entry-create-form";
 import { ContentEntryEditor } from "./content-entry-editor";
 import { ContentEntryTypeList } from "./content-entry-type-list";
+import type { ContentEntryFormLabels } from "./content-entry-types";
 import { emptyValuesForSchema, newEntryCardDescription } from "./content-entry-utils";
 import type { MediaFieldLabels } from "./MediaFieldInput";
 import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
@@ -31,15 +32,7 @@ type ContentEntryConfig = {
   locale: string;
 };
 
-type ContentEntryLabels = {
-  title: string;
-  description: string | null;
-  saveLabel: string;
-  savingLabel: string;
-  publishLabel: string;
-  publishingLabel: string;
-  deleteLabel: string;
-  deletingLabel: string;
+type ContentEntryLabels = ContentEntryFormLabels & {
   createDraftLabel: string;
   creatingLabel: string;
   loadingLabel: string;
@@ -106,6 +99,7 @@ function ContentEntryEntriesPanel({
   const [creating, setCreating] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(loaded.initialSelectedId);
   const [values, setValues] = useState<Record<string, string>>(loaded.initialValues);
+  const [tagsInput, setTagsInput] = useState(loaded.initialTagsInput);
   const [status, setStatus] = useState(loaded.initialStatus);
   const [localEntries, setLocalEntries] = useState<ContentEntryRow[]>(loaded.entries);
   const [saving, setSaving] = useState(false);
@@ -120,6 +114,7 @@ function ContentEntryEntriesPanel({
     if (!schema) return;
     setSelectedId(null);
     setValues(emptyValuesForSchema(schema));
+    setTagsInput("");
     setStatus("draft");
     catalog.reset();
   }
@@ -130,6 +125,7 @@ function ContentEntryEntriesPanel({
     locale,
     schema,
     values,
+    tagsInput,
     selectedId,
     localEntries,
     messages: {
@@ -147,6 +143,7 @@ function ContentEntryEntriesPanel({
     setStatus,
     setLocalEntries,
     setValues,
+    setTagsInput,
     reloadContent,
   });
 
@@ -162,6 +159,7 @@ function ContentEntryEntriesPanel({
         description={newEntryCardDescription(contentType, localEntries.length, isNewEntry)}
         editableFields={editableFields}
         values={values}
+        tagsInput={tagsInput}
         locale={locale}
         mediaLabels={mediaLabels}
         referenceLabels={referenceLabels}
@@ -171,6 +169,7 @@ function ContentEntryEntriesPanel({
         creating={creating}
         labels={labels}
         onValuesChange={setValues}
+        onTagsInputChange={setTagsInput}
         onSubmit={() => void onCreate()}
         onCancel={
           isNewEntry && localEntries.length > 0
@@ -190,6 +189,8 @@ function ContentEntryEntriesPanel({
       entries={localEntries}
       selectedId={selectedId}
       values={values}
+      tagsInput={tagsInput}
+      labels={labels}
       mediaLabels={mediaLabels}
       referenceLabels={referenceLabels}
       referenceOptions={referenceOptions}
@@ -199,10 +200,11 @@ function ContentEntryEntriesPanel({
       publishing={publishing}
       deleting={deleting}
       canPublish={loaded.canPublish}
-      labels={labels}
+      canManageAccess={loaded.canManageAccess}
       onSelectEntry={(id) => void selectEntry(id)}
       onStartNewEntry={startNewEntry}
       onValuesChange={setValues}
+      onTagsInputChange={setTagsInput}
       onSave={() => void onSave()}
       onPublish={() => void onPublish()}
       onDelete={() => void onDelete()}

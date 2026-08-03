@@ -41,7 +41,7 @@
 
 **Role:** Stores everything that must be persisted with ACID guarantees.
 
-**Databases (3, via `scripts/init-dbs.sh`):**
+**Databases (3, via `scripts/compose/init-dbs.sh`):**
 
 | Database | Used By | Stores |
 |----------|---------|--------|
@@ -208,7 +208,7 @@ Request for SEO-critical page (product, collection, blog)
 
 | Dependency | Why | In Our Setup |
 |------------|-----|-------------|
-| Postgres (database `nango`) | Stores integration configs, OAuth connections/tokens, sync records, action logs | Already in our Postgres — `scripts/init-dbs.sh` creates `nango` DB |
+| Postgres (database `nango`) | Stores integration configs, OAuth connections/tokens, sync records, action logs | Already in our Postgres — `scripts/compose/init-dbs.sh` creates `nango` DB |
 | Redis (7.2+) | Job queue backend for sync jobs, action execution, webhook processing | Shared with our DragonflyDB instance (same Redis protocol) |
 | Elasticsearch (optional) | Log storage if `NANGO_LOGS_ENABLED=true` | Not needed for Phase 2 launch — Postgres handles basic logging |
 
@@ -283,7 +283,7 @@ Request for SEO-critical page (product, collection, blog)
 
 | Service | Prod Equivalent | Local Dev | Notes |
 |---------|----------------|-----------|-------|
-| Postgres | Vela on K8s / K8s StatefulSet | Docker container (port 5432) | 3 DBs: app, zitadel, nango. Script at `scripts/init-dbs.sh` |
+| Postgres | Vela on K8s / K8s StatefulSet | Docker container (port 5432) | 3 DBs: app, zitadel, nango. Script at `scripts/compose/init-dbs.sh` |
 | DragonflyDB | K8s StatefulSet (3 replicas) | Docker container (port 6379) | Redis-compatible. No password for local dev. |
 | ClickHouse | K8s StatefulSet (2 replicas) | Docker container (port 8123/9000) | Analytics queries work locally. |
 | ZITADEL | K8s Deployment | Docker container (port 8080) | Self-hosted. Console + OIDC. |
@@ -326,7 +326,7 @@ Nango's self-hosted docker-compose requires 3 services we already provide:
 
 | Nango Requirement | Our Setup | Shared/Dedicated | Decision |
 |-------------------|-----------|-----------------|----------|
-| **Postgres** (database: `nango`) | Postgres 16, DB `nango` already created by `scripts/init-dbs.sh` | Shared Postgres instance, separate database | Fine for Phase 2. Separate Postgres instance only if Nango load affects platform queries. |
+| **Postgres** (database: `nango`) | Postgres 16, DB `nango` already created by `scripts/compose/init-dbs.sh` | Shared Postgres instance, separate database | Fine for Phase 2. Separate Postgres instance only if Nango load affects platform queries. |
 | **Redis** (7.2+) | DragonflyDB on port 6379 | Shared DragonflyDB instance | Fine for Phase 2. Nango uses Redis for job queues (sync, actions). Separate Redis if Nango queue load competes with cart/rate-limit ops. |
 | **Elasticsearch** (optional) | Not needed initially | Skip | `NANGO_LOGS_ENABLED=false` by default. Logs go to Postgres. Add Elasticsearch only if log volume is high. |
 
@@ -484,6 +484,6 @@ With Vela as the K8s Postgres platform, the entire infrastructure reduces to 4 l
 - `docs/2026-05-23/BUILD_PLAN.md` — Domain map, event-driven patterns, scaling thresholds
 - `docs/2026-07-04/ARCHITECTURE_DECISIONS.md` — Monorepo structure, domain map, key decisions
 - `docker-compose.yml` — Current local dev setup (Postgres, DragonflyDB, ClickHouse, ZITADEL, Nango)
-- `scripts/init-dbs.sh` — Postgres database initialization (app, zitadel, nango)
+- `scripts/compose/init-dbs.sh` — Postgres database initialization (app, zitadel, nango)
 - Nango official `docker-compose.yaml` — Self-hosting requirements (Postgres + Redis + optional Elasticsearch)
 - Vela: https://github.com/simplyblock/vela — Serverless Postgres on K8s with Git-like branching

@@ -90,7 +90,7 @@ Minimal change: **extend edge**, **thin client**, **seed routing docs**. Do not 
 
 ### Step 1 — Seed routing documents
 
-In `scripts/seed-demo.ts` (or admin UI later):
+In `scripts/seed/demo.ts` (or admin UI later):
 
 ```typescript
 // page_tree (type: page_tree, key: main)
@@ -208,7 +208,7 @@ curl "/api/edge/schema/yogastore?url=/&segment=default"
 ✅ 3. Client: platform vs merchant path split
 ✅ 4. Remove templateFromPath for storefront
 ✅ 5. Admin UI for page_tree / page (`/admin/pages`, `/admin/pages/tree`)
-✅ 6. Commerce product URLs in page_tree (`seed-demo-commerce`)
+✅ 6. Commerce product URLs in page_tree (`scripts/seed/demo-commerce.ts`)
 ```
 
 Phase D ties in: [`PHASE-3-STORE-SLUG.md`](./PHASE-3-STORE-SLUG.md) (hostname → org) is **orthogonal** — this doc is **path → page** within an org.

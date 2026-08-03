@@ -9,6 +9,8 @@
  * RUNTIME (no redeploy — ZITADEL admin / Users UI):
  *   - Which user holds which role key for an org
  *   - Invite, revoke, role assignment changes
+ *
+ * Canonical spec: docs/2026-08-03/ACCESS-AND-ROLES.md
  */
 
 /** Platform-wide permission keys — same for every store (org). */
@@ -21,8 +23,12 @@ export const PERMISSIONS = {
   PAGE_DRAFT_WRITE: "page:draft_write",
   PAGE_PUBLISH: "page:publish",
   AUTH_MANAGE: "auth:manage",
-  /** Session replay + analytics dashboards — admin only (PII / DOM content). */
+  /** Tags, teams, Keto bindings, user invite (all roles except admin). */
+  SCOPE_MANAGE: "scope:manage",
+  /** Events, dashboards, funnels. */
   ANALYTICS_VIEW: "analytics:view",
+  /** Watch rrweb session replays (PII — separate from analytics). */
+  SESSION_REPLAY: "session:replay",
   FLAGS_WRITE: "flags:write",
   TENANT_MANAGE: "tenant:manage",
   AGENT_MANAGE: "agent:manage",
@@ -31,29 +37,85 @@ export const PERMISSIONS = {
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
 
-export const PLATFORM_ROLES = ["admin", "editor", "customer"] as const;
+export const PLATFORM_ROLES = [
+  "admin",
+  "access_manager",
+  "publisher",
+  "editor",
+  "analyst",
+  "replay_viewer",
+  "flags_manager",
+  "customer",
+] as const;
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
+
+/** Org team roles — every platform role except storefront-only customer. */
+export type StaffRole = Exclude<PlatformRole, "customer">;
+
+export const STAFF_ROLES = PLATFORM_ROLES.filter((role): role is StaffRole => role !== "customer");
 
 const ALL_PERMISSIONS: readonly PermissionKey[] = Object.values(PERMISSIONS);
 
-const EDITOR_PERMISSIONS: readonly PermissionKey[] = [
+const DRAFT_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.STOREFRONT_VIEW,
   PERMISSIONS.CONTENT_DRAFT_WRITE,
   PERMISSIONS.LAYOUT_DRAFT_WRITE,
   PERMISSIONS.PAGE_DRAFT_WRITE,
 ];
 
+const PUBLISH_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.CONTENT_PUBLISH,
+  PERMISSIONS.LAYOUT_PUBLISH,
+  PERMISSIONS.PAGE_PUBLISH,
+];
+
+const EDITOR_PERMISSIONS: readonly PermissionKey[] = DRAFT_PERMISSIONS;
+
+const PUBLISHER_PERMISSIONS: readonly PermissionKey[] = [
+  ...DRAFT_PERMISSIONS,
+  ...PUBLISH_PERMISSIONS,
+];
+
+const ACCESS_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.STOREFRONT_VIEW,
+  PERMISSIONS.SCOPE_MANAGE,
+];
+
+const ANALYST_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.STOREFRONT_VIEW,
+  PERMISSIONS.ANALYTICS_VIEW,
+];
+
+const REPLAY_VIEWER_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.STOREFRONT_VIEW,
+  PERMISSIONS.SESSION_REPLAY,
+];
+
+const FLAGS_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
+  PERMISSIONS.STOREFRONT_VIEW,
+  PERMISSIONS.FLAGS_WRITE,
+];
+
 const CUSTOMER_PERMISSIONS: readonly PermissionKey[] = [PERMISSIONS.STOREFRONT_VIEW];
 
-/** Platform-wide role → permission bundles (v1 — not per-org). */
+/** Platform-wide role → permission bundles. */
 export const ROLE_PERMISSIONS: Record<PlatformRole, readonly PermissionKey[]> = {
   admin: ALL_PERMISSIONS,
+  access_manager: ACCESS_MANAGER_PERMISSIONS,
+  publisher: PUBLISHER_PERMISSIONS,
   editor: EDITOR_PERMISSIONS,
+  analyst: ANALYST_PERMISSIONS,
+  replay_viewer: REPLAY_VIEWER_PERMISSIONS,
+  flags_manager: FLAGS_MANAGER_PERMISSIONS,
   customer: CUSTOMER_PERMISSIONS,
 };
 
 export function isPlatformRole(value: string): value is PlatformRole {
   return (PLATFORM_ROLES as readonly string[]).includes(value);
+}
+
+export function isStaffRole(value: string): value is StaffRole {
+  return isPlatformRole(value) && value !== "customer";
 }
 
 export function isPermissionKey(value: string): value is PermissionKey {
@@ -105,11 +167,16 @@ export function canDraft(roleKeys: Iterable<string>): boolean {
   return canDraftFromPermissions(expandPermissionsFromKeys(roleKeys));
 }
 
-/** Team surfaces: admin beats editor; null when no platform role. */
+/** Staff UI: highest-privilege content/admin role for display. */
 export function primaryTeamRole(roles: Iterable<PlatformRole>): PlatformRole | null {
   const set = new Set(roles);
   if (set.has("admin")) return "admin";
+  if (set.has("access_manager")) return "access_manager";
+  if (set.has("publisher")) return "publisher";
   if (set.has("editor")) return "editor";
+  if (set.has("analyst")) return "analyst";
+  if (set.has("replay_viewer")) return "replay_viewer";
+  if (set.has("flags_manager")) return "flags_manager";
   if (set.has("customer")) return "customer";
   return null;
 }

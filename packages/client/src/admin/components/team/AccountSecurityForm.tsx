@@ -47,6 +47,58 @@ type AccountSecurityLabels = {
   continueToAdminLabel: string;
 };
 
+type AccountSecurityConfig = {
+  variant?: "admin" | "standalone";
+};
+
+function resolveCardDescription(
+  step: Step,
+  sessionLoading: boolean,
+  isAdmin: boolean,
+  labels: AccountSecurityLabels,
+): string | null {
+  if (step === "enabled") return labels.enabledDescription;
+  if (sessionLoading || isAdmin) return null;
+  return labels.description;
+}
+
+function SecurityCardHeader({
+  isAdmin,
+  labels,
+  cardDescription,
+  showEnabledBadge,
+}: Readonly<{
+  isAdmin: boolean;
+  labels: AccountSecurityLabels;
+  cardDescription: string | null;
+  showEnabledBadge: boolean;
+}>) {
+  if (isAdmin && !cardDescription && !showEnabledBadge) return null;
+
+  if (!isAdmin) {
+    return (
+      <CardHeader>
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex flex-col gap-1.5">
+            <CardTitle>{labels.title}</CardTitle>
+            {cardDescription ? <CardDescription>{cardDescription}</CardDescription> : null}
+          </div>
+          {showEnabledBadge ? <Badge variant="success">{labels.enabledBadgeLabel}</Badge> : null}
+        </div>
+      </CardHeader>
+    );
+  }
+
+  return (
+    <CardHeader>
+      <div className="flex items-start justify-between gap-3">
+        {cardDescription ? <CardDescription>{cardDescription}</CardDescription> : <span />}
+        {showEnabledBadge ? <Badge variant="success">{labels.enabledBadgeLabel}</Badge> : null}
+      </div>
+    </CardHeader>
+  );
+}
+
 function mfaStepContent(options: {
   step: Step;
   labels: AccountSecurityLabels;
@@ -122,12 +174,67 @@ function mfaStepContent(options: {
   );
 }
 
-type AccountSecurityConfig = Record<string, never>;
+function SignInRequiredCard({
+  isAdmin,
+  labels,
+}: Readonly<{ isAdmin: boolean; labels: AccountSecurityLabels }>) {
+  const signInRedirect = isAdmin
+    ? "/login?redirect=%2Fadmin%2Fsettings%2Fsecurity"
+    : "/login?redirect=%2Faccount%2Fsecurity";
 
-export function AccountSecurityForm({
-  props,
-}: ComponentCtx<CatalogProps<AccountSecurityConfig, AccountSecurityLabels>>) {
-  const { labels } = props;
+  return (
+    <Card className={isAdmin ? undefined : "mx-auto max-w-lg"}>
+      <CardHeader>
+        {!isAdmin ? <CardTitle>{labels.title}</CardTitle> : null}
+        <CardDescription>{labels.signInRequiredDescription}</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <a href={signInRedirect} className="text-sm font-medium text-primary hover:underline">
+          {labels.signInLinkLabel}
+        </a>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EnrollmentAlerts({
+  mfaRequired,
+  step,
+  labels,
+  error,
+  success,
+}: Readonly<{
+  mfaRequired: boolean;
+  step: Step;
+  labels: AccountSecurityLabels;
+  error: string | null;
+  success: string | null;
+}>) {
+  return (
+    <>
+      {mfaRequired && step !== "enabled" ? (
+        <Alert>
+          <AlertDescription>{labels.mfaRequiredAlert}</AlertDescription>
+        </Alert>
+      ) : null}
+      {error ? (
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      ) : null}
+      {success ? (
+        <Alert>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      ) : null}
+    </>
+  );
+}
+
+function AccountSecurityEnrollment({
+  isAdmin,
+  labels,
+}: Readonly<{ isAdmin: boolean; labels: AccountSecurityLabels }>) {
   const { submit, run, error, success } = useCatalogSubmit();
   const session = useStateValue(ACCOUNT_SECURITY_STATE.session) as
     | AccountSecuritySessionState
@@ -148,25 +255,6 @@ export function AccountSecurityForm({
     if (sessionLoading) return;
     if (session?.mfaEnrolled) setStep("enabled");
   }, [session, sessionLoading]);
-
-  if (!isLoggedIn()) {
-    return (
-      <Card className="mx-auto max-w-lg">
-        <CardHeader>
-          <CardTitle>{labels.title}</CardTitle>
-          <CardDescription>{labels.signInRequiredDescription}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <a
-            href="/login?redirect=%2Faccount%2Fsecurity"
-            className="text-sm font-medium text-primary hover:underline"
-          >
-            {labels.signInLinkLabel}
-          </a>
-        </CardContent>
-      </Card>
-    );
-  }
 
   async function handleStart() {
     await run(
@@ -201,69 +289,71 @@ export function AccountSecurityForm({
     ? `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(uri)}`
     : null;
 
-  const showSetupDescription = step !== "enabled" && !sessionLoading;
-  const cardDescription =
-    step === "enabled"
-      ? labels.enabledDescription
-      : showSetupDescription
-        ? labels.description
-        : null;
+  const cardDescription = resolveCardDescription(step, sessionLoading, isAdmin, labels);
+  const showEnabledBadge = step === "enabled" && !sessionLoading;
+  const needsTopPadding = isAdmin && !cardDescription && !showEnabledBadge;
+
+  const card = (
+    <Card>
+      <SecurityCardHeader
+        isAdmin={isAdmin}
+        labels={labels}
+        cardDescription={cardDescription}
+        showEnabledBadge={showEnabledBadge}
+      />
+      <CardContent className={`flex flex-col gap-4${needsTopPadding ? " pt-6" : ""}`}>
+        {sessionLoading ? (
+          <p className="text-sm text-muted-foreground">{labels.checkingLabel}</p>
+        ) : (
+          <>
+            <EnrollmentAlerts
+              mfaRequired={mfaRequired}
+              step={step}
+              labels={labels}
+              error={error}
+              success={success}
+            />
+            {mfaStepContent({
+              step,
+              labels,
+              redirectPath,
+              qrUrl,
+              secret,
+              code,
+              loading,
+              onCodeChange: setCode,
+              onVerify: () => void handleVerify(),
+              onStart: () => void handleStart(),
+            })}
+          </>
+        )}
+      </CardContent>
+    </Card>
+  );
+
+  if (isAdmin) {
+    return <div className="flex max-w-xl flex-col gap-6">{card}</div>;
+  }
 
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4">
       <a href="/" className="text-sm text-muted-foreground hover:text-foreground">
         {labels.backToStorefrontLabel}
       </a>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex flex-col gap-1.5">
-              <CardTitle>{labels.title}</CardTitle>
-              {cardDescription && <CardDescription>{cardDescription}</CardDescription>}
-            </div>
-            {step === "enabled" && !sessionLoading ? (
-              <Badge variant="success">{labels.enabledBadgeLabel}</Badge>
-            ) : null}
-          </div>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-4">
-          {sessionLoading ? (
-            <p className="text-sm text-muted-foreground">{labels.checkingLabel}</p>
-          ) : (
-            <>
-              {mfaRequired && step !== "enabled" && (
-                <Alert>
-                  <AlertDescription>{labels.mfaRequiredAlert}</AlertDescription>
-                </Alert>
-              )}
-              {mfaStepContent({
-                step,
-                labels,
-                redirectPath,
-                qrUrl,
-                secret,
-                code,
-                loading,
-                onCodeChange: setCode,
-                onVerify: () => void handleVerify(),
-                onStart: () => void handleStart(),
-              })}
-
-              {error && (
-                <Alert variant="destructive">
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-              {success && (
-                <Alert>
-                  <AlertDescription>{success}</AlertDescription>
-                </Alert>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {card}
     </div>
   );
+}
+
+export function AccountSecurityForm({
+  props,
+}: Readonly<ComponentCtx<CatalogProps<AccountSecurityConfig, AccountSecurityLabels>>>) {
+  const { config, labels } = props;
+  const isAdmin = config?.variant === "admin";
+
+  if (!isLoggedIn()) {
+    return <SignInRequiredCard isAdmin={isAdmin} labels={labels} />;
+  }
+
+  return <AccountSecurityEnrollment isAdmin={isAdmin} labels={labels} />;
 }

@@ -77,6 +77,76 @@ function FieldLabelRow({
   );
 }
 
+function layoutFieldDisplayValue(storedRaw: unknown): string {
+  if (typeof storedRaw === "boolean") return String(storedRaw);
+  if (storedRaw === null || storedRaw === undefined) return "";
+  return String(storedRaw);
+}
+
+function PropsPanelFooter({
+  isPending,
+  saving,
+  storedSpec,
+  elementId,
+  shellLabels,
+  onCancelPending,
+  onDuplicate,
+  onDelete,
+}: Readonly<{
+  isPending: boolean;
+  saving: boolean;
+  storedSpec: Spec;
+  elementId: string;
+  shellLabels: EditorShellLabels;
+  onCancelPending: () => void;
+  onDuplicate?: (elementId: string) => void;
+  onDelete: (elementId: string) => void;
+}>) {
+  if (isPending) {
+    return (
+      <div className="border-t pt-4 space-y-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          disabled={saving}
+          onClick={onCancelPending}
+        >
+          {shellLabels.propsCancelLabel}
+        </Button>
+      </div>
+    );
+  }
+  if (!canRemoveElement(storedSpec, elementId)) return null;
+
+  return (
+    <div className="border-t pt-4 space-y-2">
+      {onDuplicate ? (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => onDuplicate(elementId)}
+        >
+          {shellLabels.propsDuplicateLabel}
+        </Button>
+      ) : null}
+      <Button
+        type="button"
+        variant="destructive"
+        size="sm"
+        className="w-full"
+        onClick={() => onDelete(elementId)}
+      >
+        {shellLabels.propsRemoveLabel}
+      </Button>
+      <p className="mt-1.5 text-xs text-muted-foreground">{shellLabels.propsRemoveHelp}</p>
+    </div>
+  );
+}
+
 export function PropsPanel({
   selection,
   storedSpec,
@@ -196,12 +266,7 @@ export function PropsPanel({
           );
         }
 
-        const displayValue =
-          typeof storedRaw === "boolean"
-            ? String(storedRaw)
-            : storedRaw === null || storedRaw === undefined
-              ? ""
-              : String(storedRaw);
+        const displayValue = layoutFieldDisplayValue(storedRaw);
 
         return (
           <LayoutFieldInput
@@ -218,44 +283,16 @@ export function PropsPanel({
         );
       })}
 
-      {isPending ? (
-        <div className="border-t pt-4 space-y-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="w-full"
-            disabled={saving}
-            onClick={onCancelPending}
-          >
-            {shellLabels.propsCancelLabel}
-          </Button>
-        </div>
-      ) : canRemoveElement(storedSpec, selection.elementId) ? (
-        <div className="border-t pt-4 space-y-2">
-          {onDuplicate ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="w-full"
-              onClick={() => onDuplicate(selection.elementId)}
-            >
-              {shellLabels.propsDuplicateLabel}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            className="w-full"
-            onClick={() => onDelete(selection.elementId)}
-          >
-            {shellLabels.propsRemoveLabel}
-          </Button>
-          <p className="mt-1.5 text-xs text-muted-foreground">{shellLabels.propsRemoveHelp}</p>
-        </div>
-      ) : null}
+      <PropsPanelFooter
+        isPending={isPending}
+        saving={saving}
+        storedSpec={storedSpec}
+        elementId={selection.elementId}
+        shellLabels={shellLabels}
+        onCancelPending={onCancelPending}
+        onDuplicate={onDuplicate}
+        onDelete={onDelete}
+      />
     </aside>
   );
 }

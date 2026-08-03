@@ -3,9 +3,15 @@ import type { Context } from "hono";
 import { getOrgId } from "../../shared/org";
 import { requirePermission } from "../auth/guards";
 
-/** Admin-only analytics / replay reads. */
+/** Events, dashboards — analyst role. */
 export async function denyUnlessAnalyticsView(c: Context): Promise<Response | null> {
   const auth = await requirePermission(c, PERMISSIONS.ANALYTICS_VIEW);
+  return auth instanceof Response ? auth : null;
+}
+
+/** rrweb session replay — replay_viewer role. */
+export async function denyUnlessSessionReplay(c: Context): Promise<Response | null> {
+  const auth = await requirePermission(c, PERMISSIONS.SESSION_REPLAY);
   return auth instanceof Response ? auth : null;
 }
 

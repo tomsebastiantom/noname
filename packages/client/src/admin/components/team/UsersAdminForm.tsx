@@ -1,6 +1,8 @@
 import { useStateValue } from "@json-render/react";
-import { useState } from "react";
-import type { TeamMemberRole, TeamUser } from "../../../auth/team-users";
+import { useEffect, useMemo, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
+import type { AuthSessionStatus, StaffRole, TeamUser } from "../../../auth/team-users";
+import { assignableStaffRoles, fetchAuthSessionStatus } from "../../../auth/team-users";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -18,8 +20,6 @@ import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
 import type { CatalogProps } from "../../../schemas/shared";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
-
-const ROLE_OPTIONS: TeamMemberRole[] = ["admin", "editor"];
 
 type UsersAdminConfig = Record<string, never>;
 
@@ -40,22 +40,47 @@ type UsersAdminLabels = {
   statusColumnHeader: string;
   mfaEnabledLabel: string;
   mfaOffLabel: string;
+  forbiddenLabel: string;
 };
 
 export function UsersAdminForm({
   props,
 }: ComponentCtx<CatalogProps<UsersAdminConfig, UsersAdminLabels>>) {
   const { labels } = props;
+  const canManageUsers = useAdminRouteAccess("users");
   const catalog = useCatalogSubmit();
   const { submit, pending, error, success, reset } = catalog;
   const users = (useStateValue(ADMIN_STATE.team.users) as TeamUser[] | undefined) ?? [];
   const loading = (useStateValue(ADMIN_STATE.team.loading) as boolean | undefined) ?? true;
   const loadError = useStateValue(ADMIN_STATE.team.error) as string | null | undefined;
 
+  const [session, setSession] = useState<AuthSessionStatus | null>(null);
+  const roleOptions = useMemo(() => assignableStaffRoles(session), [session]);
+
   const [email, setEmail] = useState("");
   const [givenName, setGivenName] = useState("");
   const [familyName, setFamilyName] = useState("");
-  const [role, setRole] = useState<TeamMemberRole>("editor");
+  const [role, setRole] = useState<StaffRole>("editor");
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetchAuthSessionStatus()
+      .then((data) => {
+        if (!cancelled) setSession(data);
+      })
+      .catch(() => {
+        if (!cancelled) setSession(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (roleOptions.length > 0 && !roleOptions.includes(role)) {
+      setRole(roleOptions[0]!);
+    }
+  }, [role, roleOptions]);
 
   async function handleInvite() {
     await submit({
@@ -71,12 +96,12 @@ export function UsersAdminForm({
         setEmail("");
         setGivenName("");
         setFamilyName("");
-        setRole("editor");
+        setRole(roleOptions[0] ?? "editor");
       },
     });
   }
 
-  async function handleRoleChange(userId: string, nextRole: TeamMemberRole) {
+  async function handleRoleChange(userId: string, nextRole: StaffRole) {
     reset();
     await submit({
       action: "updateTeamUserRole",
@@ -105,10 +130,10 @@ export function UsersAdminForm({
         <select
           className="rounded-md border border-input bg-background px-2 py-1 text-sm"
           value={row.role}
-          onChange={(e) => void handleRoleChange(row.userId, e.target.value as TeamMemberRole)}
+          onChange={(e) => void handleRoleChange(row.userId, e.target.value as StaffRole)}
           onClick={(e) => e.stopPropagation()}
         >
-          {ROLE_OPTIONS.map((option) => (
+          {roleOptions.map((option) => (
             <option key={option} value={option}>
               {option}
             </option>
@@ -138,6 +163,18 @@ export function UsersAdminForm({
 
   const displayError = mergeCatalogError(error, loadError);
 
+  if (canManageUsers === null) {
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canManageUsers === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
+
   if (loading) {
     return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
   }
@@ -145,11 +182,7 @@ export function UsersAdminForm({
   return (
     <div className="flex max-w-3xl flex-col gap-6">
       <Card>
-        <CardHeader>
-          <CardTitle>{labels.title}</CardTitle>
-          {labels.description && <CardDescription>{labels.description}</CardDescription>}
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <DataTable
             columns={columns}
             rows={users}
@@ -209,9 +242,9 @@ export function UsersAdminForm({
                 id="invite-role"
                 className="rounded-md border border-input bg-background px-3 py-2 text-sm"
                 value={role}
-                onChange={(e) => setRole(e.target.value as TeamMemberRole)}
+                onChange={(e) => setRole(e.target.value as StaffRole)}
               >
-                {ROLE_OPTIONS.map((option) => (
+                {roleOptions.map((option) => (
                   <option key={option} value={option}>
                     {option}
                   </option>

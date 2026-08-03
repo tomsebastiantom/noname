@@ -1,3 +1,4 @@
+import { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
 import { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
@@ -9,8 +10,10 @@ import { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
 import { AdminHome } from "./components/shell/AdminHome";
 import { AdminShell } from "./components/shell/AdminShell";
 import { AccountSecurityForm } from "./components/team/AccountSecurityForm";
+import { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 import { UsersAdminForm } from "./components/team/UsersAdminForm";
 
+export { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
 export { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
@@ -24,6 +27,7 @@ export { AdminNav } from "./components/shell/AdminNav";
 export { AdminPageHeader } from "./components/shell/AdminPageHeader";
 export { AdminShell } from "./components/shell/AdminShell";
 export { AccountSecurityForm } from "./components/team/AccountSecurityForm";
+export { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 export { UsersAdminForm } from "./components/team/UsersAdminForm";
 
 /** json-render component map for platform admin panels. */
@@ -33,6 +37,7 @@ export const adminComponents = {
   LoginBrandingForm,
   AccountSecurityForm,
   UsersAdminForm,
+  ScopeAdminForm,
   FeatureFlagsAdmin,
   ContentEntryAdmin,
   LayoutEntryAdmin,
@@ -40,4 +45,5 @@ export const adminComponents = {
   PageTreeAdmin,
   AdminHome,
   SessionReplayAdmin,
+  AnalyticsEventsAdmin,
 };

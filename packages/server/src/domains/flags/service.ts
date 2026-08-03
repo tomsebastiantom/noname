@@ -1,5 +1,5 @@
 import { flushEvents } from "../../shared/aggregate-root";
-import { ValidationError } from "../../shared/domain-error";
+import { ConflictError } from "../../shared/domain-error";
 import { FeatureFlag } from "./entity";
 import { evaluateFlag, normalizeEvaluationContext, recordEvaluation } from "./evaluation";
 import { requireFlag } from "./flag-guards";
@@ -15,7 +15,7 @@ export function createFlagService(storage: FlagStorage): FlagService {
 
       const existing = await storage.findByKey(orgId, input.key);
       if (existing) {
-        throw new ValidationError("key", `Flag with key '${input.key}' already exists`);
+        throw new ConflictError(`Flag with key '${input.key}' already exists`, { key: input.key });
       }
 
       const flag = FeatureFlag.create(

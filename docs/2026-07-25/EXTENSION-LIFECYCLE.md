@@ -321,5 +321,5 @@ Use this for every new profession/vision (booking, membership, influencer, …):
 - [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md) — core vs extension code layout
 - [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md) — action handler split
 - [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) — tenant remotes
-- Example commerce spec: `scripts/seed-demo-commerce.ts`
+- Example commerce spec: `scripts/seed/demo-commerce.ts`
 - Example schemas: `packages/extensions/src/commerce/catalog-schemas.ts`

@@ -1,20 +1,33 @@
 /**
- * Seeds a minimal platform demo: published "home" layout using core components only.
+ * Seeds a minimal platform demo: published layouts, admin UI, team users, Keto scope.
  * Run with API server up: pnpm seed:demo
  * Requires: pnpm init:zitadel (sets ZITADEL org id as org_id)
  */
 import "dotenv/config";
+import { config as loadEnv } from "dotenv";
+import { randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   DEFAULT_LOGIN_FORM_MESSAGES,
   DEFAULT_LOGIN_FORM_VIEWS,
-} from "../packages/client/src/core/login-form-labels.ts";
+} from "../../packages/client/src/core/login-form-labels";
+import { loginWithCredentials } from "../../packages/server/src/domains/auth/adapters/zitadel/client";
+import { upsertUserTeamRole } from "../../packages/server/src/domains/auth/adapters/zitadel/authorizations";
+import { findUserIdByEmail } from "../../packages/server/src/domains/auth/adapters/zitadel/users";
+import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
+import { seedOrgEditorAccess } from "./keto-tuples";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(scriptDir, "../..");
 
-const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
+/** Re-read .env on each seed run (picks up init:zitadel without restarting this process). */
+function reloadSeedEnv(): void {
+  loadEnv({ path: join(repoRoot, ".env"), override: true });
+}
+
+let demoOrgId = "";
 const DEMO_STORE_SLUG = "yogastore";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
@@ -111,11 +124,13 @@ const adminShellNavConfig = {
   settingsItems: [
     { id: "auth", href: "/admin/settings/auth" },
     { id: "users", href: "/admin/settings/users" },
+    { id: "scope", href: "/admin/settings/scope" },
+    { id: "analytics", href: "/admin/settings/analytics" },
     { id: "flags", href: "/admin/settings/flags" },
     { id: "replay", href: "/admin/settings/replay" },
     { id: "login", href: "/admin/settings/login" },
   ],
-  accountSecurityHref: "/account/security",
+  accountSecurityHref: "/admin/settings/security",
   storefrontHref: "/",
 };
 
@@ -132,6 +147,8 @@ const adminShellNavLabels = {
   settings: {
     auth: "Auth settings",
     users: "Team members",
+    scope: "Content access",
+    analytics: "Analytics",
     flags: "Feature flags",
     replay: "Session replay",
     login: "Login appearance",
@@ -147,6 +164,27 @@ const draftPublishLabels = {
   savingLabel: "Saving…",
   publishLabel: "Save & publish",
   publishingLabel: "Publishing…",
+};
+
+const documentTagsLabels = {
+  tagsLabel: "Tags",
+  tagsPlaceholder: "marketing, landing",
+  tagsHint:
+    "Comma-separated content tags. Team members bound to these tags in Settings → Content access can edit matching documents.",
+};
+
+const documentShareLabels = {
+  shareTitle: "Share with",
+  shareHint: "Give a team member edit access to this document only.",
+  shareUserLabel: "Team member",
+  shareGrantLabel: "Share",
+  shareGrantingLabel: "Sharing…",
+  shareRevokeLabel: "Remove",
+  shareRevokingLabel: "Removing…",
+  shareGrantSuccessMessage: "Access granted.",
+  shareRevokeSuccessMessage: "Access removed.",
+  shareEmptyMessage: "Not shared with anyone directly yet.",
+  shareLoadingLabel: "Loading share list…",
 };
 
 const mediaFieldLabels = {
@@ -218,13 +256,13 @@ const authSettingsLabels = {
   githubSecretPlaceholderExisting: "Leave blank to keep existing secret",
   appleKeyPlaceholderNew: "Paste contents of AuthKey_XXXX.p8",
   appleKeyPlaceholderExisting: "Leave blank to keep existing key",
+  forbiddenLabel: "Auth settings require the store admin role.",
 };
 
 const usersAdminLabels = {
   loadingLabel: "Loading team members…",
   inviteSectionTitle: "Invite team member",
-  inviteSectionDescription:
-    "Creates a ZITADEL user in this org and emails them a link to set their password.",
+  inviteSectionDescription: "They receive an email to set their password.",
   inviteLabel: "Send invite",
   invitingLabel: "Sending invite…",
   inviteSuccessMessage: "Invite sent — they will receive an email to set their password.",
@@ -236,6 +274,7 @@ const usersAdminLabels = {
   statusColumnHeader: "Status",
   mfaEnabledLabel: "Enabled",
   mfaOffLabel: "Off",
+  forbiddenLabel: "Team members require store admin or access manager role.",
 };
 
 const sessionReplayAdminLabels = {
@@ -249,8 +288,27 @@ const sessionReplayAdminLabels = {
   loadChunkLabel: "Load chunk",
   playSessionLabel: "Play session",
   playerLoadingLabel: "Loading replay…",
-  forbiddenLabel: "Session replay is available to org admins only.",
+  forbiddenLabel: "Session replay requires the replay viewer or store admin role.",
   noChunksLabel: "No stored chunks for this session.",
+};
+
+const analyticsEventsAdminLabels = {
+  loadingLabel: "Loading analytics…",
+  emptyEvents: "No events yet. Browse the storefront to generate analytics.",
+  emptyAggregations: "No aggregations yet.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "Analytics requires the analyst or store admin role.",
+  aggregationsTitle: "Events by type",
+  aggregationsDescription: "Counts grouped by event type for this org.",
+  eventsTitle: "Recent events",
+  eventsDescription: "Latest tracked events (up to 50).",
+  eventTypeColumnHeader: "Event type",
+  countColumnHeader: "Count",
+  timestampColumnHeader: "Time",
+  sourceColumnHeader: "Source",
+  sessionColumnHeader: "Session",
+  schemaColumnHeader: "Schema",
 };
 
 const loginBrandingLabels = {
@@ -259,12 +317,15 @@ const loginBrandingLabels = {
   draftSavedMessage: "Login appearance saved as draft.",
   publishedMessage: "Login appearance published.",
   loadingLabel: "Loading login layout…",
+  forbiddenLabel: "Login appearance requires the store admin role.",
 };
 
 const contentAdminLabels = {
   ...draftPublishLabels,
   ...mediaFieldLabels,
   ...referenceFieldLabels,
+  ...documentTagsLabels,
+  ...documentShareLabels,
   deleteLabel: "Delete",
   deletingLabel: "Deleting…",
   createDraftLabel: "Create draft",
@@ -279,6 +340,8 @@ const contentAdminLabels = {
 
 const layoutAdminLabels = {
   ...draftPublishLabels,
+  ...documentTagsLabels,
+  ...documentShareLabels,
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
   publishedMessage: "Layout published. Site and login will use the new spec on next load.",
@@ -346,6 +409,7 @@ const featureFlagsAdminLabels = {
   onLabel: "On",
   offLabel: "Off",
   togglingLabel: "Saving…",
+  forbiddenLabel: "Feature flags require the flags manager or store admin role.",
 };
 
 const adminHomeLinkConfig = [
@@ -353,10 +417,12 @@ const adminHomeLinkConfig = [
   { id: "auth_providers", href: "/admin/content/auth_provider" },
   { id: "layout", href: "/admin/layout" },
   { id: "users", href: "/admin/settings/users" },
+  { id: "scope", href: "/admin/settings/scope" },
+  { id: "analytics", href: "/admin/settings/analytics" },
   { id: "flags", href: "/admin/settings/flags" },
   { id: "replay", href: "/admin/settings/replay" },
   { id: "auth", href: "/admin/settings/auth" },
-  { id: "account_security", href: "/account/security" },
+  { id: "account_security", href: "/admin/settings/security" },
   { id: "login", href: "/admin/settings/login" },
 ];
 
@@ -369,7 +435,15 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   layout: { label: "Layouts", description: "Edit json-render templates (home, login, …)" },
   users: {
     label: "Team members",
-    description: "Invite staff, assign admin/editor roles, view MFA status",
+    description: "Invite staff, assign roles (admin: any; access manager: all except admin), view MFA status",
+  },
+  scope: {
+    label: "Content access",
+    description: "Tags, teams, and who can edit scoped content",
+  },
+  analytics: {
+    label: "Analytics",
+    description: "Recent storefront events and counts by event type",
   },
   flags: {
     label: "Feature flags",
@@ -377,7 +451,7 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   },
   replay: {
     label: "Session replay",
-    description: "Browse recorded browser sessions for this org (admin only)",
+    description: "Browse recorded browser sessions (replay viewer or admin)",
   },
   auth: {
     label: "Auth settings",
@@ -617,6 +691,76 @@ const adminReplaySpec = adminPanelSpec(["loadReplay", "replayAdmin"], {
   },
 });
 
+const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdmin"], {
+  loadAnalytics: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadAnalyticsAdmin" }, {}),
+  },
+  analyticsAdmin: {
+    type: "AnalyticsEventsAdmin",
+    props: panelProps(
+      {},
+      "Analytics",
+      "Browse tracked storefront events and summary counts by event type.",
+      analyticsEventsAdminLabels,
+    ),
+  },
+});
+
+const scopeAdminLabels = {
+  loadingLabel: "Loading…",
+  tagLabel: "Tag",
+  tagPlaceholder: "marketing",
+  teamLabel: "Team",
+  teamPlaceholder: "marketing-team",
+  createTagLabel: "Add tag",
+  creatingTagLabel: "Adding…",
+  createTeamLabel: "Add team",
+  creatingTeamLabel: "Adding…",
+  bindEditorsLabel: "Bind tag → team (edit)",
+  bindPublishersLabel: "Bind tag → team (publish)",
+  unbindEditorsLabel: "Unbind (edit)",
+  unbindPublishersLabel: "Unbind (publish)",
+  bindingLabel: "Saving…",
+  deleteTagLabel: "Delete tag",
+  deleteTeamLabel: "Delete team",
+  deletingLabel: "Deleting…",
+  deleteSuccessMessage: "Deleted.",
+  userLabel: "Team member",
+  slotEditorLabel: "Editor slot",
+  slotPublisherLabel: "Publisher slot",
+  grantLabel: "Add to team",
+  grantingLabel: "Saving…",
+  revokeLabel: "Remove from team",
+  revokingLabel: "Removing…",
+  grantSuccessMessage: "Saved.",
+  revokeSuccessMessage: "Removed.",
+  bindSuccessMessage: "Tag ↔ team binding saved.",
+  knownTagsLabel: "Tags",
+  emptyTagsMessage: "No tags yet — create one above or tag content when editing.",
+  knownTeamsLabel: "Teams",
+  emptyTeamsMessage: "No teams yet — create one above.",
+  helpText:
+    "Tags label documents in Postgres. Teams group people in Keto. Bind a tag to a team, then add members to editor or publisher slots.",
+  forbiddenLabel: "Content access requires store admin or access manager role.",
+};
+
+const adminScopeSpec = adminPanelSpec(["loadScope", "scopeAdmin"], {
+  loadScope: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadScopeAdmin" }, {}),
+  },
+  scopeAdmin: {
+    type: "ScopeAdminForm",
+    props: panelProps(
+      {},
+      "Content access",
+      "Control who can edit team-scoped content.",
+      scopeAdminLabels,
+    ),
+  },
+});
+
 const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
   loadTeam: {
     type: "MountAction",
@@ -627,7 +771,7 @@ const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
     props: panelProps(
       {},
       "Team members",
-      "Users live in ZITADEL for this org. Invites send a password-setup email. Roles are stored in platform settings.",
+      "Invite staff and assign roles. Store admin: any role. Access manager: any staff role except admin.",
       usersAdminLabels,
     ),
   },
@@ -641,6 +785,22 @@ const adminLoginBrandingSpec = adminPanelSpec(["loginBranding"], {
       "Login appearance",
       "Edit title, logo, and brand copy on /login. Publish to update the live login page.",
       loginBrandingLabels,
+    ),
+  },
+});
+
+const adminAccountSecuritySpec = adminPanelSpec(["loadSession", "securityAdmin"], {
+  loadSession: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadAccountSecuritySession" }, {}),
+  },
+  securityAdmin: {
+    type: "AccountSecurityForm",
+    props: panelProps(
+      { variant: "admin" },
+      accountSecurityLabels.title,
+      accountSecurityLabels.description,
+      accountSecurityLabels,
     ),
   },
 });
@@ -663,7 +823,7 @@ const accountSecuritySpec = {
     security: {
       type: "AccountSecurityForm",
       props: panelProps(
-        {},
+        { variant: "standalone" },
         accountSecurityLabels.title,
         accountSecurityLabels.description,
         accountSecurityLabels,
@@ -846,7 +1006,7 @@ let seedAdminToken: string | null = null;
 function orgHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    "x-org-id": DEMO_ORG_ID,
+    "x-org-id": demoOrgId,
   };
   if (seedAdminToken) {
     headers.Authorization = `Bearer ${seedAdminToken}`;
@@ -862,20 +1022,14 @@ async function ensureDemoAdminRole(): Promise<void> {
   }
 
   const adminEmail = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
-  const { findUserIdByEmail } = await import(
-    "../packages/server/src/domains/auth/adapters/zitadel/users.ts"
-  );
-  const { upsertUserTeamRole } = await import(
-    "../packages/server/src/domains/auth/adapters/zitadel/authorizations.ts"
-  );
 
-  const userId = await findUserIdByEmail(DEMO_ORG_ID, adminEmail);
+  const userId = await findUserIdByEmail(demoOrgId, adminEmail);
   if (!userId) {
     console.warn(`Demo admin user ${adminEmail} not found in org — skip role grant`);
     return;
   }
 
-  await upsertUserTeamRole(DEMO_ORG_ID, projectId, userId, "admin");
+  await upsertUserTeamRole(demoOrgId, projectId, userId, "admin");
   console.log(`Granted ZITADEL admin role to ${adminEmail}`);
 }
 
@@ -889,14 +1043,10 @@ async function obtainSeedAdminToken(): Promise<void> {
   const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
   const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
   const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
-  const { randomBytes } = await import("node:crypto");
-  const { loginWithCredentials } = await import(
-    "../packages/server/src/domains/auth/adapters/zitadel/client.ts"
-  );
 
   try {
     const result = await loginWithCredentials({
-      orgId: DEMO_ORG_ID,
+      orgId: demoOrgId,
       email,
       password,
       clientId,
@@ -995,20 +1145,47 @@ async function ensureDemoFlag(): Promise<void> {
   console.log("show_summer_sale flag created.");
 }
 
+async function syncKetoOrgEditorAccess(): Promise<void> {
+  if (!seedAdminToken) return;
+  const adminSub = subFromAccessToken(seedAdminToken);
+  if (!adminSub) return;
+
+  try {
+    await seedOrgEditorAccess({
+      orgId: demoOrgId,
+      editorSubs: [adminSub],
+      orgHeaders,
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(`Keto org editor seed failed: ${message}`);
+    console.warn("Start Keto: podman compose up -d keto");
+  }
+}
+
 async function main() {
-  if (!DEMO_ORG_ID) {
+  reloadSeedEnv();
+  demoOrgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
+
+  if (!demoOrgId) {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
   }
 
-  console.log(`Seeding demo org ${DEMO_ORG_ID} via ${API_BASE} ...`);
+  console.log(`Seeding demo org ${demoOrgId} via ${API_BASE} ...`);
 
-  const health = await fetch(`${API_BASE}/health`);
+  let health: Response;
+  try {
+    health = await fetch(`${API_BASE}/health`);
+  } catch {
+    throw new Error(`API server not reachable at ${API_BASE} — start with: pnpm dev`);
+  }
   if (!health.ok) {
-    throw new Error("API server not reachable — start with: pnpm dev");
+    throw new Error(`API server not healthy at ${API_BASE} — start with: pnpm dev`);
   }
 
   await ensureDemoAdminRole();
   await obtainSeedAdminToken();
+
   await ensureDemoFlag();
 
   await api("PUT", "/api/documents/tenant_settings/default", {
@@ -1037,7 +1214,12 @@ async function main() {
     renderAs: "panel",
     shellRef: "admin_shell",
   });
+  await upsertLayout("admin_analytics", adminAnalyticsSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
   await upsertLayout("admin_users", adminUsersSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_scope", adminScopeSpec, { renderAs: "panel", shellRef: "admin_shell" });
   await upsertLayout("admin_login", adminLoginBrandingSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
@@ -1053,6 +1235,10 @@ async function main() {
   await upsertLayout("admin_home", adminHomeSpec, { renderAs: "panel", shellRef: "admin_shell" });
   await upsertLayout("admin_pages", adminPagesSpec, { renderAs: "panel", shellRef: "admin_shell" });
   await upsertLayout("admin_pages_tree", adminPagesTreeSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_account_security", adminAccountSecuritySpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });
@@ -1083,10 +1269,29 @@ async function main() {
     throw new Error("Seed succeeded but edge schema returned no layout");
   }
 
+  await syncKetoOrgEditorAccess();
+
+  if (seedAdminToken) {
+    const adminSub = subFromAccessToken(seedAdminToken);
+    if (adminSub) {
+      try {
+        await seedDemoTeamAndScope({
+          orgId: demoOrgId,
+          adminSub,
+          storeSlug: DEMO_STORE_SLUG,
+          orgHeaders,
+        });
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.warn(`Demo team scope seed failed: ${message}`);
+      }
+    }
+  }
+
   console.log("Demo seed complete.");
-  console.log(`  Org:     ${DEMO_ORG_ID}`);
+  console.log(`  Org:     ${demoOrgId}`);
   console.log(`  Slug:    yogastore`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_replay`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_analytics + admin_replay`);
   console.log(`  Client:  http://yogastore.localhost:5173`);
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);
@@ -1095,6 +1300,8 @@ async function main() {
   console.log(`  Pages:   http://yogastore.localhost:5173/admin/pages`);
   console.log(`  Layouts: http://yogastore.localhost:5173/admin/layout`);
   console.log(`  Auth:    http://yogastore.localhost:5173/admin/settings/auth`);
+  console.log(`  Access:  http://yogastore.localhost:5173/admin/settings/scope`);
+  console.log(`  Team:    http://yogastore.localhost:5173/admin/users`);
 }
 
 async function ensureAuthProviderContentType(): Promise<void> {
@@ -1143,7 +1350,7 @@ async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
   const form = new FormData();
   form.append("file", new Blob([bytes], { type: "image/svg+xml" }), fileName);
 
-  const headers: Record<string, string> = { "x-org-id": DEMO_ORG_ID };
+  const headers: Record<string, string> = { "x-org-id": demoOrgId };
   if (seedAdminToken) {
     headers.Authorization = `Bearer ${seedAdminToken}`;
   }

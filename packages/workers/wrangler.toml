@@ -10,7 +10,7 @@ port = 8787
 [vars]
 API_ORIGIN = "http://localhost:3000"
 ZITADEL_ISSUER = "http://localhost:8080"
-ZITADEL_CLIENT_ID = "383698253234896904"
+ZITADEL_CLIENT_ID = "384683385269846026"
 
 [[kv_namespaces]]
 binding = "KV"

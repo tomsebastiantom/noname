@@ -17,6 +17,7 @@ export function documentRow(id: string, type: string, orgId = ORG): DocumentDTO 
     baseVersion: null,
     data: {},
     meta: {},
+    tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   };

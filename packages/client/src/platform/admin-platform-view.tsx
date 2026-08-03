@@ -14,6 +14,24 @@ import { handlers as createHandlers } from "./registry";
 
 type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
 
+function AdminPanelContent({
+  panelLoading,
+  panelSpec,
+  panelKey,
+  registry,
+}: Readonly<{
+  panelLoading: boolean;
+  panelSpec: Spec | null;
+  panelKey: string;
+  registry: ComponentRegistry;
+}>) {
+  if (panelLoading) {
+    return <p className="text-muted-foreground">Loading…</p>;
+  }
+  if (!panelSpec) return null;
+  return <CatalogUiShell key={panelKey} spec={panelSpec} registry={registry} />;
+}
+
 /**
  * Stable admin chrome + keyed panel. Sidebar/header stay mounted; only the inner
  * CatalogUiShell remounts per layout template (fresh store + MountActions).
@@ -50,11 +68,12 @@ export function AdminPlatformView({
       navigate={navigate}
     >
       <AdminShell props={shellProps as never} emit={() => {}}>
-        {panelLoading ? (
-          <p className="text-muted-foreground">Loading…</p>
-        ) : panelSpec ? (
-          <CatalogUiShell key={panelKey} spec={panelSpec} registry={registry} />
-        ) : null}
+        <AdminPanelContent
+          panelLoading={panelLoading}
+          panelSpec={panelSpec}
+          panelKey={panelKey}
+          registry={registry}
+        />
       </AdminShell>
     </JSONUIProvider>
   );

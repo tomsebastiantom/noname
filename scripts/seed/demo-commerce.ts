@@ -4,11 +4,13 @@
  * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
 import "dotenv/config";
+import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { loginWithCredentials } from "../../packages/server/src/domains/auth/adapters/zitadel/client";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 const DEMO_STORE_SLUG = "yogastore";
 
@@ -131,10 +133,6 @@ async function obtainSeedAdminToken(): Promise<void> {
   const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
   const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
   const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
-  const { randomBytes } = await import("node:crypto");
-  const { loginWithCredentials } = await import(
-    "../packages/server/src/domains/auth/adapters/zitadel/client.ts"
-  );
 
   try {
     const result = await loginWithCredentials({

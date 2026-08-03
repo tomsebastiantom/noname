@@ -3,24 +3,33 @@ import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, notFound, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
+import { denyUnlessTagsAccess } from "../../auth/deny-unless-document-access";
+import { requirePermission } from "../../auth/guards";
 import type { CreateLayoutInput } from "../ports";
+import { normalizeTags } from "../shared/document-tags";
 import type { DocumentsRouteDeps } from "./deps";
+import { denyUnlessDocumentPublish, denyUnlessDocumentWrite } from "./document-write-guard";
 import { layoutFiltersFrom } from "./helpers";
 
 export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): void {
   const { layout } = deps.service;
+  const { storage, authorization } = deps;
 
   routes.post("/layout", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
-    if (denied) return denied;
+    const auth = await requirePermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
     const body = await c.req.json<CreateLayoutInput>();
+    const tags = normalizeTags(body.tags);
+    const tagDenied = await denyUnlessTagsAccess(c, auth, authorization, tags, "edit");
+    if (tagDenied) return tagDenied;
     const createdLayout = await layout.create(orgId, {
       templateName: body.templateName,
       segment: body.segment,
       spec: body.spec,
       renderAs: body.renderAs,
       shellRef: body.shellRef,
+      tags,
     });
     return created(c, createdLayout);
   });
@@ -37,24 +46,34 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
   });
 
   routes.put("/layout/:id", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
-    if (denied) return denied;
     const orgId = getOrgId(c);
+    const layoutId = c.req.param("id");
+    const denied = await denyUnlessDocumentWrite(
+      c,
+      PERMISSIONS.LAYOUT_DRAFT_WRITE,
+      authorization,
+      storage,
+      orgId,
+      layoutId,
+    );
+    if (denied) return denied;
     const body = await c.req.json<{
       spec: Record<string, unknown>;
       contentRef?: string | null;
       renderAs?: "standalone" | "shell" | "panel" | "editor";
       shellRef?: string | null;
+      tags?: string[];
     }>();
     const ifMatch = c.req.header("If-Match");
     const updated = await layout.update(
       orgId,
-      c.req.param("id"),
+      layoutId,
       {
         spec: body.spec,
         contentRef: body.contentRef,
         renderAs: body.renderAs,
         shellRef: body.shellRef,
+        tags: body.tags,
       },
       ifMatch ? { ifMatchUpdatedAt: ifMatch } : undefined,
     );
@@ -62,18 +81,34 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
   });
 
   routes.put("/layout/:id/publish", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_PUBLISH);
-    if (denied) return denied;
     const orgId = getOrgId(c);
-    const published = await layout.publish(orgId, c.req.param("id"));
+    const layoutId = c.req.param("id");
+    const denied = await denyUnlessDocumentPublish(
+      c,
+      PERMISSIONS.LAYOUT_PUBLISH,
+      authorization,
+      storage,
+      orgId,
+      layoutId,
+    );
+    if (denied) return denied;
+    const published = await layout.publish(orgId, layoutId);
     return ok(c, published);
   });
 
   routes.put("/layout/:id/archive", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
-    if (denied) return denied;
     const orgId = getOrgId(c);
-    const archived = await layout.archive(orgId, c.req.param("id"));
+    const layoutId = c.req.param("id");
+    const denied = await denyUnlessDocumentWrite(
+      c,
+      PERMISSIONS.LAYOUT_DRAFT_WRITE,
+      authorization,
+      storage,
+      orgId,
+      layoutId,
+    );
+    if (denied) return denied;
+    const archived = await layout.archive(orgId, layoutId);
     return ok(c, archived);
   });
 

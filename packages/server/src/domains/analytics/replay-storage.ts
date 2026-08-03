@@ -8,8 +8,12 @@ export interface ReplayBlobStorage {
 
 function createS3Client(cfg: R2Config): S3Client {
   const isLocal = /localhost|127\.0\.0\.1/.test(cfg.endpoint);
+  let region = cfg.region;
+  if (region == null) {
+    region = isLocal ? "us-east-1" : "auto";
+  }
   return new S3Client({
-    region: cfg.region ?? (isLocal ? "us-east-1" : "auto"),
+    region,
     endpoint: cfg.endpoint,
     credentials: {
       accessKeyId: cfg.accessKeyId,

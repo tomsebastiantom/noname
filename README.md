@@ -134,7 +134,7 @@ noname/
 │   ├── workers/     → Cloudflare Edge Worker — JWT, KV cache, SEO prerender
 │   └── cli/         → Developer CLI (skeleton)
 ├── docs/            → Architecture decisions, domain plans
-├── scripts/         → Database init scripts
+├── scripts/         → compose hooks, init, and demo seeds (see scripts/README.md)
 └── docker-compose.yml → Local dev infrastructure
 ```
 

@@ -4,6 +4,7 @@ import { LayoutDocument } from "../entity";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
 import { isPublished } from "../shared/document-status";
+import { normalizeTags } from "../shared/document-tags";
 import { requireLayoutDocument, requirePublishedLayout } from "./document-guards";
 import {
   readContentRef,
@@ -46,6 +47,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         data,
         baseVersion: null,
         status: "draft",
+        tags: normalizeTags(input.tags),
       });
       flushEvents(entity);
       return saved as unknown as LayoutDTO;
@@ -86,7 +88,8 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         }
       }
       validateLayoutMetadata(nextData);
-      const updated = await storage.updateDocument(id, nextData, existing.meta);
+      const nextTags = input.tags !== undefined ? normalizeTags(input.tags) : undefined;
+      const updated = await storage.updateDocument(id, nextData, existing.meta, nextTags);
       flushEvents(entity);
       return updated as unknown as LayoutDTO;
     },
@@ -105,110 +108,82 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       );
       const baseVersion = publishedDefault.version;
 
+      const merged = applyOverrides(
+        deepClone(publishedDefault.data.spec as Record<string, unknown>),
+        overrides,
+      );
+
+      const entity = LayoutDocument.create(
+        orgId,
+        templateName,
+        segment,
+        merged.spec,
+        1,
+        baseVersion,
+      );
+
       const saved = await storage.createDocument({
         orgId,
         type: "layout",
         key: templateName,
         segment,
-        data: { overrides, baseVersion },
+        data: {
+          spec: entity.spec,
+          baseDocumentId: publishedDefault.id,
+        },
         baseVersion,
         status: "draft",
       });
-      const entity = toLayoutEntity(saved as LayoutDTO);
-      entity.recordVariantCreated();
       flushEvents(entity);
       return saved as unknown as LayoutDTO;
     },
 
+    async get(orgId, id) {
+      return requireLayoutDocument(storage, id, orgId) as Promise<LayoutDTO>;
+    },
+
+    async list(orgId, filters) {
+      const rows = await storage.listDocuments(orgId, {
+        type: "layout",
+        segment: filters?.segment,
+        status: filters?.status,
+        key: filters?.templateName,
+      });
+      return rows as unknown as LayoutDTO[];
+    },
+
     async publish(orgId, id) {
       const existing = await requireLayoutDocument(storage, id, orgId);
-      validateLayoutMetadata(existing.data, { publishing: true });
-
-      const renderAs = readRenderAs(existing.data);
-      const shellRef = readShellRef(existing.data);
-      if (renderAs === "panel" && shellRef) {
-        const shellLayout = await storage.findDocument(orgId, "layout", shellRef, "default");
-        if (!shellLayout || !isPublished(shellLayout)) {
-          throw new ValidationError("shellRef", `shell layout "${shellRef}" is not published`);
-        }
-        if (readRenderAs(shellLayout.data) !== "shell") {
-          throw new ValidationError("shellRef", `layout "${shellRef}" is not renderAs shell`);
-        }
-      }
-
+      const published = await storage.publishDocument(id);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.publish();
-      const updated = await storage.publishDocument(id);
       flushEvents(entity);
-      return updated as unknown as LayoutDTO;
+      return published as unknown as LayoutDTO;
     },
 
     async archive(orgId, id) {
       const existing = await requireLayoutDocument(storage, id, orgId);
-      const entity = toLayoutEntity(existing as LayoutDTO);
-      entity.archive();
-      const updated = await storage.archiveDocument(id);
-      flushEvents(entity);
-      return updated as unknown as LayoutDTO;
-    },
-
-    list: (orgId, filters) =>
-      storage.listDocuments(orgId, {
-        type: "layout",
-        key: filters?.templateName,
-        segment: filters?.segment,
-        status: filters?.status,
-      }) as unknown as Promise<LayoutDTO[]>,
-
-    get: async (orgId, id) => {
-      const found = await storage.findDocumentById(id);
-      if (found?.type !== "layout" || found.orgId !== orgId) return null;
-      return found as LayoutDTO;
+      if (!isPublished(existing)) {
+        throw new ValidationError("status", "Only published layouts can be archived");
+      }
+      const archived = await storage.archiveDocument(id);
+      return archived as unknown as LayoutDTO;
     },
 
     async resolve(orgId, templateName, segment) {
-      const publishedDefault = await storage.findDocument(orgId, "layout", templateName, "default");
-      if (!publishedDefault || !isPublished(publishedDefault)) return null;
-      const defaultSpec = (publishedDefault.data.spec as Record<string, unknown>) ?? {};
-
-      if (segment === "default") {
-        return {
-          templateName,
-          segment: "default",
-          version: publishedDefault.version,
-          spec: deepClone(defaultSpec),
-          contentRef: readContentRef(publishedDefault.data),
-          renderAs: readRenderAs(publishedDefault.data),
-          shellRef: readShellRef(publishedDefault.data),
-          conflicts: [],
-        };
-      }
-
-      const variant = await storage.findDocument(orgId, "layout", templateName, segment);
-      if (!variant || !isPublished(variant)) {
-        return {
-          templateName,
-          segment: "default",
-          version: publishedDefault.version,
-          spec: deepClone(defaultSpec),
-          contentRef: readContentRef(publishedDefault.data),
-          renderAs: readRenderAs(publishedDefault.data),
-          shellRef: readShellRef(publishedDefault.data),
-          conflicts: [],
-        };
-      }
-
-      const overrides = (variant.data.overrides as Record<string, unknown>) ?? {};
-      const { spec, conflicts } = applyOverrides(defaultSpec, overrides);
+      const row = await storage.findDocument(orgId, "layout", templateName, segment || "default");
+      if (!row) return null;
+      const rawSpec = row.data?.spec;
+      if (!rawSpec || typeof rawSpec !== "object") return null;
       return {
-        templateName,
-        segment,
-        version: publishedDefault.version,
-        spec,
-        contentRef: readContentRef(publishedDefault.data),
-        renderAs: readRenderAs(publishedDefault.data),
-        shellRef: readShellRef(publishedDefault.data),
-        conflicts,
+        templateName: row.key,
+        segment: row.segment,
+        version: row.version,
+        spec: rawSpec as Record<string, unknown>,
+        renderAs: readRenderAs(row.data),
+        contentRef: readContentRef(row.data),
+        shellRef: readShellRef(row.data),
+        conflicts: [],
       };
     },
   };

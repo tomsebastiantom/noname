@@ -16,6 +16,13 @@ export function cloneSpec(spec: Spec): Spec {
   return JSON.parse(JSON.stringify(spec)) as Spec;
 }
 
+function contentBindingValue(key: string, raw: string): unknown {
+  if (key === "price") {
+    return raw === "" ? 0 : Number(raw);
+  }
+  return raw || null;
+}
+
 /** Stable key for React remount when block order / parentage changes. */
 export function specStructureKey(spec: Spec): string {
   const parts: string[] = [];
@@ -422,7 +429,7 @@ export function mergeContentDraftIntoPreview(
     for (const [key, val] of Object.entries(storedConfig)) {
       if (!isStateBinding(val) || !(key in contentValues)) continue;
       const raw = contentValues[key] ?? "";
-      previewConfig[key] = key === "price" ? (raw === "" ? 0 : Number(raw)) : raw || null;
+      previewConfig[key] = contentBindingValue(key, raw);
       changed = true;
     }
 
@@ -471,7 +478,7 @@ export function mergePendingAddIntoPreview(
   for (const [key, val] of Object.entries(config)) {
     if (isStateBinding(val) && key in contentValues) {
       const raw = contentValues[key] ?? "";
-      config[key] = key === "price" ? (raw === "" ? 0 : Number(raw)) : raw || null;
+      config[key] = contentBindingValue(key, raw);
     }
   }
 

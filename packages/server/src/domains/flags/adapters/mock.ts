@@ -28,7 +28,7 @@ export function createInMemoryFlagStorage(): FlagStorage {
 
     async findById(orgId, id) {
       const flag = flags.get(id);
-      return flag && flag.orgId === orgId ? flag : null;
+      return flag?.orgId === orgId ? flag : null;
     },
 
     async findByKey(orgId, key) {

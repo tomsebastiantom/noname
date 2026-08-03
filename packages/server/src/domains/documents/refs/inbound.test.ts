@@ -14,6 +14,7 @@ function doc(id: string, type: string, data: Record<string, unknown>): DocumentD
     baseVersion: null,
     data,
     meta: {},
+    tags: [],
     createdAt: new Date(),
     updatedAt: new Date(),
   };

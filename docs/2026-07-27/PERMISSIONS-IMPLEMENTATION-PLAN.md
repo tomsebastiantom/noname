@@ -218,7 +218,7 @@ Add unit tests: `expandPermissions(["editor"])` includes draft keys, excludes pu
 | Session | `auth/api.ts` GET session |
 | Client | `auth/team-users.ts`, `UsersAdminForm.tsx`, `main.tsx` |
 | Edge | `packages/workers/src/auth.ts`, `renderer.ts` if edit gate |
-| Seed / init | `scripts/init-zitadel-oidc.ts`, `scripts/seed-demo.ts` |
+| Seed / init | `scripts/init/zitadel-oidc.ts`, `scripts/seed/demo.ts` |
 | Tests | `permissions.test.ts`, update `account-flows.test.ts`, API integration tests |
 
 ---

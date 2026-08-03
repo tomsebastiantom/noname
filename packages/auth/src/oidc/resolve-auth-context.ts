@@ -23,8 +23,16 @@ export function permissionsFromJwt(
   return expandPermissions(rolesFromJwt(payload, options));
 }
 
-/** Returns admin | editor | null for team surfaces. */
+/** @deprecated Use `staffUiRoleFromJwt` — legacy two-role admin|editor helper for old UI. */
 export function teamRoleFromJwt(
+  payload: Record<string, unknown>,
+  options?: { projectId?: string },
+): "admin" | "editor" | null {
+  return staffUiRoleFromJwt(payload, options);
+}
+
+/** Highest legacy staff UI role when only admin vs editor mattered. */
+export function staffUiRoleFromJwt(
   payload: Record<string, unknown>,
   options?: { projectId?: string },
 ): "admin" | "editor" | null {

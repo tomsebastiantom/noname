@@ -27,9 +27,20 @@ export function rolesFromTokenPayload(
 ): PlatformRole[] {
   const found = new Set<PlatformRole>();
 
-  for (const claimKey of projectRolesClaimKeys(payload, options?.projectId)) {
+  const claimKeys = projectRolesClaimKeys(payload, options?.projectId);
+  for (const claimKey of claimKeys) {
     for (const role of roleKeysFromClaim(payload[claimKey])) {
       found.add(role);
+    }
+  }
+
+  // Dev: after `pnpm init:zitadel` the API may still have a stale ZITADEL_PROJECT_ID while
+  // the JWT carries roles under the new project claim — accept any project roles in the token.
+  if (found.size === 0 && options?.projectId) {
+    for (const claimKey of projectRolesClaimKeys(payload)) {
+      for (const role of roleKeysFromClaim(payload[claimKey])) {
+        found.add(role);
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { type ReactNode, useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -56,12 +57,14 @@ type FeatureFlagsLabels = {
   onLabel: string;
   offLabel: string;
   togglingLabel: string;
+  forbiddenLabel: string;
 };
 
 export function FeatureFlagsAdmin({
   props,
 }: ComponentCtx<CatalogProps<FeatureFlagsConfig, FeatureFlagsLabels>>) {
   const { labels } = props;
+  const canWriteFlags = useAdminRouteAccess("flags");
   const catalog = useCatalogSubmit();
   const { submit, error } = catalog;
 
@@ -81,6 +84,18 @@ export function FeatureFlagsAdmin({
   }
 
   const displayError = mergeCatalogError(error, loadError);
+
+  if (canWriteFlags === null) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canWriteFlags === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <Card className="max-w-2xl">

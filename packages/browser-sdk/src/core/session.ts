@@ -13,8 +13,8 @@ export function getOrCreateSession(): SessionData {
     const stored = sessionStorage.getItem(SESSION_KEY);
     if (stored) {
       const sessions: SessionData[] = JSON.parse(stored);
-      const current = sessions[sessions.length - 1];
-      if (current && Date.now() - current.lastActivity < SESSION_TIMEOUT_MS) {
+      const current = sessions.at(-1);
+      if (current != null && Date.now() - current.lastActivity < SESSION_TIMEOUT_MS) {
         return current;
       }
     }

@@ -1,3 +1,4 @@
+import { formatTagsInput } from "../../admin/document-tags";
 import { extractLoginBranding, type LoginBrandingValues } from "../../admin/login-branding";
 import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
@@ -18,6 +19,7 @@ export type LayoutAdminLoaded =
       loadedAt: number;
       layouts: LayoutSummary[];
       canPublish: boolean;
+      canManageAccess: boolean;
     }
   | {
       mode: "detail";
@@ -28,7 +30,9 @@ export type LayoutAdminLoaded =
       status: string;
       specJson: string;
       contentRef: string;
+      tagsInput: string;
       canPublish: boolean;
+      canManageAccess: boolean;
     };
 
 export type LoginBrandingLoaded = {
@@ -83,6 +87,7 @@ export const layoutActions = {
     try {
       const session = await fetchAuthSessionStatus().catch(() => null);
       const canPublish = sessionHasPermission(session, PERMISSIONS.LAYOUT_PUBLISH);
+      const canManageAccess = sessionHasPermission(session, PERMISSIONS.SCOPE_MANAGE);
 
       if (!templateName) {
         const rows = await listLayouts(segment);
@@ -91,6 +96,7 @@ export const layoutActions = {
           loadedAt: Date.now(),
           layouts: rows,
           canPublish,
+          canManageAccess,
         };
         setState(ADMIN_STATE.layout.loaded, loaded);
         return;
@@ -106,7 +112,9 @@ export const layoutActions = {
         status: row?.status ?? "draft",
         specJson: row ? specToJson(row.data.spec) : "",
         contentRef: row?.data.contentRef ?? "",
+        tagsInput: formatTagsInput(row?.tags),
         canPublish,
+        canManageAccess,
       };
       setState(ADMIN_STATE.layout.loaded, loaded);
     } catch (err) {
@@ -118,13 +126,14 @@ export const layoutActions = {
   }) satisfies CatalogActionHandler,
 
   saveLayoutEntry: (async (params) => {
-    const { id, specJson, contentRef } = params as {
+    const { id, specJson, contentRef, tags } = params as {
       id: string;
       specJson: string;
       contentRef?: string | null;
+      tags?: string[];
     };
     const spec = parseSpecJson(specJson);
-    await saveLayout({ id, spec, contentRef });
+    await saveLayout({ id, spec, contentRef, tags });
   }) satisfies CatalogActionHandler,
 
   publishLayoutEntry: (async (params) => {

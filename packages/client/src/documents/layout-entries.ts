@@ -7,6 +7,7 @@ export interface LayoutRow {
   status: string;
   version: number;
   updatedAt: string;
+  tags?: string[];
   data: {
     spec?: Record<string, unknown>;
     contentRef?: string | null;
@@ -84,13 +85,21 @@ export async function saveLayout(input: {
   id: string;
   spec: Record<string, unknown>;
   contentRef?: string | null;
+  tags?: string[];
   ifMatchUpdatedAt?: string;
 }): Promise<LayoutRow> {
-  const body: { spec: Record<string, unknown>; contentRef?: string | null } = {
+  const body: {
+    spec: Record<string, unknown>;
+    contentRef?: string | null;
+    tags?: string[];
+  } = {
     spec: input.spec,
   };
   if (input.contentRef !== undefined) {
     body.contentRef = input.contentRef === "" ? null : input.contentRef;
+  }
+  if (input.tags !== undefined) {
+    body.tags = input.tags;
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };

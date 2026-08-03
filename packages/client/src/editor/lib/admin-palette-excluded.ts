@@ -7,6 +7,8 @@ export const ADMIN_PALETTE_EXCLUDED_TYPES = [
   "UsersAdminForm",
   "FeatureFlagsAdmin",
   "SessionReplayAdmin",
+  "AnalyticsEventsAdmin",
+  "ScopeAdminForm",
   "ContentEntryAdmin",
   "LayoutEntryAdmin",
   "AdminHome",

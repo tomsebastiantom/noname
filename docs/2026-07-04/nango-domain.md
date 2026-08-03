@@ -15,7 +15,7 @@ Nango is NOT a CLI tool or developer utility. It is a separate Docker service (s
 | Component | Status | Detail |
 |-----------|--------|--------|
 | Docker service | ✅ Defined | `docker-compose.yml:62-78`, port 3003, `profiles: [integrations]` |
-| Postgres database | ✅ Created | `scripts/init-dbs.sh:7` runs `CREATE DATABASE nango` |
+| Postgres database | ✅ Created | `scripts/compose/init-dbs.sh:7` runs `CREATE DATABASE nango` |
 | Env vars | ✅ Defined | `.env.example:16-18` — `NANGO_DB_PASSWORD`, `NANGO_SECRET_KEY` |
 | Integration scripts | ❌ None | No TypeScript files written for any external API |
 | Connection to XState engine | ❌ Not wired | Machine domain stub routes only — no engine wrapper |

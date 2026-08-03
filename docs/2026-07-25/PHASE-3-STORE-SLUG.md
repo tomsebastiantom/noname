@@ -37,7 +37,7 @@ Production shape is the same: hostname identifies the store; edge resolves it to
 
 ### 2. Seed
 
-`scripts/seed-demo.ts` sets `slug: "yogastore"` and logs `http://yogastore.localhost:5173`.
+`scripts/seed/demo.ts` sets `slug: "yogastore"` and logs `http://yogastore.localhost:5173`.
 
 ### 3. Edge lookup
 

@@ -59,7 +59,18 @@ describe("permissions", () => {
   });
 
   it("ROLE_PERMISSIONS covers every platform role", () => {
-    expect(Object.keys(ROLE_PERMISSIONS).sort()).toEqual(["admin", "customer", "editor"]);
+    expect(Object.keys(ROLE_PERMISSIONS).sort()).toEqual(
+      [
+        "access_manager",
+        "admin",
+        "analyst",
+        "customer",
+        "editor",
+        "flags_manager",
+        "publisher",
+        "replay_viewer",
+      ].sort(),
+    );
   });
 
   it("hasPermission checks membership", () => {

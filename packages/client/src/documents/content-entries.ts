@@ -15,6 +15,7 @@ export interface ContentEntryRow {
   id: string;
   key: string;
   status: string;
+  tags?: string[];
   data: Record<string, unknown>;
 }
 
@@ -126,6 +127,7 @@ export async function saveContentEntry(input: {
   schema: ContentTypeSchema;
   values: Record<string, string>;
   locale?: string;
+  tags?: string[];
 }): Promise<void> {
   const locale = input.locale ?? DEFAULT_LOCALE;
   const headers = { "Content-Type": "application/json" };
@@ -138,11 +140,16 @@ export async function saveContentEntry(input: {
     );
   }
 
-  if (Object.keys(global).length > 0) {
+  const globalBody: Record<string, unknown> = { ...global };
+  if (input.tags !== undefined) {
+    globalBody.tags = input.tags;
+  }
+
+  if (Object.keys(globalBody).length > 0) {
     await apiFetchVoid(`/api/documents/${encodeURIComponent(input.contentType)}/${input.id}`, {
       method: "PUT",
       headers,
-      body: JSON.stringify(global),
+      body: JSON.stringify(globalBody),
     });
   }
 }
@@ -158,11 +165,15 @@ export async function createContentEntry(input: {
   schema: ContentTypeSchema;
   values: Record<string, string>;
   locale?: string;
+  tags?: string[];
 }): Promise<string> {
   const locale = input.locale ?? DEFAULT_LOCALE;
   const headers = { "Content-Type": "application/json" };
   const { localizable, global } = splitSavePayload(input.values, input.schema);
-  const body = { ...global, ...localizable };
+  const body: Record<string, unknown> = { ...global, ...localizable };
+  if (input.tags !== undefined) {
+    body.tags = input.tags;
+  }
 
   const created = await apiFetch<{ data?: { id: string } }>(
     `/api/documents/${encodeURIComponent(input.contentType)}?locale=${encodeURIComponent(locale)}`,

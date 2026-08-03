@@ -1,5 +1,6 @@
 import { useStateValue } from "@json-render/react";
 import { useState } from "react";
+import { useAdminRouteAccess } from "../../../auth/admin-access";
 import type { AuthProvider } from "../../../auth/auth-settings";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
@@ -51,6 +52,7 @@ type AuthSettingsLabels = {
   githubSecretPlaceholderExisting: string;
   appleKeyPlaceholderNew: string;
   appleKeyPlaceholderExisting: string;
+  forbiddenLabel: string;
 };
 
 type AuthSettingsFormProps = ComponentCtx<CatalogProps<AuthSettingsConfig, AuthSettingsLabels>>;
@@ -275,6 +277,7 @@ function AuthSettingsFields({
 
 export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
   const { labels } = props;
+  const canManageAuth = useAdminRouteAccess("auth");
   useMountAction("loadAuthSettings");
 
   const loaded = useStateValue(ADMIN_STATE.authSettings.loaded) as
@@ -283,6 +286,18 @@ export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
     | undefined;
   const loading = (useStateValue(ADMIN_STATE.authSettings.loading) as boolean | undefined) ?? true;
   const loadError = useStateValue(ADMIN_STATE.authSettings.error) as string | null | undefined;
+
+  if (canManageAuth === null) {
+    return <p className="text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
+  if (canManageAuth === false) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{labels.forbiddenLabel}</AlertDescription>
+      </Alert>
+    );
+  }
 
   if (loading) {
     return <p className="text-muted-foreground">{labels.loadingLabel}</p>;

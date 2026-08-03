@@ -8,7 +8,7 @@ import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
-import { createAuthDomain } from "./domains/auth";
+import { createAuthDomain, createAuthorization } from "./domains/auth";
 import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
@@ -49,9 +49,12 @@ const storage = createPostgresDocumentStorage(db);
 let onAuthProviderPublished: ((orgId: string, type: string, id: string) => Promise<void>) | null =
   null;
 
+const authorization = createAuthorization();
+
 const docs = createDocumentsDomain({
   db,
   storage,
+  authorization,
   onContentPublished: async (orgId, type, id) => {
     if (onAuthProviderPublished) {
       await onAuthProviderPublished(orgId, type, id);
@@ -60,6 +63,7 @@ const docs = createDocumentsDomain({
 });
 
 const auth = createAuthDomain({
+  db,
   tenantSettings: docs.service.tenantSettings,
   assets: docs.service.assets,
   content: docs.service.content,

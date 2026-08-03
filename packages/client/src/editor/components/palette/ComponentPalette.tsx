@@ -9,6 +9,74 @@ import type { PaletteItem } from "../../lib/types";
 import { EDITOR_DRAG_MIME, PALETTE_DRAG_MIME } from "../../lib/types";
 import type { EditorShellLabels } from "../../schemas/components";
 
+function PinnedBlocksList({
+  pinned,
+  pinsReady,
+  labels,
+  onAdd,
+  unpin,
+}: Readonly<{
+  pinned: PaletteItem[];
+  pinsReady: boolean;
+  labels: EditorShellLabels;
+  onAdd: (type: string) => void;
+  unpin: (type: string) => void;
+}>) {
+  if (pinned.length > 0) {
+    return (
+      <ul className="space-y-1">
+        {pinned.map((item) => (
+          <PinnedBlockRow
+            key={item.componentType}
+            item={item}
+            labels={labels}
+            onAdd={(type) => onAdd(type)}
+            onUnpin={unpin}
+          />
+        ))}
+      </ul>
+    );
+  }
+  if (pinsReady) {
+    return <p className="text-xs text-muted-foreground">{labels.palettePinnedEmpty}</p>;
+  }
+  return <p className="text-xs text-muted-foreground">{labels.palettePinsLoading}</p>;
+}
+
+function FilteredBlocksList({
+  visibleBlocks,
+  showEmptySearch,
+  query,
+  labels,
+  onAdd,
+}: Readonly<{
+  visibleBlocks: PaletteItem[];
+  showEmptySearch: boolean;
+  query: string;
+  labels: EditorShellLabels;
+  onAdd: (type: string) => void;
+}>) {
+  if (visibleBlocks.length > 0) {
+    return (
+      <ul className="space-y-1">
+        {visibleBlocks.map((item) => (
+          <li key={item.componentType}>
+            <PaletteBlockButton item={item} labels={labels} onAdd={(type) => onAdd(type)} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (showEmptySearch) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {labels.paletteNoMatchPrefix} “{query.trim()}”.
+      </p>
+    );
+  }
+  return <p className="text-xs text-muted-foreground">{labels.paletteAllPinnedHint}</p>;
+}
+
 function matchesQuery(item: PaletteItem, query: string): boolean {
   const q = query.trim().toLowerCase();
   if (!q) return true;
@@ -181,23 +249,13 @@ export function ComponentPalette({
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {labels.palettePinnedTitle}
         </p>
-        {catalog.pinned.length > 0 ? (
-          <ul className="space-y-1">
-            {catalog.pinned.map((item) => (
-              <PinnedBlockRow
-                key={item.componentType}
-                item={item}
-                labels={labels}
-                onAdd={(type) => onAdd(type)}
-                onUnpin={unpin}
-              />
-            ))}
-          </ul>
-        ) : pinsReady ? (
-          <p className="text-xs text-muted-foreground">{labels.palettePinnedEmpty}</p>
-        ) : (
-          <p className="text-xs text-muted-foreground">{labels.palettePinsLoading}</p>
-        )}
+        <PinnedBlocksList
+          pinned={catalog.pinned}
+          pinsReady={pinsReady}
+          labels={labels}
+          onAdd={onAdd}
+          unpin={unpin}
+        />
       </section>
 
       <section className="shrink-0 space-y-2 p-3">
@@ -212,21 +270,13 @@ export function ComponentPalette({
           className="h-8 text-sm"
           aria-label={labels.paletteFilterAriaLabel}
         />
-        {visibleBlocks.length > 0 ? (
-          <ul className="space-y-1">
-            {visibleBlocks.map((item) => (
-              <li key={item.componentType}>
-                <PaletteBlockButton item={item} labels={labels} onAdd={(type) => onAdd(type)} />
-              </li>
-            ))}
-          </ul>
-        ) : showEmptySearch ? (
-          <p className="text-xs text-muted-foreground">
-            {labels.paletteNoMatchPrefix} “{query.trim()}”.
-          </p>
-        ) : (
-          <p className="text-xs text-muted-foreground">{labels.paletteAllPinnedHint}</p>
-        )}
+        <FilteredBlocksList
+          visibleBlocks={visibleBlocks}
+          showEmptySearch={showEmptySearch}
+          query={query}
+          labels={labels}
+          onAdd={onAdd}
+        />
       </section>
     </aside>
   );

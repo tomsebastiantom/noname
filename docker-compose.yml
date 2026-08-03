@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: app
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh:ro
+      - ./scripts/compose/init-dbs.sh:/docker-entrypoint-initdb.d/init-dbs.sh:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U noname -d app"]
       interval: 5s
@@ -48,6 +48,53 @@ services:
       timeout: 3s
       retries: 10
 
+  postgres-init-dbs:
+    image: docker.io/library/postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: noname
+      PGPASSWORD: noname_dev
+      PGDATABASE: app
+    volumes:
+      - ./scripts/compose/ensure-extra-dbs.sh:/ensure-extra-dbs.sh:ro
+    entrypoint: ["/bin/sh", "/ensure-extra-dbs.sh"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  keto-migrate:
+    image: oryd/keto:v25.4.0
+    environment:
+      DSN: postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable
+    volumes:
+      - ./config/keto:/etc/keto:ro
+    command: migrate up -y -c /etc/keto/keto.yml
+    depends_on:
+      postgres-init-dbs:
+        condition: service_completed_successfully
+    restart: on-failure
+
+  keto:
+    image: oryd/keto:v25.4.0
+    ports:
+      - "4466:4466"
+      - "4467:4467"
+      - "4468:4468"
+    environment:
+      DSN: postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable
+    volumes:
+      - ./config/keto:/etc/keto:ro
+    command: serve -c /etc/keto/keto.yml
+    depends_on:
+      keto-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4466/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
   zitadel:
     image: ghcr.io/zitadel/zitadel:latest
     ports:
@@ -82,6 +129,8 @@ services:
     volumes:
       - zitadel_keys:/output
     depends_on:
+      postgres-init-dbs:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
     healthcheck:

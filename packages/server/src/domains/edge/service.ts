@@ -70,11 +70,7 @@ export function createEdgeService(
       }
 
       if (options.edit) {
-        const editorShellResolved = await layout.resolve(
-          siteId,
-          VISUAL_EDITOR_SHELL_REF,
-          segment,
-        );
+        const editorShellResolved = await layout.resolve(siteId, VISUAL_EDITOR_SHELL_REF, segment);
         const shellSpec = editorShellResolved?.spec ?? null;
         if (!shellSpec) {
           throw new Error(`Editor shell layout "${VISUAL_EDITOR_SHELL_REF}" not found`);

@@ -81,7 +81,7 @@ Re-seed after deploy: `pnpm seed:demo` (updates published layout documents).
 - `packages/client/src/admin/login-branding.test.ts`
 
 ### Seed
-- `scripts/seed-demo.ts` — all layout specs use `catalogProps()` / `panelProps()`
+- `scripts/seed/demo.ts` — all layout specs use `catalogProps()` / `panelProps()`
 
 ## Commerce extension
 

@@ -18,7 +18,10 @@ export function createCatalogBundleStorage(config?: R2Config): CatalogBundleStor
   }
 
   const isLocal = /localhost|127\.0\.0\.1/.test(cfg.endpoint);
-  const region = cfg.region ?? (isLocal ? "us-east-1" : "auto");
+  let region = cfg.region;
+  if (region == null) {
+    region = isLocal ? "us-east-1" : "auto";
+  }
 
   const client = new S3Client({
     region,

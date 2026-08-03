@@ -82,9 +82,7 @@ export function useEditPageOrchestration({
   const shellSpec = shellSpecFromEdge ?? fetchedShellSpec;
   const parsedShell = parseShellFromSpec(shellSpec);
   const shellLabels = shellSpecFromEdge ? parsedShell.labels : fetchedShellLabels;
-  const shellLabelsMissing = shellSpecFromEdge
-    ? !parsedShell.labels
-    : fetchedShellMissing;
+  const shellLabelsMissing = shellSpecFromEdge ? !parsedShell.labels : fetchedShellMissing;
 
   useEffect(() => {
     activateEditorDevtools();

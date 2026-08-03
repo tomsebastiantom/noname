@@ -1,4 +1,5 @@
 import { emptyValuesForSchema } from "../../admin/components/content/content-entry-utils";
+import { formatTagsInput } from "../../admin/document-tags";
 import { fetchAuthSessionStatus, PERMISSIONS, sessionHasPermission } from "../../auth/team-users";
 import {
   type AssetSummary,
@@ -38,8 +39,10 @@ export type ContentAdminLoaded =
       entries: ContentEntryRow[];
       initialSelectedId: string | null;
       initialValues: Record<string, string>;
+      initialTagsInput: string;
       initialStatus: string;
       canPublish: boolean;
+      canManageAccess: boolean;
       referenceOptions: Record<string, ReferenceFieldOptions>;
     };
 
@@ -56,6 +59,7 @@ export const contentActions = {
     try {
       const session = await fetchAuthSessionStatus().catch(() => null);
       const canPublish = sessionHasPermission(session, PERMISSIONS.CONTENT_PUBLISH);
+      const canManageAccess = sessionHasPermission(session, PERMISSIONS.SCOPE_MANAGE);
 
       if (!contentType) {
         const allTypes = await listContentTypes();
@@ -80,8 +84,10 @@ export const contentActions = {
           entries: [],
           initialSelectedId: null,
           initialValues: {},
+          initialTagsInput: "",
           initialStatus: "draft",
           canPublish,
+          canManageAccess,
           referenceOptions: {},
         };
         setState(ADMIN_STATE.content.loaded, loaded);
@@ -113,11 +119,13 @@ export const contentActions = {
       const first = rows[0];
       let initialSelectedId: string | null = null;
       let initialValues = emptyValuesForSchema(typeDef.schema);
+      let initialTagsInput = "";
       let initialStatus = "draft";
 
       if (first) {
         initialSelectedId = first.id;
         initialStatus = first.status;
+        initialTagsInput = formatTagsInput(first.tags);
         initialValues = await loadEntryFields(contentType, first.id, locale);
       }
 
@@ -130,8 +138,10 @@ export const contentActions = {
         entries: rows,
         initialSelectedId,
         initialValues,
+        initialTagsInput,
         initialStatus,
         canPublish,
+        canManageAccess,
         referenceOptions,
       };
       setState(ADMIN_STATE.content.loaded, loaded);
@@ -144,14 +154,15 @@ export const contentActions = {
   }) satisfies CatalogActionHandler,
 
   saveContentEntry: (async (params) => {
-    const { contentType, id, schema, values, locale } = params as {
+    const { contentType, id, schema, values, locale, tags } = params as {
       contentType: string;
       id: string;
       schema: ContentTypeSchema;
       values: Record<string, string>;
       locale?: string;
+      tags?: string[];
     };
-    await saveContentEntry({ contentType, id, schema, values, locale });
+    await saveContentEntry({ contentType, id, schema, values, locale, tags });
   }) satisfies CatalogActionHandler,
 
   publishContentEntry: (async (params) => {
@@ -160,13 +171,14 @@ export const contentActions = {
   }) satisfies CatalogActionHandler,
 
   createContentEntry: (async (params) => {
-    const { contentType, schema, values, locale } = params as {
+    const { contentType, schema, values, locale, tags } = params as {
       contentType: string;
       schema: ContentTypeSchema;
       values: Record<string, string>;
       locale?: string;
+      tags?: string[];
     };
-    await createContentEntry({ contentType, schema, values, locale });
+    await createContentEntry({ contentType, schema, values, locale, tags });
   }) satisfies CatalogActionHandler,
 
   deleteContentEntry: (async (params) => {

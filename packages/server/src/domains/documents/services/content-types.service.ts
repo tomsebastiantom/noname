@@ -1,4 +1,4 @@
-import { NotFoundError, ValidationError } from "../../../shared/domain-error";
+import { ConflictError, NotFoundError } from "../../../shared/domain-error";
 import { eventBus } from "../../../shared/event-bus";
 import { ContentTypeEvents } from "../events";
 import type { ContentTypeDocumentService, DocumentStorage } from "../ports";
@@ -10,7 +10,9 @@ export function createContentTypesService(storage: DocumentStorage): ContentType
       validateContentTypeName(name);
       validateSchema(schema);
       const existing = await storage.findContentTypeByName(orgId, name);
-      if (existing) throw new ValidationError("name", `Content type '${name}' already exists`);
+      if (existing) {
+        throw new ConflictError(`Content type '${name}' already exists`, { name });
+      }
       const created = await storage.createContentType(orgId, name, schema);
       void eventBus.publish(ContentTypeEvents.CREATED, { orgId, name });
       return created;

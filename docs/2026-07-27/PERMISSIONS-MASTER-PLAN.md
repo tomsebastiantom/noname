@@ -1,7 +1,8 @@
 # Permissions Master Plan
 
 > **Date:** 2026-07-27 (updated 2026-08-03 — document unit; field ACL cancelled)  
-> **Status:** **Active — canonical permission model; start here**  
+> **Status:** **Active — canonical permission keys & layers**  
+> **Current v1 roles + Keto scope:** [`ROLES-AND-SCOPE.md`](../2026-08-03/ROLES-AND-SCOPE.md) (admins unscoped; editors via tags/share)  
 > **Rule:** **Permissions before editor UI.** One guard pipeline for admin, API, and `?edit=true`.  
 > **Supersedes:** role-assignment parts of [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) — that doc’s “no teamRoles in Postgres” still holds; this doc defines **granular permissions + where each layer lives**.  
 > **Related:** [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md) · [`PERMISSIONS-IDP-COMPARISON.md`](./PERMISSIONS-IDP-COMPARISON.md) · [`PERMISSIONS-IMPLEMENTATION-PLAN.md`](./PERMISSIONS-IMPLEMENTATION-PLAN.md) · [`VISUAL-EDITOR-PLAN.md`](../2026-07-25/VISUAL-EDITOR-PLAN.md) · [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](../2026-07-25/VISUAL-EDITOR-IMPLEMENTATION-ORDER.md)
@@ -219,10 +220,7 @@ async function canEditDocument(userId: string, orgId: string, doc: DocumentRef):
   const draftKey = doc.type === "content" ? "content:draft_write" : "layout:draft_write";
   if (!perms.has(draftKey)) return false;
 
-  // 2. v1 stop here — org-wide access
-  if (!TUPLES_ENABLED) return true;
-
-  // 3. Resource layer — tuple scope inside store
+  // 2. Resource layer — Keto tuple scope
   if (await checkTuple(userId, "editor", `document:${doc.id}`)) return true;
   if (doc.tags?.some((t) => checkTuple(userId, "editor", `tag:${t}`))) return true;
   if (doc.contentType && (await checkTuple(userId, "editor", `content_type:${doc.contentType}`)))

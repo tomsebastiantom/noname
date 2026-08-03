@@ -11,8 +11,8 @@
 | Phase | Need | Use | Skip for now |
 |-------|------|-----|--------------|
 | **0** | Team `admin` / `editor` in JWT | **ZITADEL** Role Assignments | Postgres `teamRoles` |
-| **1** | Doc share + `Check()` | **Ory Keto** on same Postgres (`keto` schema) + `AuthorizationPort` | SpiceDB; plain in-app tuple table |
-| **2** | Scale ReBAC beyond Keto | **SpiceDB** or **OpenFGA** (only if Keto limits hit) | — |
+| **1** | Doc share + `Check()` | **Ory Keto** on same Postgres (DB `keto`) + `AuthorizationPort` | Plain in-app tuple table; SpiceDB (not planned) |
+| **2** | Scale ReBAC | Tune Keto (batch checks, caching) | — |
 | **1** | Draft conflict | **`If-Match` / document.version`** — no library | — |
 | **2** | Edit log + dedup | Custom `document_ops` table | — |
 | **3** | Live collab on **JSON spec** | **Automerge** | Yjs for whole spec tree |
@@ -32,20 +32,18 @@ These implement Google Zanzibar-style **relation tuples** and **Check(user, rela
 - **Use when:** Per-document sharing grows beyond “store editor → all docs”; you want `ListObjects` / `Expand` without maintaining Check() yourself.
 - **With ZITADEL:** Common pattern — JWT proves identity; app calls OpenFGA for `document:uuid#editor@user`. [ZITADEL blog](https://zitadel.com/blog/fine-grained-authorization) explicitly points to external FGA for fine-grained cases.
 
-### SpiceDB (Authzed) — best for strict read-after-write
+### SpiceDB (Authzed) — not planned
 
-- **Repo:** [authzed/spicedb](https://github.com/authzed/spicedb) (Apache 2.0)
-- **Why:** **ZedTokens** = Zanzibar-style consistency (important after grant/revoke and before publish). Used at scale (e.g. ChatGPT Enterprise connectors).
-- **Use when:** You need “Alice was removed as editor → next Check must not see stale allow” without building token logic yourself.
-- **Trade-off:** Heavier ops (Postgres/Cockroach/Spanner); gRPC-first.
+- Considered and **rejected** for Noname (2026-08-03): extra service + datastore; **Keto on shared Postgres** is the only resource-scope path.
+- Reference only: [authzed/spicedb](https://github.com/authzed/spicedb) — see upstream docs if comparing architectures elsewhere.
 
 ### Ory Keto — **our Phase B choice (2026-08-03)**
 
 - **Repo:** [ory/keto](https://github.com/ory/keto)
-- **Why start here:** Same Postgres **server** as CMS; separate DB `keto` (like `zitadel` / `app`); lighter K8s ops than SpiceDB; standalone — **does not require** Hydra or Kratos.
+- **Why start here:** Same Postgres **server** as CMS; separate DB `keto` (like `zitadel` / `app`); standalone — **does not require** Hydra or Kratos.
+- **Final decision:** Keto is the **only** resource-scope engine — no migration path to SpiceDB.
 - **With ZITADEL:** JWT proves identity; app passes `user:{sub}` or `agent:{id}` to Keto `Check()`.
-- **Deploy:** Keto as stateless pods in K8s/Vela; Postgres managed or external to cluster.
-- **Migrate later:** Keep Zanzibar tuple shape; swap adapter to SpiceDB/OpenFGA only if ListObjects/consistency at scale hurts.
+- **Deploy:** Keto pods in K8s/Vela; Postgres DB `keto` on same server as `app` / `zitadel`.
 
 ### Permify
 
@@ -60,7 +58,7 @@ These implement Google Zanzibar-style **relation tuples** and **Check(user, rela
 | **OPA** | Policy engine (Rego) — great for K8s, awkward for Docs-style sharing |
 | **Cerbos** | Resource policies — good for “action on resource type”, less natural for nested folder/doc inheritance |
 
-**Phase B decision (2026-08-03):** **Ory Keto** on shared Postgres + `AuthorizationPort` adapter. Design models in **OpenFGA Playground** (spec only); store tuples in Keto. **SpiceDB deferred** — heavier ops, not the starting path.
+**Phase B decision (2026-08-03):** **Ory Keto only** on shared Postgres + `AuthorizationPort`. Design models in [OpenFGA Playground](https://play.fga.dev) (spec DSL only); **store tuples in Keto**.
 
 ---
 

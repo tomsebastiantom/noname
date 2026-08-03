@@ -43,6 +43,18 @@ export const ADMIN_STATE = {
     loading: "/admin/layout/loading",
     error: "/admin/layout/error",
   },
+  scope: {
+    tags: "/admin/scope/tags",
+    teams: "/admin/scope/teams",
+    loading: "/admin/scope/loading",
+    error: "/admin/scope/error",
+  },
+  analytics: {
+    events: "/admin/analytics/events",
+    aggregations: "/admin/analytics/aggregations",
+    loading: "/admin/analytics/loading",
+    error: "/admin/analytics/error",
+  },
   authSettings: {
     loaded: "/admin/auth/settings/loaded",
     loading: "/admin/auth/settings/loading",

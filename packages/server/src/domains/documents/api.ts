@@ -1,7 +1,8 @@
 import { Hono } from "hono";
+import { createAuthorization } from "../auth/create-authorization";
 import type { AssetBinaryStorage } from "./assets/binary";
 import { createAssetStorage } from "./assets/binary";
-import type { DocumentService } from "./ports";
+import type { DocumentService, DocumentStorage } from "./ports";
 import { registerAssetRoutes } from "./routes/assets";
 import { registerContentRoutes } from "./routes/content";
 import { registerContentTypeRoutes } from "./routes/content-types";
@@ -11,10 +12,15 @@ import { registerPageRoutes } from "./routes/pages";
 import { registerRefRoutes } from "./routes/refs";
 import { registerTenantSettingsRoutes } from "./routes/tenant-settings";
 
-export function createDocumentsRoutes(service: DocumentService, binary?: AssetBinaryStorage) {
+export function createDocumentsRoutes(
+  service: DocumentService,
+  storage: DocumentStorage,
+  binary?: AssetBinaryStorage,
+  authorization = createAuthorization(),
+) {
   const routes = new Hono();
   const assetBinary = binary ?? createAssetStorage();
-  const deps: DocumentsRouteDeps = { service };
+  const deps: DocumentsRouteDeps = { service, storage, authorization };
 
   registerContentTypeRoutes(routes, deps);
   registerTenantSettingsRoutes(routes, deps);

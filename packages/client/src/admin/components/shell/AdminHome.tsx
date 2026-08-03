@@ -1,5 +1,10 @@
 import type { MouseEvent } from "react";
-import { isReplayAdminLink, useAnalyticsViewPermission } from "../../../auth/analytics-access";
+import {
+  adminRouteIdFromHref,
+  adminRouteVisibleWhileLoading,
+  canAccessAdminRoute,
+  useAdminSession,
+} from "../../../auth/admin-access";
 import type { ComponentCtx } from "../../../core/components/types";
 import { navigateApp } from "../../../platform/app-navigation";
 import { isPlatformPath } from "../../../platform-routes";
@@ -21,6 +26,17 @@ function adminHomeLinkProps(href: string): { href: string; onClick?: (e: MouseEv
   };
 }
 
+function adminHomeLinkVisible(
+  href: string,
+  loading: boolean,
+  session: Parameters<typeof canAccessAdminRoute>[0],
+): boolean {
+  const routeId = adminRouteIdFromHref(href);
+  if (!routeId) return true;
+  if (loading) return adminRouteVisibleWhileLoading(routeId);
+  return canAccessAdminRoute(session, routeId);
+}
+
 type AdminHomeConfig = {
   links: { id: string; href: string }[];
 };
@@ -33,7 +49,7 @@ type AdminHomeLabels = {
 
 export function AdminHome({ props }: ComponentCtx<CatalogProps<AdminHomeConfig, AdminHomeLabels>>) {
   const { config, labels } = props;
-  const canViewReplay = useAnalyticsViewPermission();
+  const { loading, session } = useAdminSession();
 
   const links = config.links
     .map((link) => ({
@@ -41,7 +57,7 @@ export function AdminHome({ props }: ComponentCtx<CatalogProps<AdminHomeConfig, 
       label: labels.links[link.id]?.label ?? link.id,
       description: labels.links[link.id]?.description ?? "",
     }))
-    .filter((link) => !isReplayAdminLink(link.href) || canViewReplay === true);
+    .filter((link) => adminHomeLinkVisible(link.href, loading, session));
 
   return (
     <div className="max-w-2xl">

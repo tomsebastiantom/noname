@@ -93,14 +93,15 @@ export interface AuthSessionStatus {
   teamRole?: "admin" | "editor" | null;
 }
 
-export type TeamMemberRole = "admin" | "editor";
+import type { StaffRole } from "@noname/auth";
 
+export type { StaffRole };
 export interface TeamUser {
   userId: string;
   email: string;
   displayName: string;
   state: string;
-  role: TeamMemberRole;
+  role: StaffRole;
   mfaEnrolled: boolean;
 }
 
@@ -144,9 +145,9 @@ export interface AuthService {
   listTeamUsers(orgId: string): Promise<TeamUser[]>;
   inviteTeamUser(
     orgId: string,
-    input: { email: string; givenName?: string; familyName?: string; role: TeamMemberRole },
+    input: { email: string; givenName?: string; familyName?: string; role: StaffRole },
   ): Promise<{ userId: string }>;
-  updateTeamUserRole(orgId: string, userId: string, role: TeamMemberRole): Promise<void>;
+  updateTeamUserRole(orgId: string, userId: string, role: StaffRole): Promise<void>;
   startIdpLogin(input: OAuthStartInput): Promise<{ authorizeUrl: string }>;
   exchangeOAuthCallback(input: OAuthCallbackInput): Promise<LoginResult>;
 }

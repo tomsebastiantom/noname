@@ -7,6 +7,58 @@ import { useEditPageOrchestration } from "../../hooks/use-edit-page-orchestratio
 import { EditorPrefsProvider } from "../../hooks/use-editor-prefs";
 import { editorRegistry } from "../../registry";
 
+function EditPageBody({
+  shellLabelsLoading,
+  shellLabelsMissing,
+  sessionData,
+  mergedShellSpec,
+  labelsMissingMessage,
+  layoutLoading,
+  storedSpec,
+  templateName,
+  registry,
+  editorShellStore,
+  sessionActions,
+  editorActionHandlers,
+}: Readonly<{
+  shellLabelsLoading: boolean;
+  shellLabelsMissing: boolean;
+  sessionData: ReturnType<typeof useEditPageOrchestration>["sessionData"];
+  mergedShellSpec: Spec | null;
+  labelsMissingMessage: string;
+  layoutLoading: boolean;
+  storedSpec: Spec | null;
+  templateName: string;
+  registry: ComponentRegistry;
+  editorShellStore: ReturnType<typeof useEditPageOrchestration>["editorShellStore"];
+  sessionActions: ReturnType<typeof useEditPageOrchestration>["sessionActions"];
+  editorActionHandlers: ReturnType<typeof useEditPageOrchestration>["editorActionHandlers"];
+}>) {
+  if (shellLabelsLoading) {
+    return <p className="p-8 text-muted-foreground" aria-busy="true" />;
+  }
+  if (shellLabelsMissing || !sessionData || !mergedShellSpec) {
+    return <p className="p-8 text-destructive">{labelsMissingMessage}</p>;
+  }
+  if (layoutLoading && !storedSpec) {
+    return <p className="p-8 text-muted-foreground">{sessionData.shellLabels.loadingLayoutHint}</p>;
+  }
+
+  return (
+    <EditorSessionProvider data={sessionData} actions={sessionActions}>
+      <EditorPrefsProvider templateName={templateName} registry={registry}>
+        <JSONUIProvider
+          registry={editorRegistry}
+          store={editorShellStore}
+          handlers={editorActionHandlers}
+        >
+          <Renderer spec={mergedShellSpec} registry={editorRegistry} />
+        </JSONUIProvider>
+      </EditorPrefsProvider>
+    </EditorSessionProvider>
+  );
+}
+
 export function EditPageView({
   displaySpec,
   shellSpec,
@@ -22,18 +74,7 @@ export function EditPageView({
   registry: ComponentRegistry;
   onReload: () => void;
 }>) {
-  const {
-    editorShellStore,
-    sessionData,
-    sessionActions,
-    editorActionHandlers,
-    mergedShellSpec,
-    labelsMissingMessage,
-    shellLabelsLoading,
-    shellLabelsMissing,
-    layoutLoading,
-    storedSpec,
-  } = useEditPageOrchestration({
+  const orchestration = useEditPageOrchestration({
     displaySpec,
     templateName,
     pageContentRef,
@@ -44,25 +85,20 @@ export function EditPageView({
 
   return (
     <EditorGate>
-      {shellLabelsLoading ? (
-        <p className="p-8 text-muted-foreground" aria-busy="true" />
-      ) : shellLabelsMissing || !sessionData || !mergedShellSpec ? (
-        <p className="p-8 text-destructive">{labelsMissingMessage}</p>
-      ) : layoutLoading && !storedSpec ? (
-        <p className="p-8 text-muted-foreground">{sessionData.shellLabels.loadingLayoutHint}</p>
-      ) : (
-        <EditorSessionProvider data={sessionData} actions={sessionActions}>
-          <EditorPrefsProvider templateName={templateName} registry={registry}>
-            <JSONUIProvider
-              registry={editorRegistry}
-              store={editorShellStore}
-              handlers={editorActionHandlers}
-            >
-              <Renderer spec={mergedShellSpec} registry={editorRegistry} />
-            </JSONUIProvider>
-          </EditorPrefsProvider>
-        </EditorSessionProvider>
-      )}
+      <EditPageBody
+        shellLabelsLoading={orchestration.shellLabelsLoading}
+        shellLabelsMissing={orchestration.shellLabelsMissing}
+        sessionData={orchestration.sessionData}
+        mergedShellSpec={orchestration.mergedShellSpec}
+        labelsMissingMessage={orchestration.labelsMissingMessage}
+        layoutLoading={orchestration.layoutLoading}
+        storedSpec={orchestration.storedSpec}
+        templateName={templateName}
+        registry={registry}
+        editorShellStore={orchestration.editorShellStore}
+        sessionActions={orchestration.sessionActions}
+        editorActionHandlers={orchestration.editorActionHandlers}
+      />
     </EditorGate>
   );
 }

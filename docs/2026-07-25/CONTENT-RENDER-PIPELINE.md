@@ -123,7 +123,7 @@ Full model: [`documents-domain.md`](../2026-07-10/documents-domain.md) § “How
 
 ### Seeds / demo
 
-- [x] `seed-demo-commerce`: create `product` content type + published entry
+- [x] `scripts/seed/demo-commerce.ts`: create `product` content type + published entry
 - [x] Layout uses `$state` bindings + `contentRef` on layout document
 - [x] Seed validates edge returns resolved product title
 
@@ -155,5 +155,5 @@ Full model: [`documents-domain.md`](../2026-07-10/documents-domain.md) § “How
 
 - `packages/server/src/domains/edge/service.ts` — add resolve step here
 - `packages/server/src/domains/documents/service.ts` — `content.resolve`, `layout.resolve`
-- `scripts/seed-demo-commerce.ts` — update to content entry + `$state`
+- `scripts/seed/demo-commerce.ts` — update to content entry + `$state`
 - [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) — build order

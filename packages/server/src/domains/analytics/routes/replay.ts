@@ -3,7 +3,7 @@ import { parseLimitOffset } from "../../../shared/pagination";
 import { notFound, ok } from "../../../shared/respond";
 import {
   assertReplayStorageKey,
-  denyUnlessAnalyticsView,
+  denyUnlessSessionReplay,
   requireTrustedOrgId,
 } from "../read-guards";
 import type { AnalyticsRouteDeps } from "./deps";
@@ -19,7 +19,7 @@ export function registerAnalyticsReplayRoutes(routes: Hono, deps: AnalyticsRoute
   const { service, replayStorage } = deps;
 
   routes.get("/replay/sessions", async (c) => {
-    const denied = await denyUnlessAnalyticsView(c);
+    const denied = await denyUnlessSessionReplay(c);
     if (denied) return denied;
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;
@@ -61,7 +61,7 @@ export function registerAnalyticsReplayRoutes(routes: Hono, deps: AnalyticsRoute
   });
 
   routes.get("/replay/chunks/*", async (c) => {
-    const denied = await denyUnlessAnalyticsView(c);
+    const denied = await denyUnlessSessionReplay(c);
     if (denied) return denied;
     const orgId = requireTrustedOrgId(c);
     if (orgId instanceof Response) return orgId;

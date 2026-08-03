@@ -2,7 +2,7 @@
 
 > **Date:** 2026-08-03  
 > **Status:** **Active — canonical plan for IdP choice, agents, delegation, scoped access**  
-> **Related:** [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`PERMISSIONS-IDP-COMPARISON.md`](../2026-07-27/PERMISSIONS-IDP-COMPARISON.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) · [`agent-domain.md`](../2026-07-04/agent-domain.md) · [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) · [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md)
+> **Related:** [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`PERMISSIONS-IDP-COMPARISON.md`](../2026-07-27/PERMISSIONS-IDP-COMPARISON.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) · [`agent-domain.md`](../2026-07-04/agent-domain.md) · [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) · [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) · [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) · [`KETO-IMPLEMENTATION-CHECKLIST.md`](./KETO-IMPLEMENTATION-CHECKLIST.md)
 
 ---
 
@@ -51,7 +51,7 @@ Layer 1 — Platform permissions (DONE)
 
 Layer 2 — Document scope (Phase B)
   Tags, content types, collections
-  Ory Keto on same Postgres (schema `keto`) + AuthorizationPort
+  Ory Keto on same Postgres (DB `keto`) + AuthorizationPort
   See PERMISSIONS-MASTER-PLAN § Zanzibar
 
 Layer 3 — Actors & delegation (Phase A′ — design now, build next)
@@ -150,7 +150,7 @@ Platform **permissions stay in app code** regardless of IdP ([`PERMISSIONS-IDP-C
 | **[SuperTokens](https://supertokens.com/)** | Apache 2.0 | ✅ | Paid multi-tenancy patterns | API keys | Simpler; less enterprise RBAC |
 | **[Authentik](https://goauthentik.io/)** | MIT | ✅ | Flows + providers | Service accounts | IdP proxy pattern |
 
-**Ory Keto / SpiceDB / OpenFGA** are **not** IdP replacements — they sit beside ZITADEL for **document scope** (Layer 2). **Decision (2026-08-03):** start with **Ory Keto** on the **same Postgres** server (separate `keto` schema); do **not** start with SpiceDB.
+**Ory Keto** is **not** an IdP replacement — it sits beside ZITADEL for **document scope** (Layer 2). **Decision (2026-08-03):** **Keto only** on same Postgres (DB `keto`). No SpiceDB. Setup: [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) · Roadmap: [`KETO-ZANZIBAR-ROADMAP.md`](./KETO-ZANZIBAR-ROADMAP.md).
 
 ### Decision: stay on ZITADEL vs migrate
 
@@ -171,7 +171,7 @@ Platform **permissions stay in app code** regardless of IdP ([`PERMISSIONS-IDP-C
 | IdP | ZITADEL (OSS) | Keep OSS/self-host; abstract `resolveAuthContextFromToken` if swap later |
 | Permissions | `@noname/auth` in repo | ✅ already open |
 | Documents | Postgres + Drizzle | ✅ |
-| Scoped access | **Ory Keto** (same Postgres server, DB `keto`) → SpiceDB only if Keto limits hit | OSS both paths |
+| Scoped access | **Ory Keto** (same Postgres server, DB `keto`) — **only** resource-scope engine |
 | Agents | `packages/server/domains/agent` | ✅ in monorepo |
 | Queue | BullMQ + Dragonfly | OSS |
 | Edge | Workers | ✅ |
@@ -208,7 +208,7 @@ Platform **permissions stay in app code** regardless of IdP ([`PERMISSIONS-IDP-C
 | B3 | Deploy **Ory Keto** (K8s/Vela); DSN → same Postgres **server**, database `keto` (like ZITADEL → `zitadel`) |
 | B4 | `AuthorizationPort` + Keto adapter: `Check(actor, resource, relation)` on read/write |
 | B5 | Admin UI: assign scope to user **or agent** (writes Keto relationship tuples) |
-| B6 | Evaluate SpiceDB only if Keto Check()/ListObjects limits hit at scale |
+| B6 | Keto scale tuning if ListObjects / batch Check slow at volume |
 
 **Keto notes:** standalone — does **not** require Ory Hydra/Kratos; works with ZITADEL JWT `sub` as subject. Documents domain calls the port only; Keto stores tuples, not CMS rows. Design relation names in [OpenFGA Playground](https://play.fga.dev) first; keep Zanzibar tuple shape for portability.
 
@@ -250,7 +250,9 @@ Security:
 | ZITADEL roles only | [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) |
 | Agent tasks API | [`agent-domain.md`](../2026-07-04/agent-domain.md) |
 | Document unit (no field ACL) | [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
-| Tuple / ReBAC design | [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md) |
+| **Keto roadmap (what next)** | [`KETO-ZANZIBAR-ROADMAP.md`](./KETO-ZANZIBAR-ROADMAP.md) |
+| Tuple / ReBAC + Keto infra | [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) |
+| Tuple design (legacy) | [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md) |
 | Live collab (later) | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) |
 | Editor smoke / v1 status | [`VISUAL-EDITOR-GAP-ANALYSIS.md`](../2026-08-01/VISUAL-EDITOR-GAP-ANALYSIS.md) |
 
@@ -268,8 +270,7 @@ MAYBE   Nostr publish bridge (not auth core)
 IdP:     stay ZITADEL unless R6–R7 fail agent POC
 Authz:   app code for actions; Ory Keto for resource scope (same Postgres)
 Unit:    document / content type — not field
-Keto:    same Postgres server, DB keto — not app, not zitadel
-SpiceDB: defer — only if Keto outgrown
+Keto:    same Postgres server, DB keto — only Zanzibar engine
 ```
 
 ---
@@ -278,9 +279,8 @@ SpiceDB: defer — only if Keto outgrown
 
 | Choice | Decision |
 |--------|----------|
-| **Start with** | **Ory Keto** — same Postgres **server**, separate DB `keto` (mirrors ZITADEL → `zitadel`, app → `app`) |
-| **Not starting with** | SpiceDB (heavier ops; separate datastore story) |
-| **Not starting with** | Plain `relation_tuples` only — Keto owns tuple storage from Phase B |
+| **Resource scope** | **Ory Keto only** — same Postgres server, DB `keto` |
+| **Not using** | SpiceDB, OpenFGA service, field ACL, in-app `relation_tuples` duplicate |
 | **Identity** | ZITADEL unchanged — Keto receives subject strings (`user:{sub}`, `agent:{id}`) |
 | **DDD** | `AuthorizationPort` in documents/auth domain; Keto is an adapter |
 | **Deploy** | Keto pods in K8s/Vela; Postgres stays managed / cluster-external |
@@ -289,4 +289,4 @@ Postgres does not “manage” permissions — it stores Keto’s tables. The AP
 
 ---
 
-*Design actors and delegation before CRDT. Open-source IdP stays self-hosted ZITADEL; resource scope starts with Ory Keto on shared Postgres, not SpiceDB.*
+*Design actors and delegation before CRDT. ZITADEL for identity; Keto for all document scope — final.*

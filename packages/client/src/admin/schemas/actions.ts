@@ -184,6 +184,9 @@ export const adminActionSchemas = {
   listReplaySessions: {
     description: "List session replay summaries for this org (admin only)",
   },
+  loadAnalyticsAdmin: {
+    description: "Load recent analytics events and event-type aggregations",
+  },
   loadReplayChunk: {
     params: z.object({
       storageKey: z.string().min(1),

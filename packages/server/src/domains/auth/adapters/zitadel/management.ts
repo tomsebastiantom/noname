@@ -59,8 +59,9 @@ function signAssertion(sa: ServiceAccountKey): string {
 let cachedToken: { value: string; expiresAt: number } | null = null;
 
 async function getManagementToken(): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
-    return cachedToken.value;
+  const token = cachedToken;
+  if (token != null && token.expiresAt > Date.now() + 30_000) {
+    return token.value;
   }
 
   const sa = loadServiceAccountKey();

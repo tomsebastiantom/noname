@@ -17,6 +17,8 @@ export {
   resolveIdentityFromTokenPayload,
   resolveRolesFromTokenPayload,
   rolesFromJwt,
+  staffUiRoleFromJwt,
+  /** @deprecated use staffUiRoleFromJwt */
   teamRoleFromJwt,
 } from "./oidc/resolve-auth-context";
 export { fetchUserinfo, rolesFromUserinfo } from "./oidc/userinfo";
@@ -28,6 +30,7 @@ export {
   hasPermission,
   isPermissionKey,
   isPlatformRole,
+  isStaffRole,
   PERMISSIONS,
   type PermissionKey,
   PLATFORM_ROLES,
@@ -35,4 +38,16 @@ export {
   primaryRoleFromKeys,
   primaryTeamRole,
   ROLE_PERMISSIONS,
+  STAFF_ROLES,
+  type StaffRole,
 } from "./permissions";
+export {
+  ACCESS_MANAGER_ASSIGNABLE_ROLES,
+  type AccessManagerAssignableRole,
+  canAssignRole,
+  isAccessManagerAssignableRole,
+} from "./role-assignment";
+export {
+  canJoinTeamEditorSlot,
+  canJoinTeamPublisherSlot,
+} from "./team-slot-validation";

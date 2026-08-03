@@ -9,6 +9,8 @@ import {
 } from "../../../components/ui/card";
 import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
+import type { DocumentAccessLabels } from "../shared/DocumentAccessFields";
+import { DocumentAccessFields } from "../shared/DocumentAccessFields";
 import { ContentEntryFieldInput } from "./content-entry-field-input";
 import type { MediaFieldLabels } from "./MediaFieldInput";
 import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
@@ -19,6 +21,7 @@ export function ContentEntryCreateForm({
   description,
   editableFields,
   values,
+  tagsInput,
   locale,
   mediaLabels,
   referenceLabels,
@@ -28,6 +31,7 @@ export function ContentEntryCreateForm({
   creating,
   labels,
   onValuesChange,
+  onTagsInputChange,
   onSubmit,
   onCancel,
 }: {
@@ -36,6 +40,7 @@ export function ContentEntryCreateForm({
   description: string;
   editableFields: ContentFieldSchema[];
   values: Record<string, string>;
+  tagsInput: string;
   locale: string;
   mediaLabels: MediaFieldLabels;
   referenceLabels: ReferenceFieldLabels;
@@ -43,8 +48,13 @@ export function ContentEntryCreateForm({
   error: string | null;
   success: string | null;
   creating: boolean;
-  labels: { title: string; createDraftLabel: string; creatingLabel: string };
+  labels: DocumentAccessLabels & {
+    title: string;
+    createDraftLabel: string;
+    creatingLabel: string;
+  };
   onValuesChange: (values: Record<string, string>) => void;
+  onTagsInputChange: (value: string) => void;
   onSubmit: () => void;
   onCancel?: () => void;
 }) {
@@ -78,6 +88,13 @@ export function ContentEntryCreateForm({
                 referenceOptions={referenceOptions}
               />
             ))}
+
+            <DocumentAccessFields
+              tagsFieldId="content-create-tags"
+              tagsInput={tagsInput}
+              onTagsInputChange={onTagsInputChange}
+              labels={labels}
+            />
 
             {error && (
               <Alert variant="destructive">

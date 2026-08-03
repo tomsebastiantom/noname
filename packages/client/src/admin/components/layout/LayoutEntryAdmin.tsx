@@ -18,8 +18,11 @@ import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
 import type { CatalogProps } from "../../../schemas/shared";
+import { parseTagsInput } from "../../document-tags";
 import { layoutTemplateFromPath, parseSpecJson } from "../../layout-entries";
 import { DataTable } from "../shared/DataTable";
+import type { DocumentAccessLabels } from "../shared/DocumentAccessFields";
+import { DocumentAccessFields } from "../shared/DocumentAccessFields";
 
 type LayoutEntryConfig = {
   segment: string;
@@ -51,7 +54,7 @@ type LayoutEntryLabels = {
   hasContentRefYes: string;
   templateNotFoundPrefix: string;
   templateNotFoundSuffix: string;
-};
+} & DocumentAccessLabels;
 
 type LayoutEntryAdminProps = ComponentCtx<CatalogProps<LayoutEntryConfig, LayoutEntryLabels>>;
 
@@ -77,6 +80,7 @@ function LayoutEntryDetailFields({
   const [status, setStatus] = useState(loaded.status);
   const [specJson, setSpecJson] = useState(loaded.specJson);
   const [contentRef, setContentRef] = useState(loaded.contentRef);
+  const [tagsInput, setTagsInput] = useState(loaded.tagsInput);
 
   async function onPublish() {
     if (!layoutId) return;
@@ -88,6 +92,7 @@ function LayoutEntryDetailFields({
           id: layoutId,
           specJson,
           contentRef: contentRef || null,
+          tags: parseTagsInput(tagsInput),
         });
         await executeAction("publishLayoutEntry", { id: layoutId });
         setStatus("published");
@@ -109,6 +114,7 @@ function LayoutEntryDetailFields({
           id: layoutId,
           specJson,
           contentRef: contentRef || null,
+          tags: parseTagsInput(tagsInput),
         });
         setStatus("draft");
       },
@@ -157,6 +163,15 @@ function LayoutEntryDetailFields({
               />
               <p className="text-xs text-muted-foreground">{labels.contentRefHint}</p>
             </div>
+
+            <DocumentAccessFields
+              tagsFieldId="layout-entry-tags"
+              tagsInput={tagsInput}
+              onTagsInputChange={setTagsInput}
+              labels={labels}
+              documentId={layoutId ?? undefined}
+              showShare={loaded.canManageAccess}
+            />
 
             <div className="flex flex-col gap-1.5">
               <Label htmlFor="specJson">{labels.specJsonLabel}</Label>

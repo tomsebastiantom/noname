@@ -1,6 +1,7 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { ContentDocument } from "../entity";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
+import { extractTagsFromBody } from "../shared/document-tags";
 import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
 import { contentValidator } from "../validation/validator";
 import { filterReadFields, prepareContentWrite } from "./content-write";
@@ -17,11 +18,19 @@ export function createContentService(
 ): ContentDocumentService {
   return {
     async create(orgId, type, data, opts) {
-      const { data: builtData } = await prepareContentWrite(storage, validator, orgId, type, data, {
-        locale: opts?.locale,
-        role: opts?.role,
-        isCreate: true,
-      });
+      const { tags, data: contentData } = extractTagsFromBody(data);
+      const { data: builtData } = await prepareContentWrite(
+        storage,
+        validator,
+        orgId,
+        type,
+        contentData,
+        {
+          locale: opts?.locale,
+          role: opts?.role,
+          isCreate: true,
+        },
+      );
 
       const entity = ContentDocument.create(orgId, type, builtData);
       const saved = await storage.createDocument({
@@ -30,6 +39,7 @@ export function createContentService(
         key: entity.id,
         data: entity.data,
         status: "draft",
+        tags,
       });
       flushEvents(entity);
       return saved;
@@ -50,15 +60,28 @@ export function createContentService(
 
     async updateById(orgId, type, id, data, opts) {
       const existing = await requireContentEntry(storage, orgId, type, id);
+      const { tags, data: contentData } = extractTagsFromBody(data);
 
-      const { data: builtData } = await prepareContentWrite(storage, validator, orgId, type, data, {
-        locale: opts?.locale,
-        role: opts?.role,
-        existingData: existing.data,
-        isCreate: false,
-      });
+      const { data: builtData } = await prepareContentWrite(
+        storage,
+        validator,
+        orgId,
+        type,
+        contentData,
+        {
+          locale: opts?.locale,
+          role: opts?.role,
+          existingData: existing.data,
+          isCreate: false,
+        },
+      );
 
-      const updated = await storage.updateDocument(existing.id, builtData);
+      const updated = await storage.updateDocument(
+        existing.id,
+        builtData,
+        undefined,
+        tags !== undefined ? tags : undefined,
+      );
       const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
       entity.update(updated.data);
       flushEvents(entity);

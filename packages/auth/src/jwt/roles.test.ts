@@ -16,4 +16,11 @@ describe("rolesFromTokenPayload", () => {
     expect(primaryRoleFromKeys([])).toBe("customer");
     expect(canDraft([])).toBe(false);
   });
+
+  it("falls back to any project role claim when configured project id misses", () => {
+    const payload = {
+      "urn:zitadel:iam:org:project:new-proj:roles": { admin: { "org-1": "Org" } },
+    };
+    expect(rolesFromTokenPayload(payload, { projectId: "stale-proj" })).toEqual(["admin"]);
+  });
 });

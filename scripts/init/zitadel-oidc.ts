@@ -11,12 +11,17 @@ import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const PROJECT_NAME = "noname-dev";
 const APP_NAME = "noname-client";
 const PLATFORM_PROJECT_ROLES = [
-  { roleKey: "admin", displayName: "Administrator", group: "Team" },
+  { roleKey: "admin", displayName: "Store admin", group: "Team" },
+  { roleKey: "access_manager", displayName: "Access manager", group: "Team" },
+  { roleKey: "publisher", displayName: "Publisher", group: "Team" },
   { roleKey: "editor", displayName: "Editor", group: "Team" },
+  { roleKey: "analyst", displayName: "Analyst", group: "Team" },
+  { roleKey: "replay_viewer", displayName: "Replay viewer", group: "Team" },
+  { roleKey: "flags_manager", displayName: "Flags manager", group: "Team" },
   { roleKey: "customer", displayName: "Customer", group: "Shopper" },
 ] as const;
 const REDIRECT_URI = "http://localhost:5173/auth/callback";

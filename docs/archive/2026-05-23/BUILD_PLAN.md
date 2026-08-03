@@ -855,7 +855,7 @@ Not choosing tools yet. Just documenting what we must be able to observe.
 ```
 Docker Compose services:
   app:         Our Hono server
-  postgres:    Main DB + ZITADEL DB (`app`, `zitadel`, `nango` via init-dbs.sh)
+  postgres:    Main DB + ZITADEL DB (`app`, `zitadel`, `nango` via scripts/compose/init-dbs.sh)
   dragonfly:   BullMQ queues + Redis-compatible cache
   zitadel:     Auth (ghcr.io/zitadel/zitadel:latest, port 8080)
   clickhouse:  Columnar time-series DB for analytics events

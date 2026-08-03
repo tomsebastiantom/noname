@@ -81,13 +81,31 @@ export const mfaEnrollmentConfirmSchema = z.object({
   code: z.string().min(1),
 });
 
-export const teamInviteSchema = z.object({
+export const scopeCatalogSchema = z.object({
+  slug: z.string().min(1),
+  label: z.string().min(1).optional(),
+});
+
+export const staffRoleSchema = z.enum([
+  "admin",
+  "access_manager",
+  "publisher",
+  "editor",
+  "analyst",
+  "replay_viewer",
+  "flags_manager",
+]);
+
+export const staffInviteSchema = z.object({
   email: z.email(),
   givenName: z.string().min(1).optional(),
   familyName: z.string().min(1).optional(),
-  role: z.enum(["admin", "editor"]).default("editor"),
+  role: staffRoleSchema.default("editor"),
 });
 
+/** @deprecated use staffInviteSchema */
+export const teamInviteSchema = staffInviteSchema;
+
 export const teamRoleUpdateSchema = z.object({
-  role: z.enum(["admin", "editor"]),
+  role: staffRoleSchema,
 });

@@ -303,7 +303,7 @@ All merchant-visible editor strings live in **`visual_editor` layout** → `Visu
 | Canvas | `canvasAriaLabel`, `dropAtTopTemplate`, … |
 | Panel chrome | `blocksPanelTitle`, `closePanelLabel`, `resizePanelAriaLabel`, … |
 
-**Full key list:** `packages/client/src/editor/schemas/components.ts` → `editorShellLabelsSchema`. Seed: `scripts/seed-demo.ts` → `visualEditorShellSpec`. Agent boundaries: [`reference.md` § Visual editor](../../skills/spec-driven-ui/reference.md#visual-editor).
+**Full key list:** `packages/client/src/editor/schemas/components.ts` → `editorShellLabelsSchema`. Seed: `scripts/seed/demo.ts` → `visualEditorShellSpec`. Agent boundaries: [`reference.md` § Visual editor](../../skills/spec-driven-ui/reference.md#visual-editor).
 
 **Bootstrap exception:** If `visual_editor` labels are missing entirely, `EditPageView` shows a fixed dev/setup error (cannot read labels from a layout that failed to load).
 
@@ -321,7 +321,7 @@ All merchant-visible editor strings live in **`visual_editor` layout** → `Visu
 | **Identity, agents, OSS IdP, delegation** | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) |
 | Collab / CRDT — when to build | [`VISUAL-EDITOR-COLLAB-CRDT.md`](./VISUAL-EDITOR-COLLAB-CRDT.md) |
 | Collab setup examples | [`COLLAB-EDITOR-SETUP.md`](./COLLAB-EDITOR-SETUP.md) |
-| Shell label keys (Zod + seed) | `packages/client/src/editor/schemas/components.ts`, `scripts/seed-demo.ts` |
+| Shell label keys (Zod + seed) | `packages/client/src/editor/schemas/components.ts`, `scripts/seed/demo.ts` |
 | Editor agent entry (boundaries) | [`reference.md` § Visual editor](../../skills/spec-driven-ui/reference.md#visual-editor) |
 | Content type checklist | [`reference.md` § Content types](../../skills/spec-driven-ui/reference.md#content-types) · [`documents-domain.md`](../2026-07-10/documents-domain.md) |
 
