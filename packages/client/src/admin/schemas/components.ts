@@ -75,6 +75,48 @@ export const adminComponentSchemas = {
     ),
     description: "Per-org auth provider toggles and ZITADEL IdP configuration",
   },
+  IntegrationsCommsForm: {
+    props: catalogProps(
+      {
+        ...panelLabels,
+        loadingLabel: z.string(),
+        forbiddenLabel: z.string(),
+        providerLabel: z.string(),
+        apiKeyLabel: z.string(),
+        apiKeyPlaceholderNew: z.string(),
+        apiKeyPlaceholderExisting: z.string(),
+        configuredBadgeLabel: z.string(),
+        fromEmailLabel: z.string(),
+        fromNameLabel: z.string(),
+        saveLabel: z.string(),
+        savingLabel: z.string(),
+        successMessage: z.string(),
+      },
+      {},
+    ),
+    description: "Per-org email provider and BYOK API key (Vault)",
+  },
+  IntegrationsLlmForm: {
+    props: catalogProps(
+      {
+        ...panelLabels,
+        loadingLabel: z.string(),
+        forbiddenLabel: z.string(),
+        providerLabel: z.string(),
+        apiKeyLabel: z.string(),
+        apiKeyPlaceholderNew: z.string(),
+        apiKeyPlaceholderExisting: z.string(),
+        configuredBadgeLabel: z.string(),
+        allowPlatformFallbackLabel: z.string(),
+        allowPlatformFallbackHelper: z.string(),
+        saveLabel: z.string(),
+        savingLabel: z.string(),
+        successMessage: z.string(),
+      },
+      {},
+    ),
+    description: "Per-org LLM provider and BYOK API key (Vault)",
+  },
   LoginBrandingForm: {
     props: catalogProps(
       {

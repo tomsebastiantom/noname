@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { defaultTenantSettings } from "../documents/services/tenant-defaults";
 import type { TenantSettingsService } from "../documents/ports";
+import { defaultTenantSettings } from "../documents/services/tenant-defaults";
 import type { SecretStorePort } from "./ports";
 import { createSecretsService } from "./service";
 

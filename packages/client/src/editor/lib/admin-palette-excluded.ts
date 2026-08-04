@@ -2,6 +2,9 @@
 export const ADMIN_PALETTE_EXCLUDED_TYPES = [
   "AdminShell",
   "AuthSettingsForm",
+  "IntegrationsCommsForm",
+  "IntegrationsLlmForm",
+  "AgentsAdminForm",
   "LoginBrandingForm",
   "AccountSecurityForm",
   "UsersAdminForm",

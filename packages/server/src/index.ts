@@ -14,7 +14,9 @@ import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
+import { createIntegrationsDomain } from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
+import { createNotificationsDomain } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
@@ -76,6 +78,16 @@ onAuthProviderPublished = auth.onAuthProviderPublished;
 
 const secrets = createSecretsDomain({
   tenantSettings: docs.service.tenantSettings,
+});
+
+const integrations = createIntegrationsDomain({
+  secrets: secrets.service,
+  tenantSettings: docs.service.tenantSettings,
+});
+
+const notifications = createNotificationsDomain({
+  db,
+  secrets: secrets.service,
 });
 
 app.route("/api/documents", docs.routes);
@@ -140,9 +152,12 @@ const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings 
 app.route("/api/tenants", tenant.routes);
 
 app.route("/api/auth", auth.routes);
+app.route("/api/integrations", integrations.routes);
+app.route("/api/notifications", notifications.routes);
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
 console.log(`Server running at http://localhost:${port}`);
 
 export default app;
+export { notifications };

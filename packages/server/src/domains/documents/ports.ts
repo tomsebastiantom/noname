@@ -74,12 +74,24 @@ export interface TenantSeoConfig {
   canonicalDomain?: string;
 }
 
+export interface TenantLlmIntegration {
+  provider?: "openai" | "anthropic";
+  allowPlatformFallback?: boolean;
+}
+
+export interface TenantCommsIntegration {
+  emailProvider?: "resend" | "twilio" | "ses";
+  fromEmail?: string;
+  fromName?: string;
+}
+
 export interface TenantIntegrations {
   googleAnalyticsId?: string | null;
   facebookPixelId?: string | null;
   hotjarId?: string | null;
   tiktokPixelId?: string | null;
-  [key: string]: string | null | undefined;
+  llm?: TenantLlmIntegration;
+  comms?: TenantCommsIntegration;
 }
 
 export type TeamMemberRole = "admin" | "editor";

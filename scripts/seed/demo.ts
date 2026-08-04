@@ -123,6 +123,7 @@ const adminShellNavConfig = {
   ],
   settingsItems: [
     { id: "auth", href: "/admin/settings/auth" },
+    { id: "integrations", href: "/admin/settings/integrations" },
     { id: "users", href: "/admin/settings/users" },
     { id: "scope", href: "/admin/settings/scope" },
     { id: "analytics", href: "/admin/settings/analytics" },
@@ -147,6 +148,7 @@ const adminShellNavLabels = {
   },
   settings: {
     auth: "Auth settings",
+    integrations: "Integrations",
     users: "Team members",
     scope: "Content access",
     analytics: "Analytics",
@@ -260,6 +262,37 @@ const authSettingsLabels = {
   appleKeyPlaceholderNew: "Paste contents of AuthKey_XXXX.p8",
   appleKeyPlaceholderExisting: "Leave blank to keep existing key",
   forbiddenLabel: "Auth settings require the store admin role.",
+};
+
+const integrationsCommsLabels = {
+  loadingLabel: "Loading comms settings…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  providerLabel: "Email provider",
+  apiKeyLabel: "API key (optional BYOK)",
+  apiKeyPlaceholderNew: "Paste Resend or Twilio key",
+  apiKeyPlaceholderExisting: "Leave blank to keep existing key",
+  configuredBadgeLabel: "Org key stored in Vault",
+  fromEmailLabel: "From email",
+  fromNameLabel: "From name",
+  saveLabel: "Save comms settings",
+  savingLabel: "Saving…",
+  successMessage: "Comms settings saved.",
+};
+
+const integrationsLlmLabels = {
+  loadingLabel: "Loading LLM settings…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  providerLabel: "LLM provider",
+  apiKeyLabel: "API key (optional BYOK)",
+  apiKeyPlaceholderNew: "Paste OpenAI or Anthropic key",
+  apiKeyPlaceholderExisting: "Leave blank to keep existing key",
+  configuredBadgeLabel: "Org key stored in Vault",
+  allowPlatformFallbackLabel: "Allow platform fallback key",
+  allowPlatformFallbackHelper:
+    "When enabled, use the platform OpenAI/Anthropic env key if no org key is set.",
+  saveLabel: "Save LLM settings",
+  savingLabel: "Saving…",
+  successMessage: "LLM settings saved.",
 };
 
 const usersAdminLabels = {
@@ -425,6 +458,7 @@ const adminHomeLinkConfig = [
   { id: "flags", href: "/admin/settings/flags" },
   { id: "replay", href: "/admin/settings/replay" },
   { id: "auth", href: "/admin/settings/auth" },
+  { id: "integrations", href: "/admin/settings/integrations" },
   { id: "account_security", href: "/admin/settings/security" },
   { id: "login", href: "/admin/settings/login" },
   { id: "agents", href: "/admin/settings/agents" },
@@ -666,6 +700,38 @@ const adminDashboardSpec = adminPanelSpec(["authSettings"], {
     ),
   },
 });
+
+const adminIntegrationsSpec = adminPanelSpec(
+  ["loadIntegrationsLlm", "integrationsLlm", "loadIntegrationsComms", "integrationsComms"],
+  {
+    loadIntegrationsLlm: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadIntegrationsLlm" }, {}),
+    },
+    integrationsLlm: {
+      type: "IntegrationsLlmForm",
+      props: panelProps(
+        {},
+        "LLM integration",
+        "Choose OpenAI or Anthropic and optionally bring your own API key. Keys are stored in Vault — never returned to the browser.",
+        integrationsLlmLabels,
+      ),
+    },
+    loadIntegrationsComms: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadIntegrationsComms" }, {}),
+    },
+    integrationsComms: {
+      type: "IntegrationsCommsForm",
+      props: panelProps(
+        {},
+        "Email / comms",
+        "Configure Resend or Twilio for transactional email. API keys go to Vault; from-address stays in tenant settings.",
+        integrationsCommsLabels,
+      ),
+    },
+  },
+);
 
 const adminFlagsSpec = adminPanelSpec(["loadFlags", "flagsAdmin"], {
   loadFlags: {
@@ -1302,6 +1368,10 @@ async function main() {
   await upsertLayout("home", demoSpec, { renderAs: "standalone" });
   await upsertLayout("login", loginSpec, { renderAs: "standalone" });
   await upsertLayout("admin_dashboard", adminDashboardSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_integrations", adminIntegrationsSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });

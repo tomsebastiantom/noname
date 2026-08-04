@@ -5,6 +5,8 @@ import {
 } from "../ai-pipeline/providers";
 import type { TenantSettingsService } from "../documents/ports";
 import type {
+  CommsCredentials,
+  CommsProviderName,
   GetOrgSecretInput,
   OrgSecretKind,
   PutOrgSecretInput,
@@ -24,6 +26,37 @@ function readPreferredLlmProvider(integrations: Record<string, unknown>): LlmPro
   if (!llm || typeof llm !== "object") return null;
   const provider = (llm as { provider?: unknown }).provider;
   return typeof provider === "string" && isLlmProviderName(provider) ? provider : null;
+}
+
+const COMMS_PROVIDERS = ["resend", "twilio"] as const;
+
+function isCommsProviderName(value: string): value is CommsProviderName {
+  return (COMMS_PROVIDERS as readonly string[]).includes(value);
+}
+
+function readCommsConfig(integrations: Record<string, unknown>): {
+  provider: CommsProviderName;
+  fromEmail?: string;
+  fromName?: string;
+} {
+  const comms = integrations.comms;
+  if (!comms || typeof comms !== "object") {
+    return { provider: "resend" };
+  }
+  const row = comms as {
+    emailProvider?: unknown;
+    fromEmail?: unknown;
+    fromName?: unknown;
+  };
+  const provider =
+    typeof row.emailProvider === "string" && isCommsProviderName(row.emailProvider)
+      ? row.emailProvider
+      : "resend";
+  return {
+    provider,
+    fromEmail: typeof row.fromEmail === "string" ? row.fromEmail : undefined,
+    fromName: typeof row.fromName === "string" ? row.fromName : undefined,
+  };
 }
 
 export function createSecretsService(deps: {
@@ -61,8 +94,42 @@ export function createSecretsService(deps: {
     return createLLMProvider();
   }
 
+  async function resolveCommsCredentials(orgId: string): Promise<CommsCredentials | null> {
+    const config = tenantSettings
+      ? readCommsConfig((await tenantSettings.get(orgId)).integrations as Record<string, unknown>)
+      : { provider: "resend" as CommsProviderName };
+
+    const orgSecret = await store.getOrgSecret({
+      orgId,
+      kind: "comms",
+      provider: config.provider,
+    });
+    const orgKey = orgSecret?.apiKey;
+    if (orgKey) {
+      return {
+        provider: config.provider,
+        apiKey: orgKey,
+        fromEmail: config.fromEmail ?? orgSecret.fromEmail,
+        fromName: config.fromName ?? orgSecret.fromName,
+      };
+    }
+
+    const platformKey = await store.getPlatformSecret(`${config.provider}_api_key`);
+    if (platformKey) {
+      return {
+        provider: config.provider,
+        apiKey: platformKey,
+        fromEmail: config.fromEmail,
+        fromName: config.fromName,
+      };
+    }
+
+    return null;
+  }
+
   return {
     resolveLLMProvider,
+    resolveCommsCredentials,
 
     async putOrgSecret(input: PutOrgSecretInput): Promise<void> {
       await store.putOrgSecret(input);

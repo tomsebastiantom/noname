@@ -71,6 +71,18 @@ export const ADMIN_STATE = {
     loading: "/admin/auth/settings/loading",
     error: "/admin/auth/settings/error",
   },
+  integrations: {
+    llm: {
+      loaded: "/admin/integrations/llm/loaded",
+      loading: "/admin/integrations/llm/loading",
+      error: "/admin/integrations/llm/error",
+    },
+    comms: {
+      loaded: "/admin/integrations/comms/loaded",
+      loading: "/admin/integrations/comms/loading",
+      error: "/admin/integrations/comms/error",
+    },
+  },
   agents: {
     registry: "/admin/agents/registry",
     tasks: "/admin/agents/tasks",

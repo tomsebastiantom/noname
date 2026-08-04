@@ -3,6 +3,7 @@ import { analyticsActions } from "./analytics";
 import { authActions } from "./auth";
 import { contentActions } from "./content";
 import { flagActions } from "./flags";
+import { integrationsActions } from "./integrations";
 import { layoutActions } from "./layout";
 import { navigationActions } from "./navigation";
 import { replayActions } from "./replay";
@@ -25,6 +26,7 @@ export const coreActionHandlers = {
   ...analyticsActions,
   ...tracesActions,
   ...flagActions,
+  ...integrationsActions,
 } satisfies CatalogActionMap;
 
 export type CoreActionName = keyof typeof coreActionHandlers;

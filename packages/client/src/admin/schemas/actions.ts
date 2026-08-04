@@ -220,4 +220,27 @@ export const adminActionSchemas = {
     }),
     description: "Toggle a boolean feature flag",
   },
+  loadIntegrationsLlm: {
+    description: "Load LLM integration settings (flags only, no secrets)",
+  },
+  saveIntegrationsLlm: {
+    params: z.object({
+      provider: z.enum(["openai", "anthropic"]),
+      apiKey: z.string().optional(),
+      allowPlatformFallback: z.boolean(),
+    }),
+    description: "Save LLM provider choice and optional BYOK API key to Vault",
+  },
+  loadIntegrationsComms: {
+    description: "Load comms integration settings (flags only, no secrets)",
+  },
+  saveIntegrationsComms: {
+    params: z.object({
+      emailProvider: z.enum(["resend", "twilio"]),
+      apiKey: z.string().optional(),
+      fromEmail: z.string().email().optional(),
+      fromName: z.string().optional(),
+    }),
+    description: "Save email provider and optional BYOK API key to Vault",
+  },
 };

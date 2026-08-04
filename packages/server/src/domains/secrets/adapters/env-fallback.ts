@@ -18,6 +18,7 @@ export function createEnvFallbackSecretStore(): SecretStorePort {
     async getPlatformSecret(name: string): Promise<string | null> {
       if (name === "openai_api_key") return process.env.OPENAI_API_KEY ?? null;
       if (name === "anthropic_api_key") return process.env.ANTHROPIC_API_KEY ?? null;
+      if (name === "resend_api_key") return process.env.RESEND_API_KEY ?? null;
       return null;
     },
   };

@@ -3,6 +3,8 @@ import { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmi
 import { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
+import { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
+import { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
 import { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 import { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 import { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
@@ -20,6 +22,8 @@ export { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmi
 export { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
+export { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
+export { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
 export { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 export { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 export { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
@@ -38,6 +42,8 @@ export { TracesAdmin } from "./components/traces/TracesAdmin";
 export const adminComponents = {
   AdminShell,
   AuthSettingsForm,
+  IntegrationsCommsForm,
+  IntegrationsLlmForm,
   LoginBrandingForm,
   AccountSecurityForm,
   UsersAdminForm,

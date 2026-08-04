@@ -9,6 +9,7 @@ export type AdminRouteId =
   | "content"
   | "layout"
   | "auth"
+  | "integrations"
   | "login"
   | "users"
   | "scope"
@@ -27,6 +28,7 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
   content: (s) => sessionHasPermission(s, PERMISSIONS.CONTENT_DRAFT_WRITE),
   layout: (s) => sessionHasPermission(s, PERMISSIONS.LAYOUT_DRAFT_WRITE),
   auth: (s) => sessionHasPermission(s, PERMISSIONS.AUTH_MANAGE),
+  integrations: (s) => sessionHasPermission(s, PERMISSIONS.INTEGRATIONS_MANAGE),
   login: (s) => sessionHasPermission(s, PERMISSIONS.AUTH_MANAGE),
   users: (s) =>
     sessionHasPermission(s, PERMISSIONS.AUTH_MANAGE) ||
@@ -49,6 +51,7 @@ export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
   content: "/admin/content",
   layout: "/admin/layout",
   auth: "/admin/settings/auth",
+  integrations: "/admin/settings/integrations",
   login: "/admin/settings/login",
   users: "/admin/settings/users",
   scope: "/admin/settings/scope",

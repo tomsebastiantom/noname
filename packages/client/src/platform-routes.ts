@@ -30,6 +30,7 @@ export function platformTemplateFromPath(pathname: string): string {
   if (pathname.startsWith("/admin/pages")) return "admin_pages";
   if (pathname === "/admin/settings/login") return "admin_login";
   if (pathname === "/admin/settings/auth") return "admin_dashboard";
+  if (pathname === "/admin/settings/integrations") return "admin_integrations";
   if (pathname === "/admin/settings/users") return "admin_users";
   if (pathname === "/admin/settings/scope") return "admin_scope";
   if (pathname === "/admin/settings/analytics") return "admin_analytics";
@@ -73,6 +74,7 @@ export function adminActiveNavFromPath(pathname: string): string {
   if (pathname.startsWith("/admin/layout")) return "layout";
   if (pathname.startsWith("/admin/pages")) return "pages";
   if (pathname === "/admin/settings/auth") return "auth";
+  if (pathname === "/admin/settings/integrations") return "integrations";
   if (pathname === "/admin/settings/users") return "users";
   if (pathname === "/admin/settings/scope") return "scope";
   if (pathname === "/admin/settings/analytics") return "analytics";

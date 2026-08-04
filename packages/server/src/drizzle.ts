@@ -6,6 +6,7 @@ import * as contextSchema from "./domains/context/schema";
 import * as documentSchema from "./domains/documents/schema";
 import * as flagsSchema from "./domains/flags/schema";
 import * as machineSchema from "./domains/machines/schema";
+import * as notificationsSchema from "./domains/notifications/schema";
 
 export type Database = ReturnType<typeof createDatabase>;
 
@@ -19,6 +20,7 @@ export function createDatabase(connectionString: string) {
       ...flagsSchema,
       ...agentSchema,
       ...aiPipelineSchema,
+      ...notificationsSchema,
     },
   });
 }

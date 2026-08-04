@@ -33,6 +33,8 @@ export const PERMISSIONS = {
   SESSION_REPLAY: "session:replay",
   FLAGS_WRITE: "flags:write",
   TENANT_MANAGE: "tenant:manage",
+  /** LLM/comms BYOK and external connection settings. */
+  INTEGRATIONS_MANAGE: "integrations:manage",
   AGENT_MANAGE: "agent:manage",
   MACHINES_DEFINE: "machines:define",
 } as const;
