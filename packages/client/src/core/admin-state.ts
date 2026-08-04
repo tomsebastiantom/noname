@@ -47,6 +47,7 @@ export const ADMIN_STATE = {
     collections: "/admin/scope/collections",
     teams: "/admin/scope/teams",
     bindings: "/admin/scope/bindings",
+    agentBindings: "/admin/scope/agentBindings",
     loading: "/admin/scope/loading",
     error: "/admin/scope/error",
   },
@@ -69,6 +70,14 @@ export const ADMIN_STATE = {
     loaded: "/admin/auth/settings/loaded",
     loading: "/admin/auth/settings/loading",
     error: "/admin/auth/settings/error",
+  },
+  agents: {
+    registry: "/admin/agents/registry",
+    tasks: "/admin/agents/tasks",
+    loading: "/admin/agents/loading",
+    error: "/admin/agents/error",
+    mintedToken: "/admin/agents/mintedToken",
+    mintedTokenExpiresAt: "/admin/agents/mintedTokenExpiresAt",
   },
   loginBranding: {
     loaded: "/admin/auth/login-branding/loaded",

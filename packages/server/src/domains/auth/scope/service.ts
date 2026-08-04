@@ -73,6 +73,11 @@ export interface CollectionTeamBinding {
   publishers: boolean;
 }
 
+export interface CollectionAgentBinding {
+  collection: string;
+  agent: string;
+}
+
 export interface TeamMemberEntry {
   userId: string;
   editors: boolean;
@@ -205,6 +210,47 @@ export function createScopeService(deps: {
         const byCollection = a.collection.localeCompare(b.collection);
         if (byCollection !== 0) return byCollection;
         return a.team.localeCompare(b.team);
+      });
+    },
+
+    async listCollectionAgentBindings(orgId: string): Promise<CollectionAgentBinding[]> {
+      const collections = await deps.db
+        .select()
+        .from(contentCollections)
+        .where(eq(contentCollections.orgId, orgId));
+      const bindings: CollectionAgentBinding[] = [];
+
+      for (const collection of collections) {
+        const tuples = await deps.tupleReader.listRelationTuples({
+          namespace: "Collection",
+          objectId: collection.slug,
+        });
+        for (const tuple of tuples) {
+          if (tuple.subject.type !== "Agent" || tuple.relation !== "editors") continue;
+          bindings.push({ collection: collection.slug, agent: tuple.subject.id });
+        }
+      }
+
+      return bindings.sort((a, b) => {
+        const byCollection = a.collection.localeCompare(b.collection);
+        if (byCollection !== 0) return byCollection;
+        return a.agent.localeCompare(b.agent);
+      });
+    },
+
+    async unbindCollectionAgentEditors(
+      orgId: string,
+      collection: string,
+      agentSlug: string,
+    ): Promise<void> {
+      const collectionSlug = slugOrThrow(collection, "collection");
+      const agent = slugOrThrow(agentSlug, "agent");
+      await ensureCollectionExists(deps.db, orgId, collectionSlug);
+      await deps.tupleWriter.revoke({
+        namespace: "Collection",
+        objectId: collectionSlug,
+        relation: "editors",
+        subject: { type: "Agent", id: agent },
       });
     },
 

@@ -1,4 +1,5 @@
 import { flushEvents } from "../../../shared/aggregate-root";
+import { recordDocumentOp } from "../../../shared/document-audit";
 import { ContentDocument } from "../entity";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
 import { extractCollectionFromBody } from "../shared/document-collection";
@@ -32,7 +33,8 @@ export function createContentService(
         },
       );
 
-      const entity = ContentDocument.create(orgId, type, builtData);
+      const audit = opts?.audit;
+      const entity = ContentDocument.create(orgId, type, builtData, audit);
       const saved = await storage.createDocument({
         orgId,
         type,
@@ -42,6 +44,14 @@ export function createContentService(
         collectionId,
       });
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: saved.id,
+          operation: "create",
+          audit,
+        });
+      }
       return saved;
     },
 
@@ -76,6 +86,7 @@ export function createContentService(
         },
       );
 
+      const audit = opts?.audit;
       const updated = await storage.updateDocument(
         existing.id,
         builtData,
@@ -83,25 +94,49 @@ export function createContentService(
         collectionId !== undefined ? collectionId : undefined,
       );
       const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
-      entity.update(updated.data);
+      entity.update(updated.data, audit);
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: updated.id,
+          operation: "update",
+          audit,
+        });
+      }
       return updated;
     },
 
-    async deleteById(orgId, type, id) {
+    async deleteById(orgId, type, id, audit) {
       const existing = await requireContentEntry(storage, orgId, type, id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, existing.status);
-      entity.deleteEntry();
+      entity.deleteEntry(audit);
       await storage.deleteDocument(existing.id);
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: existing.id,
+          operation: "delete",
+          audit,
+        });
+      }
     },
 
-    async publish(orgId, type, id) {
+    async publish(orgId, type, id, audit) {
       const existing = await requireContentEntry(storage, orgId, type, id);
       const published = await storage.publishDocument(existing.id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, "draft");
-      entity.publish();
+      entity.publish(audit);
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: existing.id,
+          operation: "publish",
+          audit,
+        });
+      }
       if (options.onContentPublished) {
         await options.onContentPublished(orgId, type, id);
       }

@@ -5,6 +5,7 @@ import {
   createScopeTeam,
   deleteScopeCollection,
   deleteScopeTeam,
+  fetchScopeAgentBindings,
   fetchScopeBindings,
   fetchScopeCollections,
   fetchScopeTeams,
@@ -12,6 +13,7 @@ import {
   grantTeamPublisher,
   revokeTeamEditor,
   revokeTeamPublisher,
+  unbindCollectionAgentEditors,
   unbindCollectionTeamEditors,
   unbindCollectionTeamPublishers,
 } from "../../auth/document-scope";
@@ -20,14 +22,16 @@ import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler, CatalogSetState } from "./types";
 
 async function refreshScopeCatalog(setState: CatalogSetState): Promise<void> {
-  const [collections, teams, bindings] = await Promise.all([
+  const [collections, teams, bindings, agentBindings] = await Promise.all([
     fetchScopeCollections(),
     fetchScopeTeams(),
     fetchScopeBindings(),
+    fetchScopeAgentBindings(),
   ]);
   setState(ADMIN_STATE.scope.collections, collections);
   setState(ADMIN_STATE.scope.teams, teams);
   setState(ADMIN_STATE.scope.bindings, bindings);
+  setState(ADMIN_STATE.scope.agentBindings, agentBindings);
 }
 
 export const scopeActions = {
@@ -65,15 +69,17 @@ export const scopeActions = {
     setState(ADMIN_STATE.scope.loading, true);
     setState(ADMIN_STATE.scope.error, null);
     try {
-      const [collections, teams, bindings, users] = await Promise.all([
+      const [collections, teams, bindings, agentBindings, users] = await Promise.all([
         fetchScopeCollections(),
         fetchScopeTeams(),
         fetchScopeBindings(),
+        fetchScopeAgentBindings(),
         fetchTeamUsers(),
       ]);
       setState(ADMIN_STATE.scope.collections, collections);
       setState(ADMIN_STATE.scope.teams, teams);
       setState(ADMIN_STATE.scope.bindings, bindings);
+      setState(ADMIN_STATE.scope.agentBindings, agentBindings);
       setState(ADMIN_STATE.team.users, users);
     } catch (err) {
       setState(
@@ -122,6 +128,12 @@ export const scopeActions = {
   unbindCollectionTeamPublishers: (async (params, setState) => {
     const { collection, team } = params as { collection: string; team: string };
     await unbindCollectionTeamPublishers(collection.trim(), team.trim());
+    await refreshScopeCatalog(setState);
+  }) satisfies CatalogActionHandler,
+
+  unbindCollectionAgentEditors: (async (params, setState) => {
+    const { collection, agent } = params as { collection: string; agent: string };
+    await unbindCollectionAgentEditors(collection.trim(), agent.trim());
     await refreshScopeCatalog(setState);
   }) satisfies CatalogActionHandler,
 

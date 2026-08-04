@@ -8,7 +8,7 @@ import type {
   TenantSettingsDTO,
 } from "../ports";
 import { parseDocumentRef } from "../refs";
-import { contentCollections, documents, documentTypes } from "../schema";
+import { contentCollections, documentOps, documents, documentTypes } from "../schema";
 import { normalizeAuthConfig } from "../tenant/auth-config";
 
 export function createPostgresDocumentStorage(db: Database): DocumentStorage {
@@ -240,6 +240,18 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .where(and(eq(contentCollections.orgId, orgId), eq(contentCollections.id, collectionId)))
         .limit(1);
       return row?.slug ?? null;
+    },
+
+    async recordDocumentOp(input) {
+      await db.insert(documentOps).values({
+        orgId: input.orgId,
+        documentId: input.documentId,
+        operation: input.operation,
+        actorType: input.audit.actorType,
+        actorId: input.audit.actorId,
+        onBehalfOf: input.audit.onBehalfOf ?? null,
+        taskId: input.audit.taskId ?? null,
+      });
     },
   };
 }

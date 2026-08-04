@@ -6,6 +6,7 @@
 // only the storage table is shared. A generic `DocumentStorage` implements every
 // type behind one interface so the shared machinery lives once.
 
+import type { WriteAudit } from "@noname/auth";
 import type { ContentFieldSchema, ContentTypeSchema, FieldType } from "@noname/documents";
 
 import type { ContentEntryRef, MediaRef } from "./refs";
@@ -146,6 +147,7 @@ export interface CreateLayoutInput {
   renderAs?: LayoutRenderAs;
   shellRef?: string | null;
   collectionId?: string | null;
+  audit?: WriteAudit;
 }
 
 export interface UpdateLayoutInput {
@@ -337,8 +339,8 @@ export interface ContentDocumentService {
     data: Record<string, unknown>,
     opts?: ContentContentOpts,
   ): Promise<ContentEntryDTO>;
-  deleteById(orgId: string, type: string, id: string): Promise<void>;
-  publish(orgId: string, type: string, id: string): Promise<ContentEntryDTO>;
+  deleteById(orgId: string, type: string, id: string, audit?: WriteAudit): Promise<void>;
+  publish(orgId: string, type: string, id: string, audit?: WriteAudit): Promise<ContentEntryDTO>;
   resolve(
     orgId: string,
     type: string,
@@ -353,7 +355,7 @@ export interface LayoutDocumentService {
     orgId: string,
     id: string,
     input: UpdateLayoutInput,
-    options?: { ifMatchUpdatedAt?: string },
+    options?: { ifMatchUpdatedAt?: string; audit?: WriteAudit },
   ): Promise<LayoutDTO>;
   addVariant(
     orgId: string,
@@ -361,8 +363,8 @@ export interface LayoutDocumentService {
     segment: string,
     overrides: Record<string, unknown>,
   ): Promise<LayoutDTO>;
-  publish(orgId: string, id: string): Promise<LayoutDTO>;
-  archive(orgId: string, id: string): Promise<LayoutDTO>;
+  publish(orgId: string, id: string, audit?: WriteAudit): Promise<LayoutDTO>;
+  archive(orgId: string, id: string, audit?: WriteAudit): Promise<LayoutDTO>;
   list(
     orgId: string,
     filters?: { templateName?: string; segment?: string; status?: LayoutStatus },

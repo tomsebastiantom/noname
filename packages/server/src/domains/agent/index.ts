@@ -35,7 +35,11 @@ export function createAgentDomain(deps: AgentDomainDeps) {
       return permissions;
     },
   });
-  const routes = createAgentRoutes({ service: taskService, registry });
+  const routes = createAgentRoutes({
+    service: taskService,
+    registry,
+    registryStorage: registryStorage,
+  });
   const worker = startAgentWorker(taskStorage, deps.executor);
 
   return {

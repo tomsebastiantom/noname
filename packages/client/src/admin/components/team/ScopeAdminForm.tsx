@@ -2,6 +2,7 @@ import { useStateValue } from "@json-render/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
 import type {
+  CollectionAgentBinding,
   CollectionTeamBinding,
   ScopeCatalogEntry,
   TeamMemberEntry,
@@ -88,6 +89,10 @@ type ScopeAdminLabels = {
   teamsSectionHint: string;
   bindingsSectionTitle: string;
   bindingsSectionHint: string;
+  agentLabel: string;
+  agentBindingsListTitle: string;
+  emptyAgentBindingsMessage: string;
+  removeAgentBindingLabel: string;
   membershipSectionTitle: string;
   membershipSectionHint: string;
   emptyFoldersMessage: string;
@@ -116,6 +121,8 @@ export function ScopeAdminForm({
   const teams = (useStateValue(ADMIN_STATE.scope.teams) as ScopeCatalogEntry[] | undefined) ?? [];
   const bindings =
     (useStateValue(ADMIN_STATE.scope.bindings) as CollectionTeamBinding[] | undefined) ?? [];
+  const agentBindings =
+    (useStateValue(ADMIN_STATE.scope.agentBindings) as CollectionAgentBinding[] | undefined) ?? [];
   const users = (useStateValue(ADMIN_STATE.team.users) as TeamUser[] | undefined) ?? [];
   const loading = (useStateValue(ADMIN_STATE.scope.loading) as boolean | undefined) ?? true;
   const loadError = useStateValue(ADMIN_STATE.scope.error) as string | null | undefined;
@@ -504,6 +511,55 @@ export function ScopeAdminForm({
                       </tr>
                     );
                   })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {agentBindings.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{labels.emptyAgentBindingsMessage}</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <p className="mb-2 text-sm font-medium">{labels.agentBindingsListTitle}</p>
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-muted-foreground">
+                    <th className="pb-2 pr-4 font-medium">{labels.folderLabel}</th>
+                    <th className="pb-2 pr-4 font-medium">{labels.agentLabel}</th>
+                    <th className="pb-2 font-medium" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {agentBindings.map((binding) => (
+                    <tr
+                      key={`${binding.collection}:${binding.agent}`}
+                      className="border-b last:border-0"
+                    >
+                      <td className="py-2 pr-4">{binding.collection}</td>
+                      <td className="py-2 pr-4">{binding.agent}</td>
+                      <td className="py-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={pending}
+                          onClick={() => {
+                            reset();
+                            void submit({
+                              action: "unbindCollectionAgentEditors",
+                              params: {
+                                collection: binding.collection,
+                                agent: binding.agent,
+                              },
+                              successMessage: labels.revokeSuccessMessage,
+                            });
+                          }}
+                        >
+                          {labels.removeAgentBindingLabel}
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -7,7 +7,10 @@ import { registerAgentTaskRoutes } from "./routes/tasks";
 export function createAgentRoutes(deps: AgentRouteDeps) {
   const routes = new Hono();
 
-  registerAgentTaskRoutes(routes, { service: deps.service });
+  registerAgentTaskRoutes(routes, {
+    service: deps.service,
+    registryStorage: deps.registryStorage,
+  });
   if (deps.registry) {
     registerAgentRegistryRoutes(routes, deps.registry);
   }

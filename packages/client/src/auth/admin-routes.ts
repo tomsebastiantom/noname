@@ -15,7 +15,8 @@ export type AdminRouteId =
   | "analytics"
   | "flags"
   | "replay"
-  | "traces";
+  | "traces"
+  | "agents";
 
 type AccessRule = (session: AuthSessionStatus) => boolean;
 
@@ -37,6 +38,9 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
   flags: (s) => sessionHasPermission(s, PERMISSIONS.FLAGS_WRITE),
   replay: (s) => sessionHasPermission(s, PERMISSIONS.SESSION_REPLAY),
   traces: (s) => sessionHasPermission(s, PERMISSIONS.TRACES_VIEW),
+  agents: (s) =>
+    sessionHasPermission(s, PERMISSIONS.CONTENT_DRAFT_WRITE) ||
+    sessionHasPermission(s, PERMISSIONS.AGENT_MANAGE),
 };
 
 export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
@@ -52,6 +56,7 @@ export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
   flags: "/admin/settings/flags",
   replay: "/admin/settings/replay",
   traces: "/admin/settings/traces",
+  agents: "/admin/settings/agents",
 };
 
 const PATH_ENTRIES = (Object.entries(ADMIN_ROUTE_PATHS) as [AdminRouteId, string][]).sort(

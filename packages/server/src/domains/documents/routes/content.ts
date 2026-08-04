@@ -2,6 +2,7 @@ import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, deleted, notFound, ok } from "../../../shared/respond";
+import { auditFromContext } from "../../../shared/request-audit";
 import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
 import { requireActorPermission } from "../../auth/guards";
 import { extractCollectionFromBody } from "../shared/document-collection";
@@ -36,6 +37,7 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
     const createdEntry = await content.create(orgId, c.req.param("type"), body, {
       locale: c.req.query("locale"),
       role: c.req.query("role"),
+      audit: auditFromContext(c, actor),
     });
     return created(c, createdEntry);
   });
@@ -85,10 +87,13 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
       entryId,
     );
     if (denied) return denied;
+    const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
     const { type } = c.req.param();
     const updated = await content.updateById(orgId, type, entryId, body, {
       locale: c.req.query("locale"),
       role: c.req.query("role"),
+      audit: auditFromContext(c, actor),
     });
     return ok(c, updated);
   });
@@ -105,8 +110,10 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
       entryId,
     );
     if (denied) return denied;
+    const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
     const { type, id } = c.req.param();
-    await content.deleteById(orgId, type, id);
+    await content.deleteById(orgId, type, id, auditFromContext(c, actor));
     return deleted(c);
   });
 
@@ -122,8 +129,10 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
       entryId,
     );
     if (denied) return denied;
+    const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_PUBLISH);
+    if (actor instanceof Response) return actor;
     const { type, id } = c.req.param();
-    const published = await content.publish(orgId, type, id);
+    const published = await content.publish(orgId, type, id, auditFromContext(c, actor));
     return ok(c, published);
   });
 }

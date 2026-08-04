@@ -1,3 +1,4 @@
+import { withWriteAudit, type WriteAudit } from "@noname/auth";
 import { AggregateRoot } from "../../shared/aggregate-root";
 import { AgentEvents } from "./events";
 import type { AgentTaskDTO, AgentTaskStatus, AgentTaskType } from "./ports";
@@ -14,6 +15,7 @@ export class AgentTask extends AggregateRoot {
     public error: string | null,
     public model: string | null,
     public tokens: number | null,
+    public readonly registeredAgentId: string | null,
     public readonly createdAt: Date,
     public updatedAt: Date,
   ) {
@@ -25,6 +27,8 @@ export class AgentTask extends AggregateRoot {
     type: AgentTaskType,
     prompt: string,
     input: Record<string, unknown>,
+    audit?: WriteAudit,
+    registeredAgentId: string | null = null,
   ): AgentTask {
     const task = new AgentTask(
       crypto.randomUUID(),
@@ -37,14 +41,12 @@ export class AgentTask extends AggregateRoot {
       null,
       null,
       null,
+      registeredAgentId,
       new Date(),
       new Date(),
     );
-    task.apply(AgentEvents.CREATED, {
-      taskId: task.id,
-      orgId,
-      type,
-    });
+    const payload = { taskId: task.id, orgId, type };
+    task.apply(AgentEvents.CREATED, audit ? withWriteAudit(payload, audit) : payload);
     return task;
   }
 
@@ -81,24 +83,18 @@ export class AgentTask extends AggregateRoot {
     });
   }
 
-  approve(): void {
+  approve(audit?: WriteAudit): void {
     this.status = "approved";
     this.updatedAt = new Date();
-    this.apply(AgentEvents.APPROVED, {
-      taskId: this.id,
-      orgId: this.orgId,
-      type: this.type,
-    });
+    const payload = { taskId: this.id, orgId: this.orgId, type: this.type };
+    this.apply(AgentEvents.APPROVED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
-  reject(): void {
+  reject(audit?: WriteAudit): void {
     this.status = "rejected";
     this.updatedAt = new Date();
-    this.apply(AgentEvents.REJECTED, {
-      taskId: this.id,
-      orgId: this.orgId,
-      type: this.type,
-    });
+    const payload = { taskId: this.id, orgId: this.orgId, type: this.type };
+    this.apply(AgentEvents.REJECTED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
   toDTO(): AgentTaskDTO {
@@ -113,6 +109,10 @@ export class AgentTask extends AggregateRoot {
       error: this.error,
       model: this.model,
       tokens: this.tokens,
+      registeredAgentId: this.registeredAgentId,
+      createdBy: null,
+      approvedBy: null,
+      rejectedBy: null,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
     };
@@ -130,6 +130,7 @@ export class AgentTask extends AggregateRoot {
       dto.error,
       dto.model,
       dto.tokens,
+      dto.registeredAgentId,
       dto.createdAt,
       dto.updatedAt,
     );

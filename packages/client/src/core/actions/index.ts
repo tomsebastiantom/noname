@@ -1,3 +1,4 @@
+import { agentActions } from "./agents";
 import { analyticsActions } from "./analytics";
 import { authActions } from "./auth";
 import { contentActions } from "./content";
@@ -17,6 +18,7 @@ export const coreActionHandlers = {
   ...contentActions,
   ...layoutActions,
   ...teamActions,
+  ...agentActions,
   ...scopeActions,
   ...routingActions,
   ...replayActions,

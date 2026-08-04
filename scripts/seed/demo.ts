@@ -129,6 +129,7 @@ const adminShellNavConfig = {
     { id: "flags", href: "/admin/settings/flags" },
     { id: "replay", href: "/admin/settings/replay" },
     { id: "login", href: "/admin/settings/login" },
+    { id: "agents", href: "/admin/settings/agents" },
   ],
   accountSecurityHref: "/admin/settings/security",
   storefrontHref: "/",
@@ -152,6 +153,7 @@ const adminShellNavLabels = {
     flags: "Feature flags",
     replay: "Session replay",
     login: "Login appearance",
+    agents: "Agents",
   },
   accountSecurity: "Account security",
   storefront: "← Site",
@@ -425,6 +427,7 @@ const adminHomeLinkConfig = [
   { id: "auth", href: "/admin/settings/auth" },
   { id: "account_security", href: "/admin/settings/security" },
   { id: "login", href: "/admin/settings/login" },
+  { id: "agents", href: "/admin/settings/agents" },
 ];
 
 const adminHomeLinkLabels: Record<string, { label: string; description: string }> = {
@@ -465,6 +468,10 @@ const adminHomeLinkLabels: Record<string, { label: string; description: string }
   login: {
     label: "Login appearance",
     description: "Title, logo, and brand copy on /login",
+  },
+  agents: {
+    label: "Agents",
+    description: "Register delegated agents, mint tokens, and review completed tasks",
   },
 };
 
@@ -764,7 +771,11 @@ const scopeAdminLabels = {
   teamsSectionHint: "Named groups of people who work on content together.",
   bindingsSectionTitle: "Folder access",
   bindingsSectionHint:
-    "Connect a folder to a team. Edit = team members can change drafts in that folder. Publish = they can also go live.",
+    "Connect a folder to a team or view agent folder access. Edit = draft in that folder. Publish = go live (teams only; agents never publish).",
+  agentLabel: "Agent",
+  agentBindingsListTitle: "Agent folder access",
+  emptyAgentBindingsMessage: "No agents have folder access yet — grant access on Settings → Agents.",
+  removeAgentBindingLabel: "Remove",
   membershipSectionTitle: "Team members",
   membershipSectionHint:
     "Pick a team, then add org members. Org role (from Settings → Users) must allow editing or publishing. Editor = draft on folders this team can access; publisher = can go live too.",
@@ -803,6 +814,61 @@ const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
       "Team members",
       "Invite staff and assign roles. Store admin: any role. Access manager: any staff role except admin.",
       usersAdminLabels,
+    ),
+  },
+});
+
+const agentsAdminLabels = {
+  loadingLabel: "Loading agents…",
+  forbiddenLabel: "Agents require content draft access.",
+  registrySectionTitle: "Registered agents",
+  registrySectionDescription:
+    "Create agents that draft on your behalf. Permissions are capped to what you hold.",
+  slugLabel: "Slug",
+  labelLabel: "Display name",
+  registerLabel: "Register agent",
+  registeringLabel: "Registering…",
+  registerSuccessMessage: "Agent registered.",
+  deleteLabel: "Delete",
+  deleteConfirm: "Delete agent {slug}? This revokes all folder access.",
+  deleteSuccessMessage: "Agent deleted.",
+  mintTokenLabel: "Mint token",
+  mintingLabel: "Minting…",
+  mintSuccessMessage: "Copy this token now — it won't be shown again.",
+  tokenExpiresLabel: "Expires",
+  grantFolderLabel: "Grant folder editor access",
+  grantFolderSuccessMessage: "Folder access granted.",
+  folderSelectLabel: "Folder",
+  emptyRegistryMessage: "No agents yet — register one above.",
+  tasksSectionTitle: "Agent tasks",
+  tasksSectionDescription: "Review completed agent work before it goes live.",
+  emptyTasksMessage: "No agent tasks yet.",
+  approveLabel: "Approve",
+  rejectLabel: "Reject",
+  taskApprovedMessage: "Task approved.",
+  taskRejectedMessage: "Task rejected.",
+  slugColumnHeader: "Slug",
+  labelColumnHeader: "Name",
+  ownerColumnHeader: "Owner",
+  statusColumnHeader: "Status",
+  typeColumnHeader: "Type",
+  promptColumnHeader: "Prompt",
+  reviewedByColumnHeader: "Reviewed by",
+  tasksForbiddenLabel: "Task review requires store admin or ownership of the agent linked to the task.",
+};
+
+const adminAgentsSpec = adminPanelSpec(["loadAgents", "agentsAdmin"], {
+  loadAgents: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadAgentsAdmin" }, {}),
+  },
+  agentsAdmin: {
+    type: "AgentsAdminForm",
+    props: panelProps(
+      {},
+      "Agents",
+      "Register agents, mint scoped tokens, and approve completed tasks.",
+      agentsAdminLabels,
     ),
   },
 });
@@ -1250,6 +1316,10 @@ async function main() {
   });
   await upsertLayout("admin_users", adminUsersSpec, { renderAs: "panel", shellRef: "admin_shell" });
   await upsertLayout("admin_scope", adminScopeSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_agents", adminAgentsSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
   await upsertLayout("admin_login", adminLoginBrandingSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",

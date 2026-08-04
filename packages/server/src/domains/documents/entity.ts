@@ -1,4 +1,5 @@
 import { AggregateRoot } from "../../shared/aggregate-root";
+import { withWriteAudit, type WriteAudit } from "@noname/auth";
 import { ContentEvents, LayoutEvents } from "./events";
 
 // Content document — extends AggregateRoot so it can collect domain events.
@@ -15,24 +16,45 @@ export class ContentDocument extends AggregateRoot {
     super();
   }
 
-  static create(orgId: string, type: string, data: Record<string, unknown>): ContentDocument {
+  static create(
+    orgId: string,
+    type: string,
+    data: Record<string, unknown>,
+    audit?: WriteAudit,
+  ): ContentDocument {
     const entry = new ContentDocument(crypto.randomUUID(), orgId, type, data, "draft");
-    entry.apply(ContentEvents.CREATED, { id: entry.id, orgId, type, data });
+    const payload = { id: entry.id, orgId, type, data };
+    entry.apply(
+      ContentEvents.CREATED,
+      audit ? withWriteAudit(payload, audit) : payload,
+    );
     return entry;
   }
 
-  update(data: Record<string, unknown>): void {
+  update(data: Record<string, unknown>, audit?: WriteAudit): void {
     this.data = data;
-    this.apply(ContentEvents.UPDATED, { id: this.id, orgId: this.orgId, type: this.type, data });
+    const payload = { id: this.id, orgId: this.orgId, type: this.type, data };
+    this.apply(
+      ContentEvents.UPDATED,
+      audit ? withWriteAudit(payload, audit) : payload,
+    );
   }
 
-  publish(): void {
+  publish(audit?: WriteAudit): void {
     this.status = "published";
-    this.apply(ContentEvents.PUBLISHED, { id: this.id, orgId: this.orgId, type: this.type });
+    const payload = { id: this.id, orgId: this.orgId, type: this.type };
+    this.apply(
+      ContentEvents.PUBLISHED,
+      audit ? withWriteAudit(payload, audit) : payload,
+    );
   }
 
-  deleteEntry(): void {
-    this.apply(ContentEvents.DELETED, { id: this.id, orgId: this.orgId, type: this.type });
+  deleteEntry(audit?: WriteAudit): void {
+    const payload = { id: this.id, orgId: this.orgId, type: this.type };
+    this.apply(
+      ContentEvents.DELETED,
+      audit ? withWriteAudit(payload, audit) : payload,
+    );
   }
 }
 
@@ -61,6 +83,7 @@ export class LayoutDocument extends AggregateRoot {
     spec: Record<string, unknown>,
     version: number,
     baseVersion: number | null,
+    audit?: WriteAudit,
   ): LayoutDocument {
     const layout = new LayoutDocument(
       crypto.randomUUID(),
@@ -74,64 +97,76 @@ export class LayoutDocument extends AggregateRoot {
       new Date(),
       new Date(),
     );
-    layout.apply(LayoutEvents.CREATED, {
+    const payload = {
       id: layout.id,
       orgId,
       templateName,
       segment,
       version,
-    });
+    };
+    layout.apply(LayoutEvents.CREATED, audit ? withWriteAudit(payload, audit) : payload);
     return layout;
   }
 
-  update(spec?: Record<string, unknown>, status?: "draft" | "published" | "archived"): void {
+  update(
+    spec?: Record<string, unknown>,
+    status?: "draft" | "published" | "archived",
+    audit?: WriteAudit,
+  ): void {
     if (spec !== undefined) this.spec = spec;
     if (status !== undefined) this.status = status;
     this.updatedAt = new Date();
-    this.apply(LayoutEvents.UPDATED, {
+    const payload = {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
-    });
+    };
+    this.apply(LayoutEvents.UPDATED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
-  publish(): void {
+  publish(audit?: WriteAudit): void {
     if (this.status === "archived") {
       throw new Error("Cannot publish an archived layout");
     }
     this.status = "published";
     this.updatedAt = new Date();
-    this.apply(LayoutEvents.PUBLISHED, {
+    const payload = {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
       spec: this.spec,
-    });
+    };
+    this.apply(LayoutEvents.PUBLISHED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
-  archive(): void {
+  archive(audit?: WriteAudit): void {
     this.status = "archived";
     this.updatedAt = new Date();
-    this.apply(LayoutEvents.ARCHIVED, {
+    const payload = {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
-    });
+    };
+    this.apply(LayoutEvents.ARCHIVED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
-  recordVariantCreated(): void {
-    this.apply(LayoutEvents.VARIANT_CREATED, {
+  recordVariantCreated(audit?: WriteAudit): void {
+    const payload = {
       id: this.id,
       orgId: this.orgId,
       templateName: this.templateName,
       segment: this.segment,
       version: this.version,
-    });
+    };
+    this.apply(
+      LayoutEvents.VARIANT_CREATED,
+      audit ? withWriteAudit(payload, audit) : payload,
+    );
   }
 }

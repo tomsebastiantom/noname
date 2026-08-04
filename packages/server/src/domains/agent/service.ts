@@ -1,5 +1,6 @@
 import { flushEvents } from "../../shared/aggregate-root";
 import { injectTraceCarrier } from "../../shared/bullmq-trace";
+import { taskAuditRecord } from "../../shared/task-audit";
 import { AgentTask } from "./entity";
 import type { AgentService, AgentTaskStorage } from "./ports";
 import { getAgentQueue } from "./queue";
@@ -7,9 +8,24 @@ import { requireAgentTask, requireCompletedTask } from "./task-guards";
 
 export function createAgentService(storage: AgentTaskStorage): AgentService {
   return {
-    async create(orgId, input) {
-      const entity = AgentTask.create(orgId, input.type, input.prompt, input.input || {});
-      const saved = await storage.create(orgId, entity.toDTO());
+    async create(orgId, input, audit) {
+      const registeredAgentId = input.registeredAgentId ?? null;
+      const entity = AgentTask.create(
+        orgId,
+        input.type,
+        input.prompt,
+        input.input || {},
+        audit,
+        registeredAgentId,
+      );
+      const dto = entity.toDTO();
+      const saved = await storage.create(orgId, {
+        ...dto,
+        registeredAgentId,
+        createdBy: audit ? taskAuditRecord(audit, dto.createdAt) : null,
+        approvedBy: null,
+        rejectedBy: null,
+      });
       flushEvents(entity);
 
       const queue = getAgentQueue();
@@ -38,20 +54,30 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
 
     get: (orgId, id) => requireAgentTask(storage, orgId, id),
 
-    async approve(orgId, id) {
+    async approve(orgId, id, audit) {
       const task = await requireCompletedTask(storage, orgId, id);
       const entity = AgentTask.fromDTO(task);
-      entity.approve();
-      const saved = await storage.update(orgId, id, { status: "approved" });
+      entity.approve(audit);
+      const approvedBy = audit ? taskAuditRecord(audit) : null;
+      const saved = await storage.update(orgId, id, {
+        status: "approved",
+        approvedBy,
+        rejectedBy: null,
+      });
       flushEvents(entity);
       return saved;
     },
 
-    async reject(orgId, id) {
+    async reject(orgId, id, audit) {
       const task = await requireCompletedTask(storage, orgId, id);
       const entity = AgentTask.fromDTO(task);
-      entity.reject();
-      const saved = await storage.update(orgId, id, { status: "rejected" });
+      entity.reject(audit);
+      const rejectedBy = audit ? taskAuditRecord(audit) : null;
+      const saved = await storage.update(orgId, id, {
+        status: "rejected",
+        rejectedBy,
+        approvedBy: null,
+      });
       flushEvents(entity);
       return saved;
     },

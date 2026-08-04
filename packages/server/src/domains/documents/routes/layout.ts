@@ -2,6 +2,7 @@ import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, notFound, ok } from "../../../shared/respond";
+import { auditFromContext } from "../../../shared/request-audit";
 import { denyUnless } from "../../auth/deny-unless";
 import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
 import { requireActorPermission } from "../../auth/guards";
@@ -34,6 +35,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       renderAs: body.renderAs,
       shellRef: body.shellRef,
       collectionId,
+      audit: auditFromContext(c, actor),
     });
     return created(c, createdLayout);
   });
@@ -79,7 +81,10 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       layoutId,
     );
     if (denied) return denied;
+    const actor = await requireActorPermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
     const ifMatch = c.req.header("If-Match");
+    const audit = auditFromContext(c, actor);
     const updated = await layout.update(
       orgId,
       layoutId,
@@ -90,7 +95,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
         shellRef: body.shellRef,
         collectionId: body.collectionId,
       },
-      ifMatch ? { ifMatchUpdatedAt: ifMatch } : undefined,
+      ifMatch ? { ifMatchUpdatedAt: ifMatch, audit } : { audit },
     );
     return ok(c, updated);
   });
@@ -107,7 +112,9 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       layoutId,
     );
     if (denied) return denied;
-    const published = await layout.publish(orgId, layoutId);
+    const actor = await requireActorPermission(c, PERMISSIONS.LAYOUT_PUBLISH);
+    if (actor instanceof Response) return actor;
+    const published = await layout.publish(orgId, layoutId, auditFromContext(c, actor));
     return ok(c, published);
   });
 
@@ -123,7 +130,9 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       layoutId,
     );
     if (denied) return denied;
-    const archived = await layout.archive(orgId, layoutId);
+    const actor = await requireActorPermission(c, PERMISSIONS.LAYOUT_DRAFT_WRITE);
+    if (actor instanceof Response) return actor;
+    const archived = await layout.archive(orgId, layoutId, auditFromContext(c, actor));
     return ok(c, archived);
   });
 

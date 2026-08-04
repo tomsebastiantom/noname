@@ -12,6 +12,7 @@ import { AdminShell } from "./components/shell/AdminShell";
 import { AccountSecurityForm } from "./components/team/AccountSecurityForm";
 import { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 import { UsersAdminForm } from "./components/team/UsersAdminForm";
+import { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 import { TracesAdmin } from "./components/traces/TracesAdmin";
 
 export { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
@@ -30,6 +31,7 @@ export { AdminShell } from "./components/shell/AdminShell";
 export { AccountSecurityForm } from "./components/team/AccountSecurityForm";
 export { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 export { UsersAdminForm } from "./components/team/UsersAdminForm";
+export { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 export { TracesAdmin } from "./components/traces/TracesAdmin";
 
 /** json-render component map for platform admin panels. */
@@ -39,6 +41,7 @@ export const adminComponents = {
   LoginBrandingForm,
   AccountSecurityForm,
   UsersAdminForm,
+  AgentsAdminForm,
   ScopeAdminForm,
   FeatureFlagsAdmin,
   ContentEntryAdmin,

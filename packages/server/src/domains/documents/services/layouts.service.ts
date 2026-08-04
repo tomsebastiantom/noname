@@ -1,4 +1,5 @@
 import { flushEvents } from "../../../shared/aggregate-root";
+import { recordDocumentOp } from "../../../shared/document-audit";
 import { ConflictError, ValidationError } from "../../../shared/domain-error";
 import { LayoutDocument } from "../entity";
 import { applyOverrides, deepClone } from "../merge";
@@ -21,6 +22,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       validateTemplateName(input.templateName);
       validateSpec(input.spec);
 
+      const audit = input.audit;
       const entity = LayoutDocument.create(
         orgId,
         input.templateName,
@@ -28,6 +30,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         input.spec,
         1,
         null,
+        audit,
       );
       const data: Record<string, unknown> = { spec: entity.spec };
       if (input.renderAs) {
@@ -49,6 +52,14 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         collectionId: input.collectionId ?? null,
       });
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: saved.id,
+          operation: "create",
+          audit,
+        });
+      }
       return saved as unknown as LayoutDTO;
     },
 
@@ -66,8 +77,9 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       }
       validateSpec(input.spec);
 
+      const audit = options?.audit;
       const entity = toLayoutEntity(existing as LayoutDTO);
-      entity.update(input.spec);
+      entity.update(input.spec, undefined, audit);
       const nextData: Record<string, unknown> = { ...existing.data, spec: input.spec };
       if (input.contentRef !== undefined) {
         if (input.contentRef === null) {
@@ -89,6 +101,14 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       validateLayoutMetadata(nextData);
       const updated = await storage.updateDocument(id, nextData, existing.meta, input.collectionId);
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: id,
+          operation: "update",
+          audit,
+        });
+      }
       return updated as unknown as LayoutDTO;
     },
 
@@ -150,21 +170,40 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       return rows as unknown as LayoutDTO[];
     },
 
-    async publish(orgId, id) {
+    async publish(orgId, id, audit) {
       const existing = await requireLayoutDocument(storage, id, orgId);
       const published = await storage.publishDocument(id);
       const entity = toLayoutEntity(existing as LayoutDTO);
-      entity.publish();
+      entity.publish(audit);
       flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: id,
+          operation: "publish",
+          audit,
+        });
+      }
       return published as unknown as LayoutDTO;
     },
 
-    async archive(orgId, id) {
+    async archive(orgId, id, audit) {
       const existing = await requireLayoutDocument(storage, id, orgId);
       if (!isPublished(existing)) {
         throw new ValidationError("status", "Only published layouts can be archived");
       }
       const archived = await storage.archiveDocument(id);
+      const entity = toLayoutEntity(existing as LayoutDTO);
+      entity.archive(audit);
+      flushEvents(entity);
+      if (audit) {
+        await recordDocumentOp(storage, {
+          orgId,
+          documentId: id,
+          operation: "archive",
+          audit,
+        });
+      }
       return archived as unknown as LayoutDTO;
     },
 

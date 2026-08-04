@@ -20,6 +20,11 @@ export interface CollectionTeamBinding {
   publishers: boolean;
 }
 
+export interface CollectionAgentBinding {
+  collection: string;
+  agent: string;
+}
+
 export interface TeamMemberEntry {
   userId: string;
   editors: boolean;
@@ -54,6 +59,22 @@ export async function fetchScopeTeams(): Promise<ScopeCatalogEntry[]> {
 export async function fetchScopeBindings(): Promise<CollectionTeamBinding[]> {
   const storeSlug = requireStoreSlug();
   return apiFetchData<CollectionTeamBinding[]>(`/api/auth/${storeSlug}/scope/bindings`);
+}
+
+export async function fetchScopeAgentBindings(): Promise<CollectionAgentBinding[]> {
+  const storeSlug = requireStoreSlug();
+  return apiFetchData<CollectionAgentBinding[]>(`/api/auth/${storeSlug}/scope/agent-bindings`);
+}
+
+export async function unbindCollectionAgentEditors(
+  collection: string,
+  agent: string,
+): Promise<void> {
+  const storeSlug = requireStoreSlug();
+  await apiFetchVoid(
+    `/api/auth/${storeSlug}/scope/collection/${encodeURIComponent(collection)}/agents/${encodeURIComponent(agent)}/editors`,
+    { method: "DELETE" },
+  );
 }
 
 export async function fetchTeamMembers(team: string): Promise<TeamMemberEntry[]> {

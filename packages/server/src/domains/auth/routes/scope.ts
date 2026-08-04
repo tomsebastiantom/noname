@@ -74,6 +74,27 @@ export function registerAuthScopeRoutes(
     return ok(c, await scope.listCollectionTeamBindings(orgId));
   });
 
+  routes.get("/:orgId/scope/agent-bindings", async (c) => {
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = await requireScopeOrAuthManage(c);
+    if (auth instanceof Response) return auth;
+    return ok(c, await scope.listCollectionAgentBindings(orgId));
+  });
+
+  routes.delete("/:orgId/scope/collection/:collection/agents/:agent/editors", async (c) => {
+    const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
+    if (!orgId) return notFound(c);
+    const auth = await requireScopeOrAuthManage(c);
+    if (auth instanceof Response) return auth;
+    await scope.unbindCollectionAgentEditors(
+      orgId,
+      c.req.param("collection"),
+      c.req.param("agent"),
+    );
+    return ok(c, { ok: true });
+  });
+
   routes.put("/:orgId/scope/collection/:collection/teams/:team/editors", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
