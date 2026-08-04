@@ -1,8 +1,8 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
-import { created, notFound, ok } from "../../../shared/respond";
 import { auditFromContext } from "../../../shared/request-audit";
+import { created, notFound, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
 import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
 import { requireActorPermission } from "../../auth/guards";

@@ -26,6 +26,14 @@ export function createLLMProvider(): LLMProvider {
   return createMockProvider();
 }
 
+export function createLLMProviderForApiKey(
+  provider: "openai" | "anthropic",
+  apiKey: string,
+): LLMProvider {
+  if (provider === "openai") return createOpenAIProvider(apiKey);
+  return createAnthropicProvider(apiKey);
+}
+
 function createOpenAIProvider(apiKey: string): LLMProvider {
   return {
     async generate(req) {

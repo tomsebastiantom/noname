@@ -3,8 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
 import type { AgentTask, RegisteredAgent } from "../../../auth/agents";
 import { fetchScopeCollections, type ScopeCatalogEntry } from "../../../auth/document-scope";
-import { PERMISSIONS, sessionHasPermission } from "../../../auth/team-users";
-import { fetchAuthSessionStatus, type AuthSessionStatus } from "../../../auth/team-users";
+import {
+  type AuthSessionStatus,
+  fetchAuthSessionStatus,
+  PERMISSIONS,
+  sessionHasPermission,
+} from "../../../auth/team-users";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Badge } from "../../../components/ui/badge";
 import { Button } from "../../../components/ui/button";
@@ -97,9 +101,7 @@ export function AgentsAdminForm({
   const ownedAgentIds = useMemo(
     () =>
       new Set(
-        registry
-          .filter((agent) => agent.ownerUserId === session?.userId)
-          .map((agent) => agent.id),
+        registry.filter((agent) => agent.ownerUserId === session?.userId).map((agent) => agent.id),
       ),
     [registry, session?.userId],
   );
@@ -301,7 +303,9 @@ export function AgentsAdminForm({
         <Alert>
           <AlertDescription className="space-y-2">
             <p className="font-medium">{labels.mintSuccessMessage}</p>
-            <code className="block break-all rounded bg-muted px-2 py-1 text-xs">{mintedToken}</code>
+            <code className="block break-all rounded bg-muted px-2 py-1 text-xs">
+              {mintedToken}
+            </code>
             {mintedExpires ? (
               <p className="text-xs text-muted-foreground">
                 {labels.tokenExpiresLabel}: {new Date(mintedExpires).toLocaleString()}

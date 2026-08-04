@@ -61,7 +61,7 @@ export {
   canJoinTeamPublisherSlot,
 } from "./team-slot-validation";
 export {
-  writeAuditFromActor,
-  withWriteAudit,
   type WriteAudit,
+  withWriteAudit,
+  writeAuditFromActor,
 } from "./write-audit";

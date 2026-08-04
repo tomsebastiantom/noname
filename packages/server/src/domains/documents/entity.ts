@@ -1,5 +1,5 @@
+import { type WriteAudit, withWriteAudit } from "@noname/auth";
 import { AggregateRoot } from "../../shared/aggregate-root";
-import { withWriteAudit, type WriteAudit } from "@noname/auth";
 import { ContentEvents, LayoutEvents } from "./events";
 
 // Content document — extends AggregateRoot so it can collect domain events.
@@ -24,37 +24,25 @@ export class ContentDocument extends AggregateRoot {
   ): ContentDocument {
     const entry = new ContentDocument(crypto.randomUUID(), orgId, type, data, "draft");
     const payload = { id: entry.id, orgId, type, data };
-    entry.apply(
-      ContentEvents.CREATED,
-      audit ? withWriteAudit(payload, audit) : payload,
-    );
+    entry.apply(ContentEvents.CREATED, audit ? withWriteAudit(payload, audit) : payload);
     return entry;
   }
 
   update(data: Record<string, unknown>, audit?: WriteAudit): void {
     this.data = data;
     const payload = { id: this.id, orgId: this.orgId, type: this.type, data };
-    this.apply(
-      ContentEvents.UPDATED,
-      audit ? withWriteAudit(payload, audit) : payload,
-    );
+    this.apply(ContentEvents.UPDATED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
   publish(audit?: WriteAudit): void {
     this.status = "published";
     const payload = { id: this.id, orgId: this.orgId, type: this.type };
-    this.apply(
-      ContentEvents.PUBLISHED,
-      audit ? withWriteAudit(payload, audit) : payload,
-    );
+    this.apply(ContentEvents.PUBLISHED, audit ? withWriteAudit(payload, audit) : payload);
   }
 
   deleteEntry(audit?: WriteAudit): void {
     const payload = { id: this.id, orgId: this.orgId, type: this.type };
-    this.apply(
-      ContentEvents.DELETED,
-      audit ? withWriteAudit(payload, audit) : payload,
-    );
+    this.apply(ContentEvents.DELETED, audit ? withWriteAudit(payload, audit) : payload);
   }
 }
 
@@ -164,9 +152,6 @@ export class LayoutDocument extends AggregateRoot {
       segment: this.segment,
       version: this.version,
     };
-    this.apply(
-      LayoutEvents.VARIANT_CREATED,
-      audit ? withWriteAudit(payload, audit) : payload,
-    );
+    this.apply(LayoutEvents.VARIANT_CREATED, audit ? withWriteAudit(payload, audit) : payload);
   }
 }

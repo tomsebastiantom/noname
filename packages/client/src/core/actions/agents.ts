@@ -7,8 +7,6 @@ import {
   mintAgentToken,
   registerAgent,
   rejectAgentTask,
-  type AgentTask,
-  type RegisteredAgent,
 } from "../../auth/agents";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
@@ -51,7 +49,7 @@ export const agentActions = {
     setState(ADMIN_STATE.agents.mintedTokenExpiresAt, minted.expiresAt);
   }) satisfies CatalogActionHandler,
 
-  grantAgentCollectionEditor: (async (params, setState) => {
+  grantAgentCollectionEditor: (async (params, _setState) => {
     const { agentId, collectionSlug } = params as { agentId: string; collectionSlug: string };
     await grantAgentCollectionEditor(agentId, collectionSlug);
   }) satisfies CatalogActionHandler,

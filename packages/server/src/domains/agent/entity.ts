@@ -1,4 +1,4 @@
-import { withWriteAudit, type WriteAudit } from "@noname/auth";
+import { type WriteAudit, withWriteAudit } from "@noname/auth";
 import { AggregateRoot } from "../../shared/aggregate-root";
 import { AgentEvents } from "./events";
 import type { AgentTaskDTO, AgentTaskStatus, AgentTaskType } from "./ports";

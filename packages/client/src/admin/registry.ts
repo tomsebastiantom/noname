@@ -1,3 +1,4 @@
+import { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 import { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
 import { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
@@ -12,9 +13,9 @@ import { AdminShell } from "./components/shell/AdminShell";
 import { AccountSecurityForm } from "./components/team/AccountSecurityForm";
 import { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 import { UsersAdminForm } from "./components/team/UsersAdminForm";
-import { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 import { TracesAdmin } from "./components/traces/TracesAdmin";
 
+export { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 export { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
 export { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
@@ -31,7 +32,6 @@ export { AdminShell } from "./components/shell/AdminShell";
 export { AccountSecurityForm } from "./components/team/AccountSecurityForm";
 export { ScopeAdminForm } from "./components/team/ScopeAdminForm";
 export { UsersAdminForm } from "./components/team/UsersAdminForm";
-export { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 export { TracesAdmin } from "./components/traces/TracesAdmin";
 
 /** json-render component map for platform admin panels. */

@@ -1,11 +1,14 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import type { SecretsService } from "../secrets/ports";
 import type { AIPipeline } from "./ports";
 import { createLLMProvider } from "./providers";
 
 const tracer = trace.getTracer("ai-pipeline");
 
-export function createAIPipeline(): AIPipeline {
-  const provider = createLLMProvider();
+export function createAIPipeline(
+  deps: { secrets?: Pick<SecretsService, "resolveLLMProvider"> } = {},
+): AIPipeline {
+  const resolveProvider = deps.secrets?.resolveLLMProvider ?? (async () => createLLMProvider());
 
   async function callLLM(
     orgId: string,
@@ -28,6 +31,7 @@ export function createAIPipeline(): AIPipeline {
         span.setAttribute("ai.prompt_length", prompt.length);
 
         const id = crypto.randomUUID();
+        const provider = await resolveProvider(orgId);
         const result = await provider.generate({
           prompt,
           targetType,

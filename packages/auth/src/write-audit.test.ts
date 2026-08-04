@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { writeAuditFromActor, withWriteAudit } from "./write-audit";
+import { withWriteAudit, writeAuditFromActor } from "./write-audit";
 
 describe("writeAuditFromActor", () => {
   it("maps human actor", () => {
@@ -39,10 +39,13 @@ describe("writeAuditFromActor", () => {
 
   it("merges audit into event payload", () => {
     expect(
-      withWriteAudit({ id: "doc-1" }, {
-        actorType: "human",
-        actorId: "user-1",
-      }),
+      withWriteAudit(
+        { id: "doc-1" },
+        {
+          actorType: "human",
+          actorId: "user-1",
+        },
+      ),
     ).toEqual({
       id: "doc-1",
       actorType: "human",

@@ -71,8 +71,8 @@ describe("canReviewAgentTask", () => {
 
   it("denies non-admin when task has no linked agent", async () => {
     const registry = {} as AgentRegistryStorage;
-    await expect(
-      canReviewAgentTask(registry, "org-1", task(null), "owner-1", []),
-    ).resolves.toBe(false);
+    await expect(canReviewAgentTask(registry, "org-1", task(null), "owner-1", [])).resolves.toBe(
+      false,
+    );
   });
 });

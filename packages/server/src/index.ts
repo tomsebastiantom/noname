@@ -15,6 +15,7 @@ import { createPostgresDocumentStorage } from "./domains/documents/adapters/post
 import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
 import { createMachineDomain } from "./domains/machines";
+import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
@@ -73,6 +74,10 @@ const auth = createAuthDomain({
 });
 onAuthProviderPublished = auth.onAuthProviderPublished;
 
+const secrets = createSecretsDomain({
+  tenantSettings: docs.service.tenantSettings,
+});
+
 app.route("/api/documents", docs.routes);
 
 const ctx = createContextDomain({ db });
@@ -86,7 +91,7 @@ app.route("/api/flags", flags.routes);
 const analytics = await createAnalyticsDomain();
 app.route("/api/analytics", analytics.routes);
 
-const aiPipeline = createAIPipelineDomain();
+const aiPipeline = createAIPipelineDomain({ secrets: secrets.service });
 app.route("/api/ai", aiPipeline.routes);
 
 function pipelineTaskResult(r: { response: unknown; model: string; tokens: number }) {

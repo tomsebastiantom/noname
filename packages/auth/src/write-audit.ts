@@ -1,4 +1,4 @@
-import type { AuthActor, ActorType } from "./actors";
+import type { ActorType, AuthActor } from "./actors";
 
 /** Attribution recorded on document writes and agent lifecycle events. */
 export type WriteAudit = {

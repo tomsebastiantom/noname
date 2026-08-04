@@ -1,17 +1,16 @@
 import { PERMISSIONS, writeAuditFromActor } from "@noname/auth";
-import type { Hono } from "hono";
-import type { Context } from "hono";
+import type { Context, Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, ok } from "../../../shared/respond";
 import { requireHumanPermission } from "../../auth/guards";
 import type { AgentRegistryStorage } from "../adapters/registry-postgres";
 import type { AgentTaskFilters } from "../ports";
-import type { AgentRouteDeps } from "./deps";
 import {
   canReviewAgentTask,
   isRegisteredAgentOwner,
   isStoreAgentAdmin,
 } from "../task-review-guard";
+import type { AgentRouteDeps } from "./deps";
 
 type TaskRouteAuth = {
   userId: string;
