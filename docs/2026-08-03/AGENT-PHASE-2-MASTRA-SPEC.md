@@ -1,6 +1,7 @@
 # Agent Phase 2 — Multi-step Mastra runtime (full spec)
 
-> **Status:** Approved plan — implement after A′ (actors, Keto scope, audit, admin UI)  
+> **Status:** Approved plan — implement **after** Phase I (Vault + integrations + Nango)  
+> **Prerequisite:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) I-a through I-d + I-e ingestion checklist  
 > **Goal:** One merchant task (“Optimize my checkout”) → agent runs **many tool steps** on the platform → human reviews → human publishes  
 > **Related:** [`AGENT-OWNERSHIP-AND-REVIEW.md`](./AGENT-OWNERSHIP-AND-REVIEW.md) · [`IDENTITY-AGENTS-MASTER-PLAN.md`](./IDENTITY-AGENTS-MASTER-PLAN.md) · [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md) § agent
 

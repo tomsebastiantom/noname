@@ -218,12 +218,12 @@ Use this when onboarding a merchant org (demo or prod).
 
 ### 3. Integrations — LLM (noname, Phase 1)
 
-- [ ] **LLM settings**: provider choice, optional BYOK paste (→ `org_secrets`), or platform fallback allowed.
+- [ ] **LLM settings**: provider choice, optional BYOK paste (→ **Vault** via `domains/integrations`), or platform fallback allowed.
 - [ ] Confirm `hasOrgKey` / `allowPlatformFallback` flags on read.
 
 ### 4. Integrations — comms (noname, Phase 1)
 
-- [ ] **Comms settings**: email provider, from-address, optional BYOK (→ `org_secrets`).
+- [ ] **Comms settings**: email provider, from-address, optional BYOK (→ **Vault**).
 - [ ] Seed or create notification templates in CMS.
 - [ ] Platform fallback `RESEND_API_KEY` for dev tenants without BYOK.
 
@@ -232,10 +232,10 @@ Use this when onboarding a merchant org (demo or prod).
 - [ ] Defaults for new members (e.g. agent task email on for owners).
 - [ ] User can opt out of non-transactional categories.
 
-### 6. Phase 2+ (when enabled)
+### 6. Phase I-d+ (when enabled)
 
 - [ ] **Nango**: connect Stripe/Shopify via admin UI; store `connectionId` only in `tenant_settings`.
-- [ ] **Vault**: platform ops inject `ORG_SECRETS_KEY`, DB URLs, `NANGO_ENCRYPTION_KEY`.
+- [ ] **Vault**: platform ops inject DB URLs, `NANGO_ENCRYPTION_KEY`, platform LLM/comms fallbacks.
 
 ---
 
@@ -254,26 +254,29 @@ Use this when onboarding a merchant org (demo or prod).
 ┌──────────────┐    ┌──────────────────▼──────────────────┐    ┌─────────────┐
 │ ZITADEL      │◄───│  noname server                       ├───►│ Keto        │
 │ login, orgs  │    │  documents, agents, notifications,   │    │ permissions │
-└──────────────┘    │  org_secrets, queues                 │    └─────────────┘
+└──────────────┘    │  secrets, integrations, queues       │    └─────────────┘
                     └──────┬───────────────┬───────────────┘
                            │               │
               ┌────────────▼───┐   ┌───────▼────────┐
               │ Postgres (app) │   │ Redis/BullMQ   │
-              │ org_secrets    │   │ email-outbound │
+              │ flags, CMS     │   │ email-outbound │
               │ templates      │   │ agent-tasks    │
               └────────────────┘   └────────────────┘
+                           │
+              ┌────────────▼────────────┐
+              │ HashiCorp Vault         │
+              │ org LLM/comms BYOK      │
+              │ platform keys           │
+              └────────────┬────────────┘
                            │
               ┌────────────▼────────────┐
               │ External APIs           │
               │ OpenAI, Resend, Twilio  │
               └─────────────────────────┘
 
-        Phase 2+ (dashed — not v1):
+        Phase I-d (Nango):
               ┌────────────┐
-              │ Nango      │── Stripe, Shopify OAuth
-              └────────────┘
-              ┌────────────┐
-              │ Vault      │── platform master keys (optional)
+              │ Nango      │── Stripe, Shopify, Gmail OAuth
               └────────────┘
 ```
 
@@ -283,26 +286,25 @@ Use this when onboarding a merchant org (demo or prod).
 
 | Question | Answer |
 |----------|--------|
-| Need Noti as separate service now? | **No** — notifications domain + `org_secrets` in noname. |
+| Need Noti as separate service now? | **No** — notifications domain + **Vault** in noname. |
 | Can Noti ideas be reused? | **Yes** — write-only BYOK UI, send port, delivery log table. |
 | Go in monorepo? | **Possible later**; not worth it for v1 transactional email. |
 | Nango for Twilio/SMS? | **Wrong tool** — Nango can sync Twilio; platform **sends** via comms domain. |
 | Nango when? | Phase 2 commerce OAuth — not LLM, not comms. |
-| Vault for everything? | Vault for **platform** keys; Nango keeps its own DB for OAuth tokens; **`org_secrets`** for LLM/comms BYOK unless you migrate to Vault paths later. |
+| Vault for everything? | Vault for **platform + merchant BYOK** (LLM/comms); Nango keeps its own DB for OAuth tokens only. |
 | Per-user API keys? | **No** for v1 — org keys + per-user **preferences**. |
 
 ---
 
 ## Implementation order (when coding)
 
-1. **`org_secrets`** schema + encrypt helper + `ORG_SECRETS_KEY` env (kinds: `llm`, `comms`).
-2. Extend **`tenant_settings.integrations`** types + admin read derived flags.
-3. **`resolveLLMProvider`** — see [`LLM-CREDENTIALS-PER-ORG.md`](../2026-08-03/LLM-CREDENTIALS-PER-ORG.md).
-4. **`domains/notifications`** + `resolveCommsProvider` + `comms_deliveries`.
-5. **`notification_preferences`** table + user settings UI (minimal).
-6. **`email-outbound`** BullMQ worker: render CMS template → send.
-7. Admin forms: **LLM settings**, **Comms settings** (mirror Auth settings BYOK pattern).
-8. Phase 2: Nango docker profile + `connectionId` pointers only.
+Follow [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md):
+
+1. **I-a** — Vault in compose + `domains/secrets` + `resolveLLMProvider`
+2. **I-b** — `domains/integrations` admin (LLM/comms BYOK → Vault)
+3. **I-c** — `domains/notifications` + `email-outbound` worker
+4. **I-d** — Nango compose + OAuth connect path
+5. **Phase II** — Mastra agents (after I-a–I-d)
 
 ---
 
@@ -315,7 +317,7 @@ No for v1. Notifications are a **domain** in noname, like agents or documents.
 CMS documents. Worker renders; does not fetch from an external template SaaS.
 
 **Can one Vault store rule them all?**  
-Platform secrets yes. Merchant OAuth (Nango) stays in Nango DB. Merchant LLM/comms BYOK can use `org_secrets` now or Vault KV paths later — pick one backend, not both.
+Platform + merchant BYOK (LLM/comms) → **Vault**. Merchant OAuth (Stripe/Gmail) → **Nango DB**. Postgres holds flags and `connectionId` only — one secret, one home.
 
 **Per user per store for notifications?**  
 **Preferences and delivery targets** — per user. **Provider credentials** — per org (store).

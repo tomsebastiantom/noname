@@ -198,6 +198,30 @@ integrations: {
 
 ---
 
+## Phase I-e — Agent context ingestion (document before Mastra)
+
+**Before Phase II.** Mastra tools do not scrape the platform ad hoc — they read through **existing ingest paths and domain ports**. Document and verify these work for agent JWT + Keto scope.
+
+| Source | Ingest / read path | Agent tool use |
+|--------|-------------------|----------------|
+| **Analytics** | Browser SDK → edge → `POST /api/analytics/track` → BullMQ → ClickHouse | `readAnalytics` — query API, not raw CH from agent |
+| **CMS documents** | `documents` domain CRUD + OPL | `generate_layout` / `generate_content` drafts |
+| **Tenant settings** | `tenant_settings` (flags, `connectionId`, folder scope) | Planner context; no secrets |
+| **Nango webhooks** | `POST .../integrations/nango/webhook` → update `connectionId` | `nango_trigger` only after connection exists |
+| **LLM usage** | `llm_usage` append on each ai-pipeline call | Billing / quota in task output |
+
+**Rules:**
+
+1. Agents never call Vault or Nango SDK directly — only `secrets.service` and `integrations` ports from tool `execute`.
+2. Ingest routes stay **public** for storefront analytics; agent reads use **authenticated query APIs** with org scope.
+3. Webhook ingestion (Nango) is async; tools must handle missing `connectionId` gracefully.
+
+**Existing docs:** [`analytics-domain.md`](../2026-07-04/analytics-domain.md) · [`BROWSER-SDK-INTEGRATION.md`](../2026-07-27/BROWSER-SDK-INTEGRATION.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md)
+
+**Deliverable:** checklist in Mastra spec PR that each tool’s data source is wired (no new ingest product).
+
+---
+
 ## Phase II — Agents + Mastra (after I-a … I-d)
 
 **Prerequisite:** `resolveLLMProvider(orgId)` works; at least one Nango connection type tested.

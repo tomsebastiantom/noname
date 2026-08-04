@@ -1,10 +1,12 @@
 # LLM credentials per org — reuse audit (no code)
 
-> **Date:** 2026-08-03  
+> **Date:** 2026-08-03 (updated 2026-08-04)  
 > **Question:** Can we reuse existing credential storage (Nango, login/IdP, etc.) for per-org LLM API keys (BYOK + platform fallback)?  
-> **Answer:** Reuse the **auth credential pattern**, not Nango or CMS. Add a small **org secrets** layer when implementing.
+> **Answer:** Reuse the **auth credential pattern**, not Nango or CMS. Store keys in **HashiCorp Vault** via **`domains/secrets`** (not Postgres).
 
-**Related:** [`ORG-AUTH-CONFIG.md`](../2026-07-25/ORG-AUTH-CONFIG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) · [`VAULT-CLIENT-SECRETS.md`](../2026-08-04/VAULT-CLIENT-SECRETS.md)
+> **Decision (2026-08-04):** Option A (`org_secrets` Postgres table) is **superseded**. Use Vault paths `noname/orgs/{orgId}/llm/{provider}`. Build order: [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md).
+
+**Related:** [`ORG-AUTH-CONFIG.md`](../2026-07-25/ORG-AUTH-CONFIG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) · [`VAULT-CLIENT-SECRETS.md`](../2026-08-04/VAULT-CLIENT-SECRETS.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md)
 
 ---
 
@@ -120,9 +122,8 @@ This stays as **fallback** after per-org resolution.
 └───────────────────────────┬─────────────────────────────────┘
                             │ PUT (key write-only)
 ┌───────────────────────────▼─────────────────────────────────┐
-│ org_secrets (NEW) — Postgres, server-only                      │
-│   org_id, kind ('llm_openai' | 'llm_anthropic'), ciphertext   │
-│   Encrypted with platform LLM_SECRETS_KEY (env)                │
+│ HashiCorp Vault — `noname/orgs/{orgId}/llm/{provider}`       │
+│   { apiKey, updatedAt, updatedBy } — server-only via adapter │
 └───────────────────────────┬─────────────────────────────────┘
                             │
 ┌───────────────────────────▼─────────────────────────────────┐
@@ -143,7 +144,7 @@ This stays as **fallback** after per-org resolution.
 
 | Login | LLM |
 |-------|-----|
-| ZITADEL stores OAuth secret | `org_secrets` stores API key |
+| ZITADEL stores OAuth secret | **Vault** stores API key |
 | `tenant_settings.auth.idpIds` | `tenant_settings.integrations.llm` flags |
 | `PUT /auth/:orgId/config` | `PUT /tenant_settings/default` or `PUT /integrations/llm` |
 | `GET /auth/:orgId/config` (no secrets) | GET returns `hasOrgKey: true` only |
@@ -165,17 +166,15 @@ Credentials ≠ usage. Even with BYOK, log every call for quotas and support:
 
 ## Option A vs Option B (credential store)
 
-Two valid approaches. Pick based on whether you deploy Nango anyway.
+> **2026-08-04:** **Option A is superseded.** Use **Vault** (see [`VAULT-CLIENT-SECRETS.md`](../2026-08-04/VAULT-CLIENT-SECRETS.md)). Option B below remains valid only if you already centralize *all* external creds in Nango — we do **not** use Nango for LLM BYOK in the approved plan.
 
-### Option A — `org_secrets` in noname Postgres (minimal)
+Two approaches were considered. Pick based on whether you deploy Nango anyway.
 
-- Small table + `LLM_SECRETS_KEY` in **your** server env  
-- Best when you **only** need LLM BYOK and Nango is not running yet  
-- Same pattern as auth (write-only admin), no extra service  
+### Option A — ~~`org_secrets` in noname Postgres~~ (superseded)
 
-See implementation order below.
+~~Small table + `LLM_SECRETS_KEY` in server env~~ — **replaced by Vault KV paths** under `domains/secrets`. Do not implement this table.
 
-### Option B — Nango as credential store (reuse if integrations ship)
+### Option B — Nango as credential store (not chosen for LLM)
 
 **Yes — per [Nango security docs](https://nango.dev/docs/guides/platform/security), credentials go inside Nango’s setup:**
 
@@ -232,8 +231,8 @@ Flow for merchant BYOK:
 | Auth config pattern (write-only + secret store) | ✅ | **Always** for UX |
 | `tenant_settings.integrations` for flags + `connectionId` | ✅ | **Do this** |
 | Platform env fallback | ✅ | **Keep** |
-| **`org_secrets` (Option A)** | ✅ | **Default** if Nango not live |
-| **Nango connections (Option B)** | ✅ | **Good** when Nango ships for integrations; OpenAI supported |
+| **Vault (approved)** | ✅ | **Default** — LLM/comms BYOK + platform keys |
+| **Nango connections (Option B)** | ✅ | OAuth integrations only (Stripe, Gmail); not LLM BYOK |
 | ZITADEL for LLM keys | ❌ | Wrong product |
 | CMS content fields | ❌ | Forbidden |
 | Noti credential vault | 🟡 | Notifications, not LLM; separate concern |
@@ -243,13 +242,15 @@ Flow for merchant BYOK:
 
 ## Implementation order (when ready — not now)
 
-1. `org_secrets` table + `LLM_SECRETS_KEY` env + encrypt/decrypt helper  
+See [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) Phase **I-a** / **I-b**:
+
+1. `domains/secrets` + Vault compose + `SecretStorePort`  
 2. Extend `tenant_settings.integrations.llm` (types + admin UI)  
 3. `resolveLLMProvider(orgId)` in ai-pipeline  
 4. `llm_usage` logging on every call  
 5. Optional: usage dashboard / quota per org on platform key  
 
-**No dependency on Nango or Mastra** for credentials — only ai-pipeline + tenant settings.
+**No dependency on Nango or Mastra** for LLM credentials — Vault + ai-pipeline + tenant settings first.
 
 ---
 
@@ -259,7 +260,7 @@ Flow for merchant BYOK:
 Nango is not deployed; even when it is, it is for OAuth integrations (Stripe etc.), not LLM. Merchants paste OpenAI keys in admin (BYOK) or use platform key.
 
 **Same as “someone stores their [OAuth] credentials”?**  
-Same **UX pattern** as Google OAuth in Auth settings — different **backend store** (org_secrets vs ZITADEL IdP).
+Same **UX pattern** as Google OAuth in Auth settings — different **backend store** (**Vault** vs ZITADEL IdP).
 
 **Platform token when no org key?**  
 Yes — identical to dev/single-tenant today: env keys apply to all orgs without BYOK until quota/policy says otherwise.
