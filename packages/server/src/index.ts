@@ -88,6 +88,7 @@ const integrations = createIntegrationsDomain({
 const notifications = createNotificationsDomain({
   db,
   secrets: secrets.service,
+  content: docs.service.content,
 });
 
 app.route("/api/documents", docs.routes);

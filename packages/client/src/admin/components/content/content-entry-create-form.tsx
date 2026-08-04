@@ -23,6 +23,7 @@ export function ContentEntryCreateForm({
   values,
   folderInput,
   locale,
+  contentType,
   mediaLabels,
   referenceLabels,
   referenceOptions,
@@ -42,6 +43,7 @@ export function ContentEntryCreateForm({
   values: Record<string, string>;
   folderInput: string;
   locale: string;
+  contentType?: string;
   mediaLabels: MediaFieldLabels;
   referenceLabels: ReferenceFieldLabels;
   referenceOptions?: Record<string, ReferenceFieldOptions>;
@@ -80,6 +82,7 @@ export function ContentEntryCreateForm({
               <ContentEntryFieldInput
                 key={field.key}
                 field={field}
+                contentType={contentType}
                 locale={locale}
                 value={values[field.key] ?? ""}
                 onChange={(v) => onValuesChange({ ...values, [field.key]: v })}

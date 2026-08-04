@@ -232,7 +232,7 @@ Flow for merchant BYOK:
 | `tenant_settings.integrations` for flags + `connectionId` | ✅ | **Do this** |
 | Platform env fallback | ✅ | **Keep** |
 | **Vault (approved)** | ✅ | **Default** — LLM/comms BYOK + platform keys |
-| **Nango connections (Option B)** | ✅ | OAuth integrations only (Stripe, Gmail); not LLM BYOK |
+| **Nango connections (Option B)** | ✅ | OAuth integrations only (any Nango-enabled provider); not LLM BYOK |
 | ZITADEL for LLM keys | ❌ | Wrong product |
 | CMS content fields | ❌ | Forbidden |
 | Noti credential vault | 🟡 | Notifications, not LLM; separate concern |

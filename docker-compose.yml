@@ -197,6 +197,45 @@ services:
       timeout: 3s
       retries: 10
 
+  # Nango — OAuth integrations (profile: integrations). See docs/2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md
+  nango:
+    profiles: [integrations]
+    image: nangohq/nango-server:hosted
+    platform: linux/amd64
+    ports:
+      - "3003:3003"
+      - "3009:3009"
+    environment:
+      SERVER_PORT: "3003"
+      NANGO_CONNECT_UI_PORT: "3009"
+      NANGO_SERVER_URL: ${NANGO_SERVER_URL:-http://localhost:3003}
+      NANGO_PUBLIC_SERVER_URL: ${NANGO_PUBLIC_SERVER_URL:-http://localhost:3003}
+      NANGO_PUBLIC_CONNECT_URL: ${NANGO_PUBLIC_CONNECT_URL:-http://localhost:3009}
+      FLAG_SERVE_CONNECT_UI: "true"
+      NANGO_LOGS_ENABLED: "false"
+      NANGO_DB_HOST: postgres
+      NANGO_DB_PORT: "5432"
+      NANGO_DB_USER: noname
+      NANGO_DB_PASSWORD: ${POSTGRES_PASSWORD:-noname_dev}
+      NANGO_DB_NAME: nango
+      NANGO_DB_SSL: "false"
+      RECORDS_DATABASE_URL: postgresql://noname:${POSTGRES_PASSWORD:-noname_dev}@postgres:5432/nango
+      NANGO_REDIS_URL: redis://dragonfly:6379
+      NANGO_SECRET_KEY: ${NANGO_SECRET_KEY:-dev_secret_key}
+      NANGO_ENCRYPTION_KEY: ${NANGO_ENCRYPTION_KEY:-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      dragonfly:
+        condition: service_healthy
+      postgres-init-dbs:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
 volumes:
   postgres_data:
   clickhouse_data:

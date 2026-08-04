@@ -175,6 +175,7 @@ function ContentEntryEntriesPanel({
         values={values}
         folderInput={folderInput}
         locale={locale}
+        contentType={contentType}
         mediaLabels={mediaLabels}
         referenceLabels={referenceLabels}
         referenceOptions={referenceOptions}

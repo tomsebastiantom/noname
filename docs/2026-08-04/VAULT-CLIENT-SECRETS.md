@@ -14,7 +14,7 @@
 | Store | What lives there |
 |-------|------------------|
 | **ZITADEL** | Human login — OAuth client id/secret for Google/GitHub/Apple **IdP**, passwords, sessions |
-| **Nango** (Phase 2+) | Merchant **OAuth connections** — Stripe, Shopify, Gmail-for-agents refresh tokens |
+| **Nango** (Phase 2+) | Merchant **OAuth connections** — refresh tokens for any integration enabled in Nango |
 | **Vault** | Everything else in this doc |
 | **Postgres `app`** | **No raw secrets** — only flags, `connectionId`, audit, CMS, prefs |
 
@@ -65,7 +65,7 @@ Optional fields per provider: `fromEmail`, `accountSid`, `region` — non-secret
 | Item | Correct home | Why |
 |------|--------------|-----|
 | Google login OAuth client secret (merchant IdP) | **ZITADEL** | Identity product |
-| Stripe / Shopify **access + refresh tokens** | **Nango** | OAuth lifecycle |
+| Merchant OAuth **access + refresh tokens** | **Nango** | OAuth lifecycle (any provider) |
 | `connectionId` pointer | **Postgres** `tenant_settings` | Not a secret |
 | Email template bodies | **CMS documents** | Content |
 | Notification prefs (opt-in, channels) | **Postgres** | Not secrets |
@@ -91,7 +91,7 @@ integrations: {
     fromEmail?: string;
     fromName?: string;
   };
-  stripe?: { connectionId: string }; // Phase 2 — Nango pointer only
+  nango?: Record<string, { connectionId: string }>; // Phase 2 — Nango pointer only
 }
 ```
 
@@ -245,7 +245,7 @@ Merchant admin
 Login OAuth (Google for sign-in)
     → ZITADEL IdP credentials
 
-Stripe / Gmail agent OAuth
+Merchant OAuth (any external API via Nango)
     → Nango DB (encrypted) + connectionId in Postgres
 
 Platform ops keys

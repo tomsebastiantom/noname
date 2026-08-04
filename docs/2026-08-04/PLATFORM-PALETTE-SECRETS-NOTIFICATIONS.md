@@ -17,7 +17,7 @@
 | Product + CMS + agents | **noname** (`@noname/server`) | Platform + BYOK via **Vault** | 0 → 1 |
 | Notifications | **`domains/notifications`** in noname | Comms BYOK in **Vault** | 1 |
 | LLM BYOK | **ai-pipeline** in noname | LLM keys in **Vault** | 1 |
-| Commerce OAuth (Stripe, Shopify) | **Nango** (deferred) | Tokens in Nango Postgres | 2+ |
+| Merchant OAuth (external SaaS) | **Nango** | Tokens in Nango Postgres | 2+ |
 | **All other client / platform secrets** | **HashiCorp Vault** | See [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) | 1b prod |
 | Separate Noti / Go send service | **Not used for v1** | — | optional later |
 
@@ -59,7 +59,7 @@
 | Component | Role | Secrets | When |
 |-----------|------|---------|------|
 | **HashiCorp Vault** | BYOK + platform keys | Own storage (compose `:8200` dev; HA prod) | **I-a** — before integrations admin |
-| **Nango** | Stripe, Shopify, Gmail OAuth + proxy/MCP | `NANGO_ENCRYPTION_KEY` from Vault; tokens in `nango` DB | **I-d** — before Mastra tools need OAuth |
+| **Nango** | OAuth + proxy/MCP for integrations enabled in Nango | `NANGO_ENCRYPTION_KEY` from Vault; tokens in `nango` DB | **I-d** — before Mastra tools need OAuth |
 | **Noti / Go send service** | Not used | — | optional later |
 
 ### Explicitly not used for secrets
@@ -102,7 +102,7 @@ integrations: {
     fromEmail?: string;
     fromName?: string;
   };
-  // Phase 2+: stripe?: { connectionId: string }  // pointer to Nango only
+  // nango?: Record<string, { connectionId: string }>  // pointer to Nango only
 }
 ```
 
@@ -135,15 +135,24 @@ integrations: {
 
 ### Architecture
 
+**Email templates are required.** They are org-owned CMS documents — not a separate template SaaS, not optional worker logic.
+
 ```
 Trigger (XState / agent / admin)
-    → enqueue email-outbound { orgId, templateId, userId?, to, variables }
-    → TS worker: load template from documents, render HTML/subject
-    → resolveCommsProvider(orgId, 'email')
-    → Resend/Twilio SDK send
-    → insert comms_deliveries
-    → optional in-app notification row for userId
+    → notifications.enqueueTemplatedEmail({ orgId, templateId, to, variables, userId? })
+    → notifications.service:
+        load published template from documents domain
+        render subject + html (variable substitution)
+        respect notification_preferences when userId set
+        insert comms_deliveries (queued)
+        enqueue email-outbound { subject, html, … }
+    → worker: resolveCommsProvider(orgId) → Resend/Twilio send
+    → update comms_deliveries (sent | failed)
 ```
+
+**Alternative (same pipeline):** agent or machine calls `enqueueEmail` with **already-rendered** `subject` + `html` (e.g. LLM-generated body). Use templates for merchant-editable transactional mail; use raw html for dynamic one-offs.
+
+Worker **does not** load CMS — render happens in **service at enqueue** so the queue stays dumb transport.
 
 ### Split: org vs user
 
@@ -160,23 +169,16 @@ Trigger (XState / agent / admin)
 
 **Staff users share the org’s sending credentials.** They do not each get their own Resend key unless you add a rare BYOK-per-user product later (not v1).
 
-### NotificationPort (swap later without rewrite)
+### NotificationPort (current + template path)
 
 ```typescript
-// domains/notifications/ports.ts — conceptual
-send(input: {
-  orgId: string;
-  channel: 'email' | 'sms' | 'push';
-  to: string;
-  subject?: string;
-  body: string;
-  templateId?: string;
-  userId?: string;
-}): Promise<DeliveryResult>;
+// domains/notifications/ports.ts — target surface
+enqueueEmail(orgId, { to, subject, html, text?, userId? });           // raw body (agent/LLM)
+enqueueTemplatedEmail(orgId, { to, templateId, variables, userId? }); // CMS template (merchant mail)
 ```
 
-v1 adapter: inline Resend/Twilio.  
-Future adapter: HTTP to extracted Go service — same interface.
+v1 send adapter: inline Resend/Twilio via Vault.  
+Templates: **documents** CMS content type — edited in admin content UI, not integrations screen.
 
 ---
 
@@ -221,10 +223,11 @@ Use this when onboarding a merchant org (demo or prod).
 - [ ] **LLM settings**: provider choice, optional BYOK paste (→ **Vault** via `domains/integrations`), or platform fallback allowed.
 - [ ] Confirm `hasOrgKey` / `allowPlatformFallback` flags on read.
 
-### 4. Integrations — comms (noname, Phase 1)
+### 4. Integrations — comms + email templates (noname, Phase 1)
 
 - [ ] **Comms settings**: email provider, from-address, optional BYOK (→ **Vault**).
-- [ ] Seed or create notification templates in CMS.
+- [ ] **Email templates (required)**: CMS content type `notification_email`; seed at least agent-task-complete + welcome (or equivalent).
+- [x] **`enqueueTemplatedEmail`** wired in notifications service (load + render from documents).
 - [ ] Platform fallback `RESEND_API_KEY` for dev tenants without BYOK.
 
 ### 5. User notification preferences
@@ -234,7 +237,7 @@ Use this when onboarding a merchant org (demo or prod).
 
 ### 6. Phase I-d+ (when enabled)
 
-- [ ] **Nango**: connect Stripe/Shopify via admin UI; store `connectionId` only in `tenant_settings`.
+- [x] **Nango**: connect any integration via admin UI; store `connectionId` only in `tenant_settings.integrations.nango`.
 - [ ] **Vault**: platform ops inject DB URLs, `NANGO_ENCRYPTION_KEY`, platform LLM/comms fallbacks.
 
 ---
@@ -276,7 +279,7 @@ Use this when onboarding a merchant org (demo or prod).
 
         Phase I-d (Nango):
               ┌────────────┐
-              │ Nango      │── Stripe, Shopify, Gmail OAuth
+              │ Nango      │── OAuth for any enabled integration
               └────────────┘
 ```
 
@@ -314,10 +317,10 @@ Follow [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO
 No for v1. Notifications are a **domain** in noname, like agents or documents.
 
 **Where do email templates live?**  
-CMS documents. Worker renders; does not fetch from an external template SaaS.
+CMS `notification_email` entries — **same document model** as `page` / `auth_provider` (Admin → Content, draft, publish). **Target:** json-render **spec** field + `@json-render/react-email` render — **no html fallback**. See [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md).
 
 **Can one Vault store rule them all?**  
-Platform + merchant BYOK (LLM/comms) → **Vault**. Merchant OAuth (Stripe/Gmail) → **Nango DB**. Postgres holds flags and `connectionId` only — one secret, one home.
+Platform + merchant BYOK (LLM/comms) → **Vault**. Merchant OAuth (any Nango integration) → **Nango DB**. Postgres holds flags and `connectionId` only — one secret, one home.
 
 **Per user per store for notifications?**  
 **Preferences and delivery targets** — per user. **Provider credentials** — per org (store).

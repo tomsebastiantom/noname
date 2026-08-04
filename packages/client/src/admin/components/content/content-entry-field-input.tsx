@@ -4,6 +4,7 @@ import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
 import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
 import { ReferenceFieldInput, type ReferenceFieldLabels } from "./ReferenceFieldInput";
+import { EmailSpecFieldInput } from "./EmailSpecFieldInput";
 
 const defaultReferenceLabels: ReferenceFieldLabels = {
   entriesLoadingLabel: "Loading entries…",
@@ -19,6 +20,7 @@ export function ContentEntryFieldInput({
   value,
   onChange,
   locale,
+  contentType,
   mediaLabels,
   referenceLabels = defaultReferenceLabels,
   referenceOptions,
@@ -27,10 +29,34 @@ export function ContentEntryFieldInput({
   value: string;
   onChange: (value: string) => void;
   locale: string;
+  contentType?: string;
   mediaLabels: MediaFieldLabels;
   referenceLabels?: ReferenceFieldLabels;
   referenceOptions?: Record<string, ReferenceFieldOptions>;
 }) {
+  if (contentType === "notification_email" && field.key === "spec") {
+    return <EmailSpecFieldInput field={field} value={value} onChange={onChange} />;
+  }
+
+  if (field.type === "json") {
+    return (
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor={field.key}>
+          {field.label}
+          {field.required ? " *" : ""}
+        </Label>
+        <textarea
+          id={field.key}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          rows={8}
+          required={field.required}
+          spellCheck={false}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 font-mono text-xs"
+        />
+      </div>
+    );
+  }
   if (field.type === "boolean") {
     return (
       <label className="flex cursor-pointer items-center gap-2">

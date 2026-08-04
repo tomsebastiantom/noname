@@ -243,4 +243,18 @@ export const adminActionSchemas = {
     }),
     description: "Save email provider and optional BYOK API key to Vault",
   },
+  loadIntegrationsOAuth: {
+    description: "Load OAuth connection status (connectionId pointers only)",
+  },
+  startIntegrationsOAuthConnect: {
+    params: z.object({
+      integrationId: z
+        .string()
+        .trim()
+        .min(1)
+        .max(128)
+        .regex(/^[a-zA-Z0-9_-]+$/),
+    }),
+    description: "Start OAuth connect flow for an external integration",
+  },
 };

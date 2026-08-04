@@ -8,9 +8,18 @@ export interface SendEmailInput {
   userId?: string;
 }
 
+export interface SendTemplatedEmailInput {
+  to: string;
+  templateId: string;
+  variables?: Record<string, string>;
+  userId?: string;
+  locale?: string;
+}
+
 export interface SendEmailResult {
   deliveryId: string;
   jobId: string;
+  skipped?: boolean;
 }
 
 export interface NotificationPreferencesDTO {
@@ -27,6 +36,7 @@ export interface EmailSenderPort {
 
 export interface NotificationsService {
   enqueueEmail(orgId: string, input: SendEmailInput): Promise<SendEmailResult>;
+  enqueueTemplatedEmail(orgId: string, input: SendTemplatedEmailInput): Promise<SendEmailResult>;
   getPreferences(orgId: string, userId: string): Promise<NotificationPreferencesDTO>;
   updatePreferences(
     orgId: string,

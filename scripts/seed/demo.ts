@@ -18,6 +18,7 @@ import { upsertUserTeamRole } from "../../packages/server/src/domains/auth/adapt
 import { findUserIdByEmail } from "../../packages/server/src/domains/auth/adapters/zitadel/users";
 import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
 import { seedOrgEditorAccess } from "./keto-tuples";
+import { agentTaskCompleteEmailSpec, welcomeEmailSpec } from "./email-specs";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(scriptDir, "../..");
@@ -293,6 +294,19 @@ const integrationsLlmLabels = {
   saveLabel: "Save LLM settings",
   savingLabel: "Saving…",
   successMessage: "LLM settings saved.",
+};
+
+const integrationsOAuthLabels = {
+  loadingLabel: "Loading external integrations…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  connectLabel: "Connect",
+  connectingLabel: "Opening connect…",
+  connectedLabel: "Connected",
+  notConfiguredLabel: "External integrations are not available on this server yet.",
+  emptyLabel: "No external integrations are available for this organization yet.",
+  refreshLabel: "Refresh status",
+  connectionIdLabel: "Connection ID",
+  providerLabel: "Provider",
 };
 
 const usersAdminLabels = {
@@ -702,7 +716,14 @@ const adminDashboardSpec = adminPanelSpec(["authSettings"], {
 });
 
 const adminIntegrationsSpec = adminPanelSpec(
-  ["loadIntegrationsLlm", "integrationsLlm", "loadIntegrationsComms", "integrationsComms"],
+  [
+    "loadIntegrationsLlm",
+    "integrationsLlm",
+    "loadIntegrationsComms",
+    "integrationsComms",
+    "loadIntegrationsOAuth",
+    "integrationsOAuth",
+  ],
   {
     loadIntegrationsLlm: {
       type: "MountAction",
@@ -728,6 +749,19 @@ const adminIntegrationsSpec = adminPanelSpec(
         "Email / comms",
         "Configure Resend or Twilio for transactional email. API keys go to Vault; from-address stays in tenant settings.",
         integrationsCommsLabels,
+      ),
+    },
+    loadIntegrationsOAuth: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadIntegrationsOAuth" }, {}),
+    },
+    integrationsOAuth: {
+      type: "IntegrationsOAuthForm",
+      props: panelProps(
+        {},
+        "External integrations",
+        "Connect third-party services for this organization. Available apps and logos are loaded automatically — only connection references are stored here; credentials stay encrypted off-platform.",
+        integrationsOAuthLabels,
       ),
     },
   },
@@ -1094,6 +1128,28 @@ const editorPrefsContentType = {
   ],
 };
 
+const notificationEmailContentType = {
+  fields: [
+    { key: "template_key", type: "text", required: true, isLocalizable: false, label: "Template key" },
+    { key: "subject", type: "text", required: true, isLocalizable: false, label: "Email subject" },
+    {
+      key: "spec",
+      type: "json",
+      required: true,
+      isLocalizable: false,
+      label: "Email layout (json-render spec)",
+    },
+    {
+      key: "category",
+      type: "enum",
+      required: false,
+      isLocalizable: false,
+      label: "Preference category",
+      options: ["transactional", "agent", "marketing"],
+    },
+  ],
+};
+
 const authProviderContentType = {
   fields: [
     { key: "name", type: "text", required: true, isLocalizable: false, label: "Display name" },
@@ -1416,8 +1472,10 @@ async function main() {
 
   await ensurePageContentType();
   await ensureEditorPrefsContentType();
+  await ensureNotificationEmailContentType();
   await ensureAuthProviderContentType();
   await ensureBuiltinAuthProviders({ googleEnabled: Boolean(googleIdpId) });
+  await ensureNotificationEmailTemplates();
   if (googleIdpId) {
     await api("PUT", "/api/documents/tenant_settings/default", {
       auth: {
@@ -1472,6 +1530,83 @@ async function main() {
   console.log(`  Auth:    http://yogastore.localhost:5173/admin/settings/auth`);
   console.log(`  Access:  http://yogastore.localhost:5173/admin/settings/scope`);
   console.log(`  Team:    http://yogastore.localhost:5173/admin/users`);
+}
+
+async function ensureNotificationEmailContentType(): Promise<void> {
+  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const existing = types.find((t) => t.name === "notification_email");
+
+  if (existing) {
+    const { data: typeDef } = await api<{ data: { schema: typeof notificationEmailContentType } }>(
+      "GET",
+      "/api/documents/content-types/notification_email",
+    );
+    const fieldKeys = new Set(typeDef.schema.fields.map((field) => field.key));
+    const needsSync = !fieldKeys.has("spec") || fieldKeys.has("html_body");
+    if (needsSync) {
+      await api("PUT", "/api/documents/content-types/notification_email", {
+        schema: notificationEmailContentType,
+      });
+      console.log("notification_email content type schema synced (json-render spec).");
+    } else {
+      console.log("notification_email content type already exists.");
+    }
+    return;
+  }
+
+  await api("POST", "/api/documents/content-types", {
+    name: "notification_email",
+    schema: notificationEmailContentType,
+  });
+  console.log("notification_email content type created.");
+}
+
+async function ensureNotificationEmailTemplates(): Promise<void> {
+  const templates = [
+    {
+      template_key: "agent-task-complete",
+      subject: "Agent task complete",
+      spec: agentTaskCompleteEmailSpec,
+      category: "agent",
+    },
+    {
+      template_key: "welcome",
+      subject: "Welcome",
+      spec: welcomeEmailSpec,
+      category: "transactional",
+    },
+  ] as const;
+
+  const { data: existing } = await api<{ data: ContentEntryRow[] }>(
+    "GET",
+    "/api/documents/notification_email",
+  );
+
+  for (const template of templates) {
+    const row = existing.find(
+      (entry) =>
+        String(entry.data.template_key ?? "")
+          .trim()
+          .toLowerCase() === template.template_key,
+    );
+
+    if (row) {
+      await api("PUT", `/api/documents/notification_email/${row.id}`, template);
+      if (row.status !== "published") {
+        await api("PUT", `/api/documents/notification_email/${row.id}/publish`);
+      }
+      console.log(`notification_email/${template.template_key} updated.`);
+      continue;
+    }
+
+    const { data: created } = await api<{ data: { id: string } }>(
+      "POST",
+      "/api/documents/notification_email",
+      template,
+    );
+    await api("PUT", `/api/documents/notification_email/${created.id}/publish`);
+    console.log(`notification_email/${template.template_key} created and published.`);
+  }
 }
 
 async function ensureAuthProviderContentType(): Promise<void> {

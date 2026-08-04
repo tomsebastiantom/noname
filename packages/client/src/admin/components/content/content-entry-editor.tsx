@@ -84,6 +84,7 @@ export function ContentEntryEditor(props: ContentEntryEditorProps) {
                 <ContentEntryFieldInput
                   key={field.key}
                   field={field}
+                  contentType={contentType}
                   locale={locale}
                   value={values[field.key] ?? ""}
                   onChange={(v) => onValuesChange({ ...values, [field.key]: v })}

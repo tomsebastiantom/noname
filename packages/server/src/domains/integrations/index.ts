@@ -1,26 +1,38 @@
 import { Hono } from "hono";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
-import type { IntegrationsService } from "./ports";
+import { nangoAdapterFromEnv } from "./adapters/nango";
+import type { IntegrationOAuthPort, IntegrationsService } from "./ports";
 import { registerIntegrationsCommsRoutes } from "./routes/comms";
 import { registerIntegrationsLlmRoutes } from "./routes/llm";
+import { registerIntegrationsNangoRoutes } from "./routes/nango";
 import { createIntegrationsService } from "./service";
 
-export type { IntegrationsService, LlmIntegrationPublic } from "./ports";
+export type {
+  IntegrationsService,
+  LlmIntegrationPublic,
+  IntegrationId,
+  OAuthConnectionsPublic,
+} from "./ports";
 export { createIntegrationsService } from "./service";
+export { createNangoAdapter, nangoAdapterFromEnv } from "./adapters/nango";
 
 export interface IntegrationsDomainDeps {
   secrets: SecretsService;
   tenantSettings: TenantSettingsService;
+  oauth?: IntegrationOAuthPort | null;
   service?: IntegrationsService;
 }
 
 export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
+  const oauth = deps.oauth === undefined ? nangoAdapterFromEnv() : deps.oauth;
+
   const service =
     deps.service ??
     createIntegrationsService({
       secrets: deps.secrets,
       tenantSettings: deps.tenantSettings,
+      oauth,
     });
 
   const routes = new Hono();
@@ -32,6 +44,11 @@ export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
     service,
     tenantSettings: deps.tenantSettings,
   });
+  registerIntegrationsNangoRoutes(routes, {
+    service,
+    tenantSettings: deps.tenantSettings,
+    oauth,
+  });
 
-  return { service, routes };
+  return { service, routes, oauth };
 }

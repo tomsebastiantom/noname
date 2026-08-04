@@ -5,6 +5,7 @@ import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 import { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
 import { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
+import { IntegrationsOAuthForm } from "./components/integrations/IntegrationsOAuthForm";
 import { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 import { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 import { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
@@ -24,6 +25,7 @@ export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 export { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
 export { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
+export { IntegrationsOAuthForm } from "./components/integrations/IntegrationsOAuthForm";
 export { LayoutEntryAdmin } from "./components/layout/LayoutEntryAdmin";
 export { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 export { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
@@ -44,6 +46,7 @@ export const adminComponents = {
   AuthSettingsForm,
   IntegrationsCommsForm,
   IntegrationsLlmForm,
+  IntegrationsOAuthForm,
   LoginBrandingForm,
   AccountSecurityForm,
   UsersAdminForm,

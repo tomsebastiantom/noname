@@ -82,6 +82,11 @@ export const ADMIN_STATE = {
       loading: "/admin/integrations/comms/loading",
       error: "/admin/integrations/comms/error",
     },
+    oauth: {
+      loaded: "/admin/integrations/oauth/loaded",
+      loading: "/admin/integrations/oauth/loading",
+      error: "/admin/integrations/oauth/error",
+    },
   },
   agents: {
     registry: "/admin/agents/registry",

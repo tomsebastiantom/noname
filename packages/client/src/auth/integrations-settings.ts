@@ -4,6 +4,26 @@ import { requireStoreSlug } from "./org";
 export type LlmProviderName = "openai" | "anthropic";
 export type CommsProviderName = "resend" | "twilio";
 
+export interface OAuthConnectionState {
+  integrationId: string;
+  displayName?: string;
+  provider?: string;
+  logo?: string;
+  connected: boolean;
+  connectionId?: string;
+}
+
+export interface OAuthConnectionsState {
+  oauthConfigured: boolean;
+  connections: OAuthConnectionState[];
+}
+
+export interface OAuthConnectSession {
+  token: string;
+  connectLink: string;
+  expiresAt: string;
+}
+
 export interface LlmIntegrationState {
   provider: LlmProviderName;
   hasOrgKey: boolean;
@@ -93,4 +113,31 @@ export async function saveLlmIntegration(input: {
     hasOrgKey: body.data?.hasOrgKey === true,
     allowPlatformFallback: body.data?.allowPlatformFallback !== false,
   };
+}
+
+export async function loadOAuthConnections(): Promise<OAuthConnectionsState> {
+  const storeSlug = requireStoreSlug();
+  const body = await apiFetch<{ data?: OAuthConnectionsState }>(
+    `/api/integrations/${encodeURIComponent(storeSlug)}/nango/connections`,
+  );
+  return {
+    oauthConfigured: body.data?.oauthConfigured === true,
+    connections: body.data?.connections ?? [],
+  };
+}
+
+export async function startOAuthConnect(integrationId: string): Promise<OAuthConnectSession> {
+  const storeSlug = requireStoreSlug();
+  const body = await apiFetch<{ data?: OAuthConnectSession }>(
+    `/api/integrations/${encodeURIComponent(storeSlug)}/nango/session`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ integrationId }),
+    },
+  );
+  if (!body.data?.connectLink || !body.data.token) {
+    throw new Error("Failed to start OAuth connect session");
+  }
+  return body.data;
 }

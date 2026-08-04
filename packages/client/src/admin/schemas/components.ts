@@ -117,6 +117,25 @@ export const adminComponentSchemas = {
     ),
     description: "Per-org LLM provider and BYOK API key (Vault)",
   },
+  IntegrationsOAuthForm: {
+    props: catalogProps(
+      {
+        ...panelLabels,
+        loadingLabel: z.string(),
+        forbiddenLabel: z.string(),
+        connectLabel: z.string(),
+        connectingLabel: z.string(),
+        connectedLabel: z.string(),
+        notConfiguredLabel: z.string(),
+        emptyLabel: z.string(),
+        refreshLabel: z.string(),
+        connectionIdLabel: z.string(),
+        providerLabel: z.string(),
+      },
+      {},
+    ),
+    description: "Connect third-party services via OAuth for this organization",
+  },
   LoginBrandingForm: {
     props: catalogProps(
       {

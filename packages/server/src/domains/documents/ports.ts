@@ -85,6 +85,10 @@ export interface TenantCommsIntegration {
   fromName?: string;
 }
 
+export interface TenantOAuthConnection {
+  connectionId: string;
+}
+
 export interface TenantIntegrations {
   googleAnalyticsId?: string | null;
   facebookPixelId?: string | null;
@@ -92,6 +96,8 @@ export interface TenantIntegrations {
   tiktokPixelId?: string | null;
   llm?: TenantLlmIntegration;
   comms?: TenantCommsIntegration;
+  /** Nango OAuth pointers keyed by integration unique_key — tokens stay in Nango. */
+  nango?: Record<string, TenantOAuthConnection>;
 }
 
 export type TeamMemberRole = "admin" | "editor";

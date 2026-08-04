@@ -62,6 +62,13 @@ export function splitSavePayload(
       parsed = raw === "" ? 0 : Number(raw);
     } else if (field.type === "boolean") {
       parsed = raw === "true";
+    } else if (field.type === "json") {
+      if (raw === "") continue;
+      try {
+        parsed = JSON.parse(raw) as unknown;
+      } catch {
+        parsed = raw;
+      }
     } else if (field.type === "media" || field.type === "reference") {
       if (raw === "") continue;
       try {
@@ -88,7 +95,8 @@ export function isEditableField(type: string): boolean {
     type === "number" ||
     type === "boolean" ||
     type === "media" ||
-    type === "reference"
+    type === "reference" ||
+    type === "json"
   );
 }
 
