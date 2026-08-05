@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { ok } from "../../../shared/respond";
 import type { WebhooksService } from "../ports";
+import { registerWebhookSubscriptionRoutes } from "./subscriptions";
 
 export function createWebhooksRoutes(service: WebhooksService) {
   const routes = new Hono();
@@ -27,6 +28,8 @@ export function createWebhooksRoutes(service: WebhooksService) {
       return c.json({ error: message }, 400);
     }
   });
+
+  registerWebhookSubscriptionRoutes(routes, service);
 
   return routes;
 }

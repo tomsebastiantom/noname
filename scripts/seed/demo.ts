@@ -265,6 +265,59 @@ const authSettingsLabels = {
   forbiddenLabel: "Auth settings require the store admin role.",
 };
 
+const integrationsCommsDeliveriesLabels = {
+  loadingLabel: "Loading deliveries…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  emptyLabel: "No deliveries yet.",
+  refreshLabel: "Refresh",
+  retryLabel: "Retry",
+  retryingLabel: "Retrying…",
+  statusFilterLabel: "Status",
+  allStatusesLabel: "All",
+  columns: {
+    when: "When",
+    status: "Status",
+    to: "To",
+    subject: "Subject",
+    trigger: "Trigger",
+    attempts: "Attempts",
+    actions: "Actions",
+  },
+};
+
+const integrationsWebhooksLabels = {
+  loadingLabel: "Loading webhooks…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  emptyLabel: "No webhook subscriptions yet.",
+  refreshLabel: "Refresh",
+  urlLabel: "Endpoint URL",
+  eventTypesLabel: "Event types",
+  eventTypesHelper: "Comma-separated. Use * to receive all event types.",
+  descriptionLabel: "Description (optional)",
+  createLabel: "Add subscription",
+  creatingLabel: "Adding…",
+  deleteLabel: "Delete",
+  deletingLabel: "Deleting…",
+  enabledLabel: "Enabled",
+  disabledLabel: "Disabled",
+  signingSecretLabel: "Signing secret is generated automatically and stored in Vault.",
+  deliveriesTitle: "Outbound delivery log",
+  deliveriesEmptyLabel: "No outbound deliveries yet.",
+  retryLabel: "Retry",
+  retryingLabel: "Retrying…",
+  columns: {
+    url: "URL",
+    events: "Events",
+    status: "Status",
+    failures: "Failures",
+    actions: "Actions",
+    when: "When",
+    eventType: "Event",
+    attempts: "Attempts",
+    httpStatus: "HTTP",
+  },
+};
+
 const integrationsCommsLabels = {
   loadingLabel: "Loading comms settings…",
   forbiddenLabel: "Integrations settings require the store admin role.",
@@ -721,6 +774,11 @@ const adminIntegrationsSpec = adminPanelSpec(
     "integrationsLlm",
     "loadIntegrationsComms",
     "integrationsComms",
+    "loadCommsDeliveries",
+    "commsDeliveries",
+    "loadWebhookSubscriptions",
+    "webhookSubscriptions",
+    "loadWebhookOutboundDeliveries",
     "loadIntegrationsOAuth",
     "integrationsOAuth",
   ],
@@ -749,6 +807,32 @@ const adminIntegrationsSpec = adminPanelSpec(
         "Email / comms",
         "Configure Resend or Twilio for transactional email. API keys go to Vault; from-address stays in tenant settings.",
         integrationsCommsLabels,
+      ),
+    },
+    loadCommsDeliveries: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadCommsDeliveries" }, {}),
+    },
+    commsDeliveries: {
+      type: "CommsDeliveriesAdmin",
+      props: panelProps(
+        {},
+        "Delivery log",
+        "Recent outbound email for this organization. Retry failed deliveries after fixing provider credentials.",
+        integrationsCommsDeliveriesLabels,
+      ),
+    },
+    loadWebhookSubscriptions: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadWebhookSubscriptions" }, {}),
+    },
+    webhookSubscriptions: {
+      type: "WebhookSubscriptionsAdmin",
+      props: panelProps(
+        {},
+        "Outbound webhooks",
+        "Register HTTPS endpoints that receive signed JSON events from this organization.",
+        integrationsWebhooksLabels,
       ),
     },
     loadIntegrationsOAuth: {
@@ -955,6 +1039,23 @@ const agentsAdminLabels = {
   promptColumnHeader: "Prompt",
   reviewedByColumnHeader: "Reviewed by",
   tasksForbiddenLabel: "Task review requires store admin or ownership of the agent linked to the task.",
+  createTaskSectionTitle: "Run orchestrate task",
+  createTaskSectionDescription:
+    "Example: “Summarize last week’s signups and draft a hero layout.” The agent runs analytics → layout/content drafts; you approve before publish.",
+  taskPromptLabel: "Prompt",
+  taskAgentLabel: "Agent",
+  createTaskLabel: "Run task",
+  creatingTaskLabel: "Starting…",
+  createTaskSuccessMessage: "Task queued.",
+  viewTaskLabel: "View",
+  stepsSectionTitle: "Steps",
+  artifactsSectionTitle: "Artifacts",
+  runSummaryLabel: "Summary",
+  noArtifactsMessage: "No drafts were created.",
+  stepStatusOkLabel: "ok",
+  stepStatusDeniedLabel: "denied",
+  stepStatusErrorLabel: "error",
+  runningTaskLabel: "Task is running — refreshing every few seconds…",
 };
 
 const adminAgentsSpec = adminPanelSpec(["loadAgents", "agentsAdmin"], {

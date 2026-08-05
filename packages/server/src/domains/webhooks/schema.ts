@@ -1,22 +1,45 @@
-import { index, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
-export const webhookReceipts = pgTable(
-  "webhook_receipts",
+export { webhookReceipts } from "./inbound-schema";
+
+export const webhookSubscriptions = pgTable(
+  "webhook_subscriptions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    orgId: text("org_id"),
-    provider: text("provider").notNull(),
-    externalEventId: text("external_event_id").notNull(),
-    eventType: text("event_type").notNull(),
-    status: text("status").notNull(),
-    payload: jsonb("payload").$type<Record<string, unknown>>(),
-    error: text("error"),
+    orgId: text("org_id").notNull(),
+    url: text("url").notNull(),
+    eventTypes: jsonb("event_types").$type<string[]>().notNull(),
+    enabled: boolean("enabled").notNull().default(true),
+    description: text("description"),
+    consecutiveFailures: integer("consecutive_failures").notNull().default(0),
     createdAt: timestamp("created_at").notNull().defaultNow(),
-    processedAt: timestamp("processed_at"),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [
-    uniqueIndex("webhook_receipts_provider_event_idx").on(table.provider, table.externalEventId),
-    index("webhook_receipts_org_id_idx").on(table.orgId),
-    index("webhook_receipts_status_idx").on(table.status),
+    index("webhook_subscriptions_org_id_idx").on(table.orgId),
+    index("webhook_subscriptions_enabled_idx").on(table.enabled),
+  ],
+);
+
+export const webhookOutboundDeliveries = pgTable(
+  "webhook_outbound_deliveries",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    subscriptionId: uuid("subscription_id").notNull(),
+    eventType: text("event_type").notNull(),
+    eventId: text("event_id").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().notNull(),
+    status: text("status").notNull(),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    lastStatusCode: integer("last_status_code"),
+    error: text("error"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    deliveredAt: timestamp("delivered_at"),
+  },
+  (table) => [
+    index("webhook_outbound_org_id_idx").on(table.orgId),
+    index("webhook_outbound_subscription_idx").on(table.subscriptionId),
+    index("webhook_outbound_status_idx").on(table.status),
   ],
 );
