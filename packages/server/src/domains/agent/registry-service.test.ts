@@ -55,7 +55,7 @@ describe("createAgentRegistryService", () => {
       slug: "landing-helper",
       label: "Landing helper",
       ownerUserId: "user-alice",
-      allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft"],
+        allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft", "generateMachineDraft"],
       createdAt: new Date(),
     }));
     const registry = createAgentRegistryService({
@@ -86,7 +86,7 @@ describe("createAgentRegistryService", () => {
 
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft"],
+        allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft", "generateMachineDraft"],
       }),
     );
   });

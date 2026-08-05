@@ -57,7 +57,6 @@ type WebhookSubscriptionsLabels = {
     eventType: string;
     attempts: string;
     httpStatus: string;
-    actions: string;
   };
 };
 
@@ -206,25 +205,34 @@ function OutboundDeliveriesTable({
 export function WebhookSubscriptionsAdmin({
   props: { labels },
 }: ComponentCtx<CatalogProps<Record<string, never>, WebhookSubscriptionsLabels>>) {
-  const access = useAdminRouteAccess();
-  const { submit } = useCatalogSubmit();
-  useMountAction("loadWebhookSubscriptions");
-  useMountAction("loadWebhookOutboundDeliveries");
+  const canAccess = useAdminRouteAccess("integrations");
+  const { executeAction } = useCatalogSubmit();
+  useMountAction("loadWebhookSubscriptions", {});
+  useMountAction("loadWebhookOutboundDeliveries", {});
 
-  const loading = useStateValue<boolean>(ADMIN_STATE.integrations.webhooks.loading);
-  const loadError = useStateValue<string | null>(ADMIN_STATE.integrations.webhooks.error);
+  const loading =
+    (useStateValue(ADMIN_STATE.integrations.webhooks.loading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(ADMIN_STATE.integrations.webhooks.error) as
+    | string
+    | null
+    | undefined;
   const subscriptions =
-    useStateValue<WebhookSubscriptionRow[] | null>(ADMIN_STATE.integrations.webhooks.loaded) ?? [];
-  const deliveriesLoading = useStateValue<boolean>(
-    ADMIN_STATE.integrations.webhookDeliveries.loading,
-  );
-  const deliveriesError = useStateValue<string | null>(
-    ADMIN_STATE.integrations.webhookDeliveries.error,
-  );
+    (useStateValue(ADMIN_STATE.integrations.webhooks.loaded) as
+      | WebhookSubscriptionRow[]
+      | null
+      | undefined) ?? [];
+  const deliveriesLoading =
+    (useStateValue(ADMIN_STATE.integrations.webhookDeliveries.loading) as boolean | undefined) ??
+    true;
+  const deliveriesError = useStateValue(ADMIN_STATE.integrations.webhookDeliveries.error) as
+    | string
+    | null
+    | undefined;
   const deliveries =
-    useStateValue<WebhookOutboundDeliveryRow[] | null>(
-      ADMIN_STATE.integrations.webhookDeliveries.loaded,
-    ) ?? [];
+    (useStateValue(ADMIN_STATE.integrations.webhookDeliveries.loaded) as
+      | WebhookOutboundDeliveryRow[]
+      | null
+      | undefined) ?? [];
 
   const [url, setUrl] = useState("");
   const [eventTypes, setEventTypes] = useState("order.paid, *");
@@ -233,7 +241,7 @@ export function WebhookSubscriptionsAdmin({
   const [createError, setCreateError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  if (!access.allowed) {
+  if (canAccess === false) {
     return (
       <Card>
         <CardHeader>
@@ -246,10 +254,14 @@ export function WebhookSubscriptionsAdmin({
     );
   }
 
+  if (canAccess === null) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
+  }
+
   async function refreshAll() {
     await Promise.all([
-      submit("loadWebhookSubscriptions"),
-      submit("loadWebhookOutboundDeliveries"),
+      executeAction("loadWebhookSubscriptions"),
+      executeAction("loadWebhookOutboundDeliveries"),
     ]);
   }
 
@@ -293,9 +305,9 @@ export function WebhookSubscriptionsAdmin({
         {labels.description ? <CardDescription>{labels.description}</CardDescription> : null}
       </CardHeader>
       <CardContent className="space-y-8">
-        {mergeCatalogError(loadError, createError) ? (
+        {mergeCatalogError(createError, loadError) ? (
           <Alert variant="destructive">
-            <AlertDescription>{mergeCatalogError(loadError, createError)}</AlertDescription>
+            <AlertDescription>{mergeCatalogError(createError, loadError)}</AlertDescription>
           </Alert>
         ) : null}
 
@@ -355,9 +367,9 @@ export function WebhookSubscriptionsAdmin({
 
         <div className="space-y-3">
           <h3 className="text-sm font-medium">{labels.deliveriesTitle}</h3>
-          {mergeCatalogError(deliveriesError) ? (
+          {mergeCatalogError(null, deliveriesError) ? (
             <Alert variant="destructive">
-              <AlertDescription>{mergeCatalogError(deliveriesError)}</AlertDescription>
+              <AlertDescription>{mergeCatalogError(null, deliveriesError)}</AlertDescription>
             </Alert>
           ) : null}
           {deliveriesLoading ? (
@@ -367,7 +379,7 @@ export function WebhookSubscriptionsAdmin({
               rows={deliveries}
               labels={labels}
               loading={deliveriesLoading}
-              onRefresh={() => void submit("loadWebhookOutboundDeliveries")}
+              onRefresh={() => void executeAction("loadWebhookOutboundDeliveries")}
             />
           )}
         </div>

@@ -102,14 +102,17 @@ export const contentActions = {
         listEntries(contentType),
         fetchScopeCollections().catch(() => []),
       ]);
-      const folders: FolderCatalogEntry[] = folderRows
-        .filter((entry): entry is typeof entry & { id: string } => Boolean(entry.id))
-        .map((entry) => ({
-          id: entry.id,
-          slug: entry.slug,
-          label: entry.label,
-          parentId: entry.parentId ?? null,
-        }));
+      const folders: FolderCatalogEntry[] = folderRows.flatMap((entry) => {
+        if (!entry.id) return [];
+        return [
+          {
+            id: entry.id,
+            slug: entry.slug,
+            label: entry.label,
+            parentId: entry.parentId ?? null,
+          },
+        ];
+      });
       const referenceTypes = [
         ...new Set(
           typeDef.schema.fields

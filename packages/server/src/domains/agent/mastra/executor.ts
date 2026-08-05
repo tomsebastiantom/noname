@@ -6,7 +6,9 @@ import type { AIPipeline } from "../../ai-pipeline/ports";
 import type { AnalyticsService } from "../../analytics/ports";
 import type { ContentDocumentService, LayoutDocumentService } from "../../documents/ports";
 import type { IntegrationsService } from "../../integrations/ports";
+import type { MachineEngine } from "../../machines/ports";
 import type { AgentExecutor, AgentToolResult } from "../tools";
+import type { SecretsService } from "../../secrets/ports";
 import { createArtifactCollector } from "./artifacts";
 import {
   createTokenAccumulator,
@@ -14,9 +16,12 @@ import {
 } from "./context";
 import { mapMastraSteps, stoppedReasonFromFinish } from "./format-steps";
 import { resolveActiveTools } from "./guards";
-import { assertOrchestrateOutput } from "./orchestrate-output";
+import { assertOrchestrateOutput, parseOrchestrateOutput } from "./orchestrate-output";
+import { runMockOrchestrate, shouldUseMockOrchestrate } from "./mock-orchestrate";
+import { resolvePlannerModel } from "./resolve-planner-model";
 import { createGenerateContentDraftTool } from "./tools/generate-content-draft";
 import { createGenerateLayoutDraftTool } from "./tools/generate-layout-draft";
+import { createGenerateMachineDraftTool } from "./tools/generate-machine-draft";
 import { createNangoTriggerTool } from "./tools/nango-trigger";
 import { createReadAnalyticsTool } from "./tools/read-analytics";
 import type { OrchestrateOutput } from "./types";
@@ -43,11 +48,13 @@ function recordStepSpans(taskId: string, steps: OrchestrateOutput["steps"]): voi
 }
 
 export interface MastraExecutorDeps {
+  secrets: Pick<SecretsService, "resolveLlmApiKey">;
   analytics: Pick<AnalyticsService, "query" | "aggregate">;
   integrations: Pick<IntegrationsService, "triggerOAuthAction">;
-  aiPipeline: Pick<AIPipeline, "generateLayout" | "generateContent">;
+  aiPipeline: Pick<AIPipeline, "generateLayout" | "generateContent" | "generateMachine">;
   layout: Pick<LayoutDocumentService, "create">;
   content: Pick<ContentDocumentService, "create">;
+  machines: Pick<MachineEngine, "define">;
 }
 
 export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
@@ -62,7 +69,8 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
 
       const taskId = String(input.taskId ?? "unknown");
       const maxSteps = Number(input.maxSteps ?? process.env.AGENT_MAX_STEPS ?? "10");
-      const model = process.env.MASTRA_PLANNER_MODEL?.trim() || "openai/gpt-4o-mini";
+      const modelSpec = process.env.MASTRA_PLANNER_MODEL?.trim() || "openai/gpt-4o-mini";
+      const { model, credentialSource } = await resolvePlannerModel(orgId, deps.secrets, modelSpec);
       const runContext = parseAgentRunContext(orgId, input);
       const artifacts = createArtifactCollector();
       const pipelineTokens = createTokenAccumulator();
@@ -88,9 +96,25 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
           { aiPipeline: deps.aiPipeline, content: deps.content, ...sharedToolDeps },
           orgId,
         ),
+        generateMachineDraft: createGenerateMachineDraftTool(
+          {
+            aiPipeline: deps.aiPipeline,
+            machines: deps.machines,
+            artifacts,
+            tokens: pipelineTokens,
+          },
+          orgId,
+        ),
       } satisfies ToolsInput;
 
       const activeTools = resolveActiveTools(allowedTools).filter((name) => name in tools);
+
+      if (shouldUseMockOrchestrate()) {
+        const mockResult = await runMockOrchestrate(deps, orgId, prompt, input, activeTools);
+        const mockOutput = parseOrchestrateOutput(mockResult.output);
+        if (mockOutput) recordStepSpans(taskId, mockOutput.steps);
+        return mockResult;
+      }
 
       const instructions = orchestrateSystemPrompt({
         orgId,
@@ -113,6 +137,7 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
 
       const steps = mapMastraSteps(result.steps ?? []);
       recordStepSpans(taskId, steps);
+      trace.getActiveSpan()?.setAttribute("agent.planner_credential_source", credentialSource);
 
       const output: OrchestrateOutput = assertOrchestrateOutput({
         summary: result.text?.trim() || "Run completed",
@@ -126,7 +151,7 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
 
       return {
         output: output as unknown as Record<string, unknown>,
-        model,
+        model: modelSpec,
         tokens,
       } satisfies AgentToolResult;
     },

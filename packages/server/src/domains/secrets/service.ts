@@ -10,6 +10,7 @@ import type {
   GetOrgSecretInput,
   OrgSecretKind,
   PutOrgSecretInput,
+  ResolvedLlmApiKey,
   SecretStorePort,
   SecretsService,
 } from "./ports";
@@ -70,9 +71,12 @@ export function createSecretsService(deps: {
     return secret?.apiKey ?? null;
   }
 
-  async function resolveLLMProvider(orgId: string): Promise<LLMProvider> {
-    let preferred: LlmProviderName | null = null;
-    if (tenantSettings) {
+  async function resolveLlmApiKey(
+    orgId: string,
+    requestedProvider?: LlmProviderName,
+  ): Promise<ResolvedLlmApiKey | null> {
+    let preferred: LlmProviderName | null = requestedProvider ?? null;
+    if (!preferred && tenantSettings) {
       const settings = await tenantSettings.get(orgId);
       preferred = readPreferredLlmProvider(settings.integrations as Record<string, unknown>);
     }
@@ -83,14 +87,20 @@ export function createSecretsService(deps: {
 
     for (const provider of order) {
       const apiKey = await orgLlmKey(orgId, provider);
-      if (apiKey) return createLLMProviderForApiKey(provider, apiKey);
+      if (apiKey) return { provider, apiKey, source: "org" };
     }
 
     for (const provider of LLM_PROVIDERS) {
       const platformKey = await store.getPlatformSecret(`${provider}_api_key`);
-      if (platformKey) return createLLMProviderForApiKey(provider, platformKey);
+      if (platformKey) return { provider, apiKey: platformKey, source: "platform" };
     }
 
+    return null;
+  }
+
+  async function resolveLLMProvider(orgId: string): Promise<LLMProvider> {
+    const resolved = await resolveLlmApiKey(orgId);
+    if (resolved) return createLLMProviderForApiKey(resolved.provider, resolved.apiKey);
     return createLLMProvider();
   }
 
@@ -135,6 +145,7 @@ export function createSecretsService(deps: {
 
   return {
     resolveLLMProvider,
+    resolveLlmApiKey,
     resolveCommsCredentials,
 
     async putOrgSecret(input: PutOrgSecretInput): Promise<void> {

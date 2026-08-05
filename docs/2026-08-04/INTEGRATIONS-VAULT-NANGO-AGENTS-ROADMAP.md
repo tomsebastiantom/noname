@@ -479,15 +479,15 @@ flowchart TD
 ## Implementation checklist (copy for PRs)
 
 ### I-a Vault + secrets
-- [ ] docker-compose: `vault` service
-- [ ] `domains/secrets/*`
-- [ ] `ai-pipeline` uses resolver
-- [ ] `.env.example`: `VAULT_*`
+- [x] docker-compose: `vault` service
+- [x] `domains/secrets/*`
+- [x] `ai-pipeline` uses resolver
+- [x] `.env.example`: `VAULT_*`
 
 ### I-b Integrations admin
-- [ ] `domains/integrations/routes/llm|comms`
-- [ ] Client admin forms
-- [ ] `tenant_settings.integrations` types
+- [x] `domains/integrations/routes/llm|comms`
+- [x] Client admin forms
+- [x] `tenant_settings.integrations` types
 
 ### I-c Platform communications + CMS email templates
 - [x] `domains/notifications/*` (send pipeline, prefs, deliveries) — **I-c.0 baseline**
@@ -527,13 +527,14 @@ flowchart TD
 ### II Mastra agents
 - [x] `@mastra/core`
 - [x] `agent/mastra/*` (orchestrate executor, readAnalytics + nango_trigger tools)
-- [x] Draft tools: `generateLayoutDraft`, `generateContentDraft` (in-process ai-pipeline + documents)
+- [x] Draft tools: `generateLayoutDraft`, `generateContentDraft`, `generateMachineDraft` (in-process ai-pipeline + documents/machines)
 - [x] Worker resolves `allowedTools` from registered agent registry
 - [x] Tool: `nango_trigger`
 - [x] Client: create orchestrate task + step timeline + artifacts (Mastra spec § client)
 - [x] Tool guards + `orchestrate` output schema + unit tests (2.3)
 - [x] Prompt template (`orchestrate-system`) + token accounting + OTel step spans (2.5)
 - [x] Demo walkthrough: [`AGENT-ORCHESTRATE-DEMO.md`](./AGENT-ORCHESTRATE-DEMO.md) (2.6)
+- [x] Agent secret sync: Mastra planner resolves LLM keys per org at run time via `resolveLlmApiKey` → Vault (no worker env copy)
 
 ---
 

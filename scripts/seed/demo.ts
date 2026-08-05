@@ -193,6 +193,20 @@ const documentShareLabels = {
   shareLoadingLabel: "Loading share list…",
 };
 
+const documentPublisherShareLabels = {
+  publisherShareTitle: "Publish access",
+  publisherShareHint: "Grant publish permission on this document only.",
+  publisherShareUserLabel: "Team member",
+  publisherShareGrantLabel: "Grant publish",
+  publisherShareGrantingLabel: "Granting…",
+  publisherShareRevokeLabel: "Remove",
+  publisherShareRevokingLabel: "Removing…",
+  publisherShareGrantSuccessMessage: "Publish access granted.",
+  publisherShareRevokeSuccessMessage: "Publish access removed.",
+  publisherShareEmptyMessage: "No direct publish grants yet.",
+  publisherShareLoadingLabel: "Loading publish access…",
+};
+
 const mediaFieldLabels = {
   uploadFileLabel: "Upload file",
   uploadingLabel: "Uploading…",
@@ -429,6 +443,7 @@ const contentAdminLabels = {
   ...referenceFieldLabels,
   ...documentFolderLabels,
   ...documentShareLabels,
+  ...documentPublisherShareLabels,
   deleteLabel: "Delete",
   deletingLabel: "Deleting…",
   createDraftLabel: "Create draft",
@@ -439,15 +454,18 @@ const contentAdminLabels = {
   entryPublishedMessage: "Entry published.",
   entryDeletedMessage: "Entry deleted.",
   deleteConfirmMessage: "Delete this entry? This cannot be undone.",
+  forbiddenLabel: "Content admin requires draft write access.",
 };
 
 const layoutAdminLabels = {
   ...draftPublishLabels,
   ...documentFolderLabels,
   ...documentShareLabels,
+  ...documentPublisherShareLabels,
   loadingLabel: "Loading layouts…",
   draftSavedMessage: "Layout saved as draft.",
   publishedMessage: "Layout published. Site and login will use the new spec on next load.",
+  forbiddenLabel: "Layout admin requires draft write access.",
   allLayoutsLinkLabel: "← All layouts",
   contentRefLabel: "contentRef (optional)",
   contentRefPlaceholder: "product:uuid or page:uuid — CMS merge on storefront",
@@ -494,6 +512,7 @@ const pageEntryAdminLabels = {
   statusColumnHeader: "Status",
   pageNotFoundPrefix: "Page",
   pageNotFoundSuffix: "not found.",
+  forbiddenLabel: "Page admin requires draft write access.",
 };
 
 const pageTreeAdminLabels = {
@@ -504,6 +523,7 @@ const pageTreeAdminLabels = {
   removeEntryLabel: "Remove entry",
   pageDocumentsLinkLabel: "← Page documents",
   treeLoadingLabel: "Loading page tree…",
+  forbiddenLabel: "Page tree admin requires draft write access.",
 };
 
 const featureFlagsAdminLabels = {

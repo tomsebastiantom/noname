@@ -10,7 +10,7 @@ export interface AgentStepRecord {
 }
 
 export interface AgentArtifact {
-  kind: "layout" | "content" | "insight";
+  kind: "layout" | "content" | "insight" | "machine";
   documentId?: string;
   label: string;
 }

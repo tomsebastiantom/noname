@@ -59,16 +59,19 @@ function IntegrationsLlmFields({
       onSubmit={(e) => {
         e.preventDefault();
         clearSuccess();
-        void submit("saveIntegrationsLlm", {
-          provider,
-          apiKey: apiKey.trim() || undefined,
-          allowPlatformFallback,
+        void submit({
+          action: "saveIntegrationsLlm",
+          params: {
+            provider,
+            apiKey: apiKey.trim() || undefined,
+            allowPlatformFallback,
+          },
         });
       }}
     >
-      {mergeCatalogError(loadError, error) ? (
+      {mergeCatalogError(error, loadError) ? (
         <Alert variant="destructive">
-          <AlertDescription>{mergeCatalogError(loadError, error)}</AlertDescription>
+          <AlertDescription>{mergeCatalogError(error, loadError)}</AlertDescription>
         </Alert>
       ) : null}
       {success ? (

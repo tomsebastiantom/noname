@@ -5,6 +5,7 @@ export const TOOL_GUARDS: Record<string, ToolGuard> = {
   nango_trigger: "auto",
   generateLayoutDraft: "human_approval",
   generateContentDraft: "human_approval",
+  generateMachineDraft: "human_approval",
   publish: "denied",
 };
 
@@ -13,6 +14,7 @@ export const ORCHESTRATE_TOOL_IDS = [
   "nango_trigger",
   "generateLayoutDraft",
   "generateContentDraft",
+  "generateMachineDraft",
 ] as const;
 
 export type OrchestrateToolId = (typeof ORCHESTRATE_TOOL_IDS)[number];

@@ -13,7 +13,7 @@ const agentStepRecordSchema = z.object({
 });
 
 const agentArtifactSchema = z.object({
-  kind: z.enum(["layout", "content", "insight"]),
+  kind: z.enum(["layout", "content", "insight", "machine"]),
   documentId: z.string().optional(),
   label: z.string().min(1),
 });

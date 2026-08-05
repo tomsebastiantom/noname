@@ -60,17 +60,20 @@ function IntegrationsCommsFields({
       onSubmit={(e) => {
         e.preventDefault();
         clearSuccess();
-        void submit("saveIntegrationsComms", {
-          emailProvider,
-          apiKey: apiKey.trim() || undefined,
-          fromEmail: fromEmail.trim() || undefined,
-          fromName: fromName.trim() || undefined,
+        void submit({
+          action: "saveIntegrationsComms",
+          params: {
+            emailProvider,
+            apiKey: apiKey.trim() || undefined,
+            fromEmail: fromEmail.trim() || undefined,
+            fromName: fromName.trim() || undefined,
+          },
         });
       }}
     >
-      {mergeCatalogError(loadError, error) ? (
+      {mergeCatalogError(error, loadError) ? (
         <Alert variant="destructive">
-          <AlertDescription>{mergeCatalogError(loadError, error)}</AlertDescription>
+          <AlertDescription>{mergeCatalogError(error, loadError)}</AlertDescription>
         </Alert>
       ) : null}
       {success ? (

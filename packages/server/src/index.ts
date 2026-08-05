@@ -150,11 +150,13 @@ const agentExecutor = createCompositeAgentExecutor({
     analytics: analytics.service,
   }),
   mastra: createMastraExecutor({
+    secrets: secrets.service,
     analytics: analytics.service,
     integrations: integrations.service,
     aiPipeline: aiPipeline.service,
     layout: docs.service.layout,
     content: docs.service.content,
+    machines: machines.engine,
   }),
 });
 

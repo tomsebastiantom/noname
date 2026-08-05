@@ -26,6 +26,7 @@ function mockTenantSettings(integrations: Record<string, unknown> = {}): TenantS
 function mockSecrets(overrides: Partial<SecretsService> = {}): SecretsService {
   return {
     resolveLLMProvider: vi.fn(),
+    resolveLlmApiKey: vi.fn(async () => null),
     resolveCommsCredentials: vi.fn(async () => null),
     putOrgSecret: vi.fn(),
     hasOrgSecret: vi.fn(async () => false),

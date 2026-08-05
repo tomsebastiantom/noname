@@ -34,8 +34,21 @@ export interface SecretStorePort {
   getPlatformSecret(name: string): Promise<string | null>;
 }
 
+export type LlmCredentialSource = "org" | "platform";
+
+export interface ResolvedLlmApiKey {
+  provider: "openai" | "anthropic";
+  apiKey: string;
+  source: LlmCredentialSource;
+}
+
 export interface SecretsService {
   resolveLLMProvider(orgId: string): Promise<LLMProvider>;
+  /** Org Vault BYOK → platform Vault — never env (callers add dev env fallback if needed). */
+  resolveLlmApiKey(
+    orgId: string,
+    requestedProvider?: "openai" | "anthropic",
+  ): Promise<ResolvedLlmApiKey | null>;
   resolveCommsCredentials(orgId: string): Promise<CommsCredentials | null>;
   putOrgSecret(input: PutOrgSecretInput): Promise<void>;
   hasOrgSecret(orgId: string, kind: OrgSecretKind, provider: string): Promise<boolean>;

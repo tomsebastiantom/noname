@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   catalogProps,
   documentFolderLabelsSchema,
+  documentPublisherShareLabelsSchema,
   documentShareLabelsSchema,
   mediaFieldLabelsSchema,
   referenceFieldLabelsSchema,
@@ -155,7 +156,6 @@ export const adminComponentSchemas = {
           eventType: z.string(),
           attempts: z.string(),
           httpStatus: z.string(),
-          actions: z.string(),
         }),
       },
       {},
@@ -484,8 +484,9 @@ export const adminComponentSchemas = {
         entrySavedMessage: z.string(),
         entryPublishedMessage: z.string(),
         entryDeletedMessage: z.string(),
-        deleteConfirmMessage: z.string(),
-        saveLabel: z.string(),
+  deleteConfirmMessage: z.string(),
+  forbiddenLabel: z.string(),
+  saveLabel: z.string(),
         savingLabel: z.string(),
         publishLabel: z.string(),
         publishingLabel: z.string(),
@@ -493,6 +494,7 @@ export const adminComponentSchemas = {
         ...referenceFieldLabelsSchema.shape,
         ...documentFolderLabelsSchema.shape,
         ...documentShareLabelsSchema.shape,
+        ...documentPublisherShareLabelsSchema.shape,
       },
       {
         locale: z.string(),
@@ -511,6 +513,7 @@ export const adminComponentSchemas = {
         savingLabel: z.string(),
         publishLabel: z.string(),
         publishingLabel: z.string(),
+        forbiddenLabel: z.string(),
         allLayoutsLinkLabel: z.string(),
         contentRefLabel: z.string(),
         contentRefPlaceholder: z.string(),
@@ -529,6 +532,7 @@ export const adminComponentSchemas = {
         templateNotFoundSuffix: z.string(),
         ...documentFolderLabelsSchema.shape,
         ...documentShareLabelsSchema.shape,
+        ...documentPublisherShareLabelsSchema.shape,
       },
       {
         segment: z.string(),
@@ -563,6 +567,7 @@ export const adminComponentSchemas = {
     props: catalogProps(
       {
         ...panelLabels,
+        forbiddenLabel: z.string(),
         saveTreeLabel: z.string(),
         savingTreeLabel: z.string(),
         treeSavedMessage: z.string(),
@@ -581,6 +586,7 @@ export const adminComponentSchemas = {
     props: catalogProps(
       {
         ...panelLabels,
+        forbiddenLabel: z.string(),
         saveLabel: z.string(),
         savingLabel: z.string(),
         pageSavedMessage: z.string(),

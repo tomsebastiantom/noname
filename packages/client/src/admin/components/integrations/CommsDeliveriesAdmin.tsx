@@ -137,9 +137,9 @@ export function CommsDeliveriesAdmin({
 }: ComponentCtx<CatalogProps<Record<string, never>, CommsDeliveriesLabels>>) {
   const { labels } = props;
   const canAccess = useAdminRouteAccess("integrations");
-  const { submit } = useCatalogSubmit();
+  const { executeAction } = useCatalogSubmit();
 
-  useMountAction("loadCommsDeliveries");
+  useMountAction("loadCommsDeliveries", {});
 
   const rows = useStateValue(ADMIN_STATE.integrations.commsDeliveries.loaded) as
     | CommsDeliveryRow[]
@@ -155,10 +155,10 @@ export function CommsDeliveriesAdmin({
   const [statusFilter, setStatusFilter] = useState<string>("");
 
   function reload() {
-    void submit("loadCommsDeliveries", { status: statusFilter || undefined });
+    void executeAction("loadCommsDeliveries", { status: statusFilter || undefined });
   }
 
-  if (!canAccess) {
+  if (canAccess === false) {
     return (
       <Card>
         <CardHeader>
@@ -170,6 +170,10 @@ export function CommsDeliveriesAdmin({
         </CardContent>
       </Card>
     );
+  }
+
+  if (canAccess === null) {
+    return <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>;
   }
 
   return (
@@ -200,7 +204,7 @@ export function CommsDeliveriesAdmin({
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
-              void submit("loadCommsDeliveries", {
+              void executeAction("loadCommsDeliveries", {
                 status: e.target.value || undefined,
               });
             }}

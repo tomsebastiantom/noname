@@ -68,6 +68,83 @@ describe("createSecretsService.resolveLLMProvider", () => {
   });
 });
 
+describe("createSecretsService.resolveLlmApiKey", () => {
+  it("returns org key before platform key", async () => {
+    const getOrgSecret = vi.fn(async () => ({ apiKey: "sk-org" }));
+    const getPlatformSecret = vi.fn(async () => "sk-platform");
+    const service = createSecretsService({
+      store: mockStore({ getOrgSecret, getPlatformSecret }),
+    });
+
+    const resolved = await service.resolveLlmApiKey("org-1", "openai");
+    expect(resolved).toEqual({
+      provider: "openai",
+      apiKey: "sk-org",
+      source: "org",
+    });
+    expect(getPlatformSecret).not.toHaveBeenCalled();
+  });
+
+  it("returns platform key when org has no key", async () => {
+    const getPlatformSecret = vi.fn(async (name: string) =>
+      name === "anthropic_api_key" ? "sk-platform-anthropic" : null,
+    );
+    const service = createSecretsService({
+      store: mockStore({ getPlatformSecret }),
+    });
+
+    const resolved = await service.resolveLlmApiKey("org-1", "anthropic");
+    expect(resolved).toEqual({
+      provider: "anthropic",
+      apiKey: "sk-platform-anthropic",
+      source: "platform",
+    });
+  });
+});
+
+describe("createSecretsService.resolveLlmApiKey", () => {
+  it("returns org key before platform key", async () => {
+    const getOrgSecret = vi.fn(async ({ provider }: { provider: string }) =>
+      provider === "openai" ? { apiKey: "sk-org-openai" } : null,
+    );
+    const getPlatformSecret = vi.fn(async () => "sk-platform-openai");
+
+    const service = createSecretsService({
+      store: mockStore({ getOrgSecret, getPlatformSecret }),
+    });
+
+    const resolved = await service.resolveLlmApiKey("org-1", "openai");
+    expect(resolved).toEqual({
+      provider: "openai",
+      apiKey: "sk-org-openai",
+      source: "org",
+    });
+    expect(getPlatformSecret).not.toHaveBeenCalled();
+  });
+
+  it("falls back to platform key when org has no key", async () => {
+    const getPlatformSecret = vi.fn(async (name: string) =>
+      name === "anthropic_api_key" ? "sk-platform-anthropic" : null,
+    );
+
+    const service = createSecretsService({
+      store: mockStore({ getPlatformSecret }),
+    });
+
+    const resolved = await service.resolveLlmApiKey("org-1", "anthropic");
+    expect(resolved).toEqual({
+      provider: "anthropic",
+      apiKey: "sk-platform-anthropic",
+      source: "platform",
+    });
+  });
+
+  it("returns null when no Vault keys exist", async () => {
+    const service = createSecretsService({ store: mockStore() });
+    await expect(service.resolveLlmApiKey("org-1", "openai")).resolves.toBeNull();
+  });
+});
+
 describe("createSecretsService.putOrgSecret", () => {
   it("delegates to store", async () => {
     const putOrgSecret = vi.fn();
