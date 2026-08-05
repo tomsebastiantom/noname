@@ -29,5 +29,7 @@ export function createTenantSettingsService(storage: DocumentStorage): TenantSet
       return saved;
     },
     resolveStoreSlug: (slug) => storage.findOrgIdByStoreSlug(normalizeStoreSlug(slug)),
+    findOrgIdByOAuthConnectionId: (connectionId) =>
+      storage.findOrgIdByOAuthConnectionId(connectionId),
   };
 }

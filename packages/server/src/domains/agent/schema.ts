@@ -15,6 +15,7 @@ export const agentTaskType = pgEnum("agent_task_type", [
   "generate_content",
   "generate_machine",
   "analyze_analytics",
+  "orchestrate",
 ]);
 
 export const agentTaskStatus = pgEnum("agent_task_status", [

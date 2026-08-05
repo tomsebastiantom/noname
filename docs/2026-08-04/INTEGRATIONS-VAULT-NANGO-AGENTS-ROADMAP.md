@@ -498,7 +498,7 @@ flowchart TD
 - [x] Agent worker example: `input.notify` on task complete (optional — not the only caller)
 - [x] Platform RFC: [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md)
 - [x] I-c.2 — idempotency, retries, SES adapter, delivery log API
-- [ ] I-c.3 — `notify(trigger)` routing + admin delivery UI
+- [x] I-c.3 — `notify(trigger)` routing + admin delivery UI
 - [x] I-c.1 — wire machines + agent via `notify()` / transition `params.notify`
 - [ ] I-c.4+ — in-app inbox, SMS, expanded prefs (see RFC)
 
@@ -513,21 +513,27 @@ flowchart TD
 - [x] Tenant settings (no secrets in response)
 - [x] Nango connect webhook → `connectionId`
 - [x] LLM usage append on ai-pipeline call (`ai_generations`)
-- [ ] Phase II: wire tools to existing ports (analytics query, documents, nango_trigger)
+- [x] Phase II: wire tools to existing ports (analytics, documents drafts, nango_trigger)
 
 ### I-f Webhooks
 - [x] Spec: [`WEBHOOKS-DOMAIN-SPEC.md`](./WEBHOOKS-DOMAIN-SPEC.md)
 - [x] Platform RFC: [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md) — Svix/Hookdeck as reference; patterns for our `domains/webhooks` build
 - [x] `domains/webhooks/*` (inbound v1)
 - [x] Inbound verify + org resolve + BullMQ
-- [x] `eventBus` → stub subscriber (log; machine transitions later)
-- [ ] Outbound subscriptions (optional v1.1)
+- [x] `eventBus` → machines (inbound router) + outbound fan-out
+- [x] Outbound subscriptions + signed POST + delivery log + retry
+- [x] Inbound `webhook.received` + `comms.failed` + `agent.task.completed` outbound fan-out
 
 ### II Mastra agents
-- [ ] `@mastra/core`
-- [ ] `agent/mastra/*`
-- [ ] Tool: `nango_trigger`
-- [ ] Client step timeline (Mastra spec § client)
+- [x] `@mastra/core`
+- [x] `agent/mastra/*` (orchestrate executor, readAnalytics + nango_trigger tools)
+- [x] Draft tools: `generateLayoutDraft`, `generateContentDraft` (in-process ai-pipeline + documents)
+- [x] Worker resolves `allowedTools` from registered agent registry
+- [x] Tool: `nango_trigger`
+- [x] Client: create orchestrate task + step timeline + artifacts (Mastra spec § client)
+- [x] Tool guards + `orchestrate` output schema + unit tests (2.3)
+- [x] Prompt template (`orchestrate-system`) + token accounting + OTel step spans (2.5)
+- [x] Demo walkthrough: [`AGENT-ORCHESTRATE-DEMO.md`](./AGENT-ORCHESTRATE-DEMO.md) (2.6)
 
 ---
 
@@ -554,7 +560,7 @@ Yes — I-d can parallel I-c if comms not needed yet.
 After I-a and I-b; I-d required only if agent tools call external OAuth APIs. I-f required only if tools/machines need **async** provider events (payment succeeded, order shipped).
 
 **Why aren’t webhooks “connected” to machines/agents yet?**  
-OAuth **connect** webhook is wired (integrations → `tenant_settings`). **Business** webhooks (Stripe payment, etc.) need I-f → BullMQ → `eventBus` → machines — not built yet. Sync API calls work via `integrations.triggerOAuthAction` without I-f.
+OAuth **connect** webhook is wired (integrations → `tenant_settings`). **Business** inbound webhooks flow through I-f → BullMQ → `eventBus` → machine transitions when payload includes `machine_instance_id` / `machine_event`. Outbound subscriptions fan out `machine.transition` and `comms.sent` to merchant URLs. Agent async tools still need Phase II Mastra.
 
 **Dev without Vault container?**  
 Prefer Vault in compose for parity; optional env fallback only for emergency local hack, not documented prod path.

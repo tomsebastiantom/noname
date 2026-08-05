@@ -9,6 +9,14 @@ import {
   saveLlmIntegration,
   startOAuthConnect,
 } from "../../auth/integrations-settings";
+import {
+  loadCommsDeliveries,
+  type CommsDeliveryRow,
+} from "../../auth/notifications-settings";
+import {
+  loadWebhookOutboundDeliveries,
+  loadWebhookSubscriptions,
+} from "../../auth/webhooks-settings";
 import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
 
@@ -97,5 +105,57 @@ export const integrationsActions = {
     }
     const loaded = await loadOAuthConnections();
     setState(ADMIN_STATE.integrations.oauth.loaded, { ...loaded, loadedAt: Date.now() });
+  }) satisfies CatalogActionHandler,
+
+  loadCommsDeliveries: (async (params, setState) => {
+    setState(ADMIN_STATE.integrations.commsDeliveries.loading, true);
+    setState(ADMIN_STATE.integrations.commsDeliveries.error, null);
+    try {
+      const status = typeof params?.status === "string" ? params.status : undefined;
+      const rows = await loadCommsDeliveries({ status, limit: 50 });
+      setState(ADMIN_STATE.integrations.commsDeliveries.loaded, rows);
+    } catch (err) {
+      setState(
+        ADMIN_STATE.integrations.commsDeliveries.error,
+        err instanceof Error ? err.message : String(err),
+      );
+      setState(ADMIN_STATE.integrations.commsDeliveries.loaded, null);
+    } finally {
+      setState(ADMIN_STATE.integrations.commsDeliveries.loading, false);
+    }
+  }) satisfies CatalogActionHandler,
+
+  loadWebhookSubscriptions: (async (_params, setState) => {
+    setState(ADMIN_STATE.integrations.webhooks.loading, true);
+    setState(ADMIN_STATE.integrations.webhooks.error, null);
+    try {
+      const rows = await loadWebhookSubscriptions();
+      setState(ADMIN_STATE.integrations.webhooks.loaded, rows);
+    } catch (err) {
+      setState(
+        ADMIN_STATE.integrations.webhooks.error,
+        err instanceof Error ? err.message : String(err),
+      );
+      setState(ADMIN_STATE.integrations.webhooks.loaded, null);
+    } finally {
+      setState(ADMIN_STATE.integrations.webhooks.loading, false);
+    }
+  }) satisfies CatalogActionHandler,
+
+  loadWebhookOutboundDeliveries: (async (_params, setState) => {
+    setState(ADMIN_STATE.integrations.webhookDeliveries.loading, true);
+    setState(ADMIN_STATE.integrations.webhookDeliveries.error, null);
+    try {
+      const rows = await loadWebhookOutboundDeliveries(50);
+      setState(ADMIN_STATE.integrations.webhookDeliveries.loaded, rows);
+    } catch (err) {
+      setState(
+        ADMIN_STATE.integrations.webhookDeliveries.error,
+        err instanceof Error ? err.message : String(err),
+      );
+      setState(ADMIN_STATE.integrations.webhookDeliveries.loaded, null);
+    } finally {
+      setState(ADMIN_STATE.integrations.webhookDeliveries.loading, false);
+    }
   }) satisfies CatalogActionHandler,
 };

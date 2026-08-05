@@ -29,6 +29,7 @@ function mockSecrets(overrides: Partial<SecretsService> = {}): SecretsService {
     resolveCommsCredentials: vi.fn(async () => null),
     putOrgSecret: vi.fn(),
     hasOrgSecret: vi.fn(async () => false),
+    getOrgSecret: vi.fn(async () => null),
     ...overrides,
   };
 }

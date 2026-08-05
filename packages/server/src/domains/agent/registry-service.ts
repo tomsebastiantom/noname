@@ -8,6 +8,7 @@ import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import type { AuthorizationPort } from "../auth/authorization-port";
 import type { AgentRegistryStorage, RegisteredAgentRow } from "./adapters/registry-postgres";
 import { mintAgentToken } from "./agent-token";
+import { ORCHESTRATE_TOOL_IDS } from "./mastra/guards";
 
 const TOKEN_TTL_SECONDS = 60 * 60;
 
@@ -81,7 +82,10 @@ export function createAgentRegistryService(deps: {
         slug: input.slug,
         label: input.label ?? input.slug,
         ownerUserId: creator.userId,
-        allowedTools: input.allowedTools,
+        allowedTools:
+          input.allowedTools && input.allowedTools.length > 0
+            ? input.allowedTools
+            : [...ORCHESTRATE_TOOL_IDS],
       });
 
       await deps.authorization.grant({

@@ -2,12 +2,17 @@ import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api"
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
+import type { AgentRegistryStorage } from "./adapters/registry-postgres";
 import { AgentTask } from "./entity";
 import type { AgentTaskStorage } from "./ports";
 import type { AgentJobData } from "./queue";
 import { requireAgentTask } from "./task-guards";
 import { persistAgentTask } from "./task-lifecycle";
 import type { AgentExecutor } from "./tools";
+
+export interface AgentWorkerDeps extends AgentWorkerHooks {
+  registryStorage?: AgentRegistryStorage;
+}
 
 export interface AgentTaskCompletedContext {
   orgId: string;
@@ -29,7 +34,7 @@ const tracer = trace.getTracer("agent-worker");
 export function startAgentWorker(
   storage: AgentTaskStorage,
   executor: AgentExecutor,
-  hooks: AgentWorkerHooks = {},
+  deps: AgentWorkerDeps = {},
 ): Worker<AgentJobData> {
   const worker = new Worker<AgentJobData>(
     BULLMQ_QUEUES.AGENT,
@@ -53,13 +58,31 @@ export function startAgentWorker(
             await persistAgentTask(storage, orgId, entity);
 
             try {
-              const result = await executor.execute(orgId, type, prompt, input);
+              let executorInput: Record<string, unknown> = { ...input, taskId };
+              if (row.registeredAgentId) {
+                executorInput.registeredAgentId = row.registeredAgentId;
+              }
+              if (deps.registryStorage && row.registeredAgentId) {
+                const agent = await deps.registryStorage.findById(orgId, row.registeredAgentId);
+                if (agent) {
+                  executorInput = {
+                    ...executorInput,
+                    agentSlug: agent.slug,
+                    onBehalfOf: agent.ownerUserId,
+                    ...(agent.allowedTools.length > 0
+                      ? { allowedTools: agent.allowedTools }
+                      : {}),
+                  };
+                }
+              }
+
+              const result = await executor.execute(orgId, type, prompt, executorInput);
               span.setAttribute("agent.model", result.model);
               span.setAttribute("agent.tokens", result.tokens);
               entity.complete(result.output, result.model, result.tokens);
               await persistAgentTask(storage, orgId, entity);
-              if (hooks.onTaskCompleted) {
-                await hooks.onTaskCompleted({
+              if (deps.onTaskCompleted) {
+                await deps.onTaskCompleted({
                   orgId,
                   taskId,
                   type,

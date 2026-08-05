@@ -234,6 +234,20 @@ export const adminActionSchemas = {
   loadIntegrationsComms: {
     description: "Load comms integration settings (flags only, no secrets)",
   },
+  loadCommsDeliveries: {
+    params: z
+      .object({
+        status: z.string().optional(),
+      })
+      .optional(),
+    description: "Load recent email delivery log for this org",
+  },
+  loadWebhookSubscriptions: {
+    description: "Load outbound webhook subscriptions for this org",
+  },
+  loadWebhookOutboundDeliveries: {
+    description: "Load outbound webhook delivery log for this org",
+  },
   saveIntegrationsComms: {
     params: z.object({
       emailProvider: z.enum(["resend", "ses", "twilio"]),

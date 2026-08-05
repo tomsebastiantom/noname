@@ -69,6 +69,31 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .limit(1);
       return row?.orgId ?? null;
     },
+    async findOrgIdByOAuthConnectionId(connectionId) {
+      const trimmed = connectionId.trim();
+      if (!trimmed) return null;
+
+      const [row] = await db
+        .select({ orgId: documents.orgId })
+        .from(documents)
+        .where(
+          and(
+            eq(documents.type, "tenant_settings"),
+            eq(documents.key, "default"),
+            sql`(
+              jsonb_path_exists(
+                ${documents.data},
+                '$.integrations.nango.*.connectionId ? (@ == $cid)',
+                jsonb_build_object('cid', ${trimmed})
+              )
+              OR ${documents.data}->'integrations'->'stripe'->>'connectionId' = ${trimmed}
+              OR ${documents.data}->'integrations'->'googleMail'->>'connectionId' = ${trimmed}
+            )`,
+          ),
+        )
+        .limit(1);
+      return row?.orgId ?? null;
+    },
     async upsertTenantSettings(orgId, data) {
       const existing = await findRow(db, orgId, "tenant_settings", "default");
       const merged = {

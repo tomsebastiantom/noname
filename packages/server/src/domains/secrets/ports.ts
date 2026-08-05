@@ -1,6 +1,6 @@
 import type { LLMProvider } from "../ai-pipeline/providers";
 
-export type OrgSecretKind = "llm" | "comms";
+export type OrgSecretKind = "llm" | "comms" | "webhooks";
 
 export type CommsProviderName = "resend" | "ses" | "twilio";
 
@@ -39,6 +39,11 @@ export interface SecretsService {
   resolveCommsCredentials(orgId: string): Promise<CommsCredentials | null>;
   putOrgSecret(input: PutOrgSecretInput): Promise<void>;
   hasOrgSecret(orgId: string, kind: OrgSecretKind, provider: string): Promise<boolean>;
+  getOrgSecret(
+    orgId: string,
+    kind: OrgSecretKind,
+    provider: string,
+  ): Promise<Record<string, string> | null>;
 }
 
 export interface VaultConfig {

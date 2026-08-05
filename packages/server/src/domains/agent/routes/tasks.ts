@@ -65,6 +65,9 @@ export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): voi
     } else if (!isStoreAgentAdmin(auth.permissions)) {
       return c.json({ error: "Forbidden" }, 403);
     }
+    if (body.type === "orchestrate" && !registeredAgentId) {
+      return c.json({ error: "orchestrate tasks require registeredAgentId" }, 400);
+    }
     const audit = writeAuditFromActor({
       type: "human",
       userId: auth.userId,

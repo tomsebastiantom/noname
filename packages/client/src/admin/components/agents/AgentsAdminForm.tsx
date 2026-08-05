@@ -1,7 +1,13 @@
-import { useStateValue } from "@json-render/react";
+import { useActions, useStateValue } from "@json-render/react";
 import { useEffect, useMemo, useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
-import type { AgentTask, RegisteredAgent } from "../../../auth/agents";
+import type {
+  AgentArtifact,
+  AgentStepRecord,
+  AgentTask,
+  OrchestrateOutput,
+  RegisteredAgent,
+} from "../../../auth/agents";
 import { fetchScopeCollections, type ScopeCatalogEntry } from "../../../auth/document-scope";
 import {
   type AuthSessionStatus,
@@ -67,7 +73,57 @@ type AgentsAdminLabels = {
   promptColumnHeader: string;
   reviewedByColumnHeader: string;
   tasksForbiddenLabel: string;
+  createTaskSectionTitle: string;
+  createTaskSectionDescription: string;
+  taskPromptLabel: string;
+  taskAgentLabel: string;
+  createTaskLabel: string;
+  creatingTaskLabel: string;
+  createTaskSuccessMessage: string;
+  viewTaskLabel: string;
+  stepsSectionTitle: string;
+  artifactsSectionTitle: string;
+  runSummaryLabel: string;
+  noArtifactsMessage: string;
+  stepStatusOkLabel: string;
+  stepStatusDeniedLabel: string;
+  stepStatusErrorLabel: string;
+  runningTaskLabel: string;
 };
+
+function parseOrchestrateOutput(output: Record<string, unknown> | null): OrchestrateOutput | null {
+  if (!output || typeof output !== "object") return null;
+  const summary = typeof output.summary === "string" ? output.summary : "";
+  const steps = Array.isArray(output.steps)
+    ? (output.steps as AgentStepRecord[])
+    : [];
+  const artifacts = Array.isArray(output.artifacts)
+    ? (output.artifacts as AgentArtifact[])
+    : [];
+  const stoppedReason =
+    output.stoppedReason === "max_steps" ||
+    output.stoppedReason === "error" ||
+    output.stoppedReason === "denied"
+      ? output.stoppedReason
+      : "completed";
+  if (!summary && steps.length === 0 && artifacts.length === 0) return null;
+  return { summary, steps, artifacts, stoppedReason };
+}
+
+function artifactHref(artifact: AgentArtifact): string | null {
+  if (artifact.kind === "layout") return `/admin/layout/${encodeURIComponent(artifact.label)}`;
+  if (artifact.kind === "content") return `/admin/content/${encodeURIComponent(artifact.label)}`;
+  return null;
+}
+
+function stepStatusLabel(
+  status: AgentStepRecord["status"],
+  labels: AgentsAdminLabels,
+): string {
+  if (status === "denied") return labels.stepStatusDeniedLabel;
+  if (status === "error") return labels.stepStatusErrorLabel;
+  return labels.stepStatusOkLabel;
+}
 
 export function AgentsAdminForm({
   props,
@@ -76,6 +132,7 @@ export function AgentsAdminForm({
   const canAccess = useAdminRouteAccess("agents");
   const catalog = useCatalogSubmit();
   const { submit, pending, error, success, reset } = catalog;
+  const { execute } = useActions();
 
   useMountAction("loadAgentsAdmin", {});
 
@@ -89,6 +146,11 @@ export function AgentsAdminForm({
     | string
     | null
     | undefined;
+  const selectedTaskId = useStateValue(ADMIN_STATE.agents.selectedTaskId) as string | null | undefined;
+  const selectedTaskDetail = useStateValue(ADMIN_STATE.agents.selectedTaskDetail) as
+    | AgentTask
+    | null
+    | undefined;
 
   const [session, setSession] = useState<AuthSessionStatus | null>(null);
   const [folders, setFolders] = useState<ScopeCatalogEntry[]>([]);
@@ -96,6 +158,8 @@ export function AgentsAdminForm({
   const [label, setLabel] = useState("");
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
   const [folderSlug, setFolderSlug] = useState("");
+  const [taskPrompt, setTaskPrompt] = useState("");
+  const [taskAgentId, setTaskAgentId] = useState("");
 
   const canManageAllTasks = sessionHasPermission(session, PERMISSIONS.AGENT_MANAGE);
   const ownedAgentIds = useMemo(
@@ -106,6 +170,14 @@ export function AgentsAdminForm({
     [registry, session?.userId],
   );
   const canSeeTasks = canManageAllTasks || ownedAgentIds.size > 0;
+  const canCreateTask = canManageAllTasks || ownedAgentIds.size > 0;
+  const creatableAgents = useMemo(
+    () =>
+      canManageAllTasks
+        ? registry
+        : registry.filter((agent) => ownedAgentIds.has(agent.id)),
+    [canManageAllTasks, registry, ownedAgentIds],
+  );
   const canReviewTask = (task: AgentTask): boolean =>
     canManageAllTasks ||
     (task.registeredAgentId !== null && ownedAgentIds.has(task.registeredAgentId));
@@ -122,6 +194,13 @@ export function AgentsAdminForm({
     [folders],
   );
   const folderOptions = useMemo(() => flattenFoldersForSelect(folderCatalog), [folderCatalog]);
+  const orchestrateOutput = useMemo(
+    () =>
+      selectedTaskDetail?.type === "orchestrate"
+        ? parseOrchestrateOutput(selectedTaskDetail.output)
+        : null,
+    [selectedTaskDetail],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -149,6 +228,21 @@ export function AgentsAdminForm({
       setSelectedAgentId(registry[0]!.id);
     }
   }, [registry, selectedAgentId]);
+
+  useEffect(() => {
+    if (creatableAgents.length > 0 && !taskAgentId) {
+      setTaskAgentId(creatableAgents[0]!.id);
+    }
+  }, [creatableAgents, taskAgentId]);
+
+  useEffect(() => {
+    const status = selectedTaskDetail?.status;
+    if (!selectedTaskId || (status !== "pending" && status !== "running")) return;
+    const timer = window.setInterval(() => {
+      void execute({ action: "loadAgentTaskDetail", params: { taskId: selectedTaskId } });
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [execute, selectedTaskDetail?.status, selectedTaskId]);
 
   const registryColumns: DataTableColumn<RegisteredAgent>[] = [
     { key: "slug", header: labels.slugColumnHeader, cell: (row) => row.slug },
@@ -213,7 +307,9 @@ export function AgentsAdminForm({
     {
       key: "status",
       header: labels.statusColumnHeader,
-      cell: (row) => <Badge variant="secondary">{row.status}</Badge>,
+      cell: (row) => (
+        <Badge variant={row.status === "running" ? "default" : "secondary"}>{row.status}</Badge>
+      ),
     },
     {
       key: "prompt",
@@ -231,42 +327,56 @@ export function AgentsAdminForm({
     {
       key: "actions",
       header: "",
-      cell: (row) =>
-        row.status === "completed" && canReviewTask(row) ? (
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              size="sm"
-              disabled={pending}
-              onClick={() => {
-                reset();
-                void submit({
-                  action: "approveAgentTask",
-                  params: { taskId: row.id },
-                  successMessage: labels.taskApprovedMessage,
-                });
-              }}
-            >
-              {labels.approveLabel}
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={pending}
-              onClick={() => {
-                reset();
-                void submit({
-                  action: "rejectAgentTask",
-                  params: { taskId: row.id },
-                  successMessage: labels.taskRejectedMessage,
-                });
-              }}
-            >
-              {labels.rejectLabel}
-            </Button>
-          </div>
-        ) : null,
+      cell: (row) => (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant={selectedTaskId === row.id ? "default" : "outline"}
+            disabled={pending}
+            onClick={() => {
+              void execute({ action: "selectAgentTask", params: { taskId: row.id } });
+            }}
+          >
+            {labels.viewTaskLabel}
+          </Button>
+          {row.status === "completed" && canReviewTask(row) ? (
+            <>
+              <Button
+                type="button"
+                size="sm"
+                disabled={pending}
+                onClick={() => {
+                  reset();
+                  void submit({
+                    action: "approveAgentTask",
+                    params: { taskId: row.id },
+                    successMessage: labels.taskApprovedMessage,
+                  });
+                }}
+              >
+                {labels.approveLabel}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pending}
+                onClick={() => {
+                  reset();
+                  void submit({
+                    action: "rejectAgentTask",
+                    params: { taskId: row.id },
+                    successMessage: labels.taskRejectedMessage,
+                  });
+                }}
+              >
+                {labels.rejectLabel}
+              </Button>
+            </>
+          ) : null}
+        </div>
+      ),
     },
   ];
 
@@ -438,18 +548,177 @@ export function AgentsAdminForm({
           <CardTitle>{labels.tasksSectionTitle}</CardTitle>
           <CardDescription>{labels.tasksSectionDescription}</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
           {!canSeeTasks ? (
             <Alert>
               <AlertDescription>{labels.tasksForbiddenLabel}</AlertDescription>
             </Alert>
           ) : (
-            <DataTable
-              columns={taskColumns}
-              rows={tasks}
-              rowKey={(row) => row.id}
-              emptyMessage={labels.emptyTasksMessage}
-            />
+            <>
+              {canCreateTask && creatableAgents.length > 0 ? (
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div>
+                    <h3 className="font-medium">{labels.createTaskSectionTitle}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {labels.createTaskSectionDescription}
+                    </p>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2 sm:col-span-2">
+                      <Label htmlFor="task-prompt">{labels.taskPromptLabel}</Label>
+                      <Input
+                        id="task-prompt"
+                        value={taskPrompt}
+                        onChange={(e) => setTaskPrompt(e.target.value)}
+                        placeholder="Summarize last week's signups and draft a hero layout"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="task-agent">{labels.taskAgentLabel}</Label>
+                      <select
+                        id="task-agent"
+                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm"
+                        value={taskAgentId}
+                        onChange={(e) => setTaskAgentId(e.target.value)}
+                      >
+                        {creatableAgents.map((agent) => (
+                          <option key={agent.id} value={agent.id}>
+                            {agent.label} ({agent.slug})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <Button
+                    type="button"
+                    disabled={pending || !taskPrompt.trim() || !taskAgentId}
+                    onClick={() => {
+                      reset();
+                      void submit({
+                        action: "createAgentTask",
+                        params: {
+                          prompt: taskPrompt.trim(),
+                          registeredAgentId: taskAgentId,
+                          type: "orchestrate",
+                        },
+                        successMessage: labels.createTaskSuccessMessage,
+                        onSuccess: () => setTaskPrompt(""),
+                      });
+                    }}
+                  >
+                    {pending ? labels.creatingTaskLabel : labels.createTaskLabel}
+                  </Button>
+                </div>
+              ) : null}
+
+              <DataTable
+                columns={taskColumns}
+                rows={tasks}
+                rowKey={(row) => row.id}
+                emptyMessage={labels.emptyTasksMessage}
+              />
+
+              {selectedTaskDetail ? (
+                <div className="space-y-4 rounded-lg border p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <h3 className="font-medium">{selectedTaskDetail.type}</h3>
+                      <p className="text-sm text-muted-foreground">{selectedTaskDetail.prompt}</p>
+                    </div>
+                    <Badge>{selectedTaskDetail.status}</Badge>
+                  </div>
+
+                  {selectedTaskDetail.status === "pending" ||
+                  selectedTaskDetail.status === "running" ? (
+                    <p className="text-sm text-muted-foreground">{labels.runningTaskLabel}</p>
+                  ) : null}
+
+                  {selectedTaskDetail.error ? (
+                    <Alert variant="destructive">
+                      <AlertDescription>{selectedTaskDetail.error}</AlertDescription>
+                    </Alert>
+                  ) : null}
+
+                  {orchestrateOutput ? (
+                    <>
+                      {orchestrateOutput.summary ? (
+                        <div className="space-y-1">
+                          <p className="text-sm font-medium">{labels.runSummaryLabel}</p>
+                          <p className="text-sm text-muted-foreground">{orchestrateOutput.summary}</p>
+                        </div>
+                      ) : null}
+
+                      {orchestrateOutput.steps.length > 0 ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">{labels.stepsSectionTitle}</p>
+                          <ol className="space-y-2">
+                            {orchestrateOutput.steps.map((step) => (
+                              <li
+                                key={`${step.index}-${step.tool}`}
+                                className="rounded-md border px-3 py-2 text-sm"
+                              >
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="font-mono text-xs">{step.tool}</span>
+                                  <Badge variant="outline">
+                                    {stepStatusLabel(step.status, labels)}
+                                  </Badge>
+                                  <span className="text-xs text-muted-foreground">
+                                    {step.durationMs}ms
+                                  </span>
+                                </div>
+                                {step.outputSummary ? (
+                                  <p className="mt-1 text-xs text-muted-foreground">
+                                    {step.outputSummary}
+                                  </p>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      ) : null}
+
+                      <div className="space-y-2">
+                        <p className="text-sm font-medium">{labels.artifactsSectionTitle}</p>
+                        {orchestrateOutput.artifacts.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">{labels.noArtifactsMessage}</p>
+                        ) : (
+                          <ul className="space-y-1">
+                            {orchestrateOutput.artifacts.map((artifact) => {
+                              const href = artifactHref(artifact);
+                              return (
+                                <li key={`${artifact.kind}-${artifact.documentId ?? artifact.label}`}>
+                                  {href ? (
+                                    <a
+                                      href={href}
+                                      className="text-sm text-primary underline-offset-4 hover:underline"
+                                    >
+                                      {artifact.kind}: {artifact.label}
+                                    </a>
+                                  ) : (
+                                    <span className="text-sm">
+                                      {artifact.kind}: {artifact.label}
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
+                      </div>
+                    </>
+                  ) : null}
+
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => void execute({ action: "selectAgentTask", params: { taskId: null } })}
+                  >
+                    Close
+                  </Button>
+                </div>
+              ) : null}
+            </>
           )}
         </CardContent>
       </Card>

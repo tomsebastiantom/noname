@@ -42,7 +42,10 @@ export function createAgentDomain(deps: AgentDomainDeps) {
     registry,
     registryStorage: registryStorage,
   });
-  const worker = startAgentWorker(taskStorage, deps.executor, deps.workerHooks ?? {});
+  const worker = startAgentWorker(taskStorage, deps.executor, {
+    registryStorage,
+    ...deps.workerHooks,
+  });
 
   return {
     storage: registryStorage,

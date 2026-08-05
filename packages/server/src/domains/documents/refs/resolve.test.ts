@@ -54,6 +54,7 @@ function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
     updateContentType: vi.fn(),
     getTenantSettings: vi.fn(),
     findOrgIdByStoreSlug: vi.fn(),
+    findOrgIdByOAuthConnectionId: vi.fn(),
     upsertTenantSettings: vi.fn(),
     createDocument: vi.fn(),
     listDocuments: vi.fn(),

@@ -87,6 +87,21 @@ export const ADMIN_STATE = {
       loading: "/admin/integrations/oauth/loading",
       error: "/admin/integrations/oauth/error",
     },
+    commsDeliveries: {
+      loaded: "/admin/integrations/comms-deliveries/loaded",
+      loading: "/admin/integrations/comms-deliveries/loading",
+      error: "/admin/integrations/comms-deliveries/error",
+    },
+    webhooks: {
+      loaded: "/admin/integrations/webhooks/loaded",
+      loading: "/admin/integrations/webhooks/loading",
+      error: "/admin/integrations/webhooks/error",
+    },
+    webhookDeliveries: {
+      loaded: "/admin/integrations/webhook-deliveries/loaded",
+      loading: "/admin/integrations/webhook-deliveries/loading",
+      error: "/admin/integrations/webhook-deliveries/error",
+    },
   },
   agents: {
     registry: "/admin/agents/registry",
@@ -95,6 +110,8 @@ export const ADMIN_STATE = {
     error: "/admin/agents/error",
     mintedToken: "/admin/agents/mintedToken",
     mintedTokenExpiresAt: "/admin/agents/mintedTokenExpiresAt",
+    selectedTaskId: "/admin/agents/selectedTaskId",
+    selectedTaskDetail: "/admin/agents/selectedTaskDetail",
   },
   loginBranding: {
     loaded: "/admin/auth/login-branding/loaded",

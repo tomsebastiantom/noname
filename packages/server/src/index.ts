@@ -6,6 +6,9 @@ startTracing();
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
+import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
+import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
+import { createMastraExecutor } from "./domains/agent/mastra/executor";
 import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notify";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
@@ -20,7 +23,7 @@ import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
-import { createWebhooksDomain, WebhookEvents } from "./domains/webhooks";
+import { createWebhooksDomain, registerWebhookInboundRouter, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus, initEventBus } from "./shared/event-bus";
@@ -105,10 +108,24 @@ const machines = createMachineDomain({
   },
 });
 
-const webhooks = createWebhooksDomain({ db });
+const webhooks = createWebhooksDomain({
+  db,
+  secrets: secrets.service,
+  tenantSettings: docs.service.tenantSettings,
+});
 
-eventBus.subscribe(WebhookEvents.RECEIVED, async (payload) => {
-  console.info("[webhook.received]", payload);
+registerWebhookInboundRouter({
+  machines: machines.engine,
+  subscribe: (event, handler) => {
+    eventBus.subscribe(event, handler);
+  },
+});
+
+registerWebhookOutboundRouter({
+  webhooks: webhooks.service,
+  subscribe: (event, handler) => {
+    eventBus.subscribe(event, handler);
+  },
 });
 
 app.route("/api/documents", docs.routes);
@@ -127,17 +144,24 @@ app.route("/api/analytics", analytics.routes);
 const aiPipeline = createAIPipelineDomain({ db, secrets: secrets.service });
 app.route("/api/ai", aiPipeline.routes);
 
-function pipelineTaskResult(r: { response: unknown; model: string; tokens: number }) {
-  return {
-    output: r.response as Record<string, unknown>,
-    model: r.model,
-    tokens: r.tokens,
-  };
-}
+const agentExecutor = createCompositeAgentExecutor({
+  legacy: createLegacyAgentExecutor({
+    aiPipeline: aiPipeline.service,
+    analytics: analytics.service,
+  }),
+  mastra: createMastraExecutor({
+    analytics: analytics.service,
+    integrations: integrations.service,
+    aiPipeline: aiPipeline.service,
+    layout: docs.service.layout,
+    content: docs.service.content,
+  }),
+});
 
 const agent = createAgentDomain({
   db,
   authorization,
+  executor: agentExecutor,
   workerHooks: {
     async onTaskCompleted({ orgId, type, prompt, input, output }) {
       const notify = parseTaskNotify(input);
@@ -151,39 +175,6 @@ const agent = createAgentDomain({
         variables: taskNotifyVariables(type, prompt, output, notify),
         idempotencyKey: notify.userId ? `agent-task:${type}:${notify.userId}` : undefined,
       });
-    },
-  },
-  executor: {
-    async execute(orgId, type, prompt, input) {
-      switch (type) {
-        case "generate_layout":
-          return pipelineTaskResult(await aiPipeline.service.generateLayout(orgId, prompt, input));
-        case "generate_content":
-          return pipelineTaskResult(
-            await aiPipeline.service.generateContent(orgId, "content", prompt),
-          );
-        case "generate_machine":
-          return pipelineTaskResult(await aiPipeline.service.generateMachine(orgId, type, prompt));
-        case "analyze_analytics": {
-          const limit = typeof input.limit === "number" ? input.limit : 50;
-          const [events, aggregates] = await Promise.all([
-            analytics.service.query({ orgId, limit }),
-            analytics.service.aggregate({ orgId, groupBy: "eventType", limit: 20 }),
-          ]);
-          return {
-            output: {
-              query: prompt,
-              eventCount: events.length,
-              events,
-              aggregates,
-            },
-            model: "analytics",
-            tokens: 0,
-          };
-        }
-        default:
-          return { output: {}, model: "mock", tokens: 0 };
-      }
     },
   },
 });

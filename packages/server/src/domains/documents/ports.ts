@@ -283,6 +283,7 @@ export interface DocumentStorage {
   // tenant settings
   getTenantSettings(orgId: string): Promise<TenantSettingsDTO | null>;
   findOrgIdByStoreSlug(slug: string): Promise<string | null>;
+  findOrgIdByOAuthConnectionId(connectionId: string): Promise<string | null>;
   upsertTenantSettings(
     orgId: string,
     data: Omit<TenantSettingsDTO, "id" | "orgId">,
@@ -333,6 +334,7 @@ export interface TenantSettingsService {
   get(orgId: string): Promise<TenantSettingsDTO>;
   upsert(orgId: string, data: Omit<TenantSettingsDTO, "id" | "orgId">): Promise<TenantSettingsDTO>;
   resolveStoreSlug(slug: string): Promise<string | null>;
+  findOrgIdByOAuthConnectionId(connectionId: string): Promise<string | null>;
 }
 
 export interface ContentContentOpts {

@@ -1,6 +1,8 @@
 import {
   approveAgentTask,
+  createAgentTask,
   deleteRegisteredAgent,
+  fetchAgentTaskById,
   fetchAgentTasks,
   fetchRegisteredAgents,
   grantAgentCollectionEditor,
@@ -69,5 +71,41 @@ export const agentActions = {
   clearMintedAgentToken: (async (_params, setState) => {
     setState(ADMIN_STATE.agents.mintedToken, null);
     setState(ADMIN_STATE.agents.mintedTokenExpiresAt, null);
+  }) satisfies CatalogActionHandler,
+
+  createAgentTask: (async (params, setState) => {
+    const { prompt, registeredAgentId, type } = params as {
+      prompt: string;
+      registeredAgentId: string;
+      type?: "orchestrate";
+    };
+    const task = await createAgentTask({
+      type: type ?? "orchestrate",
+      prompt: prompt.trim(),
+      registeredAgentId,
+    });
+    setState(ADMIN_STATE.agents.selectedTaskId, task.id);
+    setState(ADMIN_STATE.agents.selectedTaskDetail, task);
+    await refreshAgents(setState);
+  }) satisfies CatalogActionHandler,
+
+  loadAgentTaskDetail: (async (params, setState) => {
+    const { taskId } = params as { taskId: string };
+    const task = await fetchAgentTaskById(taskId);
+    setState(ADMIN_STATE.agents.selectedTaskDetail, task);
+    if (task.status === "completed" || task.status === "failed" || task.status === "approved" || task.status === "rejected") {
+      await refreshAgents(setState);
+    }
+  }) satisfies CatalogActionHandler,
+
+  selectAgentTask: (async (params, setState) => {
+    const { taskId } = params as { taskId: string | null };
+    setState(ADMIN_STATE.agents.selectedTaskId, taskId);
+    if (!taskId) {
+      setState(ADMIN_STATE.agents.selectedTaskDetail, null);
+      return;
+    }
+    const task = await fetchAgentTaskById(taskId);
+    setState(ADMIN_STATE.agents.selectedTaskDetail, task);
   }) satisfies CatalogActionHandler,
 };

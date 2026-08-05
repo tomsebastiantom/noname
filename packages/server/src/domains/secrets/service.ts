@@ -144,6 +144,10 @@ export function createSecretsService(deps: {
     async hasOrgSecret(orgId: string, kind: OrgSecretKind, provider: string): Promise<boolean> {
       return store.hasOrgSecret(orgId, kind, provider);
     },
+
+    async getOrgSecret(orgId: string, kind: OrgSecretKind, provider: string) {
+      return store.getOrgSecret({ orgId, kind, provider });
+    },
   };
 }
 

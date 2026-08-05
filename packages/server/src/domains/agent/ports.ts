@@ -11,7 +11,8 @@ export type AgentTaskType =
   | "generate_layout"
   | "generate_content"
   | "generate_machine"
-  | "analyze_analytics";
+  | "analyze_analytics"
+  | "orchestrate";
 
 export type AgentTaskStatus =
   | "pending"

@@ -272,10 +272,10 @@ Phase 2.0 may keep everything in `AgentsAdminForm` if ≤ ~80 lines added.
 |------|-------------|------|
 | **2.1** | `@mastra/core`, `createMastraExecutor`, one tool (`readAnalytics` real) | 2–3 d |
 | **2.2** | Draft tools (`generateLayoutDraft`, `generateContentDraft`) + in-process ports | 3–4 d |
-| **2.3** | `orchestrate` task type + structured `output` schema + tests | 2 d |
-| **2.4** | Client: create task + steps timeline + artifacts links | 2–3 d |
-| **2.5** | Prompt templates + token accounting + OTel spans per step | 1–2 d |
-| **2.6** | Docs + seed demo task walkthrough | 1 d |
+| **2.3** | `orchestrate` task type + structured `output` schema + tests | 2 d | ✅ |
+| **2.4** | Client: create task + steps timeline + artifacts links | 2–3 d | ✅ |
+| **2.5** | Prompt templates + token accounting + OTel spans per step | 1–2 d | ✅ |
+| **2.6** | Docs + seed demo task walkthrough | 1 d | ✅ |
 
 **Replace executor** at step 2.1 — keep old `switch` as fallback behind `AGENT_ORCHESTRATE_ENABLED=false`.
 

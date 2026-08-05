@@ -48,6 +48,49 @@ describe("createAgentRegistryService", () => {
     });
   });
 
+  it("defaults allowedTools to orchestrate tool ids when omitted", async () => {
+    const create = vi.fn(async () => ({
+      id: "agent-1",
+      orgId: "org-1",
+      slug: "landing-helper",
+      label: "Landing helper",
+      ownerUserId: "user-alice",
+      allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft"],
+      createdAt: new Date(),
+    }));
+    const registry = createAgentRegistryService({
+      storage: {
+        create,
+        list: vi.fn(),
+        findById: vi.fn(),
+        findBySlug: vi.fn(),
+        delete: vi.fn(),
+      },
+      authorization: {
+        check: vi.fn(),
+        grant: vi.fn(),
+        revoke: vi.fn(),
+        listDirectUserEditors: vi.fn(),
+        listDirectUserPublishers: vi.fn(),
+        listRelationTuples: vi.fn(async () => []),
+      },
+      tokenSecret: "secret",
+      resolveCreatorPermissions: vi.fn(async () => [PERMISSIONS.CONTENT_DRAFT_WRITE]),
+    });
+
+    await registry.register(
+      "org-1",
+      { slug: "landing-helper" },
+      { userId: "user-alice", permissions: [PERMISSIONS.CONTENT_DRAFT_WRITE] },
+    );
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        allowedTools: ["readAnalytics", "nango_trigger", "generateLayoutDraft", "generateContentDraft"],
+      }),
+    );
+  });
+
   it("delegates collection editor only when creator has edit access", async () => {
     const check = vi.fn(async () => true);
     const grant = vi.fn();

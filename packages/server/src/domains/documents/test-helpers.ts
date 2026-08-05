@@ -74,6 +74,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
       throw new Error("not used");
     },
     findOrgIdByStoreSlug: async () => null,
+    findOrgIdByOAuthConnectionId: async () => null,
     upsertTenantSettings: async () => tenantSettings,
     listDocuments: async () => [],
     findDocument: async () => null,
