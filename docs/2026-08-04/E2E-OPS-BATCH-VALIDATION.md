@@ -265,7 +265,7 @@ Browser: `http://yogastore.localhost:5173`. Login as admin unless noted.
 
 **Agents nuance:** Editors can register agents and run tasks (they have `content:draft_write`). They only see/review tasks for agents they own unless they have `agent:manage`. Customers never get admin agents nav.
 
-**Integrations nuance:** The integrations page stacks LLM + comms + deliveries + inbox + webhooks + OAuth in one spec. Sidebar link is one item; page content is not yet split into collapsible categories (planned).
+**Integrations nuance:** The integrations page stacks LLM + comms + deliveries + inbox + webhooks + OAuth in one spec. Sidebar link is one item; page uses **`AdminCollapsibleSection`** (5 categories, AI & LLM open by default — F7).
 
 ---
 

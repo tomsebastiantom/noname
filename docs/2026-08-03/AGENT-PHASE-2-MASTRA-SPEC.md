@@ -1,9 +1,9 @@
 # Agent Phase 2 — Multi-step Mastra runtime (full spec)
 
-> **Status:** Approved plan — implement **after** Phase I (Vault + integrations + Nango)  
-> **Prerequisite:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) I-a through I-d + I-e ingestion checklist  
+> **Status:** **Mock orchestrate shipped** (2026-08-05) — live LLM planner run open  
+> **Prerequisite:** ✅ Phase I + mock path (E2E A5/U4)  
 > **Goal:** One merchant task (“Optimize my checkout”) → agent runs **many tool steps** on the platform → human reviews → human publishes  
-> **Related:** [`AGENT-OWNERSHIP-AND-REVIEW.md`](./AGENT-OWNERSHIP-AND-REVIEW.md) · [`IDENTITY-AGENTS-MASTER-PLAN.md`](./IDENTITY-AGENTS-MASTER-PLAN.md) · [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md) § agent
+> **Related:** [`AGENT-ORCHESTRATE-DEMO.md`](../2026-08-04/AGENT-ORCHESTRATE-DEMO.md) · [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md) · [`AGENT-OWNERSHIP-AND-REVIEW.md`](./AGENT-OWNERSHIP-AND-REVIEW.md)
 
 ---
 
@@ -284,13 +284,13 @@ Phase 2.0 may keep everything in `AgentsAdminForm` if ≤ ~80 lines added.
 ## 7. Acceptance criteria (spec 100)
 
 - [x] Merchant can queue `orchestrate` task with prompt + registered agent.
-- [ ] Worker runs Mastra loop with ≥3 tools in one job (e.g. analytics → layout draft → content draft) — **needs ops batch + live LLM**.
+- [ ] Worker runs **live** Mastra planner with ≥3 tools in one job (analytics → layout → content) — needs Vault LLM key; **mock path verified** in E2E (A5.3, U4.3).
 - [x] Each draft write appears in `document_ops` with `actorType=agent`, `taskId`, `onBehalfOf` (layout/content tools pass audit).
 - [x] Task completes with structured `output.steps` + `output.artifacts` (schema + executor tests).
 - [x] Agent owner sees task + steps + artifacts in admin UI; can approve/reject.
 - [x] Agent cannot call publish tool (hard deny via `guards.ts`).
 - [x] Store admin can approve tasks without `registeredAgentId` (`canReviewAgentTask` unchanged).
-- [ ] With no LLM API key, mock path still completes orchestrate with mock tool outputs — set `MASTRA_ORCHESTRATE_MOCK=true` (runs analytics + draft tools without Mastra planner).
+- [x] With no LLM API key, mock path completes orchestrate with mock tool outputs — `MASTRA_ORCHESTRATE_MOCK=true` (7-step mock run; E2E A5.3/U4.3).
 - [x] Unit tests: tool guards, executor output shape, `canReviewAgentTask` unchanged.
 - [x] No new permission store — Keto + `@noname/auth` only.
 

@@ -1,8 +1,8 @@
 # RFC — Webhook platform research (Svix, Hookdeck → noname)
 
-> **Status:** Draft for team review  
-> **Date:** 2026-08-05  
-> **Related:** [`WEBHOOKS-DOMAIN-SPEC.md`](./WEBHOOKS-DOMAIN-SPEC.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md)
+> **Status:** Reference + shipped implementation (2026-08-05)  
+> **Date:** 2026-08-05 (updated)  
+> **Related:** [`WEBHOOKS-DOMAIN-SPEC.md`](./WEBHOOKS-DOMAIN-SPEC.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md)
 
 ---
 
@@ -59,7 +59,7 @@ These projects are **not** in our stack. We study them to see what “production
 |------|--------|
 | OAuth connect complete | `integrations` → `POST /api/integrations/nango/webhook` |
 | Email to users | `notifications` |
-| Provider business events + merchant callbacks | **`domains/webhooks`** (planned) |
+| Provider business events + merchant callbacks | **`domains/webhooks`** ✅ shipped (inbound + outbound) |
 
 ---
 
@@ -71,11 +71,11 @@ Legend: ✅ strong · ⚠️ partial · ❌ not focus · 🔧 we must own · �
 
 | Feature | Svix (OSS / SaaS) | Hookdeck Event Gateway | noname today | noname target |
 |---------|-------------------|------------------------|--------------|---------------|
-| Public ingest URL | 📦 Ingest SaaS | ✅ Source URL | ❌ | `POST /api/webhooks/inbound/:provider` |
-| Signature verify | ✅ SDK + Standard Webhooks | ✅ Per-source | ✅ Nango OAuth only | Per-provider adapters |
-| Idempotency key | ✅ `event_id` on messages | ✅ Dedupe rules | ❌ | `webhook_receipts` unique index |
-| Persist all payloads | ✅ Postgres | ✅ Event store | ❌ | Receipt row + optional payload retention policy |
-| Fast 200 + async process | ✅ Queue | ✅ Queue | ⚠️ sync in integrations | BullMQ `webhook-inbound` |
+| Public ingest URL | 📦 Ingest SaaS | ✅ Source URL | ✅ `POST /api/webhooks/inbound/:provider` | Same |
+| Signature verify | ✅ SDK + Standard Webhooks | ✅ Per-source | ✅ Nango OAuth + generic HMAC | Per-provider adapters |
+| Idempotency key | ✅ `event_id` on messages | ✅ Dedupe rules | ✅ `webhook_receipts` | Same |
+| Persist all payloads | ✅ Postgres | ✅ Event store | ✅ Receipt rows | Optional retention policy |
+| Fast 200 + async process | ✅ Queue | ✅ Queue | ✅ BullMQ `webhook-inbound` | Same |
 | Filter / drop noise | ⚠️ event types | ✅ JSON filters on connections | ❌ | Phase 2 — rules on ingest |
 | Transform payload | 📦 SaaS | ✅ Connection rules | ❌ | Optional — machines normalize |
 | Fan-out to multiple handlers | ⚠️ | ✅ Source → many connections | 🔧 | **`eventBus`** subscribers |

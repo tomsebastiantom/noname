@@ -1,8 +1,8 @@
 # Webhooks domain spec (Phase I-f)
 
-> **Date:** 2026-08-04  
-> **Status:** Spec — implement after I-a–I-e baseline  
-> **Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md)
+> **Date:** 2026-08-04 (updated 2026-08-05)  
+> **Status:** **Implemented v1** — inbound + outbound + admin UI; see E2E A4/A5 and integrations checklist  
+> **Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md)
 
 ---
 
@@ -277,21 +277,21 @@ For demos and non-Stripe providers:
 
 ### v1 — inbound
 
-- [ ] `BULLMQ_QUEUES.WEBHOOK_INBOUND`
-- [ ] `schema.ts` + `db:push` for `webhook_receipts`
-- [ ] `adapters/generic-hmac.ts`, `adapters/stripe.ts`
-- [ ] `service.ts` + `worker.ts` + `routes/inbound.ts`
-- [ ] Mount `/api/webhooks` in server `index.ts`
-- [ ] `PUBLIC_POST_PATTERNS` for inbound route
-- [ ] `WebhookEvents.RECEIVED` + stub `eventBus.subscribe`
-- [ ] Tests: verify reject, idempotent duplicate, worker publishes event
+- [x] `BULLMQ_QUEUES.WEBHOOK_INBOUND`
+- [x] `schema.ts` + `db:push` for `webhook_receipts`
+- [x] `adapters/generic-hmac.ts`, `adapters/stripe.ts`
+- [x] `service.ts` + `worker.ts` + `routes/inbound.ts`
+- [x] Mount `/api/webhooks` in server `index.ts`
+- [x] `PUBLIC_POST_PATTERNS` for inbound route
+- [x] `WebhookEvents.RECEIVED` + `eventBus.subscribe`
+- [x] Tests: verify reject, idempotent duplicate, worker publishes event
 
-### v1.1 — outbound (later)
+### v1.1 — outbound
 
-- [ ] `webhook_subscriptions` + admin form
-- [ ] Vault secret for subscription signing
-- [ ] `webhook-outbound` worker with retry/backoff
-- [ ] Subscribe to `MachineEvents.TRANSITION` or explicit `deliverOutbound` calls
+- [x] `webhook_subscriptions` + admin form
+- [x] Vault secret for subscription signing
+- [x] `webhook-outbound` worker with retry/backoff
+- [x] Subscribe to machine/agent/comms events + outbound fan-out
 
 ---
 

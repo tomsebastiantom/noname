@@ -1,7 +1,7 @@
 # Folders replace tags — simple 3-phase plan
 
 > **Date:** 2026-08-03  
-> **Status:** **F1 shipped · F2 + F3 shipped**  
+> **Status:** **F1–F3 shipped** (2026-08-05)  
 > **Related:** [`ACCESS-AND-ROLES.md`](./ACCESS-AND-ROLES.md) · [`ROADMAP-PHASES-B-A-C.md`](./ROADMAP-PHASES-B-A-C.md)
 
 ---

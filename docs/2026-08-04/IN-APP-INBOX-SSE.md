@@ -116,5 +116,5 @@ Scoped to authenticated user + org (not integrations admin permission).
 ## Future (not v1)
 
 - Mobile push channel (FCM/APNs) — separate adapter, same trigger config pattern.
-- Stream ticket endpoint instead of raw JWT in query string.
+- Stream ticket endpoint instead of raw JWT in query string (edge query-token forwarding shipped 2026-08-05 — see E2E F8).
 - Optional Redis channel per user (`noname:sse:{orgId}:{userId}`) if org-wide fan-out becomes noisy at scale.

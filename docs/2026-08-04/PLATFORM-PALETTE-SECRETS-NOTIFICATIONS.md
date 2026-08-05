@@ -238,7 +238,7 @@ Merchants never receive platform machine keys or other orgs’ secrets.
 
 ## Manual tenant setup checklist (per new store / org)
 
-Use this when onboarding a merchant org (demo or prod).
+Use this when onboarding a merchant org (demo or prod). **These checkboxes are an ops runbook** — not the engineering backlog (see [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md)). Dev demo: `pnpm seed:demo` covers most items for `yogastore`.
 
 ### 1. Identity (ZITADEL)
 

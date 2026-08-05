@@ -209,23 +209,27 @@ LATER   Explicit product gates only
 
 | Doc | Role |
 |-----|------|
-| [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) | Layers B / A′ / C — decision table still says “for review”; **update** now that folders + agents v1 shipped |
+| [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) | Layers B / A′ / C — **updated 2026-08-05** (folders + agents v1 shipped) |
 | [`ROADMAP-PHASES.md`](../2026-07-25/ROADMAP-PHASES.md) | Older phase naming — use B-A-C doc for auth/agents |
 | [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](../2026-08-04/PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) | Palette + provisioning narrative |
 
 ---
 
-## Stale docs to refresh (housekeeping)
+## Stale docs sync (2026-08-05)
 
-These still show open checkboxes or “pending” language but code/E2E says otherwise. Update them when touching the area:
+The following docs were updated to match shipped code and the 60/60 E2E batch:
 
-| Doc | Stale section | Reality (2026-08-05) |
-|-----|---------------|----------------------|
-| [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) | Top “Code deliverables” `[ ]` under I-a, I-b, I-f | Bottom checklist mostly `[x]` |
-| [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) | B-F1 “remaining”, A′.7 “Admin UI missing” | Folders + agents admin shipped |
-| [`COMMUNICATIONS-PLATFORM-RFC.md`](../2026-08-04/COMMUNICATIONS-PLATFORM-RFC.md) | “No SMS / in-app” | SMS + inbox + SSE shipped |
-| [`E2E-OPS-BATCH-VALIDATION.md`](../2026-08-04/E2E-OPS-BATCH-VALIDATION.md) | Integrations “not split collapsible” | F7 fixed — collapsible sections |
-| [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) | Mock path `[ ]` | Mock orchestrate used in E2E |
+| Doc | What changed |
+|-----|----------------|
+| [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) | I-a/I-b/I-f code deliverables → `[x]`; status header |
+| [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) | Folders + agents v1 shipped; decisions confirmed |
+| [`COMMUNICATIONS-PLATFORM-RFC.md`](../2026-08-04/COMMUNICATIONS-PLATFORM-RFC.md) | v1 inventory, gaps split resolved vs open |
+| [`E2E-OPS-BATCH-VALIDATION.md`](../2026-08-04/E2E-OPS-BATCH-VALIDATION.md) | Integrations collapsible nuance |
+| [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) | Mock orchestrate acceptance → `[x]` |
+| [`WEBHOOKS-DOMAIN-SPEC.md`](../2026-08-04/WEBHOOKS-DOMAIN-SPEC.md) | I-f v1 + v1.1 checklist → `[x]` |
+| [`EMAIL-TEMPLATES-REACT-EMAIL.md`](../2026-08-04/EMAIL-TEMPLATES-REACT-EMAIL.md) | I-c.2 checklist → `[x]` |
+
+**Still open checkboxes (intentional):** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) **I-c.6c** only · [`EMAIL-TEMPLATES-REACT-EMAIL.md`](../2026-08-04/EMAIL-TEMPLATES-REACT-EMAIL.md) machine wiring · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](../2026-08-04/PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) new-org provisioning runbook (not dev seed).
 
 ---
 
@@ -233,4 +237,5 @@ These still show open checkboxes or “pending” language but code/E2E says oth
 
 | Date | Change |
 |------|--------|
+| 2026-08-05 | Doc sync — stale checkboxes updated across integrations, B/A′/C, comms RFC, webhooks, email templates |
 | 2026-08-05 | Created master index after 60/60 E2E pass + SSE edge fix (F8) |

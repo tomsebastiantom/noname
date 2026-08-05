@@ -1,8 +1,8 @@
 # Build roadmap — Vault, integrations, Nango, then agents (Mastra)
 
-> **Date:** 2026-08-04  
-> **Status:** Approved build order (docs first; implement in sequence)  
-> **Rule:** Do **integrations + secrets infrastructure** before **Mastra multi-step agents**.
+> **Date:** 2026-08-04 (updated 2026-08-05)  
+> **Status:** **Phase I + II (mock) shipped** — see § Implementation checklist; open: **I-c.6c** only  
+> **Rule:** Do **integrations + secrets infrastructure** before **Mastra multi-step agents** (prerequisite met).
 
 **Related:** [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`LLM-CREDENTIALS-PER-ORG.md`](../2026-08-03/LLM-CREDENTIALS-PER-ORG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md)
 
@@ -112,11 +112,11 @@ Init script (once): enable KV v2 at `secret/`, seed `noname/platform/*` dev keys
 
 ### Code deliverables
 
-- [ ] `SecretStorePort` + `VaultSecretStore`
-- [ ] `createSecretsDomain(deps)` wired in `server/index.ts`
-- [ ] `resolveLLMProvider(orgId)` moved from env-only to Vault paths
-- [ ] `llm_usage` append on each call
-- [ ] No `org_secrets` Postgres table
+- [x] `SecretStorePort` + `VaultSecretStore`
+- [x] `createSecretsDomain(deps)` wired in `server/index.ts`
+- [x] `resolveLLMProvider(orgId)` moved from env-only to Vault paths
+- [x] `llm_usage` append on each call (`ai_generations`)
+- [x] No `org_secrets` Postgres table
 
 ### Prod
 
@@ -151,10 +151,10 @@ Pattern: copy **auth config** write-only UX ([`ORG-AUTH-CONFIG.md`](../2026-07-2
 
 ### Code deliverables
 
-- [ ] `createIntegrationsDomain({ secrets, documents, auth })`
-- [ ] Keto permission e.g. `integrations:manage`
-- [ ] Client forms + seed layout `admin_integrations`
-- [ ] `ai-pipeline/providers.ts` uses `secrets.resolveLLMProvider`
+- [x] `createIntegrationsDomain({ secrets, documents, auth })`
+- [x] Keto permission `integrations:manage`
+- [x] Client forms + seed layout `admin_integrations` (collapsible sections)
+- [x] `ai-pipeline/providers.ts` uses `secrets.resolveLLMProvider`
 
 ---
 
@@ -180,7 +180,7 @@ Merchants edit copy in **CMS**; callers pass **`templateId` + variables** or pre
 - [x] BullMQ `email-outbound` worker (send only — receives `subject` + `html`)
 - [x] Admin comms BYOK wired in integrations (I-b)
 
-### Still build — template system
+### Shipped (template system + multi-channel)
 
 - [x] CMS `notification_email` with **spec** json (documents domain)
 - [x] `email-template.ts`: load CMS doc → `renderToHtml` (no `content-types/` folder)
@@ -378,11 +378,11 @@ Inbound auth for connect stays in **integrations**; do **not** move that route i
 
 ### Code deliverables
 
-- [ ] `domains/webhooks/*` — see RFC phases I-f.1–I-f.3
-- [ ] `webhook_receipts` idempotency table
-- [ ] BullMQ queue + worker → `eventBus.publish`
-- [ ] Machine engine subscriber stub (log only, then transition)
-- [ ] Admin UI: outbound subscription URL (optional v1.1)
+- [x] `domains/webhooks/*` — see RFC phases I-f.1–I-f.3
+- [x] `webhook_receipts` idempotency table
+- [x] BullMQ queue + worker → `eventBus.publish`
+- [x] Machine engine subscriber (inbound router + transition wiring)
+- [x] Admin UI: outbound subscription URL + delivery retry
 
 ### When to build
 
@@ -566,7 +566,7 @@ Yes — I-d can parallel I-c if comms not needed yet.
 After I-a and I-b; I-d required only if agent tools call external OAuth APIs. I-f required only if tools/machines need **async** provider events (payment succeeded, order shipped).
 
 **Why aren’t webhooks “connected” to machines/agents yet?**  
-OAuth **connect** webhook is wired (integrations → `tenant_settings`). **Business** inbound webhooks flow through I-f → BullMQ → `eventBus` → machine transitions when payload includes `machine_instance_id` / `machine_event`. Outbound subscriptions fan out `machine.transition` and `comms.sent` to merchant URLs. Agent async tools still need Phase II Mastra.
+OAuth **connect** webhook is wired (integrations → `tenant_settings`). **Business** inbound webhooks ship through I-f → BullMQ → `eventBus` → machine transitions when payload includes `machine_instance_id` / `machine_event`. Outbound subscriptions fan out platform events to merchant URLs. Agent async tools beyond mock orchestrate remain Phase II polish.
 
 **Dev without Vault container?**  
 Prefer Vault in compose for parity; optional env fallback only for emergency local hack, not documented prod path.

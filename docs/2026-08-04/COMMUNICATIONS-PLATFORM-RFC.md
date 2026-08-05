@@ -1,8 +1,8 @@
 # RFC — Platform communications: architecture review & roadmap
 
-> **Status:** Draft  
-> **Date:** 2026-08-05  
-> **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md)
+> **Status:** **Implemented v1** (2026-08-05) — email + SMS + in-app inbox + prefs v2 + delivery admin; open: **I-c.6c**, comms delivery analytics  
+> **Date:** 2026-08-05 (updated)  
+> **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`IN-APP-INBOX-SSE.md`](./IN-APP-INBOX-SSE.md) · [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md)
 
 ---
 
@@ -20,12 +20,12 @@
 
 | Question | Answer |
 |----------|--------|
-| **Is the current implementation architecturally sound?** | **Yes, as a foundation** — domain ports, async worker, Vault BYOK, CMS render-at-enqueue match the rest of the repo. |
-| **Is it production-grade at scale today?** | **No** — email-only, one provider adapter, minimal observability UI, no idempotency/retries policy, almost no callers beyond one agent hook. |
-| **Is it maintainable?** | **Yes** — small surface, testable service, swappable `EmailSenderPort`. Needs channel abstraction before SMS/push so it doesn’t become a ball of `if`. |
-| **What’s next?** | Harden **I-c.3** (delivery log, retries, idempotency, SES/Twilio adapters, machine wiring), then **I-c.4+** (workflows, in-app inbox). **I-f webhooks** stays the next *new domain*, not a replacement for comms hardening. |
+| **Is the current implementation architecturally sound?** | **Yes** — domain ports, async workers, Vault BYOK, CMS render-at-enqueue, multi-channel `notify()`. |
+| **Is it production-grade at scale today?** | **Partial** — v1 shipped (email/SMS/in-app, idempotency, retries, delivery UI, SSE inbox). Needs marketing compliance (I-c.6c) and comms delivery analytics before merchant self-serve at scale. |
+| **Is it maintainable?** | **Yes** — `notify()` fan-out, channel adapters, preferences v2 evaluator. |
+| **What’s next?** | **I-c.6c** (List-Unsubscribe), comms delivery analytics, optional stream ticket for SSE. See [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md). |
 
-**Honest label:** current code is a **solid v0.1 transactional email pipeline**, not yet a full “communications platform.”
+**Honest label:** **v1 communications platform shipped** — not Novu-parity workflows/marketing automation yet.
 
 ---
 
@@ -33,26 +33,27 @@
 
 ```
 domains/notifications/
-  ports.ts              NotificationsService + EmailSenderPort
-  service.ts            enqueueEmail, enqueueTemplatedEmail, preferences
+  ports.ts              NotificationsService + channel adapters
+  service.ts            notify(), enqueueEmail/SMS, preferences, inbox, broadcast SSE
   email-template.ts     CMS notification_email → @json-render/react-email
-  schema.ts             comms_deliveries, notification_preferences
-  queue.ts              email-outbound BullMQ
-  worker.ts             Resend send + OTEL span
-  adapters/
-    resend.ts           HTTPS → api.resend.com (only implemented sender)
-    postgres.ts         delivery + prefs storage
-  api.ts                GET/PUT /api/notifications/preferences only
+  schema.ts             comms_deliveries, comms_inbox_items, notification_preferences
+  queue.ts              email-outbound + sms BullMQ
+  worker.ts             Resend + Twilio + OTEL spans
+  adapters/             resend, twilio, postgres
+  routes/               preferences, inbox, deliveries, stream (SSE)
+  api.ts                REST + SSE (see IN-APP-INBOX-SSE.md)
 ```
 
 **Wired callers today:**
 
 | Caller | Usage |
 |--------|--------|
-| `agent/worker` `onTaskCompleted` | Optional `input.notify` → `enqueueTemplatedEmail` |
-| *(none else)* | Machines, admin routes, storefront — **not wired yet** |
+| Agent worker `onTaskCompleted` | Optional `input.notify` → multi-channel `notify()` |
+| Machines | `transition` params.notify / `notify()` routing (I-c.1) |
+| Admin integrations | Delivery log, inbox panel, comms BYOK |
+| Storefront account | `/account/communication-preferences`, `/account/notifications` + SSE |
 
-**Integrations admin:** comms BYOK (Resend key → Vault), from-address flags in `tenant_settings`.
+**Integrations admin:** comms BYOK (Resend/Twilio → Vault), collapsible integrations page.
 
 **CMS:** `notification_email` content type, json-render **spec**, admin preview.
 
@@ -72,20 +73,28 @@ domains/notifications/
 | **OTEL on worker** | Fits existing tracing story. |
 | **Horizontal workers** | More `email-outbound` worker processes scale with BullMQ + Redis. |
 
-### Gaps that limit scale / ops
+### Gaps that limit scale / ops (remaining)
 
-| Gap | Risk |
-|-----|------|
-| **No idempotency key** | Machine retry / double webhook → duplicate emails. |
-| **No explicit retry/backoff policy** | Transient Resend failures may lose messages or rely on BullMQ defaults only. |
-| **Resend-only adapter** | `resolveCommsCredentials` supports provider name; worker throws for non-Resend. |
-| **Single global queue** | One noisy tenant can delay others; no per-org rate limits. |
-| **Large HTML in Redis jobs** | Fine at low volume; at scale consider storing rendered body in object storage or Postgres and passing `deliveryId` only. |
-| **No delivery admin API/UI** | Support can’t inspect failed sends without SQL. |
-| **No `eventBus` events** | Machines/analytics can’t react to `comms.sent` / `comms.failed`. |
-| **Preferences too narrow** | Two booleans (`agentTaskEmail`, `marketingEmail`); no per-template, SMS, push, or in-app. |
-| **No “trigger → workflow” layer** | Callers must know `templateId`; no `order.shipped` → template map. |
-| **Only one production caller** | Domain isn’t exercised across platform — integration drift risk. |
+| Gap | Risk | Status |
+|-----|------|--------|
+| **Marketing compliance footer** | CAN-SPAM / List-Unsubscribe | Open — **I-c.6c** |
+| **Comms delivery analytics** | Opens/clicks/bounces invisible to merchants | Open — [`COMMS-DELIVERY-ANALYTICS.md`](./COMMS-DELIVERY-ANALYTICS.md) |
+| **Single global queue** | One noisy tenant can delay others | Open — per-org rate limits later |
+| **Large HTML in Redis jobs** | Fine at low volume; object storage at scale | Open |
+| **Mobile push** | No FCM/APNs adapter | Deferred — same `notify()` pattern |
+| **Stream ticket for SSE** | Raw JWT in query string (dev OK) | Open — prod hardening |
+
+### Resolved in v1 (was gap in initial RFC draft)
+
+| Was gap | Shipped |
+|---------|---------|
+| No idempotency | ✅ `idempotencyKey` on deliveries |
+| No retry/backoff | ✅ delivery retry API + worker policy |
+| Resend-only | ✅ Twilio SMS adapter |
+| No delivery admin UI | ✅ Integrations deliveries table + retry |
+| Narrow preferences | ✅ Preferences v2 (channels × categories) |
+| No in-app / SMS | ✅ `comms_inbox_items`, Twilio, SSE live refresh |
+| Only one caller | ✅ Machines + agent + account surfaces |
 
 ### Maintainability verdict
 
@@ -359,24 +368,23 @@ All phases are **our code** — reference products inform design only.
 
 ---
 
-## Comparison to “basic implementation”
+## Comparison to “basic implementation” (updated 2026-08-05)
 
-You’re right: **it is basic today.** That is acceptable for Phase I-c.0 if we treat it as **proof of the architecture**, not the finished product.
+Initial RFC draft described **v0.1 email-only**. **v1 is shipped:**
 
-What makes it **worth keeping** (not ripping for Novu):
+| Capability | Initial RFC | Now |
+|------------|-------------|-----|
+| Delivery visibility | ❌ | ✅ Admin deliveries + retry |
+| SMS / in-app | ❌ | ✅ Twilio + inbox + SSE |
+| Idempotency / retries | ❌ | ✅ |
+| Multi-channel prefs | ❌ | ✅ Preferences v2 |
+| Machine + agent callers | ❌ | ✅ `notify()` / transition notify |
 
-- CMS-owned templates (merchants already live in Content admin)
-- Vault BYOK aligned with LLM/comms integrations
-- Same BullMQ/eventBus/Postgres story as webhooks and analytics
-- No second service to operate
+**Still not merchant-facing product polish:**
 
-What makes it **not yet a product feature** for merchants:
-
-- No visibility into sends
-- No SMS / in-app
-- No business-level `order.shipped` trigger
-- Machines can’t send yet
-- One provider, weak failure handling
+- Comms delivery analytics (opens/clicks) — [`COMMS-DELIVERY-ANALYTICS.md`](./COMMS-DELIVERY-ANALYTICS.md)
+- Marketing compliance footer — **I-c.6c**
+- Novu-style visual workflow builder — **not planned**
 
 ---
 
@@ -385,7 +393,7 @@ What makes it **not yet a product feature** for merchants:
 1. **Trigger catalog** — platform-owned list vs merchant-defined trigger names?
 2. **Transactional override** — can merchants disable order confirmation email? (Usually no.)
 3. **Rendered body retention** — store HTML in Postgres for compliance or provider-only?
-4. **In-app vs email** — same `notify()` fan-out or separate calls?
+4. **In-app vs email** — same `notify()` fan-out ✅ (channels array on trigger config)
 5. **ZITADEL emails** — password reset stays IdP; document boundary clearly (already in email-templates FAQ).
 
 ---
@@ -410,4 +418,5 @@ What makes it **not yet a product feature** for merchants:
 
 | Date | Change |
 |------|--------|
+| 2026-08-05 | Sync with shipped v1 — multi-channel, inbox SSE, delivery admin; gaps table split resolved vs remaining |
 | 2026-08-05 | Initial RFC — architecture review, OSS matrix, phased roadmap |

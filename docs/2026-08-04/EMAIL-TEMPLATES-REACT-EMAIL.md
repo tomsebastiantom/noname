@@ -1,7 +1,8 @@
 # Email templates — json-render spec + React Email
 
-> **Date:** 2026-08-04  
-> **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) Phase I-c
+> **Date:** 2026-08-04 (updated 2026-08-05)  
+> **Status:** **I-c.2 shipped** — spec-only React Email; open: wire remaining machine transitions  
+> **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md)
 
 ---
 
@@ -160,8 +161,8 @@ ZITADEL templates — out of scope.
 
 ## Implementation checklist (I-c.2 PR)
 
-- [ ] Migrate `notification_email` content type to `spec` json (no html fields)
-- [ ] Server: swap renderer to `@json-render/react-email`
-- [ ] Client: `EmailSpecFieldInput` (preview + edit) wired into content entry form
-- [ ] Seed specs for demo templates
-- [ ] Delete v1 html_body code paths
+- [x] Migrate `notification_email` content type to `spec` json (no html fields)
+- [x] Server: swap renderer to `@json-render/react-email`
+- [x] Client: `EmailSpecFieldInput` (preview + edit) wired into content entry form
+- [x] Seed specs for demo templates
+- [x] Delete v1 html_body code paths
