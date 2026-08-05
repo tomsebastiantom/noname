@@ -15,11 +15,7 @@ describe("resolvePlannerModel", () => {
       source: "org" as const,
     }));
 
-    const resolved = await resolvePlannerModel(
-      "org-1",
-      { resolveLlmApiKey },
-      "openai/gpt-4o-mini",
-    );
+    const resolved = await resolvePlannerModel("org-1", { resolveLlmApiKey }, "openai/gpt-4o-mini");
 
     expect(resolveLlmApiKey).toHaveBeenCalledWith("org-1", "openai");
     expect(resolved.credentialSource).toBe("org");

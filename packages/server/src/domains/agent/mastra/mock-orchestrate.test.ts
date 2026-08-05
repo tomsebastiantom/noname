@@ -1,11 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { runMockOrchestrate } from "./mock-orchestrate";
 import type { MastraExecutorDeps } from "./executor";
+import { runMockOrchestrate } from "./mock-orchestrate";
 import { parseOrchestrateOutput } from "./orchestrate-output";
 
 function mockDeps(): MastraExecutorDeps {
   return {
     secrets: { resolveLlmApiKey: vi.fn(async () => null) },
+    authorization: {
+      check: vi.fn(async () => true),
+      grant: vi.fn(),
+      revoke: vi.fn(),
+      listDirectUserEditors: vi.fn(async () => []),
+      listDirectUserPublishers: vi.fn(async () => []),
+      listRelationTuples: vi.fn(async () => []),
+    },
+    documents: {
+      findDocumentById: vi.fn(async () => null),
+      findCollectionIdBySlug: vi.fn(async () => null),
+      findCollectionSlug: vi.fn(async () => null),
+      listDocuments: vi.fn(async () => []),
+    },
     analytics: {
       query: vi.fn(async () => [{ eventType: "page_view" }]),
       aggregate: vi.fn(async () => [{ key: "page_view", count: 1 }]),
@@ -59,7 +73,7 @@ function mockDeps(): MastraExecutorDeps {
       })),
     },
     machines: {
-      define: vi.fn(async (orgId, def) => def),
+      define: vi.fn(async (_orgId, def) => def),
     },
   };
 }

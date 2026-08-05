@@ -1,17 +1,18 @@
 import {
   type CommsIntegrationState,
   type LlmIntegrationState,
-  type OAuthConnectionsState,
   loadCommsIntegration,
   loadLlmIntegration,
   loadOAuthConnections,
+  type OAuthConnectionsState,
   saveCommsIntegration,
   saveLlmIntegration,
   startOAuthConnect,
 } from "../../auth/integrations-settings";
 import {
   loadCommsDeliveries,
-  type CommsDeliveryRow,
+  loadCommsInbox,
+  markCommsInboxRead,
 } from "../../auth/notifications-settings";
 import {
   loadWebhookOutboundDeliveries,
@@ -124,6 +125,36 @@ export const integrationsActions = {
     } finally {
       setState(ADMIN_STATE.integrations.commsDeliveries.loading, false);
     }
+  }) satisfies CatalogActionHandler,
+
+  loadCommsInbox: (async (params, setState) => {
+    setState(ADMIN_STATE.integrations.commsInbox.loading, true);
+    setState(ADMIN_STATE.integrations.commsInbox.error, null);
+    try {
+      const query = (params ?? {}) as { unreadOnly?: boolean };
+      const unreadOnly = query.unreadOnly === true;
+      const rows = await loadCommsInbox({ unreadOnly, limit: 50 });
+      setState(ADMIN_STATE.integrations.commsInbox.loaded, rows);
+    } catch (err) {
+      setState(
+        ADMIN_STATE.integrations.commsInbox.error,
+        err instanceof Error ? err.message : String(err),
+      );
+      setState(ADMIN_STATE.integrations.commsInbox.loaded, null);
+    } finally {
+      setState(ADMIN_STATE.integrations.commsInbox.loading, false);
+    }
+  }) satisfies CatalogActionHandler,
+
+  markCommsInboxRead: (async (params, setState) => {
+    const itemId =
+      typeof (params as { itemId?: unknown })?.itemId === "string"
+        ? (params as { itemId: string }).itemId
+        : "";
+    if (!itemId) return;
+    await markCommsInboxRead(itemId);
+    const rows = await loadCommsInbox({ limit: 50 });
+    setState(ADMIN_STATE.integrations.commsInbox.loaded, rows);
   }) satisfies CatalogActionHandler,
 
   loadWebhookSubscriptions: (async (_params, setState) => {

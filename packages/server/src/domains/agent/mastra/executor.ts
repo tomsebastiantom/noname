@@ -1,29 +1,33 @@
-import { SpanStatusCode, trace } from "@opentelemetry/api";
-import { Agent } from "@mastra/core/agent";
 import type { ToolsInput } from "@mastra/core/agent";
-import { orchestrateSystemPrompt } from "../../ai-pipeline/prompts/orchestrate-system";
+import { Agent } from "@mastra/core/agent";
+import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { AIPipeline } from "../../ai-pipeline/ports";
+import { orchestrateSystemPrompt } from "../../ai-pipeline/prompts/orchestrate-system";
 import type { AnalyticsService } from "../../analytics/ports";
-import type { ContentDocumentService, LayoutDocumentService } from "../../documents/ports";
+import type { AuthorizationPort } from "../../auth/authorization-port";
+import type {
+  ContentDocumentService,
+  DocumentStorage,
+  LayoutDocumentService,
+} from "../../documents/ports";
 import type { IntegrationsService } from "../../integrations/ports";
 import type { MachineEngine } from "../../machines/ports";
-import type { AgentExecutor, AgentToolResult } from "../tools";
 import type { SecretsService } from "../../secrets/ports";
+import type { AgentExecutor, AgentToolResult } from "../tools";
 import { createArtifactCollector } from "./artifacts";
-import {
-  createTokenAccumulator,
-  parseAgentRunContext,
-} from "./context";
+import { createTokenAccumulator, parseAgentRunContext } from "./context";
 import { mapMastraSteps, stoppedReasonFromFinish } from "./format-steps";
 import { resolveActiveTools } from "./guards";
-import { assertOrchestrateOutput, parseOrchestrateOutput } from "./orchestrate-output";
 import { runMockOrchestrate, shouldUseMockOrchestrate } from "./mock-orchestrate";
+import { assertOrchestrateOutput, parseOrchestrateOutput } from "./orchestrate-output";
 import { resolvePlannerModel } from "./resolve-planner-model";
 import { createGenerateContentDraftTool } from "./tools/generate-content-draft";
 import { createGenerateLayoutDraftTool } from "./tools/generate-layout-draft";
 import { createGenerateMachineDraftTool } from "./tools/generate-machine-draft";
+import { createListFolderDocumentsTool } from "./tools/list-folder-documents";
 import { createNangoTriggerTool } from "./tools/nango-trigger";
 import { createReadAnalyticsTool } from "./tools/read-analytics";
+import { createUpdateDraftFieldTool } from "./tools/update-draft-field";
 import type { OrchestrateOutput } from "./types";
 
 function orchestrateEnabled(): boolean {
@@ -49,11 +53,16 @@ function recordStepSpans(taskId: string, steps: OrchestrateOutput["steps"]): voi
 
 export interface MastraExecutorDeps {
   secrets: Pick<SecretsService, "resolveLlmApiKey">;
+  authorization: AuthorizationPort;
+  documents: Pick<
+    DocumentStorage,
+    "findDocumentById" | "findCollectionIdBySlug" | "findCollectionSlug" | "listDocuments"
+  >;
   analytics: Pick<AnalyticsService, "query" | "aggregate">;
   integrations: Pick<IntegrationsService, "triggerOAuthAction">;
   aiPipeline: Pick<AIPipeline, "generateLayout" | "generateContent" | "generateMachine">;
   layout: Pick<LayoutDocumentService, "create">;
-  content: Pick<ContentDocumentService, "create">;
+  content: Pick<ContentDocumentService, "create" | "updateById">;
   machines: Pick<MachineEngine, "define">;
 }
 
@@ -87,6 +96,14 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
 
       const tools = {
         readAnalytics: createReadAnalyticsTool(deps.analytics, orgId),
+        readDocument: createReadDocumentTool(
+          { storage: deps.documents, authorization: deps.authorization, runContext },
+          orgId,
+        ),
+        listFolderDocuments: createListFolderDocumentsTool(
+          { storage: deps.documents, authorization: deps.authorization, runContext },
+          orgId,
+        ),
         nango_trigger: createNangoTriggerTool(deps.integrations, orgId),
         generateLayoutDraft: createGenerateLayoutDraftTool(
           { aiPipeline: deps.aiPipeline, layout: deps.layout, ...sharedToolDeps },
@@ -102,6 +119,16 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
             machines: deps.machines,
             artifacts,
             tokens: pipelineTokens,
+          },
+          orgId,
+        ),
+        updateDraftField: createUpdateDraftFieldTool(
+          {
+            storage: deps.documents,
+            content: deps.content,
+            authorization: deps.authorization,
+            artifacts,
+            runContext,
           },
           orgId,
         ),

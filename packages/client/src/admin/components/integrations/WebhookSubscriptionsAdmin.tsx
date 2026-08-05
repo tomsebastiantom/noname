@@ -22,8 +22,8 @@ import { Label } from "../../../components/ui/label";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
+import type { CatalogProps } from "../../../schemas/shared";
 
 type WebhookSubscriptionsLabels = {
   title: string;

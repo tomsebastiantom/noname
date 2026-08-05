@@ -22,7 +22,7 @@ export function createDatabase(connectionString: string) {
       ...agentSchema,
       ...aiPipelineSchema,
       ...notificationsSchema,
-  ...webhooksSchema,
+      ...webhooksSchema,
     },
   });
 }

@@ -23,6 +23,10 @@ export function isPlatformPath(pathname: string): boolean {
 export function platformTemplateFromPath(pathname: string): string {
   if (pathname === "/login" || pathname === "/auth/callback") return "login";
   if (pathname.startsWith("/account/security")) return "account_security";
+  if (pathname.startsWith("/account/communication-preferences")) {
+    return "account_communication_preferences";
+  }
+  if (pathname.startsWith("/account/notifications")) return "account_notifications";
   if (pathname === "/admin/settings/security") return "admin_account_security";
   if (pathname.startsWith("/admin/content")) return "admin_content";
   if (pathname.startsWith("/admin/layout")) return "admin_layout";
@@ -83,6 +87,10 @@ export function adminActiveNavFromPath(pathname: string): string {
   if (pathname === "/admin/settings/agents") return "agents";
   if (pathname === "/admin/settings/login") return "login";
   if (pathname.startsWith("/account/security")) return "account_security";
+  if (pathname.startsWith("/account/communication-preferences")) {
+    return "account_communication_preferences";
+  }
+  if (pathname.startsWith("/account/notifications")) return "account_notifications";
   if (pathname === "/admin/settings/security") return "account_security";
   if (pathname === "/admin" || pathname === "/admin/") return "home";
   if (pathname.startsWith("/admin")) return "home";

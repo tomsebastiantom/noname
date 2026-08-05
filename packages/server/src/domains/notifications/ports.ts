@@ -1,4 +1,10 @@
 import type { CommsCredentials } from "../secrets/ports";
+import type {
+  NotificationCategoryPrefs,
+  NotificationChannelPrefs,
+  NotificationPreferences,
+  NotificationTriggerPref,
+} from "./preferences";
 
 export interface SendEmailInput {
   to: string;
@@ -24,6 +30,7 @@ export interface SendTemplatedEmailInput {
 export interface NotifyInput {
   trigger: string;
   to: string;
+  phone?: string;
   variables?: Record<string, string>;
   userId?: string;
   locale?: string;
@@ -62,9 +69,36 @@ export interface ListDeliveriesQuery {
   offset?: number;
 }
 
+export type {
+  NotificationCategory,
+  NotificationCategoryPrefs,
+  NotificationChannelPrefs,
+  NotificationPreferences,
+  NotificationTriggerPref,
+} from "./preferences";
+
 export interface NotificationPreferencesDTO {
-  agentTaskEmail: boolean;
-  marketingEmail: boolean;
+  channels: NotificationChannelPrefs;
+  categories: NotificationCategoryPrefs;
+  triggers?: Record<string, NotificationTriggerPref>;
+}
+
+export interface CommsInboxItemDTO {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  body: string;
+  trigger: string | null;
+  metadata: Record<string, unknown>;
+  readAt: Date | null;
+  createdAt: Date;
+}
+
+export interface ListInboxQuery {
+  unreadOnly?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 export interface EmailSenderPort {
@@ -80,10 +114,12 @@ export interface NotificationsService {
   notify(orgId: string, input: NotifyInput): Promise<SendEmailResult>;
   listDeliveries(orgId: string, query?: ListDeliveriesQuery): Promise<CommsDeliveryDTO[]>;
   retryDelivery(orgId: string, deliveryId: string): Promise<SendEmailResult>;
+  listInbox(orgId: string, userId: string, query?: ListInboxQuery): Promise<CommsInboxItemDTO[]>;
+  markInboxRead(orgId: string, userId: string, itemId: string): Promise<CommsInboxItemDTO | null>;
   getPreferences(orgId: string, userId: string): Promise<NotificationPreferencesDTO>;
   updatePreferences(
     orgId: string,
     userId: string,
-    patch: Partial<NotificationPreferencesDTO>,
+    patch: Partial<NotificationPreferences>,
   ): Promise<NotificationPreferencesDTO>;
 }

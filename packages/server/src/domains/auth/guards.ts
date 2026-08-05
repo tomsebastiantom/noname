@@ -20,6 +20,14 @@ export function bearerToken(c: Context): string | null {
   return match?.[1]?.trim() || null;
 }
 
+/** Bearer header, or `?access_token=` for EventSource (cannot set Authorization). */
+export function resolveAccessToken(c: Context): string | null {
+  const header = bearerToken(c);
+  if (header) return header;
+  const query = c.req.query("access_token");
+  return typeof query === "string" && query.trim() ? query.trim() : null;
+}
+
 export function authSubjectFromActor(actor: AuthActor): AuthSubject {
   if (actor.type === "agent") {
     return { type: "Agent", id: actor.agentSlug };

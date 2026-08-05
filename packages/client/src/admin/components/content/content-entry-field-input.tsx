@@ -2,9 +2,9 @@ import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
 import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
+import { EmailSpecFieldInput } from "./EmailSpecFieldInput";
 import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
 import { ReferenceFieldInput, type ReferenceFieldLabels } from "./ReferenceFieldInput";
-import { EmailSpecFieldInput } from "./EmailSpecFieldInput";
 
 const defaultReferenceLabels: ReferenceFieldLabels = {
   entriesLoadingLabel: "Loading entries…",

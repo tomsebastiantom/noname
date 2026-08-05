@@ -1,9 +1,9 @@
 import { PERMISSIONS } from "@noname/auth";
-import { Hono } from "hono";
+import type { Hono } from "hono";
 import { z } from "zod";
 import { getOrgId } from "../../../shared/org";
 import { parseBody } from "../../../shared/parse-body";
-import { ok, created } from "../../../shared/respond";
+import { created, ok } from "../../../shared/respond";
 import { requireHumanPermission } from "../../auth/guards";
 import type { WebhooksService } from "../ports";
 
@@ -42,10 +42,7 @@ export function registerWebhookSubscriptionRoutes(routes: Hono, service: Webhook
     );
 
     try {
-      return created(
-        c,
-        await service.upsertSubscription(orgId, null, body, auth.userId),
-      );
+      return created(c, await service.upsertSubscription(orgId, null, body, auth.userId));
     } catch (err) {
       const message = err instanceof Error ? err.message : "create failed";
       return c.json({ error: message }, 400);
@@ -111,7 +108,10 @@ export function registerWebhookSubscriptionRoutes(routes: Hono, service: Webhook
     );
 
     try {
-      return ok(c, await service.deliverOutbound(orgId, body.eventType, body.payload, body.eventId));
+      return ok(
+        c,
+        await service.deliverOutbound(orgId, body.eventType, body.payload, body.eventId),
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : "deliver failed";
       return c.json({ error: message }, 400);

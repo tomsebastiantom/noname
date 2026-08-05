@@ -8,14 +8,14 @@ import { registerIntegrationsLlmRoutes } from "./routes/llm";
 import { registerIntegrationsNangoRoutes } from "./routes/nango";
 import { createIntegrationsService } from "./service";
 
+export { createNangoAdapter, nangoAdapterFromEnv } from "./adapters/nango";
 export type {
+  IntegrationId,
   IntegrationsService,
   LlmIntegrationPublic,
-  IntegrationId,
   OAuthConnectionsPublic,
 } from "./ports";
 export { createIntegrationsService } from "./service";
-export { createNangoAdapter, nangoAdapterFromEnv } from "./adapters/nango";
 
 export interface IntegrationsDomainDeps {
   secrets: SecretsService;

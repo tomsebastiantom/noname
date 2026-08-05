@@ -244,9 +244,9 @@ describe("createWebhookOrgResolver", () => {
       findOrgIdByOAuthConnectionId: vi.fn(async () => "org-from-conn"),
     });
 
-    await expect(
-      resolve({ connectionId: "conn-123", provider: "stripe" }),
-    ).resolves.toBe("org-from-conn");
+    await expect(resolve({ connectionId: "conn-123", provider: "stripe" })).resolves.toBe(
+      "org-from-conn",
+    );
   });
 
   it("prefers explicit orgId", async () => {

@@ -1,13 +1,11 @@
 import type { Queue } from "bullmq";
-import type { TenantSettingsService } from "../documents/ports";
 import { eventBus } from "../../shared/event-bus";
+import { broadcast } from "../../shared/sse-manager";
+import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
-import { toDeliveryDTO } from "./adapters/postgres";
 import type { NotificationsStorage } from "./adapters/postgres";
-import {
-  loadPublishedNotificationEmail,
-  renderNotificationEmail,
-} from "./email-template";
+import { toDeliveryDTO, toInboxItemDTO } from "./adapters/postgres";
+import { loadPublishedNotificationEmail, renderNotificationEmail } from "./email-template";
 import { CommsEvents } from "./events";
 import type {
   ListDeliveriesQuery,
@@ -17,9 +15,15 @@ import type {
   SendEmailResult,
   SendTemplatedEmailInput,
 } from "./ports";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  type NotificationPreferences,
+  shouldDeliverNotification,
+} from "./preferences";
 import type { EmailOutboundJobData } from "./queue";
 
-type CommsTriggerMap = Record<string, { templateId?: string }>;
+type CommsChannel = "email" | "sms" | "in_app";
+type CommsTriggerMap = Record<string, { templateId?: string; channels?: CommsChannel[] }>;
 
 function readTriggerMap(integrations: Record<string, unknown>): CommsTriggerMap {
   const comms = integrations.comms;
@@ -41,6 +45,96 @@ async function resolveTemplateId(
     if (mapped) return mapped;
   }
   return trigger;
+}
+
+function resolveChannels(
+  integrations: Record<string, unknown> | undefined,
+  trigger: string,
+): CommsChannel[] {
+  const mapped = integrations ? readTriggerMap(integrations)[trigger]?.channels : undefined;
+  if (mapped && mapped.length > 0) return mapped;
+  return ["email"];
+}
+
+async function loadUserPreferences(
+  storage: NotificationsStorage,
+  orgId: string,
+  userId: string,
+): Promise<NotificationPreferences> {
+  const row = await storage.getPreferences(orgId, userId);
+  return row.preferences;
+}
+
+async function queueRenderedSms(
+  deps: {
+    secrets: Pick<SecretsService, "resolveCommsCredentials">;
+    storage: NotificationsStorage;
+    queue: Queue<EmailOutboundJobData>;
+  },
+  orgId: string,
+  input: {
+    to: string;
+    body: string;
+    userId?: string;
+    trigger?: string;
+    templateId?: string;
+    idempotencyKey?: string;
+  },
+): Promise<SendEmailResult> {
+  const { secrets, storage, queue } = deps;
+
+  if (input.idempotencyKey) {
+    const existing = await storage.findDeliveryByIdempotency(orgId, input.idempotencyKey);
+    if (existing) {
+      return { deliveryId: existing.id, jobId: existing.id, duplicate: true };
+    }
+  }
+
+  const credentials = await secrets.resolveCommsCredentials(orgId);
+  if (credentials?.provider !== "twilio") {
+    throw new Error("SMS requires Twilio comms credentials for org");
+  }
+
+  const deliveryId = crypto.randomUUID();
+  await storage.insertDelivery({
+    id: deliveryId,
+    orgId,
+    userId: input.userId ?? null,
+    channel: "sms",
+    provider: "twilio",
+    toAddress: input.to,
+    subject: null,
+    status: "queued",
+    trigger: input.trigger ?? null,
+    templateId: input.templateId ?? null,
+    idempotencyKey: input.idempotencyKey ?? null,
+    bodyHtml: null,
+    bodyText: input.body,
+  });
+
+  const job = await queue.add(
+    "send",
+    {
+      deliveryId,
+      orgId,
+      to: input.to,
+      subject: "",
+      html: "",
+      text: input.body,
+      userId: input.userId,
+    },
+    input.idempotencyKey ? { jobId: `comms:${orgId}:${input.idempotencyKey}` } : undefined,
+  );
+
+  await eventBus.publish(CommsEvents.ENQUEUED, {
+    orgId,
+    deliveryId,
+    channel: "sms",
+    trigger: input.trigger,
+    templateId: input.templateId,
+  });
+
+  return { deliveryId, jobId: job.id ?? deliveryId };
 }
 
 async function queueRenderedEmail(
@@ -136,11 +230,15 @@ export function createNotificationsService(deps: {
       }
 
       if (input.userId) {
-        const prefs = await storage.getPreferences(orgId, input.userId);
-        if (template.category === "agent" && !prefs.agentTaskEmail) {
-          return { deliveryId: "", jobId: "", skipped: true };
-        }
-        if (template.category === "marketing" && !prefs.marketingEmail) {
+        const preferences = await loadUserPreferences(storage, orgId, input.userId);
+        if (
+          !shouldDeliverNotification({
+            channel: "email",
+            category: template.category,
+            trigger: input.trigger,
+            preferences,
+          })
+        ) {
           return { deliveryId: "", jobId: "", skipped: true };
         }
       }
@@ -159,16 +257,100 @@ export function createNotificationsService(deps: {
     },
 
     async notify(orgId: string, input: NotifyInput) {
+      const settings = tenantSettings ? await tenantSettings.get(orgId) : null;
+      const integrations = settings?.integrations as Record<string, unknown> | undefined;
       const templateId = await resolveTemplateId(tenantSettings, orgId, input.trigger);
-      return this.enqueueTemplatedEmail(orgId, {
-        to: input.to,
+      const channels = resolveChannels(integrations, input.trigger);
+
+      const template = await loadPublishedNotificationEmail(
+        content,
+        orgId,
         templateId,
-        variables: input.variables,
-        userId: input.userId,
-        locale: input.locale,
-        trigger: input.trigger,
-        idempotencyKey: input.idempotencyKey,
-      });
+        input.locale ?? "en-US",
+      );
+      if (!template) {
+        throw new Error(`Notification template not found: ${templateId}`);
+      }
+
+      const preferences = input.userId
+        ? await loadUserPreferences(storage, orgId, input.userId)
+        : DEFAULT_NOTIFICATION_PREFERENCES;
+
+      const rendered = await renderNotificationEmail(template, input.variables ?? {});
+      let last: SendEmailResult = { deliveryId: "", jobId: "", skipped: true };
+
+      if (
+        channels.includes("email") &&
+        input.to &&
+        shouldDeliverNotification({
+          channel: "email",
+          category: template.category,
+          trigger: input.trigger,
+          preferences,
+        })
+      ) {
+        last = await this.enqueueTemplatedEmail(orgId, {
+          to: input.to,
+          templateId,
+          variables: input.variables,
+          userId: input.userId,
+          locale: input.locale,
+          trigger: input.trigger,
+          idempotencyKey: input.idempotencyKey,
+        });
+      }
+
+      if (
+        channels.includes("in_app") &&
+        input.userId &&
+        shouldDeliverNotification({
+          channel: "in_app",
+          category: template.category,
+          trigger: input.trigger,
+          preferences,
+        })
+      ) {
+        const itemId = crypto.randomUUID();
+        const item = await storage.insertInboxItem({
+          id: itemId,
+          orgId,
+          userId: input.userId,
+          title: rendered.subject,
+          body: rendered.text ?? rendered.subject,
+          trigger: input.trigger,
+          metadata: { templateId, variables: input.variables ?? {} },
+        });
+        broadcast(orgId, {
+          type: "comms.inbox",
+          userId: input.userId,
+          item: toInboxItemDTO(item),
+        });
+        last = { deliveryId: itemId, jobId: itemId };
+      }
+
+      const phone = input.phone ?? input.variables?.phone;
+      if (
+        channels.includes("sms") &&
+        phone &&
+        shouldDeliverNotification({
+          channel: "sms",
+          category: template.category,
+          trigger: input.trigger,
+          preferences,
+        })
+      ) {
+        const smsKey = input.idempotencyKey ? `${input.idempotencyKey}:sms` : undefined;
+        last = await queueRenderedSms(queueDeps, orgId, {
+          to: phone,
+          body: rendered.text ?? rendered.subject,
+          userId: input.userId,
+          trigger: input.trigger,
+          templateId,
+          idempotencyKey: smsKey,
+        });
+      }
+
+      return last;
     },
 
     async listDeliveries(orgId: string, query?: ListDeliveriesQuery) {
@@ -184,7 +366,11 @@ export function createNotificationsService(deps: {
       if (row.status !== "failed") {
         throw new Error(`Delivery is not failed: ${row.status}`);
       }
-      if (!row.bodyHtml || !row.subject) {
+      if (row.channel === "sms") {
+        if (!row.bodyText) {
+          throw new Error("SMS delivery has no stored body to retry");
+        }
+      } else if (!row.bodyHtml || !row.subject) {
         throw new Error("Delivery has no stored content to retry");
       }
 
@@ -198,8 +384,8 @@ export function createNotificationsService(deps: {
         deliveryId: row.id,
         orgId,
         to: row.toAddress,
-        subject: row.subject,
-        html: row.bodyHtml,
+        subject: row.subject ?? "",
+        html: row.bodyHtml ?? "",
         text: row.bodyText ?? undefined,
         userId: row.userId ?? undefined,
       });
@@ -207,20 +393,24 @@ export function createNotificationsService(deps: {
       return { deliveryId: row.id, jobId: job.id ?? row.id };
     },
 
+    async listInbox(orgId, userId, query) {
+      const rows = await storage.listInboxItems(orgId, userId, query);
+      return rows.map(toInboxItemDTO);
+    },
+
+    async markInboxRead(orgId, userId, itemId) {
+      const row = await storage.markInboxRead(orgId, userId, itemId);
+      return row ? toInboxItemDTO(row) : null;
+    },
+
     async getPreferences(orgId, userId) {
       const row = await storage.getPreferences(orgId, userId);
-      return {
-        agentTaskEmail: row.agentTaskEmail,
-        marketingEmail: row.marketingEmail,
-      };
+      return row.preferences;
     },
 
     async updatePreferences(orgId, userId, patch) {
       const row = await storage.upsertPreferences(orgId, userId, patch);
-      return {
-        agentTaskEmail: row.agentTaskEmail,
-        marketingEmail: row.marketingEmail,
-      };
+      return row.preferences;
     },
   };
 }

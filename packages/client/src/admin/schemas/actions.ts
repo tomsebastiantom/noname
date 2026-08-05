@@ -242,6 +242,20 @@ export const adminActionSchemas = {
       .optional(),
     description: "Load recent email delivery log for this org",
   },
+  loadCommsInbox: {
+    params: z
+      .object({
+        unreadOnly: z.boolean().optional(),
+      })
+      .optional(),
+    description: "Load in-app notification inbox for the signed-in admin user",
+  },
+  markCommsInboxRead: {
+    params: z.object({
+      itemId: z.string(),
+    }),
+    description: "Mark an in-app inbox item as read",
+  },
   loadWebhookSubscriptions: {
     description: "Load outbound webhook subscriptions for this org",
   },

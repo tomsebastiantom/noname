@@ -156,6 +156,9 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (filters.segment) conditions.push(eq(documents.segment, filters.segment));
       if (filters.status) conditions.push(eq(documents.status, filters.status));
       if (filters.key) conditions.push(eq(documents.key, filters.key));
+      if (filters.collectionId) {
+        conditions.push(eq(documents.collectionId, filters.collectionId));
+      }
       const rows = await db
         .select()
         .from(documents)
@@ -265,6 +268,15 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .where(and(eq(contentCollections.orgId, orgId), eq(contentCollections.id, collectionId)))
         .limit(1);
       return row?.slug ?? null;
+    },
+
+    async findCollectionIdBySlug(orgId, slug) {
+      const [row] = await db
+        .select({ id: contentCollections.id })
+        .from(contentCollections)
+        .where(and(eq(contentCollections.orgId, orgId), eq(contentCollections.slug, slug)))
+        .limit(1);
+      return row?.id ?? null;
     },
 
     async recordDocumentOp(input) {

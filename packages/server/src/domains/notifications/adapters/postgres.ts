@@ -1,7 +1,12 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
-import type { CommsDeliveryDTO, ListDeliveriesQuery } from "../ports";
-import { commsDeliveries, notificationPreferences } from "../schema";
+import type { CommsDeliveryDTO, ListDeliveriesQuery, ListInboxQuery } from "../ports";
+import {
+  DEFAULT_NOTIFICATION_PREFERENCES,
+  mergeNotificationPreferences,
+  normalizeNotificationPreferences,
+} from "../preferences";
+import { commsDeliveries, commsInboxItems, notificationPreferences } from "../schema";
 
 export interface CommsDeliveryRow {
   id: string;
@@ -27,9 +32,20 @@ export interface CommsDeliveryRow {
 export interface NotificationPreferencesRow {
   orgId: string;
   userId: string;
-  agentTaskEmail: boolean;
-  marketingEmail: boolean;
+  preferences: import("../preferences").NotificationPreferences;
   updatedAt: Date;
+}
+
+export interface CommsInboxItemRow {
+  id: string;
+  orgId: string;
+  userId: string;
+  title: string;
+  body: string;
+  trigger: string | null;
+  metadata: Record<string, unknown>;
+  readAt: Date | null;
+  createdAt: Date;
 }
 
 export interface NotificationsStorage {
@@ -49,10 +65,7 @@ export interface NotificationsStorage {
   updateDelivery(
     id: string,
     patch: Partial<
-      Pick<
-        CommsDeliveryRow,
-        "status" | "providerMessageId" | "error" | "sentAt" | "attemptCount"
-      >
+      Pick<CommsDeliveryRow, "status" | "providerMessageId" | "error" | "sentAt" | "attemptCount">
     >,
   ): Promise<void>;
   findDelivery(orgId: string, id: string): Promise<CommsDeliveryRow | null>;
@@ -65,8 +78,17 @@ export interface NotificationsStorage {
   upsertPreferences(
     orgId: string,
     userId: string,
-    patch: Partial<Pick<NotificationPreferencesRow, "agentTaskEmail" | "marketingEmail">>,
+    patch: Partial<import("../preferences").NotificationPreferences>,
   ): Promise<NotificationPreferencesRow>;
+  insertInboxItem(
+    input: Omit<CommsInboxItemRow, "createdAt" | "readAt"> & { readAt?: Date | null },
+  ): Promise<CommsInboxItemRow>;
+  listInboxItems(
+    orgId: string,
+    userId: string,
+    query?: ListInboxQuery,
+  ): Promise<CommsInboxItemRow[]>;
+  markInboxRead(orgId: string, userId: string, itemId: string): Promise<CommsInboxItemRow | null>;
 }
 
 function mapRow(row: typeof commsDeliveries.$inferSelect): CommsDeliveryRow {
@@ -146,10 +168,7 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
         .select()
         .from(commsDeliveries)
         .where(
-          and(
-            eq(commsDeliveries.orgId, orgId),
-            eq(commsDeliveries.idempotencyKey, idempotencyKey),
-          ),
+          and(eq(commsDeliveries.orgId, orgId), eq(commsDeliveries.idempotencyKey, idempotencyKey)),
         )
         .limit(1);
       return row ? mapRow(row) : null;
@@ -187,8 +206,7 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
         return {
           orgId: row.orgId,
           userId: row.userId,
-          agentTaskEmail: row.agentTaskEmail,
-          marketingEmail: row.marketingEmail,
+          preferences: normalizeNotificationPreferences(row.preferences),
           updatedAt: row.updatedAt,
         };
       }
@@ -196,37 +214,127 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
       return {
         orgId,
         userId,
-        agentTaskEmail: true,
-        marketingEmail: false,
+        preferences: structuredClone(DEFAULT_NOTIFICATION_PREFERENCES),
         updatedAt: new Date(),
       };
     },
 
     async upsertPreferences(orgId, userId, patch) {
       const existing = await this.getPreferences(orgId, userId);
-      const next = {
-        orgId,
-        userId,
-        agentTaskEmail: patch.agentTaskEmail ?? existing.agentTaskEmail,
-        marketingEmail: patch.marketingEmail ?? existing.marketingEmail,
-        updatedAt: new Date(),
-      };
+      const nextPreferences = mergeNotificationPreferences(existing.preferences, patch);
+      const updatedAt = new Date();
 
       await db
         .insert(notificationPreferences)
-        .values(next)
+        .values({
+          orgId,
+          userId,
+          preferences: nextPreferences,
+          updatedAt,
+        })
         .onConflictDoUpdate({
           target: [notificationPreferences.orgId, notificationPreferences.userId],
           set: {
-            agentTaskEmail: next.agentTaskEmail,
-            marketingEmail: next.marketingEmail,
-            updatedAt: next.updatedAt,
+            preferences: nextPreferences,
+            updatedAt,
           },
         });
 
-      return next;
+      return {
+        orgId,
+        userId,
+        preferences: nextPreferences,
+        updatedAt,
+      };
+    },
+
+    async insertInboxItem(input) {
+      const [row] = await db
+        .insert(commsInboxItems)
+        .values({
+          id: input.id,
+          orgId: input.orgId,
+          userId: input.userId,
+          title: input.title,
+          body: input.body,
+          trigger: input.trigger ?? null,
+          metadata: input.metadata ?? {},
+          readAt: input.readAt ?? null,
+        })
+        .returning();
+      if (!row) throw new Error("Failed to insert inbox item");
+      return {
+        id: row.id,
+        orgId: row.orgId,
+        userId: row.userId,
+        title: row.title,
+        body: row.body,
+        trigger: row.trigger,
+        metadata: row.metadata ?? {},
+        readAt: row.readAt,
+        createdAt: row.createdAt,
+      };
+    },
+
+    async listInboxItems(orgId, userId, query = {}) {
+      const limit = Math.min(query.limit ?? 50, 200);
+      const offset = query.offset ?? 0;
+      const conditions = [eq(commsInboxItems.orgId, orgId), eq(commsInboxItems.userId, userId)];
+      if (query.unreadOnly) {
+        conditions.push(isNull(commsInboxItems.readAt));
+      }
+
+      const rows = await db
+        .select()
+        .from(commsInboxItems)
+        .where(and(...conditions))
+        .orderBy(desc(commsInboxItems.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      return rows.map((row) => ({
+        id: row.id,
+        orgId: row.orgId,
+        userId: row.userId,
+        title: row.title,
+        body: row.body,
+        trigger: row.trigger,
+        metadata: row.metadata ?? {},
+        readAt: row.readAt,
+        createdAt: row.createdAt,
+      }));
+    },
+
+    async markInboxRead(orgId, userId, itemId) {
+      const [row] = await db
+        .update(commsInboxItems)
+        .set({ readAt: new Date() })
+        .where(
+          and(
+            eq(commsInboxItems.orgId, orgId),
+            eq(commsInboxItems.userId, userId),
+            eq(commsInboxItems.id, itemId),
+          ),
+        )
+        .returning();
+      if (!row) return null;
+      return {
+        id: row.id,
+        orgId: row.orgId,
+        userId: row.userId,
+        title: row.title,
+        body: row.body,
+        trigger: row.trigger,
+        metadata: row.metadata ?? {},
+        readAt: row.readAt,
+        createdAt: row.createdAt,
+      };
     },
   };
+}
+
+export function toInboxItemDTO(row: CommsInboxItemRow) {
+  return { ...row };
 }
 
 export function toDeliveryDTO(row: CommsDeliveryRow): CommsDeliveryDTO {

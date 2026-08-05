@@ -6,14 +6,20 @@ import { parseBody } from "../../shared/parse-body";
 import { ok } from "../../shared/respond";
 import { requireAuthenticatedUser, requireHumanPermission } from "../auth/guards";
 import type { NotificationsService } from "./ports";
-
-const preferencesUpdateSchema = z.object({
-  agentTaskEmail: z.boolean().optional(),
-  marketingEmail: z.boolean().optional(),
-});
+import { notificationPreferencesUpdateSchema } from "./preferences";
+import { registerNotificationsStreamRoutes } from "./routes/stream";
 
 const listDeliveriesSchema = z.object({
   status: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(200).optional(),
+  offset: z.coerce.number().int().min(0).optional(),
+});
+
+const listInboxSchema = z.object({
+  unreadOnly: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
 });
@@ -41,7 +47,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
       return c.json({ error: "org and user required" }, 400);
     }
     const body = parseBody(
-      preferencesUpdateSchema.safeParse(await c.req.json()),
+      notificationPreferencesUpdateSchema.safeParse(await c.req.json()),
       "notification preferences",
     );
     return ok(c, await service.updatePreferences(orgId, userId, body));
@@ -82,6 +88,45 @@ export function createNotificationsRoutes(service: NotificationsService) {
       return c.json({ error: message }, 400);
     }
   });
+
+  routes.get("/inbox", async (c) => {
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+    const orgId = getOrgId(c);
+    const userId = getUserId(c) || auth.userId;
+    if (!orgId || !userId) {
+      return c.json({ error: "org and user required" }, 400);
+    }
+
+    const query = listInboxSchema.safeParse({
+      unreadOnly: c.req.query("unreadOnly"),
+      limit: c.req.query("limit"),
+      offset: c.req.query("offset"),
+    });
+    if (!query.success) {
+      return c.json({ error: "Invalid query" }, 400);
+    }
+
+    return ok(c, await service.listInbox(orgId, userId, query.data));
+  });
+
+  routes.post("/inbox/:itemId/read", async (c) => {
+    const auth = requireAuthenticatedUser(c);
+    if (auth instanceof Response) return auth;
+    const orgId = getOrgId(c);
+    const userId = getUserId(c) || auth.userId;
+    if (!orgId || !userId) {
+      return c.json({ error: "org and user required" }, 400);
+    }
+
+    const item = await service.markInboxRead(orgId, userId, c.req.param("itemId"));
+    if (!item) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    return ok(c, item);
+  });
+
+  registerNotificationsStreamRoutes(routes);
 
   return routes;
 }

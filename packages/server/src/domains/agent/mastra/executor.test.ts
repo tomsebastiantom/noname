@@ -49,6 +49,20 @@ describe("createMastraExecutor", () => {
       secrets: {
         resolveLlmApiKey: vi.fn(async () => null),
       },
+      authorization: {
+        check: vi.fn(async () => true),
+        grant: vi.fn(),
+        revoke: vi.fn(),
+        listDirectUserEditors: vi.fn(async () => []),
+        listDirectUserPublishers: vi.fn(async () => []),
+        listRelationTuples: vi.fn(async () => []),
+      },
+      documents: {
+        findDocumentById: vi.fn(async () => null),
+        findCollectionIdBySlug: vi.fn(async () => null),
+        findCollectionSlug: vi.fn(async () => null),
+        listDocuments: vi.fn(async () => []),
+      },
       analytics: {
         query: vi.fn(async () => []),
         aggregate: vi.fn(async () => []),
@@ -70,7 +84,7 @@ describe("createMastraExecutor", () => {
         generateMachine: vi.fn(),
       },
       layout: { create: layoutCreate },
-      content: { create: vi.fn() },
+      content: { create: vi.fn(), updateById: vi.fn() },
       machines: { define: vi.fn() },
     });
 
@@ -101,6 +115,20 @@ describe("createMastraExecutor", () => {
       secrets: {
         resolveLlmApiKey: vi.fn(async () => null),
       },
+      authorization: {
+        check: vi.fn(async () => true),
+        grant: vi.fn(),
+        revoke: vi.fn(),
+        listDirectUserEditors: vi.fn(async () => []),
+        listDirectUserPublishers: vi.fn(async () => []),
+        listRelationTuples: vi.fn(async () => []),
+      },
+      documents: {
+        findDocumentById: vi.fn(async () => null),
+        findCollectionIdBySlug: vi.fn(async () => null),
+        findCollectionSlug: vi.fn(async () => null),
+        listDocuments: vi.fn(async () => []),
+      },
       analytics: { query: vi.fn(), aggregate: vi.fn() },
       integrations: { triggerOAuthAction: vi.fn() },
       aiPipeline: {
@@ -109,7 +137,7 @@ describe("createMastraExecutor", () => {
         generateMachine: vi.fn(),
       },
       layout: { create: vi.fn() },
-      content: { create: vi.fn() },
+      content: { create: vi.fn(), updateById: vi.fn() },
       machines: { define: vi.fn() },
     });
 

@@ -1,8 +1,12 @@
+import { AccountNotificationPrefsForm } from "./components/AccountNotificationPrefsForm";
+import { AccountNotificationsInbox } from "./components/AccountNotificationsInbox";
 import { AuthLayout } from "./components/AuthLayout";
 import { LoginForm } from "./components/LoginForm";
 import { MountAction } from "./components/MountAction";
 import type { ComponentCtx } from "./components/types";
 
+export { AccountNotificationPrefsForm } from "./components/AccountNotificationPrefsForm";
+export { AccountNotificationsInbox } from "./components/AccountNotificationsInbox";
 export { AuthLayout } from "./components/AuthLayout";
 export { LoginForm } from "./components/LoginForm";
 export { MountAction } from "./components/MountAction";
@@ -156,5 +160,7 @@ export const coreComponents = {
   Image,
   LoginForm,
   AuthLayout,
+  AccountNotificationsInbox,
+  AccountNotificationPrefsForm,
   MountAction,
 };

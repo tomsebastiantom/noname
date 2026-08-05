@@ -29,9 +29,39 @@ export function startEmailOutboundWorker(deps: {
         span.setAttribute("notifications.attempt", attemptCount);
 
         try {
+          const row = await deps.storage.findDelivery(orgId, deliveryId);
+          if (!row) {
+            throw new Error(`Delivery not found: ${deliveryId}`);
+          }
+
           const credentials = await deps.secrets.resolveCommsCredentials(orgId);
           if (!credentials) {
             throw new Error("No comms credentials configured for org");
+          }
+
+          if (row.channel === "sms") {
+            if (credentials.provider !== "twilio") {
+              throw new Error("SMS delivery requires Twilio credentials");
+            }
+            const { getSmsSender } = await import("./adapters/sms");
+            const smsSender = getSmsSender("twilio");
+            const result = await smsSender.send(credentials, {
+              to,
+              body: text ?? row.bodyText ?? "",
+            });
+            await deps.storage.updateDelivery(deliveryId, {
+              status: "sent",
+              providerMessageId: result.messageId,
+              sentAt: new Date(),
+              error: null,
+            });
+            await eventBus.publish(CommsEvents.SENT, {
+              orgId,
+              deliveryId,
+              provider: result.provider,
+              messageId: result.messageId,
+            });
+            return;
           }
 
           const emailSender = getEmailSender(credentials.provider);

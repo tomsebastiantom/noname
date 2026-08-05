@@ -105,6 +105,59 @@ export const coreComponentSchemas = {
     ),
     description: "Run a catalog action on mount (layout-declared data load)",
   },
+  AccountNotificationsInbox: {
+    props: catalogProps(
+      {
+        title: z.string(),
+        description: z.string().nullable(),
+        loadingLabel: z.string(),
+        forbiddenLabel: z.string(),
+        emptyLabel: z.string(),
+        refreshLabel: z.string(),
+        unreadOnlyLabel: z.string(),
+        allLabel: z.string(),
+        markReadLabel: z.string(),
+        columns: z.object({
+          when: z.string(),
+          title: z.string(),
+          trigger: z.string(),
+          status: z.string(),
+          actions: z.string(),
+        }),
+      },
+      {},
+    ),
+    description: "Signed-in customer notification inbox at /account/notifications",
+  },
+  AccountNotificationPrefsForm: {
+    props: catalogProps(
+      {
+        title: z.string(),
+        description: z.string().nullable(),
+        signInRequiredDescription: z.string(),
+        signInLinkLabel: z.string(),
+        loadingLabel: z.string(),
+        saveLabel: z.string(),
+        savingLabel: z.string(),
+        successMessage: z.string(),
+        inboxLinkLabel: z.string(),
+        channelsSectionTitle: z.string(),
+        categoriesSectionTitle: z.string(),
+        transactionalNote: z.string(),
+        channels: z.object({
+          email: z.object({ label: z.string(), helper: z.string() }),
+          sms: z.object({ label: z.string(), helper: z.string() }),
+          in_app: z.object({ label: z.string(), helper: z.string() }),
+        }),
+        categories: z.object({
+          marketing: z.object({ label: z.string(), helper: z.string() }),
+          operational: z.object({ label: z.string(), helper: z.string() }),
+        }),
+      },
+      {},
+    ),
+    description: "Per-user communication channel preferences at /account/communication-preferences",
+  },
 };
 
 export const coreActionSchemas = {
@@ -177,5 +230,22 @@ export const coreActionSchemas = {
   },
   loadAccountSecuritySession: {
     description: "Load MFA enrollment status for the signed-in user",
+  },
+  loadNotificationPreferences: {
+    description: "Load signed-in user communication preferences",
+  },
+  saveNotificationPreferences: {
+    params: z.object({
+      channels: z.object({
+        email: z.boolean(),
+        sms: z.boolean(),
+        in_app: z.boolean(),
+      }),
+      categories: z.object({
+        marketing: z.boolean(),
+        operational: z.boolean(),
+      }),
+    }),
+    description: "Update signed-in user communication preferences",
   },
 };

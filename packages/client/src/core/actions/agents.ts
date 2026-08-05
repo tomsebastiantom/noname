@@ -93,7 +93,12 @@ export const agentActions = {
     const { taskId } = params as { taskId: string };
     const task = await fetchAgentTaskById(taskId);
     setState(ADMIN_STATE.agents.selectedTaskDetail, task);
-    if (task.status === "completed" || task.status === "failed" || task.status === "approved" || task.status === "rejected") {
+    if (
+      task.status === "completed" ||
+      task.status === "failed" ||
+      task.status === "approved" ||
+      task.status === "rejected"
+    ) {
       await refreshAgents(setState);
     }
   }) satisfies CatalogActionHandler,

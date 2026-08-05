@@ -1,9 +1,5 @@
 import { Nango } from "@nangohq/node";
-import type {
-  ConnectSessionResult,
-  IntegrationOAuthPort,
-  IntegrationCatalogEntry,
-} from "../ports";
+import type { ConnectSessionResult, IntegrationCatalogEntry, IntegrationOAuthPort } from "../ports";
 
 export interface NangoAdapterConfig {
   host: string;

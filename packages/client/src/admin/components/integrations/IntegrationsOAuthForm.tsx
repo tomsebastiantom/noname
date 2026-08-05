@@ -165,7 +165,10 @@ export function IntegrationsOAuthForm({
     | undefined;
   const loading =
     (useStateValue(ADMIN_STATE.integrations.oauth.loading) as boolean | undefined) ?? true;
-  const loadError = useStateValue(ADMIN_STATE.integrations.oauth.error) as string | null | undefined;
+  const loadError = useStateValue(ADMIN_STATE.integrations.oauth.error) as
+    | string
+    | null
+    | undefined;
 
   if (!canAccess) {
     return (

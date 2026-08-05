@@ -18,6 +18,49 @@ import type {
 const LLM_PROVIDERS = ["openai", "anthropic"] as const;
 type LlmProviderName = (typeof LLM_PROVIDERS)[number];
 
+type LlmKeyCacheEntry = {
+  value: ResolvedLlmApiKey | null;
+  expiresAt: number;
+};
+
+const llmKeyCache = new Map<string, LlmKeyCacheEntry>();
+
+function llmCacheTtlMs(): number {
+  const sec = Number(process.env.SECRETS_LLM_CACHE_TTL_SEC ?? 0);
+  if (!Number.isFinite(sec) || sec <= 0) return 0;
+  return Math.floor(sec * 1000);
+}
+
+function llmCacheKey(orgId: string, requestedProvider?: LlmProviderName): string {
+  return `${orgId}:${requestedProvider ?? "_auto"}`;
+}
+
+function readLlmCache(key: string): ResolvedLlmApiKey | null | undefined {
+  const ttlMs = llmCacheTtlMs();
+  if (ttlMs <= 0) return undefined;
+  const entry = llmKeyCache.get(key);
+  if (!entry) return undefined;
+  if (Date.now() >= entry.expiresAt) {
+    llmKeyCache.delete(key);
+    return undefined;
+  }
+  return entry.value;
+}
+
+function writeLlmCache(key: string, value: ResolvedLlmApiKey | null): void {
+  const ttlMs = llmCacheTtlMs();
+  if (ttlMs <= 0) return;
+  llmKeyCache.set(key, { value, expiresAt: Date.now() + ttlMs });
+}
+
+function invalidateLlmCache(orgId: string): void {
+  for (const key of llmKeyCache.keys()) {
+    if (key.startsWith(`${orgId}:`)) {
+      llmKeyCache.delete(key);
+    }
+  }
+}
+
 function isLlmProviderName(value: string): value is LlmProviderName {
   return (LLM_PROVIDERS as readonly string[]).includes(value);
 }
@@ -75,6 +118,10 @@ export function createSecretsService(deps: {
     orgId: string,
     requestedProvider?: LlmProviderName,
   ): Promise<ResolvedLlmApiKey | null> {
+    const cacheKey = llmCacheKey(orgId, requestedProvider);
+    const cached = readLlmCache(cacheKey);
+    if (cached !== undefined) return cached;
+
     let preferred: LlmProviderName | null = requestedProvider ?? null;
     if (!preferred && tenantSettings) {
       const settings = await tenantSettings.get(orgId);
@@ -87,14 +134,23 @@ export function createSecretsService(deps: {
 
     for (const provider of order) {
       const apiKey = await orgLlmKey(orgId, provider);
-      if (apiKey) return { provider, apiKey, source: "org" };
+      if (apiKey) {
+        const resolved = { provider, apiKey, source: "org" as const };
+        writeLlmCache(cacheKey, resolved);
+        return resolved;
+      }
     }
 
     for (const provider of LLM_PROVIDERS) {
       const platformKey = await store.getPlatformSecret(`${provider}_api_key`);
-      if (platformKey) return { provider, apiKey: platformKey, source: "platform" };
+      if (platformKey) {
+        const resolved = { provider, apiKey: platformKey, source: "platform" as const };
+        writeLlmCache(cacheKey, resolved);
+        return resolved;
+      }
     }
 
+    writeLlmCache(cacheKey, null);
     return null;
   }
 
@@ -150,6 +206,9 @@ export function createSecretsService(deps: {
 
     async putOrgSecret(input: PutOrgSecretInput): Promise<void> {
       await store.putOrgSecret(input);
+      if (input.kind === "llm") {
+        invalidateLlmCache(input.orgId);
+      }
     },
 
     async hasOrgSecret(orgId: string, kind: OrgSecretKind, provider: string): Promise<boolean> {

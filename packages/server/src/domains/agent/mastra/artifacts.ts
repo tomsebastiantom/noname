@@ -1,6 +1,5 @@
-import type { AgentArtifact } from "./types";
-
 import type { MachineDefinition, MachineState } from "../../machines/ports";
+import type { AgentArtifact } from "./types";
 
 export interface ArtifactCollector {
   push(artifact: AgentArtifact): void;

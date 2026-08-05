@@ -1,15 +1,13 @@
 import type { AIPipeline } from "../../ai-pipeline/ports";
 import type { AnalyticsService } from "../../analytics/ports";
-import type { ContentDocumentService, LayoutDocumentService } from "../../documents/ports";
-import type { MachineEngine } from "../../machines/ports";
 import type { AgentToolResult } from "../tools";
-import { createArtifactCollector } from "./artifacts";
-import { extractContentData, extractLayoutSpec, extractMachineDefinition } from "./artifacts";
 import {
-  createTokenAccumulator,
-  parseAgentRunContext,
-  writeAuditFromRunContext,
-} from "./context";
+  createArtifactCollector,
+  extractContentData,
+  extractLayoutSpec,
+  extractMachineDefinition,
+} from "./artifacts";
+import { createTokenAccumulator, parseAgentRunContext, writeAuditFromRunContext } from "./context";
 import type { MastraExecutorDeps } from "./executor";
 import { assertOrchestrateOutput } from "./orchestrate-output";
 import type { AgentStepRecord } from "./types";
@@ -41,8 +39,7 @@ async function runStep(
   const t0 = Date.now();
   try {
     const result = await fn();
-    const summary =
-      typeof result === "string" ? result : JSON.stringify(result).slice(0, 160);
+    const summary = typeof result === "string" ? result : JSON.stringify(result).slice(0, 160);
     steps.push({
       index: steps.length,
       tool,
@@ -75,7 +72,6 @@ export async function runMockOrchestrate(
   input: Record<string, unknown>,
   activeTools: string[],
 ): Promise<AgentToolResult> {
-  const taskId = String(input.taskId ?? "unknown");
   const runContext = parseAgentRunContext(orgId, input);
   const audit = runContext ? writeAuditFromRunContext(runContext) : undefined;
   const artifacts = createArtifactCollector();
@@ -90,6 +86,29 @@ export async function runMockOrchestrate(
         analytics.aggregate({ orgId, groupBy: "eventType", limit: 20 }),
       ]);
       return { eventCount: events.length, aggregates };
+    });
+  }
+
+  if (activeTools.includes("readDocument")) {
+    await runStep(steps, "readDocument", async () => {
+      const storage = deps.documents;
+      const doc = await storage.findDocumentById("mock-doc");
+      if (!doc || doc.orgId !== orgId) {
+        return { found: false, documentId: "mock-doc" };
+      }
+      return { found: true, documentId: doc.id, type: doc.type };
+    });
+  }
+
+  if (activeTools.includes("listFolderDocuments")) {
+    await runStep(steps, "listFolderDocuments", async () => {
+      const storage = deps.documents;
+      const collectionId = await storage.findCollectionIdBySlug(orgId, "marketing");
+      if (!collectionId) {
+        return { found: false, folderSlug: "marketing", count: 0 };
+      }
+      const rows = await storage.listDocuments(orgId, { collectionId });
+      return { found: true, folderSlug: "marketing", count: rows.length };
     });
   }
 
@@ -115,9 +134,14 @@ export async function runMockOrchestrate(
       const aiPipeline = deps.aiPipeline as Pick<AIPipeline, "generateContent">;
       const generated = await aiPipeline.generateContent(orgId, contentType, prompt);
       pipelineTokens.add(generated.tokens);
-      const entry = await deps.content.create(orgId, contentType, extractContentData(generated.response), {
-        audit,
-      });
+      const entry = await deps.content.create(
+        orgId,
+        contentType,
+        extractContentData(generated.response),
+        {
+          audit,
+        },
+      );
       artifacts.push({ kind: "content", documentId: entry.id, label: contentType });
       return { contentId: entry.id, contentType: entry.type };
     });

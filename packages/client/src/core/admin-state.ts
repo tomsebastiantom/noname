@@ -92,6 +92,11 @@ export const ADMIN_STATE = {
       loading: "/admin/integrations/comms-deliveries/loading",
       error: "/admin/integrations/comms-deliveries/error",
     },
+    commsInbox: {
+      loaded: "/admin/integrations/comms-inbox/loaded",
+      loading: "/admin/integrations/comms-inbox/loading",
+      error: "/admin/integrations/comms-inbox/error",
+    },
     webhooks: {
       loaded: "/admin/integrations/webhooks/loaded",
       loading: "/admin/integrations/webhooks/loading",

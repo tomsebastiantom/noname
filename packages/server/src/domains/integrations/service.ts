@@ -197,11 +197,8 @@ export function createIntegrationsService(deps: {
       if (!connectionId) return;
 
       const tags =
-        body.tags && typeof body.tags === "object"
-          ? (body.tags as Record<string, unknown>)
-          : {};
-      const orgId =
-        typeof tags.organization_id === "string" ? tags.organization_id.trim() : "";
+        body.tags && typeof body.tags === "object" ? (body.tags as Record<string, unknown>) : {};
+      const orgId = typeof tags.organization_id === "string" ? tags.organization_id.trim() : "";
       if (!orgId) return;
 
       const integrationIdRaw =

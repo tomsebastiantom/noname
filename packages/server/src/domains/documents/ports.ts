@@ -251,6 +251,7 @@ export interface DocumentFilters {
   segment?: string;
   status?: DocumentStatus;
   key?: string;
+  collectionId?: string;
 }
 
 export interface CreateDocumentInput {
@@ -306,6 +307,7 @@ export interface DocumentStorage {
     collectionId?: string | null,
   ): Promise<DocumentDTO>;
   findCollectionSlug(orgId: string, collectionId: string): Promise<string | null>;
+  findCollectionIdBySlug(orgId: string, slug: string): Promise<string | null>;
   publishDocument(id: string): Promise<DocumentDTO>;
   archiveDocument(id: string): Promise<DocumentDTO>;
   deleteDocument(id: string): Promise<void>;

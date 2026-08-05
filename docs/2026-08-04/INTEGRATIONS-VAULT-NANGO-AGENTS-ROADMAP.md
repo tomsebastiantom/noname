@@ -259,7 +259,7 @@ integrations: {
 | Source | Platform ingest | Agent-ready | Gap |
 |--------|-----------------|-------------|-----|
 | **Analytics** | ✅ SDK → edge → BullMQ → ClickHouse; query API with Keto | ⚠️ partial | Agent `analyze_analytics` wired to query API (Phase II polish) |
-| **CMS documents** | ✅ CRUD + resolve at `/api/documents` | ⚠️ partial | Agent executor uses ai-pipeline only; no document read/write tools yet |
+| **CMS documents** | ✅ CRUD + resolve at `/api/documents` | ✅ | Agent read/list tools + Keto Collection/Document view checks |
 | **Tenant settings** | ✅ `GET tenant_settings/default` — flags, locales, `connectionId` only | ⚠️ partial | Planner tools don't consume yet |
 | **Nango connect webhook** | ✅ `POST .../integrations/nango/webhook` → `connectionId` in Postgres | ⚠️ partial | Add to edge public POST patterns if connect callback hits worker; `nango_trigger` tool in Phase II |
 | **LLM usage** | ✅ `ai_generations` append on each ai-pipeline call | ⚠️ partial | Agent tools don't read usage yet |
@@ -500,7 +500,8 @@ flowchart TD
 - [x] I-c.2 — idempotency, retries, SES adapter, delivery log API
 - [x] I-c.3 — `notify(trigger)` routing + admin delivery UI
 - [x] I-c.1 — wire machines + agent via `notify()` / transition `params.notify`
-- [ ] I-c.4+ — in-app inbox, SMS, expanded prefs (see RFC)
+- [x] I-c.6 — preferences v2 (channels × categories JSONB, `shouldDeliverNotification`, customer UI)
+- [ ] I-c.6c — marketing compliance (List-Unsubscribe + prefs link in template footer)
 
 ### I-d OAuth / external integrations
 - [x] docker-compose: integrations profile
@@ -513,7 +514,7 @@ flowchart TD
 - [x] Tenant settings (no secrets in response)
 - [x] Nango connect webhook → `connectionId`
 - [x] LLM usage append on ai-pipeline call (`ai_generations`)
-- [x] Phase II: wire tools to existing ports (analytics, documents drafts, nango_trigger)
+- [x] Phase II: wire tools to existing ports (analytics, documents drafts, nango_trigger, readDocument, listFolderDocuments)
 
 ### I-f Webhooks
 - [x] Spec: [`WEBHOOKS-DOMAIN-SPEC.md`](./WEBHOOKS-DOMAIN-SPEC.md)
@@ -535,6 +536,10 @@ flowchart TD
 - [x] Prompt template (`orchestrate-system`) + token accounting + OTel step spans (2.5)
 - [x] Demo walkthrough: [`AGENT-ORCHESTRATE-DEMO.md`](./AGENT-ORCHESTRATE-DEMO.md) (2.6)
 - [x] Agent secret sync: Mastra planner resolves LLM keys per org at run time via `resolveLlmApiKey` → Vault (no worker env copy)
+- [x] Document context tools: `readDocument`, `listFolderDocuments` (in-process documents storage + Keto view)
+- [x] I-c.4 baseline: `comms_inbox_items`, Twilio SMS adapter, multi-channel `notify()`, inbox admin UI + SSE stream route
+- [x] I-c.4+ customer prefs UI: `/account/communication-preferences`
+- [x] I-c.6 preferences v2: JSONB `{ channels, categories, triggers? }` + Novu-style evaluator
 
 ---
 

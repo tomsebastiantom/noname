@@ -94,12 +94,8 @@ type AgentsAdminLabels = {
 function parseOrchestrateOutput(output: Record<string, unknown> | null): OrchestrateOutput | null {
   if (!output || typeof output !== "object") return null;
   const summary = typeof output.summary === "string" ? output.summary : "";
-  const steps = Array.isArray(output.steps)
-    ? (output.steps as AgentStepRecord[])
-    : [];
-  const artifacts = Array.isArray(output.artifacts)
-    ? (output.artifacts as AgentArtifact[])
-    : [];
+  const steps = Array.isArray(output.steps) ? (output.steps as AgentStepRecord[]) : [];
+  const artifacts = Array.isArray(output.artifacts) ? (output.artifacts as AgentArtifact[]) : [];
   const stoppedReason =
     output.stoppedReason === "max_steps" ||
     output.stoppedReason === "error" ||
@@ -116,10 +112,7 @@ function artifactHref(artifact: AgentArtifact): string | null {
   return null;
 }
 
-function stepStatusLabel(
-  status: AgentStepRecord["status"],
-  labels: AgentsAdminLabels,
-): string {
+function stepStatusLabel(status: AgentStepRecord["status"], labels: AgentsAdminLabels): string {
   if (status === "denied") return labels.stepStatusDeniedLabel;
   if (status === "error") return labels.stepStatusErrorLabel;
   return labels.stepStatusOkLabel;
@@ -146,7 +139,10 @@ export function AgentsAdminForm({
     | string
     | null
     | undefined;
-  const selectedTaskId = useStateValue(ADMIN_STATE.agents.selectedTaskId) as string | null | undefined;
+  const selectedTaskId = useStateValue(ADMIN_STATE.agents.selectedTaskId) as
+    | string
+    | null
+    | undefined;
   const selectedTaskDetail = useStateValue(ADMIN_STATE.agents.selectedTaskDetail) as
     | AgentTask
     | null
@@ -172,10 +168,7 @@ export function AgentsAdminForm({
   const canSeeTasks = canManageAllTasks || ownedAgentIds.size > 0;
   const canCreateTask = canManageAllTasks || ownedAgentIds.size > 0;
   const creatableAgents = useMemo(
-    () =>
-      canManageAllTasks
-        ? registry
-        : registry.filter((agent) => ownedAgentIds.has(agent.id)),
+    () => (canManageAllTasks ? registry : registry.filter((agent) => ownedAgentIds.has(agent.id))),
     [canManageAllTasks, registry, ownedAgentIds],
   );
   const canReviewTask = (task: AgentTask): boolean =>
@@ -644,7 +637,9 @@ export function AgentsAdminForm({
                       {orchestrateOutput.summary ? (
                         <div className="space-y-1">
                           <p className="text-sm font-medium">{labels.runSummaryLabel}</p>
-                          <p className="text-sm text-muted-foreground">{orchestrateOutput.summary}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {orchestrateOutput.summary}
+                          </p>
                         </div>
                       ) : null}
 
@@ -680,13 +675,17 @@ export function AgentsAdminForm({
                       <div className="space-y-2">
                         <p className="text-sm font-medium">{labels.artifactsSectionTitle}</p>
                         {orchestrateOutput.artifacts.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">{labels.noArtifactsMessage}</p>
+                          <p className="text-sm text-muted-foreground">
+                            {labels.noArtifactsMessage}
+                          </p>
                         ) : (
                           <ul className="space-y-1">
                             {orchestrateOutput.artifacts.map((artifact) => {
                               const href = artifactHref(artifact);
                               return (
-                                <li key={`${artifact.kind}-${artifact.documentId ?? artifact.label}`}>
+                                <li
+                                  key={`${artifact.kind}-${artifact.documentId ?? artifact.label}`}
+                                >
                                   {href ? (
                                     <a
                                       href={href}
@@ -712,7 +711,9 @@ export function AgentsAdminForm({
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => void execute({ action: "selectAgentTask", params: { taskId: null } })}
+                    onClick={() =>
+                      void execute({ action: "selectAgentTask", params: { taskId: null } })
+                    }
                   >
                     Close
                   </Button>

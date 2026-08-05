@@ -64,7 +64,9 @@ export function EmailSpecFieldInput({
           </div>
         </div>
       ) : value.trim() ? (
-        <p className="text-xs text-destructive">Invalid spec JSON — fix syntax or root/elements shape.</p>
+        <p className="text-xs text-destructive">
+          Invalid spec JSON — fix syntax or root/elements shape.
+        </p>
       ) : null}
     </div>
   );

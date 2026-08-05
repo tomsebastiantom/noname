@@ -2,7 +2,11 @@ import type { AIPipeline } from "../ai-pipeline/ports";
 import type { AnalyticsService } from "../analytics/ports";
 import type { AgentExecutor, AgentToolResult } from "./tools";
 
-function pipelineTaskResult(r: { response: unknown; model: string; tokens: number }): AgentToolResult {
+function pipelineTaskResult(r: {
+  response: unknown;
+  model: string;
+  tokens: number;
+}): AgentToolResult {
   return {
     output: r.response as Record<string, unknown>,
     model: r.model,

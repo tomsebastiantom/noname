@@ -1,6 +1,6 @@
 import { AgentEvents } from "../agent/events";
-import { CommsEvents } from "../notifications/events";
 import { MachineEvents } from "../machines/events";
+import { CommsEvents } from "../notifications/events";
 import { WebhookEvents } from "./events";
 import type { WebhooksService } from "./ports";
 

@@ -19,7 +19,10 @@ export interface IntegrationsNangoRouteDeps {
   oauth?: IntegrationOAuthPort | null;
 }
 
-export function registerIntegrationsNangoRoutes(routes: Hono, deps: IntegrationsNangoRouteDeps): void {
+export function registerIntegrationsNangoRoutes(
+  routes: Hono,
+  deps: IntegrationsNangoRouteDeps,
+): void {
   const { service, tenantSettings, oauth } = deps;
 
   routes.get("/:orgId/nango/connections", async (c) => {

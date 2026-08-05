@@ -23,7 +23,11 @@ import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
-import { createWebhooksDomain, registerWebhookInboundRouter, registerWebhookOutboundRouter } from "./domains/webhooks";
+import {
+  createWebhooksDomain,
+  registerWebhookInboundRouter,
+  registerWebhookOutboundRouter,
+} from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus, initEventBus } from "./shared/event-bus";
@@ -151,6 +155,8 @@ const agentExecutor = createCompositeAgentExecutor({
   }),
   mastra: createMastraExecutor({
     secrets: secrets.service,
+    authorization,
+    documents: storage,
     analytics: analytics.service,
     integrations: integrations.service,
     aiPipeline: aiPipeline.service,

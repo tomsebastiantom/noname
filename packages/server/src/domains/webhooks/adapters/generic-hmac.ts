@@ -24,8 +24,7 @@ export function createGenericHmacAdapter(secret: string): import("../ports").Inb
         externalEventId: eventId,
         eventType,
         orgId: typeof parsed.orgId === "string" ? parsed.orgId : undefined,
-        connectionId:
-          typeof parsed.connectionId === "string" ? parsed.connectionId : undefined,
+        connectionId: typeof parsed.connectionId === "string" ? parsed.connectionId : undefined,
         payload: parsed,
       };
     },

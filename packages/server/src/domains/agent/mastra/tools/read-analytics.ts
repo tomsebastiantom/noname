@@ -2,7 +2,10 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { AnalyticsService } from "../../../analytics/ports";
 
-export function createReadAnalyticsTool(analytics: Pick<AnalyticsService, "query" | "aggregate">, orgId: string) {
+export function createReadAnalyticsTool(
+  analytics: Pick<AnalyticsService, "query" | "aggregate">,
+  orgId: string,
+) {
   return createTool({
     id: "readAnalytics",
     description: "Query recent analytics events and aggregates for the current organization",

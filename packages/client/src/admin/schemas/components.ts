@@ -123,6 +123,29 @@ export const adminComponentSchemas = {
     ),
     description: "Email delivery log with retry for failed sends",
   },
+  CommsInboxAdmin: {
+    props: catalogProps(
+      {
+        ...panelLabels,
+        loadingLabel: z.string(),
+        forbiddenLabel: z.string(),
+        emptyLabel: z.string(),
+        refreshLabel: z.string(),
+        unreadOnlyLabel: z.string(),
+        allLabel: z.string(),
+        markReadLabel: z.string(),
+        columns: z.object({
+          when: z.string(),
+          title: z.string(),
+          trigger: z.string(),
+          status: z.string(),
+          actions: z.string(),
+        }),
+      },
+      {},
+    ),
+    description: "In-app notification inbox for the signed-in admin user",
+  },
   WebhookSubscriptionsAdmin: {
     props: catalogProps(
       {
@@ -484,9 +507,9 @@ export const adminComponentSchemas = {
         entrySavedMessage: z.string(),
         entryPublishedMessage: z.string(),
         entryDeletedMessage: z.string(),
-  deleteConfirmMessage: z.string(),
-  forbiddenLabel: z.string(),
-  saveLabel: z.string(),
+        deleteConfirmMessage: z.string(),
+        forbiddenLabel: z.string(),
+        saveLabel: z.string(),
         savingLabel: z.string(),
         publishLabel: z.string(),
         publishingLabel: z.string(),

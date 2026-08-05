@@ -5,7 +5,7 @@ import type { ContentDocumentService } from "../documents/ports";
 
 export const NOTIFICATION_EMAIL_CONTENT_TYPE = "notification_email";
 
-export type NotificationEmailCategory = "transactional" | "agent" | "marketing";
+export type NotificationEmailCategory = "transactional" | "operational" | "marketing";
 
 export interface LoadedNotificationEmail {
   templateKey: string;
@@ -14,15 +14,18 @@ export interface LoadedNotificationEmail {
   category: NotificationEmailCategory;
 }
 
-const UUID_PATTERN =
-  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 const TEMPLATE_KEY_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function isEmailSpec(value: unknown): value is Spec {
   if (!value || typeof value !== "object") return false;
   const record = value as Record<string, unknown>;
-  return typeof record.root === "string" && record.elements !== null && typeof record.elements === "object";
+  return (
+    typeof record.root === "string" &&
+    record.elements !== null &&
+    typeof record.elements === "object"
+  );
 }
 
 export function parseNotificationEmailEntry(
@@ -40,7 +43,11 @@ export function parseNotificationEmailEntry(
 
   const categoryRaw = coerceScalarString(data.category, "transactional").trim().toLowerCase();
   const category: NotificationEmailCategory =
-    categoryRaw === "agent" || categoryRaw === "marketing" ? categoryRaw : "transactional";
+    categoryRaw === "marketing"
+      ? "marketing"
+      : categoryRaw === "operational" || categoryRaw === "agent"
+        ? "operational"
+        : "transactional";
 
   return { templateKey, subject, spec: data.spec, category };
 }
@@ -54,8 +61,7 @@ export async function loadPublishedNotificationEmail(
   const trimmed = templateId.trim();
   if (!trimmed) return null;
 
-  let row =
-    UUID_PATTERN.test(trimmed) ? await content.findById(orgId, trimmed) : null;
+  let row = UUID_PATTERN.test(trimmed) ? await content.findById(orgId, trimmed) : null;
 
   if (!row || row.type !== NOTIFICATION_EMAIL_CONTENT_TYPE || row.status !== "published") {
     const entries = await content.findByType(orgId, NOTIFICATION_EMAIL_CONTENT_TYPE);
@@ -70,7 +76,7 @@ export async function loadPublishedNotificationEmail(
       ) ?? null;
   }
 
-  if (!row || row.status !== "published") {
+  if (row?.status !== "published") {
     return null;
   }
 

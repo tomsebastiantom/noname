@@ -80,7 +80,9 @@ export async function deleteWebhookSubscription(subscriptionId: string): Promise
   });
 }
 
-export async function loadWebhookOutboundDeliveries(limit = 50): Promise<WebhookOutboundDeliveryRow[]> {
+export async function loadWebhookOutboundDeliveries(
+  limit = 50,
+): Promise<WebhookOutboundDeliveryRow[]> {
   const body = await apiFetch<{ data?: WebhookOutboundDeliveryRow[] }>(
     `/api/webhooks/outbound/deliveries?limit=${limit}`,
   );

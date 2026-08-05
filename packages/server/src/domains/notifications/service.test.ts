@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { agentTaskCompleteEmailSpec } from "../../../../../scripts/seed/email-specs";
 import type { NotificationsStorage } from "./adapters/postgres";
+import { DEFAULT_NOTIFICATION_PREFERENCES } from "./preferences";
 import type { EmailOutboundJobData } from "./queue";
 import { createNotificationsService } from "./service";
 
@@ -21,12 +22,18 @@ function buildService(storage: Partial<NotificationsStorage>) {
     getPreferences: vi.fn(async () => ({
       orgId: "org-1",
       userId: "user-1",
-      agentTaskEmail: true,
-      marketingEmail: false,
+      preferences: DEFAULT_NOTIFICATION_PREFERENCES,
       updatedAt: new Date(),
     })),
     upsertPreferences: vi.fn(),
     updateDelivery: vi.fn(),
+    insertInboxItem: vi.fn(async (input) => ({
+      ...input,
+      readAt: null,
+      createdAt: new Date(),
+    })),
+    listInboxItems: vi.fn(async () => []),
+    markInboxRead: vi.fn(async () => null),
   };
 
   return {
@@ -105,7 +112,7 @@ describe("createNotificationsService", () => {
       template_key: "agent-task-complete",
       subject: "Agent task complete",
       spec: agentTaskCompleteEmailSpec,
-      category: "agent",
+      category: "operational",
     });
 
     const insertDelivery = vi.fn(async (input) => ({
@@ -118,15 +125,8 @@ describe("createNotificationsService", () => {
       bodyHtml: input.bodyHtml ?? null,
       bodyText: input.bodyText ?? null,
     }));
-    const getPreferences = vi.fn(async () => ({
-      orgId: "org-1",
-      userId: "user-1",
-      agentTaskEmail: true,
-      marketingEmail: false,
-      updatedAt: new Date(),
-    }));
 
-    const { service, add } = buildService({ insertDelivery, getPreferences });
+    const { service, add } = buildService({ insertDelivery });
 
     const result = await service.enqueueTemplatedEmail("org-1", {
       to: "user@example.com",
@@ -146,7 +146,7 @@ describe("createNotificationsService", () => {
     expect(result.skipped).toBeUndefined();
   });
 
-  it("enqueueTemplatedEmail skips when agent preference is off", async () => {
+  it("enqueueTemplatedEmail skips when operational preference is off", async () => {
     mockContent.findByType.mockResolvedValue([
       {
         id: "tpl-1",
@@ -161,15 +161,17 @@ describe("createNotificationsService", () => {
       template_key: "agent-task-complete",
       subject: "Done",
       spec: agentTaskCompleteEmailSpec,
-      category: "agent",
+      category: "operational",
     });
 
     const insertDelivery = vi.fn();
     const getPreferences = vi.fn(async () => ({
       orgId: "org-1",
       userId: "user-1",
-      agentTaskEmail: false,
-      marketingEmail: false,
+      preferences: {
+        ...DEFAULT_NOTIFICATION_PREFERENCES,
+        categories: { marketing: false, operational: false },
+      },
       updatedAt: new Date(),
     }));
 

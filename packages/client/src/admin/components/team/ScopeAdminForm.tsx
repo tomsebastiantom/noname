@@ -21,8 +21,8 @@ import {
 } from "../../../components/ui/card";
 import { Input } from "../../../components/ui/input";
 import { Label } from "../../../components/ui/label";
-import { ADMIN_STATE } from "../../../core/admin-state";
 import type { CoreActionName } from "../../../core/actions";
+import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
 import { cn } from "../../../lib/utils";

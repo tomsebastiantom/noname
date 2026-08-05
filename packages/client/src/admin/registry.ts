@@ -4,6 +4,7 @@ import { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 import { CommsDeliveriesAdmin } from "./components/integrations/CommsDeliveriesAdmin";
+import { CommsInboxAdmin } from "./components/integrations/CommsInboxAdmin";
 import { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
 import { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
 import { IntegrationsOAuthForm } from "./components/integrations/IntegrationsOAuthForm";
@@ -26,6 +27,7 @@ export { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
 export { CommsDeliveriesAdmin } from "./components/integrations/CommsDeliveriesAdmin";
+export { CommsInboxAdmin } from "./components/integrations/CommsInboxAdmin";
 export { IntegrationsCommsForm } from "./components/integrations/IntegrationsCommsForm";
 export { IntegrationsLlmForm } from "./components/integrations/IntegrationsLlmForm";
 export { IntegrationsOAuthForm } from "./components/integrations/IntegrationsOAuthForm";
@@ -50,6 +52,7 @@ export const adminComponents = {
   AuthSettingsForm,
   IntegrationsCommsForm,
   CommsDeliveriesAdmin,
+  CommsInboxAdmin,
   WebhookSubscriptionsAdmin,
   IntegrationsLlmForm,
   IntegrationsOAuthForm,

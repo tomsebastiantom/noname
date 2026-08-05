@@ -61,6 +61,18 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
         {loggedIn ? (
           <>
             <a
+              href="/account/communication-preferences"
+              className="text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Preferences
+            </a>
+            <a
+              href="/account/notifications"
+              className="text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Notifications
+            </a>
+            <a
               href="/account/security"
               className="text-muted-foreground hover:text-foreground hover:underline"
             >

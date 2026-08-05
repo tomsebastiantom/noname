@@ -1,11 +1,7 @@
 import { useStateValue } from "@json-render/react";
 import { useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
-import {
-  loadCommsDeliveries,
-  retryCommsDelivery,
-  type CommsDeliveryRow,
-} from "../../../auth/notifications-settings";
+import { type CommsDeliveryRow, retryCommsDelivery } from "../../../auth/notifications-settings";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
@@ -18,8 +14,8 @@ import {
 import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
+import { useCatalogSubmit } from "../../../core/use-catalog-submit";
 import type { CatalogProps } from "../../../schemas/shared";
-import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
 
 type CommsDeliveriesLabels = {
   title: string;
@@ -219,12 +215,7 @@ export function CommsDeliveriesAdmin({
         {loading ? (
           <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>
         ) : (
-          <DeliveriesTable
-            labels={labels}
-            rows={rows ?? []}
-            loading={loading}
-            onRefresh={reload}
-          />
+          <DeliveriesTable labels={labels} rows={rows ?? []} loading={loading} onRefresh={reload} />
         )}
       </CardContent>
     </Card>

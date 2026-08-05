@@ -6,8 +6,14 @@ const CHANNEL = "noname:sse";
 
 type OrgId = string;
 type StreamId = string;
+type UserId = string;
 
-const clients = new Map<OrgId, Map<StreamId, SSEStreamingApi>>();
+type ClientEntry = {
+  stream: SSEStreamingApi;
+  userId?: UserId;
+};
+
+const clients = new Map<OrgId, Map<StreamId, ClientEntry>>();
 let publisher: Redis | null = null;
 let initialized = false;
 
@@ -15,9 +21,14 @@ function broadcastLocal(orgId: OrgId, data: Record<string, unknown>): void {
   const orgClients = clients.get(orgId);
   if (!orgClients) return;
 
-  for (const stream of orgClients.values()) {
+  const targetUserId = typeof data.userId === "string" ? data.userId : null;
+
+  for (const entry of orgClients.values()) {
+    if (targetUserId && entry.userId && entry.userId !== targetUserId) {
+      continue;
+    }
     try {
-      stream.writeSSE({ data: JSON.stringify(data) });
+      entry.stream.writeSSE({ data: JSON.stringify(data) });
     } catch {
       // Stream closed — cleanup handled by onAbort
     }
@@ -48,13 +59,13 @@ export function initSseManager(): void {
   }
 }
 
-export function addClient(orgId: OrgId, stream: SSEStreamingApi): StreamId {
+export function addClient(orgId: OrgId, stream: SSEStreamingApi, userId?: UserId): StreamId {
   if (!clients.has(orgId)) {
     clients.set(orgId, new Map());
   }
   const orgClients = clients.get(orgId)!;
   const streamId = crypto.randomUUID();
-  orgClients.set(streamId, stream);
+  orgClients.set(streamId, { stream, userId });
 
   stream.onAbort(() => {
     orgClients.delete(streamId);

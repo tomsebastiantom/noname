@@ -1,4 +1,14 @@
-import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import {
+  index,
+  integer,
+  jsonb,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from "./preferences";
 
 export const commsDeliveries = pgTable(
   "comms_deliveries",
@@ -37,9 +47,31 @@ export const notificationPreferences = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     orgId: text("org_id").notNull(),
     userId: text("user_id").notNull(),
-    agentTaskEmail: boolean("agent_task_email").notNull().default(true),
-    marketingEmail: boolean("marketing_email").notNull().default(false),
+    preferences: jsonb("preferences")
+      .$type<NotificationPreferences>()
+      .notNull()
+      .default(DEFAULT_NOTIFICATION_PREFERENCES),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (table) => [uniqueIndex("notification_preferences_org_user_idx").on(table.orgId, table.userId)],
+);
+
+export const commsInboxItems = pgTable(
+  "comms_inbox_items",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    userId: text("user_id").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    trigger: text("trigger"),
+    metadata: jsonb("metadata").$type<Record<string, unknown>>().notNull().default({}),
+    readAt: timestamp("read_at"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("comms_inbox_org_user_idx").on(table.orgId, table.userId),
+    index("comms_inbox_read_at_idx").on(table.readAt),
+    index("comms_inbox_created_at_idx").on(table.createdAt),
+  ],
 );

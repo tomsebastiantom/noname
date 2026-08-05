@@ -91,6 +91,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     findAssetByHash: async () => null,
     findDocumentsWithDataMentioning: async () => [],
     findCollectionSlug: async () => null,
+    findCollectionIdBySlug: async () => null,
     recordDocumentOp: async () => {},
   };
 }

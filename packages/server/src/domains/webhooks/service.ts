@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Queue } from "bullmq";
+import type { SecretsService } from "../secrets/ports";
 import { createGenericHmacAdapter } from "./adapters/generic-hmac";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { toOutboundDeliveryDTO, toSubscriptionDTO } from "./adapters/postgres";
@@ -11,7 +12,6 @@ import type {
   WebhookOutboundJobData,
   WebhooksService,
 } from "./ports";
-import type { SecretsService } from "../secrets/ports";
 
 function adapterForProvider(provider: string): InboundWebhookAdapter | null {
   switch (provider) {
@@ -41,7 +41,10 @@ export function createWebhooksService(deps: {
 }): WebhooksService {
   const { storage, inboundQueue, outboundQueue, secrets, resolveOrgId } = deps;
 
-  async function subscriptionDto(orgId: string, row: Awaited<ReturnType<WebhooksStorage["findSubscription"]>>) {
+  async function subscriptionDto(
+    orgId: string,
+    row: Awaited<ReturnType<WebhooksStorage["findSubscription"]>>,
+  ) {
     if (!row) throw new Error("Webhook subscription not found");
     const hasSigningSecret = await secrets.hasOrgSecret(orgId, "webhooks", row.id);
     return toSubscriptionDTO(row, hasSigningSecret);
@@ -95,12 +98,13 @@ export function createWebhooksService(deps: {
     async listSubscriptions(orgId) {
       const rows = await storage.listSubscriptions(orgId);
       return Promise.all(
-        rows.map(async (row) => toSubscriptionDTO(row, await secrets.hasOrgSecret(orgId, "webhooks", row.id))),
+        rows.map(async (row) =>
+          toSubscriptionDTO(row, await secrets.hasOrgSecret(orgId, "webhooks", row.id)),
+        ),
       );
     },
 
     async upsertSubscription(orgId, subscriptionId, input, _actorId) {
-
       const url = input.url.trim();
       if (!url.startsWith("https://")) {
         throw new Error("Webhook URL must use HTTPS");

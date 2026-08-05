@@ -9,15 +9,28 @@ describe("notification email template", () => {
         template_key: "agent-task-complete",
         subject: "Done",
         spec: agentTaskCompleteEmailSpec,
-        category: "agent",
+        category: "operational",
       }),
     ).toMatchObject({
       templateKey: "agent-task-complete",
       subject: "Done",
-      category: "agent",
+      category: "operational",
     });
 
-    expect(parseNotificationEmailEntry({ template_key: "bad key", subject: "x", spec: {} })).toBeNull();
+    expect(
+      parseNotificationEmailEntry({
+        template_key: "agent-task-complete",
+        subject: "Done",
+        spec: agentTaskCompleteEmailSpec,
+        category: "agent",
+      }),
+    ).toMatchObject({
+      category: "operational",
+    });
+
+    expect(
+      parseNotificationEmailEntry({ template_key: "bad key", subject: "x", spec: {} }),
+    ).toBeNull();
   });
 
   it("renderNotificationEmail uses json-render react-email with $state", async () => {
@@ -25,7 +38,7 @@ describe("notification email template", () => {
       template_key: "agent-task-complete",
       subject: "Agent task complete",
       spec: agentTaskCompleteEmailSpec,
-      category: "agent",
+      category: "operational",
     });
     expect(parsed).not.toBeNull();
 

@@ -299,6 +299,30 @@ const integrationsCommsDeliveriesLabels = {
   },
 };
 
+const integrationsCommsInboxLabels = {
+  loadingLabel: "Loading inbox…",
+  forbiddenLabel: "Sign in to view your in-app notifications.",
+  emptyLabel: "No notifications yet.",
+  refreshLabel: "Refresh",
+  unreadOnlyLabel: "Unread",
+  allLabel: "All",
+  markReadLabel: "Mark read",
+  columns: {
+    when: "When",
+    title: "Message",
+    trigger: "Trigger",
+    status: "Status",
+    actions: "Actions",
+  },
+};
+
+const accountNotificationsLabels = {
+  title: "Notifications",
+  description: "Order updates and account messages for your signed-in user.",
+  ...integrationsCommsInboxLabels,
+  forbiddenLabel: "Sign in to view your notifications.",
+};
+
 const integrationsWebhooksLabels = {
   loadingLabel: "Loading webhooks…",
   forbiddenLabel: "Integrations settings require the store admin role.",
@@ -796,6 +820,8 @@ const adminIntegrationsSpec = adminPanelSpec(
     "integrationsComms",
     "loadCommsDeliveries",
     "commsDeliveries",
+    "loadCommsInbox",
+    "commsInbox",
     "loadWebhookSubscriptions",
     "webhookSubscriptions",
     "loadWebhookOutboundDeliveries",
@@ -840,6 +866,19 @@ const adminIntegrationsSpec = adminPanelSpec(
         "Delivery log",
         "Recent outbound email for this organization. Retry failed deliveries after fixing provider credentials.",
         integrationsCommsDeliveriesLabels,
+      ),
+    },
+    loadCommsInbox: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadCommsInbox" }, {}),
+    },
+    commsInbox: {
+      type: "CommsInboxAdmin",
+      props: panelProps(
+        {},
+        "In-app inbox",
+        "Notifications delivered to your admin account. Configure triggers with an in_app channel to populate this feed.",
+        integrationsCommsInboxLabels,
       ),
     },
     loadWebhookSubscriptions: {
@@ -1149,6 +1188,85 @@ const accountSecuritySpec = {
   },
 };
 
+const accountCommunicationPrefsLabels = {
+  title: "Communication preferences",
+  description: "Choose how this store may contact you.",
+  signInRequiredDescription: "Sign in to manage your notification preferences.",
+  signInLinkLabel: "Sign in",
+  loadingLabel: "Loading preferences…",
+  saveLabel: "Save preferences",
+  savingLabel: "Saving…",
+  successMessage: "Preferences saved.",
+  inboxLinkLabel: "View notification inbox →",
+  channelsSectionTitle: "Channels",
+  categoriesSectionTitle: "Message types",
+  transactionalNote: "Order confirmations and security alerts are always delivered.",
+  channels: {
+    email: {
+      label: "Email",
+      helper: "Non-transactional email for this store.",
+    },
+    sms: {
+      label: "SMS",
+      helper: "Text messages when the store enables SMS on a notification.",
+    },
+    in_app: {
+      label: "In-app inbox",
+      helper: "Notifications in your account inbox.",
+    },
+  },
+  categories: {
+    marketing: {
+      label: "Marketing",
+      helper: "Promotions and newsletters. Off by default.",
+    },
+    operational: {
+      label: "Operational updates",
+      helper: "Agent tasks, account alerts, and store operational messages.",
+    },
+  },
+};
+
+const accountCommunicationPrefsSpec = {
+  root: "page",
+  elements: {
+    page: {
+      type: "AuthLayout",
+      props: catalogProps(
+        { layout: "centered" },
+        { brandTitle: "Preferences", brandSubtitle: "How we contact you" },
+      ),
+      children: ["loadPrefs", "prefs"],
+    },
+    loadPrefs: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadNotificationPreferences" }, {}),
+    },
+    prefs: {
+      type: "AccountNotificationPrefsForm",
+      props: catalogProps({}, accountCommunicationPrefsLabels),
+    },
+  },
+};
+
+const accountNotificationsSpec = {
+  root: "page",
+  elements: {
+    page: {
+      type: "AuthLayout",
+      props: catalogProps(
+        { layout: "centered" },
+        { brandTitle: "Notifications", brandSubtitle: "Your account messages" },
+      ),
+      children: ["inbox"],
+    },
+    inbox: {
+      type: "AccountNotificationsInbox",
+      props: catalogProps({}, accountNotificationsLabels),
+    },
+  },
+};
+
 const adminContentSpec = adminPanelSpec(["contentAdmin"], {
   contentAdmin: {
     type: "ContentEntryAdmin",
@@ -1266,7 +1384,7 @@ const notificationEmailContentType = {
       required: false,
       isLocalizable: false,
       label: "Preference category",
-      options: ["transactional", "agent", "marketing"],
+      options: ["transactional", "operational", "marketing"],
     },
   ],
 };
@@ -1590,6 +1708,10 @@ async function main() {
     shellRef: "admin_shell",
   });
   await upsertLayout("account_security", accountSecuritySpec, { renderAs: "standalone" });
+  await upsertLayout("account_notifications", accountNotificationsSpec, { renderAs: "standalone" });
+  await upsertLayout("account_communication_preferences", accountCommunicationPrefsSpec, {
+    renderAs: "standalone",
+  });
 
   await ensurePageContentType();
   await ensureEditorPrefsContentType();
@@ -1688,7 +1810,7 @@ async function ensureNotificationEmailTemplates(): Promise<void> {
       template_key: "agent-task-complete",
       subject: "Agent task complete",
       spec: agentTaskCompleteEmailSpec,
-      category: "agent",
+      category: "operational",
     },
     {
       template_key: "welcome",

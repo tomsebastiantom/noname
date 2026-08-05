@@ -5,11 +5,7 @@ import type {
   WebhookReceiptDTO,
   WebhookSubscriptionDTO,
 } from "../ports";
-import {
-  webhookOutboundDeliveries,
-  webhookReceipts,
-  webhookSubscriptions,
-} from "../schema";
+import { webhookOutboundDeliveries, webhookReceipts, webhookSubscriptions } from "../schema";
 
 export interface WebhookReceiptRow {
   id: string;
@@ -69,7 +65,9 @@ export interface WebhooksStorage {
 
   listSubscriptions(orgId: string): Promise<WebhookSubscriptionRow[]>;
   findSubscription(orgId: string, id: string): Promise<WebhookSubscriptionRow | null>;
-  insertSubscription(input: Omit<WebhookSubscriptionRow, "createdAt" | "updatedAt" | "consecutiveFailures">): Promise<WebhookSubscriptionRow>;
+  insertSubscription(
+    input: Omit<WebhookSubscriptionRow, "createdAt" | "updatedAt" | "consecutiveFailures">,
+  ): Promise<WebhookSubscriptionRow>;
   updateSubscription(
     orgId: string,
     id: string,
@@ -84,7 +82,10 @@ export interface WebhooksStorage {
   listEnabledSubscriptions(orgId: string, eventType: string): Promise<WebhookSubscriptionRow[]>;
 
   insertOutboundDelivery(
-    input: Omit<WebhookOutboundDeliveryRow, "createdAt" | "deliveredAt" | "attemptCount" | "lastStatusCode" | "error"> & {
+    input: Omit<
+      WebhookOutboundDeliveryRow,
+      "createdAt" | "deliveredAt" | "attemptCount" | "lastStatusCode" | "error"
+    > & {
       attemptCount?: number;
       lastStatusCode?: number | null;
       error?: string | null;
@@ -134,7 +135,9 @@ function mapSubscription(row: typeof webhookSubscriptions.$inferSelect): Webhook
   };
 }
 
-function mapOutbound(row: typeof webhookOutboundDeliveries.$inferSelect): WebhookOutboundDeliveryRow {
+function mapOutbound(
+  row: typeof webhookOutboundDeliveries.$inferSelect,
+): WebhookOutboundDeliveryRow {
   return {
     id: row.id,
     orgId: row.orgId,
@@ -201,7 +204,11 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
     },
 
     async findReceipt(id) {
-      const [row] = await db.select().from(webhookReceipts).where(eq(webhookReceipts.id, id)).limit(1);
+      const [row] = await db
+        .select()
+        .from(webhookReceipts)
+        .where(eq(webhookReceipts.id, id))
+        .limit(1);
       return row ? mapReceipt(row) : null;
     },
 
@@ -245,7 +252,8 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
       if (patch.eventTypes !== undefined) set.eventTypes = patch.eventTypes;
       if (patch.enabled !== undefined) set.enabled = patch.enabled;
       if (patch.description !== undefined) set.description = patch.description;
-      if (patch.consecutiveFailures !== undefined) set.consecutiveFailures = patch.consecutiveFailures;
+      if (patch.consecutiveFailures !== undefined)
+        set.consecutiveFailures = patch.consecutiveFailures;
 
       const [row] = await db
         .update(webhookSubscriptions)
@@ -269,11 +277,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
         .where(and(eq(webhookSubscriptions.orgId, orgId), eq(webhookSubscriptions.enabled, true)));
       return rows
         .map(mapSubscription)
-        .filter(
-          (sub) =>
-            sub.eventTypes.includes("*") ||
-            sub.eventTypes.includes(eventType),
-        );
+        .filter((sub) => sub.eventTypes.includes("*") || sub.eventTypes.includes(eventType));
     },
 
     async insertOutboundDelivery(input) {
@@ -305,7 +309,10 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
       if (patch.error !== undefined) set.error = patch.error;
       if (patch.deliveredAt !== undefined) set.deliveredAt = patch.deliveredAt;
       if (Object.keys(set).length === 0) return;
-      await db.update(webhookOutboundDeliveries).set(set).where(eq(webhookOutboundDeliveries.id, id));
+      await db
+        .update(webhookOutboundDeliveries)
+        .set(set)
+        .where(eq(webhookOutboundDeliveries.id, id));
     },
 
     async findOutboundDelivery(id) {
@@ -322,10 +329,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
         .select()
         .from(webhookOutboundDeliveries)
         .where(
-          and(
-            eq(webhookOutboundDeliveries.orgId, orgId),
-            eq(webhookOutboundDeliveries.id, id),
-          ),
+          and(eq(webhookOutboundDeliveries.orgId, orgId), eq(webhookOutboundDeliveries.id, id)),
         )
         .limit(1);
       return row ? mapOutbound(row) : null;

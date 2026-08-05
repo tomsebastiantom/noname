@@ -1,6 +1,6 @@
 import type { MachineEngine } from "../machines/ports";
-import type { WebhookReceivedPayload } from "./ports";
 import { WebhookEvents } from "./events";
+import type { WebhookReceivedPayload } from "./ports";
 
 function readString(value: unknown): string | undefined {
   return typeof value === "string" && value.trim() ? value.trim() : undefined;
@@ -30,7 +30,8 @@ function parseMachineTransitionHint(payload: Record<string, unknown>): {
 
   if (!instanceId || !event) return null;
 
-  const rawParams = meta.machine_params ?? meta.machineParams ?? payload.machine_params ?? payload.machineParams;
+  const rawParams =
+    meta.machine_params ?? meta.machineParams ?? payload.machine_params ?? payload.machineParams;
   const params =
     rawParams && typeof rawParams === "object" && !Array.isArray(rawParams)
       ? (rawParams as Record<string, unknown>)

@@ -69,9 +69,7 @@ export function startAgentWorker(
                     ...executorInput,
                     agentSlug: agent.slug,
                     onBehalfOf: agent.ownerUserId,
-                    ...(agent.allowedTools.length > 0
-                      ? { allowedTools: agent.allowedTools }
-                      : {}),
+                    ...(agent.allowedTools.length > 0 ? { allowedTools: agent.allowedTools } : {}),
                   };
                 }
               }

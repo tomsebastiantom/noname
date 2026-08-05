@@ -6,6 +6,7 @@ import { flagActions } from "./flags";
 import { integrationsActions } from "./integrations";
 import { layoutActions } from "./layout";
 import { navigationActions } from "./navigation";
+import { notificationActions } from "./notifications";
 import { replayActions } from "./replay";
 import { routingActions } from "./routing";
 import { scopeActions } from "./scope";
@@ -27,6 +28,7 @@ export const coreActionHandlers = {
   ...tracesActions,
   ...flagActions,
   ...integrationsActions,
+  ...notificationActions,
 } satisfies CatalogActionMap;
 
 export type CoreActionName = keyof typeof coreActionHandlers;

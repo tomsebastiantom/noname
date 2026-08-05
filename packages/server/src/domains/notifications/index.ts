@@ -7,6 +7,7 @@ import { getEmailOutboundQueue } from "./queue";
 import { createNotificationsService } from "./service";
 import { startEmailOutboundWorker } from "./worker";
 
+export { CommsEvents } from "./events";
 export type {
   CommsDeliveryDTO,
   NotificationPreferencesDTO,
@@ -15,9 +16,8 @@ export type {
   SendEmailInput,
   SendTemplatedEmailInput,
 } from "./ports";
-export { CommsEvents } from "./events";
-export { parseTransitionNotify } from "./transition-notify";
 export { createNotificationsService } from "./service";
+export { parseTransitionNotify } from "./transition-notify";
 
 export interface NotificationsDomainDeps {
   db: Database;

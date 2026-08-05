@@ -13,7 +13,9 @@ function parseStripeSignature(header: string): { timestamp: string; signatures: 
   return { timestamp, signatures };
 }
 
-export function createStripeWebhookAdapter(secret: string): import("../ports").InboundWebhookAdapter {
+export function createStripeWebhookAdapter(
+  secret: string,
+): import("../ports").InboundWebhookAdapter {
   return {
     verify(rawBody, headers) {
       const header = headers["stripe-signature"] ?? headers["Stripe-Signature"];

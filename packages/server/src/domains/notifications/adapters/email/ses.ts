@@ -1,4 +1,4 @@
-import { SendEmailCommand, SESClient } from "@aws-sdk/client-ses";
+import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 import type { CommsCredentials } from "../../../secrets/ports";
 import type { EmailSenderPort, SendEmailInput } from "../../ports";
 
@@ -38,9 +38,7 @@ export function createSesEmailSender(): EmailSenderPort {
             Subject: { Data: input.subject, Charset: "UTF-8" },
             Body: {
               Html: { Data: input.html, Charset: "UTF-8" },
-              ...(input.text
-                ? { Text: { Data: input.text, Charset: "UTF-8" } }
-                : {}),
+              ...(input.text ? { Text: { Data: input.text, Charset: "UTF-8" } } : {}),
             },
           },
         }),
