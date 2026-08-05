@@ -1,11 +1,11 @@
-import type { CommsCredentials } from "../../secrets/ports";
-import type { EmailSenderPort, SendEmailInput, SendEmailResult } from "../ports";
+import type { CommsCredentials } from "../../../secrets/ports";
+import type { EmailSenderPort, SendEmailInput } from "../../ports";
 
 export function createResendEmailSender(): EmailSenderPort {
   return {
-    async send(credentials: CommsCredentials, input: SendEmailInput): Promise<SendEmailResult> {
+    async send(credentials: CommsCredentials, input: SendEmailInput & { from?: string }) {
       if (credentials.provider !== "resend") {
-        throw new Error(`Email sender not implemented for ${credentials.provider}`);
+        throw new Error(`Resend sender cannot send via ${credentials.provider}`);
       }
 
       const from =

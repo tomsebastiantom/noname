@@ -4,4 +4,5 @@ export const BULLMQ_QUEUES = {
   AGENT: "{agent-tasks}",
   CATALOG: "{catalog-builds}",
   EMAIL_OUTBOUND: "{email-outbound}",
+  WEBHOOK_INBOUND: "{webhook-inbound}",
 } as const;

@@ -1,5 +1,5 @@
 export type LlmProviderName = "openai" | "anthropic";
-export type CommsProviderName = "resend" | "twilio";
+export type CommsProviderName = "resend" | "ses" | "twilio";
 
 /** External integration unique key — any id enabled in the platform OAuth catalog. */
 export type IntegrationId = string;

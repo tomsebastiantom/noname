@@ -9,7 +9,7 @@ import type { TenantSettingsService } from "../../documents/ports";
 import type { IntegrationsService } from "../ports";
 
 const commsUpdateSchema = z.object({
-  emailProvider: z.enum(["resend", "twilio"]),
+  emailProvider: z.enum(["resend", "ses", "twilio"]),
   apiKey: z.string().optional(),
   fromEmail: z.string().email().optional(),
   fromName: z.string().optional(),

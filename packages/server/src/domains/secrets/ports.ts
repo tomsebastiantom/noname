@@ -2,11 +2,13 @@ import type { LLMProvider } from "../ai-pipeline/providers";
 
 export type OrgSecretKind = "llm" | "comms";
 
-export type CommsProviderName = "resend" | "twilio";
+export type CommsProviderName = "resend" | "ses" | "twilio";
 
 export interface CommsCredentials {
   provider: CommsProviderName;
   apiKey: string;
+  secretKey?: string;
+  region?: string;
   fromEmail?: string;
   fromName?: string;
 }

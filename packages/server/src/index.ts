@@ -6,6 +6,7 @@ startTracing();
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
+import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notify";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
@@ -16,12 +17,13 @@ import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
 import { createIntegrationsDomain } from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
-import { createNotificationsDomain } from "./domains/notifications";
+import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
+import { createWebhooksDomain, WebhookEvents } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
-import { initEventBus } from "./shared/event-bus";
+import { eventBus, initEventBus } from "./shared/event-bus";
 import { orgMiddleware } from "./shared/org";
 import { orgTracingMiddleware } from "./shared/org-tracing";
 import { initSseManager } from "./shared/sse-manager";
@@ -89,6 +91,24 @@ const notifications = createNotificationsDomain({
   db,
   secrets: secrets.service,
   content: docs.service.content,
+  tenantSettings: docs.service.tenantSettings,
+});
+
+const machines = createMachineDomain({
+  db,
+  hooks: {
+    async onTransitionComplete({ orgId, params }) {
+      const notify = parseTransitionNotify(params);
+      if (!notify) return;
+      await notifications.service.notify(orgId, notify);
+    },
+  },
+});
+
+const webhooks = createWebhooksDomain({ db });
+
+eventBus.subscribe(WebhookEvents.RECEIVED, async (payload) => {
+  console.info("[webhook.received]", payload);
 });
 
 app.route("/api/documents", docs.routes);
@@ -96,7 +116,7 @@ app.route("/api/documents", docs.routes);
 const ctx = createContextDomain({ db });
 app.route("/api/context", ctx.routes);
 
-app.route("/api/machines", createMachineDomain({ db }).routes);
+app.route("/api/machines", machines.routes);
 
 const flags = createFlagDomain({ db });
 app.route("/api/flags", flags.routes);
@@ -104,7 +124,7 @@ app.route("/api/flags", flags.routes);
 const analytics = await createAnalyticsDomain();
 app.route("/api/analytics", analytics.routes);
 
-const aiPipeline = createAIPipelineDomain({ secrets: secrets.service });
+const aiPipeline = createAIPipelineDomain({ db, secrets: secrets.service });
 app.route("/api/ai", aiPipeline.routes);
 
 function pipelineTaskResult(r: { response: unknown; model: string; tokens: number }) {
@@ -118,6 +138,21 @@ function pipelineTaskResult(r: { response: unknown; model: string; tokens: numbe
 const agent = createAgentDomain({
   db,
   authorization,
+  workerHooks: {
+    async onTaskCompleted({ orgId, type, prompt, input, output }) {
+      const notify = parseTaskNotify(input);
+      if (!notify) return;
+
+      const templateId = notify.templateId ?? "agent-task-complete";
+      await notifications.service.notify(orgId, {
+        trigger: templateId,
+        to: notify.to,
+        userId: notify.userId,
+        variables: taskNotifyVariables(type, prompt, output, notify),
+        idempotencyKey: notify.userId ? `agent-task:${type}:${notify.userId}` : undefined,
+      });
+    },
+  },
   executor: {
     async execute(orgId, type, prompt, input) {
       switch (type) {
@@ -129,8 +164,23 @@ const agent = createAgentDomain({
           );
         case "generate_machine":
           return pipelineTaskResult(await aiPipeline.service.generateMachine(orgId, type, prompt));
-        case "analyze_analytics":
-          return { output: { insights: [] }, model: "mock", tokens: 0 };
+        case "analyze_analytics": {
+          const limit = typeof input.limit === "number" ? input.limit : 50;
+          const [events, aggregates] = await Promise.all([
+            analytics.service.query({ orgId, limit }),
+            analytics.service.aggregate({ orgId, groupBy: "eventType", limit: 20 }),
+          ]);
+          return {
+            output: {
+              query: prompt,
+              eventCount: events.length,
+              events,
+              aggregates,
+            },
+            model: "analytics",
+            tokens: 0,
+          };
+        }
         default:
           return { output: {}, model: "mock", tokens: 0 };
       }
@@ -155,10 +205,11 @@ app.route("/api/tenants", tenant.routes);
 app.route("/api/auth", auth.routes);
 app.route("/api/integrations", integrations.routes);
 app.route("/api/notifications", notifications.routes);
+app.route("/api/webhooks", webhooks.routes);
 
 const port = Number(process.env.PORT) || 3000;
 serve({ fetch: app.fetch, port });
 console.log(`Server running at http://localhost:${port}`);
 
 export default app;
-export { notifications };
+export { notifications, webhooks };

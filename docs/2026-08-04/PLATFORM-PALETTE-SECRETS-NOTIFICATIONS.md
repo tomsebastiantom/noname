@@ -2,9 +2,9 @@
 
 > **Date:** 2026-08-04  
 > **Status:** Approved plan (no implementation in this doc)  
-> **Scope:** Which open-source / self-hosted services belong in the stack, where secrets live, how notifications fit **inside noname**, and what merchants configure per org vs per user.
+> **Scope:** Which open-source / self-hosted services belong in the stack, where secrets live, how **platform communications** fit **inside noname**, and what merchants configure per org vs per user.
 
-**Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) · [`LLM-CREDENTIALS-PER-ORG.md`](../2026-08-03/LLM-CREDENTIALS-PER-ORG.md) · [`ORG-AUTH-CONFIG.md`](../2026-07-25/ORG-AUTH-CONFIG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`INFRASTRUCTURE_NEEDS.md`](../2026-07-04/INFRASTRUCTURE_NEEDS.md) · [`AGENT-OWNERSHIP-AND-REVIEW.md`](../2026-08-03/AGENT-OWNERSHIP-AND-REVIEW.md)
+**Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md) · [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) · [`LLM-CREDENTIALS-PER-ORG.md`](../2026-08-03/LLM-CREDENTIALS-PER-ORG.md) · [`ORG-AUTH-CONFIG.md`](../2026-07-25/ORG-AUTH-CONFIG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md)
 
 ---
 
@@ -15,7 +15,7 @@
 | Human login | **ZITADEL** | OAuth client secrets in IdP | 0 ✅ |
 | Authorization | **Ory Keto** | None (relations only) | 0 ✅ |
 | Product + CMS + agents | **noname** (`@noname/server`) | Platform + BYOK via **Vault** | 0 → 1 |
-| Notifications | **`domains/notifications`** in noname | Comms BYOK in **Vault** | 1 |
+| **Platform communications** | **`domains/notifications`** in noname | Comms BYOK in **Vault** | 1 |
 | LLM BYOK | **ai-pipeline** in noname | LLM keys in **Vault** | 1 |
 | Merchant OAuth (external SaaS) | **Nango** | Tokens in Nango Postgres | 2+ |
 | **All other client / platform secrets** | **HashiCorp Vault** | See [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) | 1b prod |
@@ -49,10 +49,10 @@
 |-----------|------|---------|----------------|
 | **`domains/secrets`** | Vault adapter + resolvers | Read/write **`noname/orgs/{orgId}/…`** | — (infra) |
 | **`domains/integrations`** | Admin BYOK + Nango connect | Calls secrets; stores `connectionId` | Admin LLM / Comms / Connect screens |
-| **`domains/notifications`** | Send email/SMS/push; delivery log | `resolveCommsProvider` → Vault | Comms settings in integrations admin |
+| **`domains/notifications`** | **Platform communications** — email, SMS, in-app; delivery log | `resolveCommsProvider` → Vault | Comms settings in integrations admin |
 | **`notification_preferences`** | Per-user channel prefs | No secrets | User settings |
-| **`email-outbound` queue** | Render template → send | — | Worker uses CMS + secrets resolver |
-| **ai-pipeline / agents** | LLM calls | `resolveLLMProvider` → Vault | LLM settings in integrations admin |
+| **`email-outbound` queue** | Async send (rendered payload) | — | Worker uses CMS + secrets resolver |
+| **ai-pipeline / agents** | One **consumer** of communications (among many) | `resolveLLMProvider` → Vault | LLM settings in integrations admin |
 
 ### Phase 1d / 2 — infrastructure services
 
@@ -124,6 +124,41 @@ integrations: {
 
 ---
 
+## Platform communications (not AI-only)
+
+**`domains/notifications` is the platform communication layer** — the same role AWS SES/SNS, Azure Communication Services, or Twilio SendGrid play in other stacks, but **inside noname** with merchant BYOK and our CMS template system.
+
+It is **not** an “AI email feature.” Any part of the platform may send:
+
+| Caller | Example |
+|--------|---------|
+| **XState / machines** | Order confirmed → templated email; shipment update → SMS |
+| **Agent worker** | Task complete → optional notify (one consumer) |
+| **Admin / server routes** | Invite user, password reset, merchant alert |
+| **Webhooks domain** (I-f) | Ops alert when a destination auto-disables |
+| **Storefront / API** (future) | Contact form, marketing campaign with consent |
+| **Cron / background jobs** | Digest, billing reminder |
+
+**Merchants configure once per org:**
+
+- Provider credentials (Resend, SES, Twilio, …) → **Vault** via integrations admin
+- From address / sender identity → `tenant_settings.integrations.comms`
+- Message copy → CMS **`notification_email`** templates (json-render spec)
+
+**End users configure per user:** channel preferences (`notification_preferences`) — who wants email vs push, marketing opt-in, etc.
+
+**Separate concerns (do not merge):**
+
+| System | Delivers to | Direction |
+|--------|-------------|-----------|
+| **Communications** (`notifications`) | People (email, SMS, in-app) | Platform → user |
+| **Webhooks** (`webhooks`, I-f) | Merchant systems (HTTP URLs) | Platform ↔ integrations |
+| **OAuth connect** (`integrations`) | Save `connectionId` after connect | Provider → platform (auth only) |
+
+Agents and Mastra **use** communications like any other domain — via `notifications.service.enqueueTemplatedEmail` / `enqueueEmail`, never by calling Resend/Twilio directly.
+
+---
+
 ## Notifications inside noname (not a separate Noti service for v1)
 
 ### Why inline
@@ -138,7 +173,7 @@ integrations: {
 **Email templates are required.** They are org-owned CMS documents — not a separate template SaaS, not optional worker logic.
 
 ```
-Trigger (XState / agent / admin)
+Trigger (machine / agent / admin route / webhook ops / future storefront)
     → notifications.enqueueTemplatedEmail({ orgId, templateId, to, variables, userId? })
     → notifications.service:
         load published template from documents domain
@@ -150,7 +185,7 @@ Trigger (XState / agent / admin)
     → update comms_deliveries (sent | failed)
 ```
 
-**Alternative (same pipeline):** agent or machine calls `enqueueEmail` with **already-rendered** `subject` + `html` (e.g. LLM-generated body). Use templates for merchant-editable transactional mail; use raw html for dynamic one-offs.
+**Alternative (same pipeline):** any caller may use `enqueueEmail` with **already-rendered** `subject` + `html` (dynamic one-offs, LLM-generated body, etc.). Use **templates** for merchant-editable transactional mail; use **raw html** when copy is computed at send time.
 
 Worker **does not** load CMS — render happens in **service at enqueue** so the queue stays dumb transport.
 
@@ -172,9 +207,9 @@ Worker **does not** load CMS — render happens in **service at enqueue** so the
 ### NotificationPort (current + template path)
 
 ```typescript
-// domains/notifications/ports.ts — target surface
-enqueueEmail(orgId, { to, subject, html, text?, userId? });           // raw body (agent/LLM)
-enqueueTemplatedEmail(orgId, { to, templateId, variables, userId? }); // CMS template (merchant mail)
+// domains/notifications/ports.ts — platform surface (any caller)
+enqueueEmail(orgId, { to, subject, html, text?, userId? });           // raw body
+enqueueTemplatedEmail(orgId, { to, templateId, variables, userId? }); // CMS template
 ```
 
 v1 send adapter: inline Resend/Twilio via Vault.  
@@ -226,7 +261,7 @@ Use this when onboarding a merchant org (demo or prod).
 ### 4. Integrations — comms + email templates (noname, Phase 1)
 
 - [ ] **Comms settings**: email provider, from-address, optional BYOK (→ **Vault**).
-- [ ] **Email templates (required)**: CMS content type `notification_email`; seed at least agent-task-complete + welcome (or equivalent).
+- [ ] **Email templates (required)**: CMS content type `notification_email`; seed welcome, order confirm, agent-task-complete (examples — not AI-specific)
 - [x] **`enqueueTemplatedEmail`** wired in notifications service (load + render from documents).
 - [ ] Platform fallback `RESEND_API_KEY` for dev tenants without BYOK.
 
@@ -314,7 +349,7 @@ Follow [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO
 ## FAQ
 
 **Do we need a separate notification product in the palette?**  
-No for v1. Notifications are a **domain** in noname, like agents or documents.
+No for v1. **Platform communications** live in `domains/notifications` — same tier as documents, machines, or webhooks. Not a sidecar for agents.
 
 **Where do email templates live?**  
 CMS `notification_email` entries — **same document model** as `page` / `auth_provider` (Admin → Content, draft, publish). **Target:** json-render **spec** field + `@json-render/react-email` render — **no html fallback**. See [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md).

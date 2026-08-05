@@ -11,8 +11,17 @@ export interface EmailOutboundJobData {
   userId?: string;
 }
 
+const EMAIL_JOB_OPTIONS = {
+  attempts: 5,
+  backoff: { type: "exponential" as const, delay: 5000 },
+  removeOnComplete: { count: 500 },
+  removeOnFail: { count: 200 },
+};
+
 export function getEmailOutboundQueue() {
-  return getBullmqQueue<EmailOutboundJobData>(BULLMQ_QUEUES.EMAIL_OUTBOUND);
+  return getBullmqQueue<EmailOutboundJobData>(BULLMQ_QUEUES.EMAIL_OUTBOUND, {
+    defaultJobOptions: EMAIL_JOB_OPTIONS,
+  });
 }
 
 export async function closeEmailOutboundQueue(): Promise<void> {

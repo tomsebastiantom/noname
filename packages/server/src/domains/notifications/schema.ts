@@ -1,4 +1,4 @@
-import { boolean, index, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
+import { boolean, index, integer, pgTable, text, timestamp, uniqueIndex, uuid } from "drizzle-orm/pg-core";
 
 export const commsDeliveries = pgTable(
   "comms_deliveries",
@@ -13,12 +13,21 @@ export const commsDeliveries = pgTable(
     status: text("status").notNull(),
     providerMessageId: text("provider_message_id"),
     error: text("error"),
+    trigger: text("trigger"),
+    templateId: text("template_id"),
+    idempotencyKey: text("idempotency_key"),
+    attemptCount: integer("attempt_count").notNull().default(0),
+    bodyHtml: text("body_html"),
+    bodyText: text("body_text"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     sentAt: timestamp("sent_at"),
   },
   (table) => [
     index("comms_deliveries_org_id_idx").on(table.orgId),
     index("comms_deliveries_user_id_idx").on(table.userId),
+    index("comms_deliveries_status_idx").on(table.status),
+    index("comms_deliveries_created_at_idx").on(table.createdAt),
+    uniqueIndex("comms_deliveries_org_idempotency_idx").on(table.orgId, table.idempotencyKey),
   ],
 );
 

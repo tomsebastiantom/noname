@@ -20,7 +20,9 @@ function normalizeProvider(value: string | undefined): LlmProviderName {
 }
 
 function normalizeCommsProvider(value: string | undefined): CommsProviderName {
-  return value === "twilio" ? "twilio" : "resend";
+  if (value === "twilio") return "twilio";
+  if (value === "ses") return "ses";
+  return "resend";
 }
 
 export function createIntegrationsService(deps: {

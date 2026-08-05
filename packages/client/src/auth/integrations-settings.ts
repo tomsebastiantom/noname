@@ -2,7 +2,7 @@ import { apiFetch } from "../lib/api";
 import { requireStoreSlug } from "./org";
 
 export type LlmProviderName = "openai" | "anthropic";
-export type CommsProviderName = "resend" | "twilio";
+export type CommsProviderName = "resend" | "ses" | "twilio";
 
 export interface OAuthConnectionState {
   integrationId: string;

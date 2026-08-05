@@ -1,17 +1,17 @@
-# Email templates — json-render spec + React Email (target)
+# Email templates — json-render spec + React Email
 
 > **Date:** 2026-08-04  
-> **Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) Phase I-c · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md)
+> **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) Phase I-c
 
 ---
 
 ## TL;DR
 
+**Email templates are part of the platform communications system** (`domains/notifications`). Merchants store provider credentials (BYOK), edit templates in CMS, and **any** backend caller sends via `enqueueTemplatedEmail` or `enqueueEmail` — machines, admin routes, agents, webhooks ops alerts, future storefront flows. Agents are one consumer, not the owner of this domain.
+
 **Yes — the whole email is a json-render spec.** [`@json-render/react-email`](https://json-render.dev/docs/api/react-email) turns the same JSON spec model as layouts into HTML via React Email. **No `html_body` fallback.**
 
-**Yes — templates are normal CMS documents.** Merchants manage them like any other content type: Admin → Content → `notification_email`, draft, publish. Same documents domain, same permissions, same org scope.
-
-What v1 shipped (`html_body` + `{{var}}`) was a **temporary shortcut**. I-c.2 **replaces** it with spec-only render.
+**Yes — templates are normal CMS documents.** Merchants manage them like any other content type: Admin → Content → `notification_email`, draft, publish.
 
 ---
 
@@ -61,7 +61,7 @@ This is the **same platform story** as layouts: org-owned **spec JSON** in Postg
 | `template_key` | text | Stable id (`agent-task-complete`, `welcome`) |
 | `subject` | text | Subject line (can use `$state` in spec props or separate field) |
 | `spec` | json | **json-render email spec** (body layout) |
-| `category` | enum | `transactional` \| `agent` \| `marketing` (notification prefs) |
+| `category` | enum | `transactional` \| `marketing` \| `operational` (notification prefs — not “AI-only”) |
 
 **Remove:** `html_body`, `text_body` — no fallback path.
 
@@ -92,7 +92,7 @@ Merchants do **not** need a new mental model — still Content → pick type →
 ## Send path (spec only)
 
 ```
-Trigger (agent / machine / admin)
+Trigger (machine / admin route / agent / webhook ops / …)
   → enqueueTemplatedEmail(orgId, templateId, variables, to, userId?)
   → notifications.service:
       load published notification_email CMS doc
@@ -100,10 +100,10 @@ Trigger (agent / machine / admin)
       subject from doc.subject (or spec Preview component)
       check notification_preferences by category
       queue email-outbound { subject, html, text? }
-  → worker → Vault comms → Resend
+  → worker → Vault comms → Resend / Twilio / …
 ```
 
-`notifications/content-types/notification-email/` becomes: **load CMS doc + call renderToHtml** (replace `{{var}}` html parser).
+Rendering lives in **`email-template.ts`** (load CMS doc + `renderToHtml`). The worker is dumb transport — same pattern for all callers.
 
 ---
 
@@ -131,7 +131,8 @@ pnpm add @json-render/react-email @react-email/components -F @noname/client
 - [x] CMS schema: `spec` json (no html fields)
 - [x] Admin: spec JSON + live preview in Content → `notification_email`
 - [x] Seed specs in `scripts/seed/email-specs.ts`
-- [ ] Agent/machine callers pass `templateId` where fixed layout applies
+- [ ] Wire machine transitions and admin routes to `enqueueTemplatedEmail` where applicable
+- [x] Agent worker: optional `input.notify` (example consumer)
 
 ---
 
@@ -146,8 +147,11 @@ Unblocked send + CMS ownership before adding React Email deps. Not the long-term
 **Same as editing a page?**  
 Same **CMS document** workflow (content type, entries, publish). Different **canvas** — email spec + inbox preview, not storefront `?edit=true`.
 
+**Is this only for AI agents?**  
+No. **`domains/notifications`** is the platform communications layer — machines, admin, storefront (future), and agents all call the same `enqueueTemplatedEmail` / `enqueueEmail` ports. See [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) § Platform communications.
+
 **AI-generated emails?**  
-Same as layouts: agent outputs valid email spec against `standardComponentDefinitions` catalog; merchant publishes in Content admin.
+Optional: an agent may output a valid email spec or call `enqueueEmail` with rendered HTML — same pipeline as any other caller.
 
 **Password reset?**  
 ZITADEL templates — out of scope.

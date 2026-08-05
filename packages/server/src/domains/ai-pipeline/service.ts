@@ -1,14 +1,19 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import type { SecretsService } from "../secrets/ports";
+import type { AIGenerationStorage } from "./adapters/postgres";
 import type { AIPipeline } from "./ports";
 import { createLLMProvider } from "./providers";
 
 const tracer = trace.getTracer("ai-pipeline");
 
 export function createAIPipeline(
-  deps: { secrets?: Pick<SecretsService, "resolveLLMProvider"> } = {},
+  deps: {
+    secrets?: Pick<SecretsService, "resolveLLMProvider">;
+    storage?: AIGenerationStorage;
+  } = {},
 ): AIPipeline {
   const resolveProvider = deps.secrets?.resolveLLMProvider ?? (async () => createLLMProvider());
+  const storage = deps.storage;
 
   async function callLLM(
     orgId: string,
@@ -41,7 +46,7 @@ export function createAIPipeline(
         span.setAttribute("ai.model", result.model);
         span.setAttribute("ai.tokens", result.tokens);
 
-        return {
+        const row = {
           id,
           orgId,
           prompt,
@@ -50,6 +55,20 @@ export function createAIPipeline(
           tokens: result.tokens,
           createdAt: new Date(),
         };
+
+        if (storage) {
+          await storage.insert({
+            id,
+            orgId,
+            prompt,
+            response: result.response,
+            model: result.model,
+            tokens: result.tokens,
+            targetType,
+          });
+        }
+
+        return row;
       } catch (err) {
         span.recordException(err as Error);
         span.setStatus({ code: SpanStatusCode.ERROR });

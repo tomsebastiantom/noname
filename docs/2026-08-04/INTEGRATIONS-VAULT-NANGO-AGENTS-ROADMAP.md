@@ -17,7 +17,7 @@ Phase 1 — Infrastructure          Phase 2 — Agents
 ────────────────────────          ─────────────────
 Vault + secrets domain      →     Mastra loop in AgentExecutor
 integrations admin (BYOK)   →     Tools: CMS, analytics, …
-notifications (comms)       →     Tool: integrations (external APIs)
+communications (I-c)        →     Any domain may send (machines, agents, admin, …)
 OAuth connections (I-d)     →     resolveLLM via Vault per org
 webhooks (I-f)              →     async events → machines / outbound URLs
 ```
@@ -59,8 +59,8 @@ packages/server/src/domains/
     routes/comms.ts
     routes/nango.ts           # connect session + OAuth-connect webhook only
 
-  notifications/              # Phase I-c — outbound user comms (not webhooks)
-    ports.ts                  # NotificationPort (send)
+  notifications/              # Phase I-c — platform communications (email/SMS/push)
+    ports.ts                  # NotificationsService — any caller enqueues here
     service.ts
     adapters/resend.ts        # uses secrets.service.resolveComms
     index.ts
@@ -83,9 +83,9 @@ packages/server/src/domains/
 
 **Secrets domain** = low-level get/put Vault.  
 **Integrations domain** = merchant admin API (BYOK + OAuth connect + `triggerOAuthAction`).  
-**Notifications** = outbound email/SMS to **users**; never stores keys.  
-**Webhooks** = HTTP callbacks **in** (providers) and optionally **out** (merchant URLs); not user inbox.  
-**Agent / machines** = call **integrations** and **webhooks** ports only — never raw SDKs or merchant secrets in context.
+**Communications (`notifications`)** = platform send layer — email/SMS/push to **people**; any backend domain, machine, or route may call it; never stores keys.  
+**Webhooks** = HTTP callbacks **in** (providers) and **out** (merchant URLs); not user inbox.  
+**Agent / machines** = call **integrations**, **notifications**, and **webhooks** ports only — never raw SDKs or merchant secrets in context.
 
 ---
 
@@ -158,11 +158,20 @@ Pattern: copy **auth config** write-only UX ([`ORG-AUTH-CONFIG.md`](../2026-07-2
 
 ---
 
-## Phase I-c — `domains/notifications` + **CMS email templates** (required)
+## Phase I-c — Platform communications (`domains/notifications`)
 
 Depends on **I-a** (comms keys in Vault) and **documents** (CMS).
 
-**Required for v1** — not optional polish. Merchants edit email copy in **CMS**; machines and agents send via **`templateId` + variables** or pre-rendered html.
+**This is a first-class platform capability** — like AWS SES / Azure Communication Services for our merchants: BYOK credentials, CMS templates, async delivery, audit log. **Not** an AI-only feature.
+
+**Any caller** may send:
+
+- XState machines (order shipped, payment failed, …)
+- Agent worker (optional task-complete email — one use case)
+- Admin/server routes (invites, alerts)
+- Future: storefront actions, marketing with consent
+
+Merchants edit copy in **CMS**; callers pass **`templateId` + variables** or pre-rendered `subject` + `html`.
 
 ### Shipped
 
@@ -176,11 +185,11 @@ Depends on **I-a** (comms keys in Vault) and **documents** (CMS).
 - [x] CMS `notification_email` with **spec** json (documents domain)
 - [x] `email-template.ts`: load CMS doc → `renderToHtml` (no `content-types/` folder)
 - [x] Content admin: spec JSON + React Email preview
-- [ ] Agent/machine callers pass `templateId`
+- [x] Agent worker: optional `input.notify` → `enqueueTemplatedEmail` (example consumer — same API as machines/admin)
 
 **What `notifications/` owns:** send queue + `email-template.ts` (load from documents, `renderToHtml`). **No** separate content-type module — CMS storage is **documents** domain.
 
-**Doc:** [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md) · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md)
+**Doc:** [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md) · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md) (architecture review + OSS feature matrix + roadmap)
 
 ---
 
@@ -249,12 +258,12 @@ integrations: {
 
 | Source | Platform ingest | Agent-ready | Gap |
 |--------|-----------------|-------------|-----|
-| **Analytics** | ✅ SDK → edge → BullMQ → ClickHouse; query API with Keto | ⚠️ partial | `analyze_analytics` tool still mocked; wire to query API in Phase II |
+| **Analytics** | ✅ SDK → edge → BullMQ → ClickHouse; query API with Keto | ⚠️ partial | Agent `analyze_analytics` wired to query API (Phase II polish) |
 | **CMS documents** | ✅ CRUD + resolve at `/api/documents` | ⚠️ partial | Agent executor uses ai-pipeline only; no document read/write tools yet |
 | **Tenant settings** | ✅ `GET tenant_settings/default` — flags, locales, `connectionId` only | ⚠️ partial | Planner tools don't consume yet |
 | **Nango connect webhook** | ✅ `POST .../integrations/nango/webhook` → `connectionId` in Postgres | ⚠️ partial | Add to edge public POST patterns if connect callback hits worker; `nango_trigger` tool in Phase II |
-| **LLM usage** | ❌ not persisted | ❌ missing | Append on ai-pipeline call (`ai_generations` or `llm_usage` table) before quota/billing tools |
-| **Email templates** | ✅ CMS `notification_email` + `enqueueTemplatedEmail` | ⚠️ partial | Agent/machine callers not wired yet |
+| **LLM usage** | ✅ `ai_generations` append on each ai-pipeline call | ⚠️ partial | Agent tools don't read usage yet |
+| **Email templates** | ✅ CMS + `enqueueTemplatedEmail` | ✅ platform API ready | Wire machines/admin callers as needed |
 
 **Phase II blockers (not new ingest products):** wire existing ports into Mastra tools; persist LLM usage; expose Nango via `triggerOAuthAction` port.
 
@@ -272,12 +281,12 @@ integrations: {
 | **Provider business event** | Inbound → platform | Stripe `payment_intent.succeeded` | ❌ Phase I-f |
 | **Platform event → merchant** | Outbound → merchant URL | “POST `https://merchant.app/hooks` when order paid” | ❌ Phase I-f |
 
-**Notifications** = we email a **person**. **Webhooks** = we HTTP POST to a **URL** (theirs or ours).
+**Communications** = we email/SMS a **person**. **Webhooks** = we HTTP POST to a **URL** (theirs or ours).
 
 ### Why a dedicated domain (not cram into integrations/notifications)
 
 - **integrations** already owns: catalog, connect session, `connectionId` storage, auth webhook.
-- **notifications** owns: Resend/Twilio send, prefs, `comms_deliveries`.
+- **communications (`notifications`)** owns: Resend/Twilio send, prefs, `comms_deliveries`, CMS template render at enqueue.
 - **webhooks** owns: verify signature → resolve `orgId` → idempotent ingest → BullMQ → `eventBus` / machines / analytics.
 
 One platform inbound URL per provider type; tenant from `connectionId` lookup or signed metadata — **not** per-merchant webhook hostnames.
@@ -303,7 +312,7 @@ Reuse what the repo already has:
 | Outbound POST retries | **BullMQ** job with backoff (same worker pattern as email-outbound) |
 | Idempotency | Postgres `webhook_deliveries` unique on `(provider, event_id)` |
 
-**Do not add** Svix/Hookdeck as a hard dependency for v1 — optional later for outbound delivery observability.
+**100% noname implementation** — Postgres + BullMQ + stdlib crypto. Svix/Hookdeck are **reference only** (patterns, not dependencies): [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md).
 
 ### Proposed layout
 
@@ -369,12 +378,11 @@ Inbound auth for connect stays in **integrations**; do **not** move that route i
 
 ### Code deliverables
 
-- [ ] `domains/webhooks/*` skeleton + inbound route for one provider (e.g. Stripe via Nango forward or direct)
+- [ ] `domains/webhooks/*` — see RFC phases I-f.1–I-f.3
 - [ ] `webhook_receipts` idempotency table
 - [ ] BullMQ queue + worker → `eventBus.publish`
 - [ ] Machine engine subscriber stub (log only, then transition)
 - [ ] Admin UI: outbound subscription URL (optional v1.1)
-- [ ] Docs: provider verify adapters live next to integrations, not in notifications
 
 ### When to build
 
@@ -428,7 +436,7 @@ const executor = createMastraExecutor({ secrets, integrations, documents, agent,
 | Tool | Credential source |
 |------|-------------------|
 | LLM calls | **Vault** via `secrets.service` |
-| Send email (transactional) | **notifications** domain (Vault comms) |
+| Send email (transactional) | **notifications** domain — same port for machines, agents, admin |
 | External SaaS APIs | **Nango** `connectionId` (any connected integration) |
 | CMS writes | Agent JWT + Keto (existing) |
 
@@ -481,13 +489,18 @@ flowchart TD
 - [ ] Client admin forms
 - [ ] `tenant_settings.integrations` types
 
-### I-c Notifications + CMS email templates
-- [x] `domains/notifications/*` (send pipeline, prefs, deliveries)
+### I-c Platform communications + CMS email templates
+- [x] `domains/notifications/*` (send pipeline, prefs, deliveries) — **I-c.0 baseline**
 - [x] `email-outbound` worker (transport)
 - [x] CMS `notification_email` with json-render **spec** (documents domain)
 - [x] `enqueueTemplatedEmail` via `@json-render/react-email`
 - [x] Content admin spec editor + preview
-- [ ] Agent/machine callers use `templateId` where fixed layout applies
+- [x] Agent worker example: `input.notify` on task complete (optional — not the only caller)
+- [x] Platform RFC: [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md)
+- [x] I-c.2 — idempotency, retries, SES adapter, delivery log API
+- [ ] I-c.3 — `notify(trigger)` routing + admin delivery UI
+- [x] I-c.1 — wire machines + agent via `notify()` / transition `params.notify`
+- [ ] I-c.4+ — in-app inbox, SMS, expanded prefs (see RFC)
 
 ### I-d OAuth / external integrations
 - [x] docker-compose: integrations profile
@@ -499,13 +512,15 @@ flowchart TD
 - [x] Documents CRUD + resolve exist
 - [x] Tenant settings (no secrets in response)
 - [x] Nango connect webhook → `connectionId`
-- [ ] LLM usage append on ai-pipeline call
+- [x] LLM usage append on ai-pipeline call (`ai_generations`)
 - [ ] Phase II: wire tools to existing ports (analytics query, documents, nango_trigger)
 
 ### I-f Webhooks
-- [ ] `domains/webhooks/*`
-- [ ] Inbound verify + org resolve + BullMQ
-- [ ] `eventBus` → machines stub
+- [x] Spec: [`WEBHOOKS-DOMAIN-SPEC.md`](./WEBHOOKS-DOMAIN-SPEC.md)
+- [x] Platform RFC: [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md) — Svix/Hookdeck as reference; patterns for our `domains/webhooks` build
+- [x] `domains/webhooks/*` (inbound v1)
+- [x] Inbound verify + org resolve + BullMQ
+- [x] `eventBus` → stub subscriber (log; machine transitions later)
 - [ ] Outbound subscriptions (optional v1.1)
 
 ### II Mastra agents

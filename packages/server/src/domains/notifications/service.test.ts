@@ -14,16 +14,31 @@ function buildService(storage: Partial<NotificationsStorage>) {
   const add = vi.fn(async () => ({ id: "job-1" }));
   const queue = { add } as unknown as { add: typeof add };
 
+  const defaults: Partial<NotificationsStorage> = {
+    findDeliveryByIdempotency: vi.fn(async () => null),
+    listDeliveries: vi.fn(async () => []),
+    findDelivery: vi.fn(async () => null),
+    getPreferences: vi.fn(async () => ({
+      orgId: "org-1",
+      userId: "user-1",
+      agentTaskEmail: true,
+      marketingEmail: false,
+      updatedAt: new Date(),
+    })),
+    upsertPreferences: vi.fn(),
+    updateDelivery: vi.fn(),
+  };
+
   return {
     service: createNotificationsService({
       secrets: {
         resolveCommsCredentials: vi.fn(async () => ({
-          provider: "resend",
+          provider: "resend" as const,
           apiKey: "re_test",
           fromEmail: "noreply@example.com",
         })),
       },
-      storage: storage as NotificationsStorage,
+      storage: { ...defaults, ...storage } as NotificationsStorage,
       queue: queue as never,
       content: mockContent,
     }),
@@ -39,6 +54,9 @@ describe("createNotificationsService", () => {
       sentAt: null,
       providerMessageId: null,
       error: null,
+      attemptCount: 0,
+      bodyHtml: input.bodyHtml ?? null,
+      bodyText: input.bodyText ?? null,
     }));
 
     const { service, add } = buildService({ insertDelivery });
@@ -63,6 +81,7 @@ describe("createNotificationsService", () => {
         orgId: "org-1",
         to: "user@example.com",
       } satisfies Partial<EmailOutboundJobData>),
+      undefined,
     );
     expect(result.jobId).toBe("job-1");
   });
@@ -95,6 +114,9 @@ describe("createNotificationsService", () => {
       sentAt: null,
       providerMessageId: null,
       error: null,
+      attemptCount: 0,
+      bodyHtml: input.bodyHtml ?? null,
+      bodyText: input.bodyText ?? null,
     }));
     const getPreferences = vi.fn(async () => ({
       orgId: "org-1",
@@ -119,6 +141,7 @@ describe("createNotificationsService", () => {
         subject: "Agent task complete",
         html: expect.stringContaining("Alex"),
       }),
+      undefined,
     );
     expect(result.skipped).toBeUndefined();
   });
@@ -161,5 +184,89 @@ describe("createNotificationsService", () => {
     expect(result.skipped).toBe(true);
     expect(insertDelivery).not.toHaveBeenCalled();
     expect(add).not.toHaveBeenCalled();
+  });
+
+  it("enqueueEmail returns duplicate when idempotency key exists", async () => {
+    const findDeliveryByIdempotency = vi.fn(async () => ({
+      id: "existing-1",
+      orgId: "org-1",
+      userId: null,
+      channel: "email",
+      provider: "resend",
+      toAddress: "user@example.com",
+      subject: "Hello",
+      status: "sent",
+      providerMessageId: "msg-1",
+      error: null,
+      trigger: null,
+      templateId: null,
+      idempotencyKey: "key-1",
+      attemptCount: 1,
+      bodyHtml: null,
+      bodyText: null,
+      createdAt: new Date(),
+      sentAt: new Date(),
+    }));
+    const insertDelivery = vi.fn();
+
+    const { service, add } = buildService({ findDeliveryByIdempotency, insertDelivery });
+
+    const result = await service.enqueueEmail("org-1", {
+      to: "user@example.com",
+      subject: "Hello",
+      html: "<p>Hi</p>",
+      idempotencyKey: "key-1",
+    });
+
+    expect(result.duplicate).toBe(true);
+    expect(result.deliveryId).toBe("existing-1");
+    expect(insertDelivery).not.toHaveBeenCalled();
+    expect(add).not.toHaveBeenCalled();
+  });
+
+  it("notify resolves trigger to template id", async () => {
+    mockContent.findByType.mockResolvedValue([
+      {
+        id: "tpl-1",
+        orgId: "org-1",
+        type: "notification_email",
+        key: "tpl-1",
+        status: "published",
+        data: { template_key: "order-shipped" },
+      },
+    ]);
+    mockContent.resolve.mockResolvedValue({
+      template_key: "order-shipped",
+      subject: "Shipped",
+      spec: agentTaskCompleteEmailSpec,
+      category: "transactional",
+    });
+
+    const insertDelivery = vi.fn(async (input) => ({
+      ...input,
+      createdAt: new Date(),
+      sentAt: null,
+      providerMessageId: null,
+      error: null,
+      attemptCount: 0,
+      bodyHtml: input.bodyHtml ?? null,
+      bodyText: input.bodyText ?? null,
+    }));
+
+    const { service, add } = buildService({ insertDelivery });
+
+    await service.notify("org-1", {
+      trigger: "order-shipped",
+      to: "buyer@example.com",
+      variables: { name: "Alex" },
+    });
+
+    expect(add).toHaveBeenCalled();
+    expect(insertDelivery).toHaveBeenCalledWith(
+      expect.objectContaining({
+        trigger: "order-shipped",
+        templateId: "order-shipped",
+      }),
+    );
   });
 });

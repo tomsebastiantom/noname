@@ -22,6 +22,10 @@ export const PUBLIC_POST_PATTERNS = [
   /^\/api\/analytics\/replay$/,
   /** Anonymous flag evaluation from browser SDK. */
   /^\/api\/flags\/evaluate$/,
+  /** Provider business webhooks — verified in webhooks domain. */
+  /^\/api\/webhooks\/inbound\/[^/]+$/,
+  /** Nango OAuth connect callback. */
+  /^\/api\/integrations\/nango\/webhook$/,
 ] as const;
 
 export const PUBLIC_GET_EXTRA_PATTERNS = [

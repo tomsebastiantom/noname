@@ -18,6 +18,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.50.0",
     "@aws-sdk/client-s3": "^3.1085.0",
+    "@aws-sdk/client-ses": "^3.1104.0",
     "@clickhouse/client": "^1.0.0",
     "@hono/node-server": "^2.0.0",
     "@json-render/core": "^0.19.0",

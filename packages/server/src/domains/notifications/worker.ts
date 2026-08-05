@@ -1,11 +1,12 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
 import type { SecretsService } from "../secrets/ports";
+import { getEmailSender } from "./adapters/email";
 import type { NotificationsStorage } from "./adapters/postgres";
-import { createResendEmailSender } from "./adapters/resend";
-import type { EmailSenderPort } from "./ports";
+import { CommsEvents } from "./events";
 import type { EmailOutboundJobData } from "./queue";
 
 const tracer = trace.getTracer("notifications-worker");
@@ -13,18 +14,19 @@ const tracer = trace.getTracer("notifications-worker");
 export function startEmailOutboundWorker(deps: {
   storage: NotificationsStorage;
   secrets: Pick<SecretsService, "resolveCommsCredentials">;
-  emailSender?: EmailSenderPort;
 }): Worker<EmailOutboundJobData> {
-  const emailSender = deps.emailSender ?? createResendEmailSender();
-
   return new Worker<EmailOutboundJobData>(
     BULLMQ_QUEUES.EMAIL_OUTBOUND,
     async (job) => {
       const { deliveryId, orgId, to, subject, html, text } = job.data;
+      const attemptCount = job.attemptsMade + 1;
+
+      await deps.storage.updateDelivery(deliveryId, { attemptCount });
 
       await tracer.startActiveSpan("notifications.email.send", async (span) => {
         span.setAttribute("notifications.org_id", orgId);
         span.setAttribute("notifications.delivery_id", deliveryId);
+        span.setAttribute("notifications.attempt", attemptCount);
 
         try {
           const credentials = await deps.secrets.resolveCommsCredentials(orgId);
@@ -32,6 +34,7 @@ export function startEmailOutboundWorker(deps: {
             throw new Error("No comms credentials configured for org");
           }
 
+          const emailSender = getEmailSender(credentials.provider);
           const result = await emailSender.send(credentials, {
             to,
             subject,
@@ -43,13 +46,31 @@ export function startEmailOutboundWorker(deps: {
             status: "sent",
             providerMessageId: result.messageId,
             sentAt: new Date(),
+            error: null,
+          });
+
+          await eventBus.publish(CommsEvents.SENT, {
+            orgId,
+            deliveryId,
+            provider: result.provider,
+            messageId: result.messageId,
           });
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
-          await deps.storage.updateDelivery(deliveryId, {
-            status: "failed",
-            error: message,
-          });
+          const isFinalAttempt = attemptCount >= (job.opts.attempts ?? 1);
+
+          if (isFinalAttempt) {
+            await deps.storage.updateDelivery(deliveryId, {
+              status: "failed",
+              error: message,
+            });
+            await eventBus.publish(CommsEvents.FAILED, {
+              orgId,
+              deliveryId,
+              error: message,
+            });
+          }
+
           span.recordException(err as Error);
           span.setStatus({ code: SpanStatusCode.ERROR });
           throw err;
@@ -60,9 +81,9 @@ export function startEmailOutboundWorker(deps: {
     },
     {
       connection: getRedisConnection(),
-      concurrency: 2,
-      removeOnComplete: { count: 100 },
-      removeOnFail: { count: 100 },
+      concurrency: 4,
+      removeOnComplete: { count: 500 },
+      removeOnFail: { count: 200 },
     },
   );
 }

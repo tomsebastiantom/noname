@@ -236,7 +236,7 @@ export const adminActionSchemas = {
   },
   saveIntegrationsComms: {
     params: z.object({
-      emailProvider: z.enum(["resend", "twilio"]),
+      emailProvider: z.enum(["resend", "ses", "twilio"]),
       apiKey: z.string().optional(),
       fromEmail: z.string().email().optional(),
       fromName: z.string().optional(),

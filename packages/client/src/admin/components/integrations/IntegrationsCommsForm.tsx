@@ -88,6 +88,7 @@ function IntegrationsCommsFields({
           onChange={(e) => setEmailProvider(e.target.value as CommsProviderName)}
         >
           <option value="resend">Resend</option>
+          <option value="ses">Amazon SES</option>
           <option value="twilio">Twilio</option>
         </select>
         {loaded.hasOrgKey ? (

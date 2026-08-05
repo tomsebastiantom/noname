@@ -9,6 +9,7 @@ import { createAgentRoutes } from "./api";
 import { createAgentRegistryService } from "./registry-service";
 import { createAgentService } from "./service";
 import type { AgentExecutor } from "./tools";
+import type { AgentWorkerHooks } from "./worker";
 import { startAgentWorker } from "./worker";
 
 export interface AgentDomainDeps {
@@ -16,6 +17,7 @@ export interface AgentDomainDeps {
   executor: AgentExecutor;
   authorization: AuthorizationPort;
   agentTokenSecret?: string;
+  workerHooks?: AgentWorkerHooks;
 }
 
 export function createAgentDomain(deps: AgentDomainDeps) {
@@ -40,7 +42,7 @@ export function createAgentDomain(deps: AgentDomainDeps) {
     registry,
     registryStorage: registryStorage,
   });
-  const worker = startAgentWorker(taskStorage, deps.executor);
+  const worker = startAgentWorker(taskStorage, deps.executor, deps.workerHooks ?? {});
 
   return {
     storage: registryStorage,

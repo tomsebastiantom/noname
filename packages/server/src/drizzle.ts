@@ -7,6 +7,7 @@ import * as documentSchema from "./domains/documents/schema";
 import * as flagsSchema from "./domains/flags/schema";
 import * as machineSchema from "./domains/machines/schema";
 import * as notificationsSchema from "./domains/notifications/schema";
+import * as webhooksSchema from "./domains/webhooks/schema";
 
 export type Database = ReturnType<typeof createDatabase>;
 
@@ -21,6 +22,7 @@ export function createDatabase(connectionString: string) {
       ...agentSchema,
       ...aiPipelineSchema,
       ...notificationsSchema,
+  ...webhooksSchema,
     },
   });
 }

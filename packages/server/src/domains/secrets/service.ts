@@ -28,7 +28,7 @@ function readPreferredLlmProvider(integrations: Record<string, unknown>): LlmPro
   return typeof provider === "string" && isLlmProviderName(provider) ? provider : null;
 }
 
-const COMMS_PROVIDERS = ["resend", "twilio"] as const;
+const COMMS_PROVIDERS = ["resend", "ses", "twilio"] as const;
 
 function isCommsProviderName(value: string): value is CommsProviderName {
   return (COMMS_PROVIDERS as readonly string[]).includes(value);
@@ -109,6 +109,8 @@ export function createSecretsService(deps: {
       return {
         provider: config.provider,
         apiKey: orgKey,
+        secretKey: orgSecret.secretKey,
+        region: orgSecret.region,
         fromEmail: config.fromEmail ?? orgSecret.fromEmail,
         fromName: config.fromName ?? orgSecret.fromName,
       };
@@ -116,9 +118,13 @@ export function createSecretsService(deps: {
 
     const platformKey = await store.getPlatformSecret(`${config.provider}_api_key`);
     if (platformKey) {
+      const platformSecret = await store.getPlatformSecret(`${config.provider}_secret_key`);
+      const platformRegion = await store.getPlatformSecret(`${config.provider}_region`);
       return {
         provider: config.provider,
         apiKey: platformKey,
+        secretKey: platformSecret ?? undefined,
+        region: platformRegion ?? undefined,
         fromEmail: config.fromEmail,
         fromName: config.fromName,
       };

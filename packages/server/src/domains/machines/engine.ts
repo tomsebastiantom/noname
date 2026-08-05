@@ -21,7 +21,21 @@ export function registerGuard(name: string, guard: Guard): void {
   guards.set(name, guard);
 }
 
-export function createMachineEngine(storage: MachineStorage): MachineEngine {
+export interface MachineEngineHooks {
+  onTransitionComplete?: (ctx: {
+    orgId: string;
+    instance: MachineInstanceDTO;
+    event: string;
+    fromState: string;
+    toState: string;
+    params: Record<string, unknown>;
+  }) => Promise<void>;
+}
+
+export function createMachineEngine(
+  storage: MachineStorage,
+  hooks: MachineEngineHooks = {},
+): MachineEngine {
   const ensureDefinition = async (orgId: string, name: string): Promise<MachineDefinition> => {
     const def = await storage.findDefinition(orgId, name);
     if (!def) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
@@ -151,6 +165,17 @@ export function createMachineEngine(storage: MachineStorage): MachineEngine {
         fromState: result.fromState,
         toState: result.toState,
       });
+
+      if (hooks.onTransitionComplete) {
+        await hooks.onTransitionComplete({
+          orgId,
+          instance: updated,
+          event,
+          fromState: result.fromState,
+          toState: result.toState,
+          params,
+        });
+      }
 
       return updated;
     },

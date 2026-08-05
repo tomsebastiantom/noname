@@ -63,7 +63,7 @@ export const integrationsActions = {
 
   saveIntegrationsComms: (async (params, setState) => {
     const { emailProvider, apiKey, fromEmail, fromName } = params as {
-      emailProvider: "resend" | "twilio";
+      emailProvider: "resend" | "ses" | "twilio";
       apiKey?: string;
       fromEmail?: string;
       fromName?: string;
