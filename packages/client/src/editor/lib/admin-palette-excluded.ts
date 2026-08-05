@@ -1,6 +1,7 @@
 /** Admin catalog component types — excluded from storefront editor palette. */
 export const ADMIN_PALETTE_EXCLUDED_TYPES = [
   "AdminShell",
+  "AdminCollapsibleSection",
   "AuthSettingsForm",
   "IntegrationsCommsForm",
   "IntegrationsLlmForm",

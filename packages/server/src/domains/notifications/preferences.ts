@@ -80,7 +80,7 @@ export function normalizeNotificationPreferences(value: unknown): NotificationPr
 
 export function mergeNotificationPreferences(
   existing: NotificationPreferences,
-  patch: Partial<NotificationPreferences>,
+  patch: NotificationPreferencesUpdate,
 ): NotificationPreferences {
   return normalizeNotificationPreferences({
     channels: { ...existing.channels, ...patch.channels },
@@ -136,3 +136,5 @@ export const notificationPreferencesUpdateSchema = z.object({
   categories: notificationCategoryPrefsSchema.optional(),
   triggers: z.record(z.string(), z.object({ enabled: z.boolean() })).optional(),
 });
+
+export type NotificationPreferencesUpdate = z.infer<typeof notificationPreferencesUpdateSchema>;

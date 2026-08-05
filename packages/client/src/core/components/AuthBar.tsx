@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
+import { ACCOUNT_NAV_LINKS, accountNavLinkVisible } from "../../auth/account-routes";
 import { loadOidcConfig } from "../../auth/config";
 import { performLogout } from "../../auth/logout";
 import { hydrateTokenFromCookie, isLoggedIn } from "../../auth/session";
-import { fetchAuthSessionStatus, sessionCanDraft } from "../../auth/team-users";
+import {
+  type AuthSessionStatus,
+  fetchAuthSessionStatus,
+  sessionCanDraft,
+} from "../../auth/team-users";
 import { Button } from "../../components/ui/button";
 
 function editPageHref(): string {
@@ -14,6 +19,8 @@ function editPageHref(): string {
 function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
   const [loggedIn, setLoggedIn] = useState(isLoggedIn());
   const [canDraft, setCanDraft] = useState(false);
+  const [session, setSession] = useState<AuthSessionStatus | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(false);
   const [oidcReady, setOidcReady] = useState<boolean | null>(null);
   const onLoginPage = window.location.pathname === "/login";
   const inEditMode = new URLSearchParams(window.location.search).get("edit") === "true";
@@ -27,11 +34,21 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
   useEffect(() => {
     if (!loggedIn) {
       setCanDraft(false);
+      setSession(null);
+      setSessionLoading(false);
       return;
     }
+    setSessionLoading(true);
     void fetchAuthSessionStatus()
-      .then((session) => setCanDraft(sessionCanDraft(session)))
-      .catch(() => setCanDraft(false));
+      .then((data) => {
+        setSession(data);
+        setCanDraft(sessionCanDraft(data));
+      })
+      .catch(() => {
+        setSession(null);
+        setCanDraft(false);
+      })
+      .finally(() => setSessionLoading(false));
   }, [loggedIn]);
 
   if (onLoginPage || oidcReady === false) {
@@ -60,24 +77,17 @@ function AuthBar({ onAuthChange }: Readonly<{ onAuthChange: () => void }>) {
       <div className="flex items-center gap-3">
         {loggedIn ? (
           <>
-            <a
-              href="/account/communication-preferences"
-              className="text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Preferences
-            </a>
-            <a
-              href="/account/notifications"
-              className="text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Notifications
-            </a>
-            <a
-              href="/account/security"
-              className="text-muted-foreground hover:text-foreground hover:underline"
-            >
-              Security
-            </a>
+            {ACCOUNT_NAV_LINKS.map((link) =>
+              accountNavLinkVisible(link.id, session, sessionLoading) ? (
+                <a
+                  key={link.id}
+                  href={link.href}
+                  className="text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  {link.label}
+                </a>
+              ) : null,
+            )}
             <span className="text-muted-foreground">Signed in</span>
             <Button type="button" variant="outline" size="sm" onClick={signOut}>
               Sign out

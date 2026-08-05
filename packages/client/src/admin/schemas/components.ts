@@ -19,8 +19,11 @@ const adminShellLabels = {
   sidebarTitle: z.string(),
   productName: z.string(),
   settingsSectionLabel: z.string(),
+  observabilitySectionLabel: z.string().optional(),
   nav: z.record(z.string(), z.string()),
   settings: z.record(z.string(), z.string()),
+  observability: z.record(z.string(), z.string()).optional(),
+  accountSectionLabel: z.string().optional(),
   accountSecurity: z.string(),
   storefront: z.string(),
   signOut: z.string(),
@@ -31,12 +34,26 @@ const adminShellConfig = {
   activeNav: z.string(),
   navItems: z.array(navItemConfigSchema),
   settingsItems: z.array(navItemConfigSchema),
+  observabilityItems: z.array(navItemConfigSchema).optional(),
   accountSecurityHref: z.string(),
   storefrontHref: z.string(),
 };
 
 /** Platform admin panels — settings, CMS, routing, team, flags, replay. */
 export const adminComponentSchemas = {
+  AdminCollapsibleSection: {
+    props: catalogProps(
+      {
+        title: z.string(),
+        description: z.string().nullable(),
+      },
+      {
+        defaultOpen: z.boolean().default(false),
+      },
+    ),
+    slots: ["default"],
+    description: "Collapsible admin settings category — first section open by default in seed",
+  },
   AdminShell: {
     props: catalogProps(adminShellLabels, adminShellConfig),
     slots: ["default"],

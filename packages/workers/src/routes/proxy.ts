@@ -1,4 +1,10 @@
-import { canDraft, EDIT_MODE_FORBIDDEN_ERROR, fetchWithTimeout, isEditModeUrl } from "@noname/auth";
+import {
+  accessTokenFromRequest,
+  canDraft,
+  EDIT_MODE_FORBIDDEN_ERROR,
+  fetchWithTimeout,
+  isEditModeUrl,
+} from "@noname/auth";
 import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
@@ -80,7 +86,16 @@ export function createApiProxyRoutes() {
     const tracestate = c.req.header("tracestate");
     if (tracestate) headers.set("tracestate", tracestate);
     const authorization = c.req.header("Authorization");
-    if (authorization) headers.set("Authorization", authorization);
+    if (authorization) {
+      headers.set("Authorization", authorization);
+    } else {
+      const token = accessTokenFromRequest(c.req.raw);
+      if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+    const webhookSignature = c.req.header("x-webhook-signature");
+    if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);
+    const stripeSignature = c.req.header("stripe-signature");
+    if (stripeSignature) headers.set("stripe-signature", stripeSignature);
 
     const init: RequestInit = {
       method: c.req.method,

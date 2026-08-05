@@ -10,6 +10,11 @@ import type { ComponentCtx } from "./types";
  *
  * Pass stable `params` (e.g. `useMemo` when derived inline) to avoid refetch churn.
  */
+function stableParamsKey(params: Record<string, unknown> | null | undefined): string {
+  if (params == null) return "";
+  return JSON.stringify(params);
+}
+
 export function useMountAction(
   action: CoreActionName,
   params?: Record<string, unknown> | null,
@@ -17,10 +22,15 @@ export function useMountAction(
   const { execute } = useActions();
   const executeRef = useRef(execute);
   executeRef.current = execute;
+  const paramsRef = useRef(params);
+  paramsRef.current = params;
+  const paramsKey = stableParamsKey(params);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: paramsKey serializes params for stable mount deps
   useEffect(() => {
-    void executeRef.current(params ? { action, params } : { action });
-  }, [action, params]);
+    const currentParams = paramsRef.current;
+    void executeRef.current(currentParams ? { action, params: currentParams } : { action });
+  }, [action, paramsKey]);
 }
 
 /**

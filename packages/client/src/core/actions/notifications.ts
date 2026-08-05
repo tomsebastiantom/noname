@@ -1,10 +1,13 @@
 import {
+  loadCommsInbox,
   loadNotificationPreferences,
+  markCommsInboxRead,
   type NotificationPreferences,
   saveNotificationPreferences,
 } from "../../auth/notifications-settings";
 import { isLoggedIn } from "../../auth/session";
 import {
+  ACCOUNT_INBOX_STATE,
   ACCOUNT_NOTIFICATION_PREFS_STATE,
   type AccountNotificationPrefsState,
 } from "../login-state";
@@ -32,6 +35,38 @@ export const notificationActions = {
     } finally {
       setState(ACCOUNT_NOTIFICATION_PREFS_STATE.loading, false);
     }
+  }) satisfies CatalogActionHandler,
+
+  loadAccountInbox: (async (params, setState) => {
+    setState(ACCOUNT_INBOX_STATE.loading, true);
+    setState(ACCOUNT_INBOX_STATE.error, null);
+    if (!isLoggedIn()) {
+      setState(ACCOUNT_INBOX_STATE.loaded, null);
+      setState(ACCOUNT_INBOX_STATE.loading, false);
+      return;
+    }
+    try {
+      const query = (params ?? {}) as { unreadOnly?: boolean };
+      const unreadOnly = query.unreadOnly === true;
+      const rows = await loadCommsInbox({ unreadOnly, limit: 50 });
+      setState(ACCOUNT_INBOX_STATE.loaded, rows);
+    } catch (err) {
+      setState(ACCOUNT_INBOX_STATE.error, err instanceof Error ? err.message : String(err));
+      setState(ACCOUNT_INBOX_STATE.loaded, null);
+    } finally {
+      setState(ACCOUNT_INBOX_STATE.loading, false);
+    }
+  }) satisfies CatalogActionHandler,
+
+  markAccountInboxRead: (async (params, setState) => {
+    const itemId =
+      typeof (params as { itemId?: unknown })?.itemId === "string"
+        ? (params as { itemId: string }).itemId
+        : "";
+    if (!itemId || !isLoggedIn()) return;
+    await markCommsInboxRead(itemId);
+    const rows = await loadCommsInbox({ limit: 50 });
+    setState(ACCOUNT_INBOX_STATE.loaded, rows);
   }) satisfies CatalogActionHandler,
 
   saveNotificationPreferences: (async (params, setState) => {

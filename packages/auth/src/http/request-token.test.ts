@@ -24,6 +24,15 @@ describe("accessTokenFromRequest", () => {
     ).toBe("header-tok");
   });
 
+  it("reads access_token query param for EventSource", () => {
+    expect(
+      accessTokenFromRequest({
+        headers: new Headers(),
+        url: "http://yogastore.localhost:5173/api/notifications/stream?access_token=query-tok",
+      }),
+    ).toBe("query-tok");
+  });
+
   it("returns null when absent", () => {
     expect(accessTokenFromRequest(request({}))).toBeNull();
   });

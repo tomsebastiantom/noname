@@ -14,6 +14,7 @@ import { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 import { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
 import { PageTreeAdmin } from "./components/pages/PageTreeAdmin";
 import { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
+import { AdminCollapsibleSection } from "./components/shared/AdminCollapsibleSection";
 import { AdminHome } from "./components/shell/AdminHome";
 import { AdminShell } from "./components/shell/AdminShell";
 import { AccountSecurityForm } from "./components/team/AccountSecurityForm";
@@ -37,6 +38,7 @@ export { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 export { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
 export { PageTreeAdmin } from "./components/pages/PageTreeAdmin";
 export { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
+export { AdminCollapsibleSection } from "./components/shared/AdminCollapsibleSection";
 export { AdminHome } from "./components/shell/AdminHome";
 export { AdminNav } from "./components/shell/AdminNav";
 export { AdminPageHeader } from "./components/shell/AdminPageHeader";
@@ -49,6 +51,7 @@ export { TracesAdmin } from "./components/traces/TracesAdmin";
 /** json-render component map for platform admin panels. */
 export const adminComponents = {
   AdminShell,
+  AdminCollapsibleSection,
   AuthSettingsForm,
   IntegrationsCommsForm,
   CommsDeliveriesAdmin,

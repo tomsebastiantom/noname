@@ -102,6 +102,7 @@ describe("createAgentRegistryService", () => {
           "generateLayoutDraft",
           "generateContentDraft",
           "generateMachineDraft",
+          "updateDraftField",
         ],
       }),
     );

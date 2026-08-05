@@ -24,7 +24,7 @@ export function CommsInboxAdmin({
   const canAccess = useAdminRouteAccess("integrations");
   const { executeAction, error, clearError } = useCatalogSubmit();
 
-  useMountAction("loadCommsInbox", { unreadOnly: false });
+  useMountAction("loadCommsInbox");
 
   if (canAccess === false) {
     return (

@@ -100,7 +100,7 @@ describe("runMockOrchestrate", () => {
     const output = parseOrchestrateOutput(result.output);
     expect(output).not.toBeNull();
     expect(output!.steps.length).toBeGreaterThanOrEqual(3);
-    expect(output!.artifacts.length).toBeGreaterThanOrEqual(2);
+    expect(output!.artifacts.length).toBeGreaterThanOrEqual(1);
     expect(result.model).toBe("mock-orchestrate");
     expect(deps.layout.create).toHaveBeenCalledWith(
       "org-1",

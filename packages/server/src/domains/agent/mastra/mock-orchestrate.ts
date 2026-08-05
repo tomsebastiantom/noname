@@ -1,12 +1,6 @@
-import type { AIPipeline } from "../../ai-pipeline/ports";
 import type { AnalyticsService } from "../../analytics/ports";
 import type { AgentToolResult } from "../tools";
-import {
-  createArtifactCollector,
-  extractContentData,
-  extractLayoutSpec,
-  extractMachineDefinition,
-} from "./artifacts";
+import { createArtifactCollector } from "./artifacts";
 import { createTokenAccumulator, parseAgentRunContext, writeAuditFromRunContext } from "./context";
 import type { MastraExecutorDeps } from "./executor";
 import { assertOrchestrateOutput } from "./orchestrate-output";
@@ -92,11 +86,15 @@ export async function runMockOrchestrate(
   if (activeTools.includes("readDocument")) {
     await runStep(steps, "readDocument", async () => {
       const storage = deps.documents;
-      const doc = await storage.findDocumentById("mock-doc");
-      if (!doc || doc.orgId !== orgId) {
-        return { found: false, documentId: "mock-doc" };
+      try {
+        const doc = await storage.findDocumentById("mock-doc");
+        if (!doc || doc.orgId !== orgId) {
+          return { found: false, documentId: "mock-doc" };
+        }
+        return { found: true, documentId: doc.id, type: doc.type };
+      } catch {
+        return { found: false, documentId: "mock-doc", reason: "not a valid document id in mock" };
       }
-      return { found: true, documentId: doc.id, type: doc.type };
     });
   }
 
@@ -113,14 +111,17 @@ export async function runMockOrchestrate(
   }
 
   if (activeTools.includes("generateLayoutDraft")) {
-    const templateName = slugFromPrompt(prompt, "orchestrate-hero");
+    const baseName = slugFromPrompt(prompt, "orchestrate-hero");
+    const templateName = `${baseName}-${Date.now().toString(36)}`;
     await runStep(steps, "generateLayoutDraft", async () => {
-      const aiPipeline = deps.aiPipeline as Pick<AIPipeline, "generateLayout">;
-      const generated = await aiPipeline.generateLayout(orgId, prompt, {});
-      pipelineTokens.add(generated.tokens);
       const layout = await deps.layout.create(orgId, {
         templateName,
-        spec: extractLayoutSpec(generated.response),
+        spec: {
+          root: "root",
+          elements: {
+            root: { type: "Container", props: {}, children: [] },
+          },
+        },
         audit,
       });
       artifacts.push({ kind: "layout", documentId: layout.id, label: templateName });
@@ -129,35 +130,17 @@ export async function runMockOrchestrate(
   }
 
   if (activeTools.includes("generateContentDraft")) {
-    const contentType = prompt.toLowerCase().includes("blog") ? "blog_post" : "page";
-    await runStep(steps, "generateContentDraft", async () => {
-      const aiPipeline = deps.aiPipeline as Pick<AIPipeline, "generateContent">;
-      const generated = await aiPipeline.generateContent(orgId, contentType, prompt);
-      pipelineTokens.add(generated.tokens);
-      const entry = await deps.content.create(
-        orgId,
-        contentType,
-        extractContentData(generated.response),
-        {
-          audit,
-        },
-      );
-      artifacts.push({ kind: "content", documentId: entry.id, label: contentType });
-      return { contentId: entry.id, contentType: entry.type };
-    });
+    await runStep(steps, "generateContentDraft", async () => ({
+      skipped: true,
+      reason: "mock orchestrate skips content draft (needs locale-aware CMS write)",
+    }));
   }
 
   if (activeTools.includes("generateMachineDraft")) {
-    const machineName = slugFromPrompt(prompt, "orchestrate-flow");
-    await runStep(steps, "generateMachineDraft", async () => {
-      const aiPipeline = deps.aiPipeline as Pick<AIPipeline, "generateMachine">;
-      const generated = await aiPipeline.generateMachine(orgId, machineName, prompt);
-      pipelineTokens.add(generated.tokens);
-      const definition = extractMachineDefinition(generated.response, machineName);
-      const saved = await deps.machines.define(orgId, { ...definition, name: machineName });
-      artifacts.push({ kind: "machine", documentId: saved.name, label: saved.name });
-      return { machineName: saved.name };
-    });
+    await runStep(steps, "generateMachineDraft", async () => ({
+      skipped: true,
+      reason: "mock orchestrate skips machine draft",
+    }));
   }
 
   if (activeTools.includes("nango_trigger")) {

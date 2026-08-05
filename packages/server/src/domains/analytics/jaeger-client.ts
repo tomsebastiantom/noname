@@ -122,7 +122,7 @@ export function flattenJaegerTrace(trace: JaegerTrace): TraceSpanRow[] {
       }
       const serviceName =
         span.processID && processes[span.processID]
-          ? processes[span.processID].serviceName
+          ? (processes[span.processID]?.serviceName ?? "unknown")
           : "unknown";
       return {
         spanId: span.spanID,

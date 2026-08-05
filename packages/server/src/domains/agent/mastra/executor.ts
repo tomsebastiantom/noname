@@ -27,6 +27,7 @@ import { createGenerateMachineDraftTool } from "./tools/generate-machine-draft";
 import { createListFolderDocumentsTool } from "./tools/list-folder-documents";
 import { createNangoTriggerTool } from "./tools/nango-trigger";
 import { createReadAnalyticsTool } from "./tools/read-analytics";
+import { createReadDocumentTool } from "./tools/read-document";
 import { createUpdateDraftFieldTool } from "./tools/update-draft-field";
 import type { OrchestrateOutput } from "./types";
 

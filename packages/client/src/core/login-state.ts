@@ -37,3 +37,10 @@ export const ACCOUNT_NOTIFICATION_PREFS_STATE = {
 export type AccountNotificationPrefsState = NotificationPreferences & {
   loadedAt: number;
 };
+
+/** json-render $state paths for /account/notifications. */
+export const ACCOUNT_INBOX_STATE = {
+  loaded: "/account/inbox/loaded",
+  loading: "/account/inbox/loading",
+  error: "/account/inbox/error",
+} as const;

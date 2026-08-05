@@ -124,7 +124,11 @@ describe("documents API permission guards", () => {
       },
     });
     expect(res.status).toBe(200);
-    expect(layout.publish).toHaveBeenCalledWith("org-1", "layout-1");
+    expect(layout.publish).toHaveBeenCalledWith("org-1", "layout-1", {
+      actorId: "user-admin",
+      actorType: "human",
+      taskId: undefined,
+    });
   });
 
   it("allows editor to update layout draft when Keto allows", async () => {

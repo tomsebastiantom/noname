@@ -38,7 +38,16 @@ export default {
       {
         test: /\.css$/,
         type: "css",
-        use: ["postcss-loader"],
+        use: [
+          {
+            loader: "postcss-loader",
+            options: {
+              postcssOptions: {
+                config: join(dir, "postcss.config.mjs"),
+              },
+            },
+          },
+        ],
         parser: {
           css: {
             // Inject Tailwind at runtime — default `link` export was not added to HTML.

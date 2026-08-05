@@ -127,11 +127,13 @@ const adminShellNavConfig = {
     { id: "integrations", href: "/admin/settings/integrations" },
     { id: "users", href: "/admin/settings/users" },
     { id: "scope", href: "/admin/settings/scope" },
+    { id: "login", href: "/admin/settings/login" },
+    { id: "agents", href: "/admin/settings/agents" },
+  ],
+  observabilityItems: [
     { id: "analytics", href: "/admin/settings/analytics" },
     { id: "flags", href: "/admin/settings/flags" },
     { id: "replay", href: "/admin/settings/replay" },
-    { id: "login", href: "/admin/settings/login" },
-    { id: "agents", href: "/admin/settings/agents" },
   ],
   accountSecurityHref: "/admin/settings/security",
   storefrontHref: "/",
@@ -141,6 +143,7 @@ const adminShellNavLabels = {
   sidebarTitle: "Admin",
   productName: "Noname",
   settingsSectionLabel: "Settings",
+  observabilitySectionLabel: "Observability",
   nav: {
     home: "Overview",
     pages: "Pages",
@@ -152,12 +155,15 @@ const adminShellNavLabels = {
     integrations: "Integrations",
     users: "Team members",
     scope: "Content access",
-    analytics: "Analytics",
-    flags: "Feature flags",
-    replay: "Session replay",
     login: "Login appearance",
     agents: "Agents",
   },
+  observability: {
+    analytics: "Analytics",
+    flags: "Feature flags",
+    replay: "Session replay",
+  },
+  accountSectionLabel: "Account",
   accountSecurity: "Account security",
   storefront: "← Site",
   signOut: "Sign out",
@@ -301,7 +307,7 @@ const integrationsCommsDeliveriesLabels = {
 
 const integrationsCommsInboxLabels = {
   loadingLabel: "Loading inbox…",
-  forbiddenLabel: "Sign in to view your in-app notifications.",
+  forbiddenLabel: "Integrations settings require the store admin role.",
   emptyLabel: "No notifications yet.",
   refreshLabel: "Refresh",
   unreadOnlyLabel: "Unread",
@@ -813,22 +819,63 @@ const adminDashboardSpec = adminPanelSpec(["authSettings"], {
 });
 
 const adminIntegrationsSpec = adminPanelSpec(
-  [
-    "loadIntegrationsLlm",
-    "integrationsLlm",
-    "loadIntegrationsComms",
-    "integrationsComms",
-    "loadCommsDeliveries",
-    "commsDeliveries",
-    "loadCommsInbox",
-    "commsInbox",
-    "loadWebhookSubscriptions",
-    "webhookSubscriptions",
-    "loadWebhookOutboundDeliveries",
-    "loadIntegrationsOAuth",
-    "integrationsOAuth",
-  ],
+  ["sectionLlm", "sectionComms", "sectionInbox", "sectionWebhooks", "sectionOAuth"],
   {
+    sectionLlm: {
+      type: "AdminCollapsibleSection",
+      props: catalogProps(
+        { defaultOpen: true },
+        {
+          title: "AI & LLM",
+          description: "Provider choice and org BYOK keys stored in Vault.",
+        },
+      ),
+      children: ["loadIntegrationsLlm", "integrationsLlm"],
+    },
+    sectionComms: {
+      type: "AdminCollapsibleSection",
+      props: catalogProps(
+        { defaultOpen: false },
+        {
+          title: "Email & delivery",
+          description: "Transactional email provider, delivery log, and retries.",
+        },
+      ),
+      children: ["loadIntegrationsComms", "integrationsComms", "loadCommsDeliveries", "commsDeliveries"],
+    },
+    sectionInbox: {
+      type: "AdminCollapsibleSection",
+      props: catalogProps(
+        { defaultOpen: false },
+        {
+          title: "In-app inbox",
+          description: "Preview of your signed-in user's inbox feed (same as Account → Notifications).",
+        },
+      ),
+      children: ["loadCommsInbox", "commsInbox"],
+    },
+    sectionWebhooks: {
+      type: "AdminCollapsibleSection",
+      props: catalogProps(
+        { defaultOpen: false },
+        {
+          title: "Webhooks",
+          description: "Outbound HTTPS subscriptions and delivery log.",
+        },
+      ),
+      children: ["loadWebhookSubscriptions", "webhookSubscriptions"],
+    },
+    sectionOAuth: {
+      type: "AdminCollapsibleSection",
+      props: catalogProps(
+        { defaultOpen: false },
+        {
+          title: "External OAuth",
+          description: "Third-party connections via Nango (when enabled on server).",
+        },
+      ),
+      children: ["loadIntegrationsOAuth", "integrationsOAuth"],
+    },
     loadIntegrationsLlm: {
       type: "MountAction",
       props: catalogProps({ action: "loadIntegrationsLlm" }, {}),
@@ -877,7 +924,7 @@ const adminIntegrationsSpec = adminPanelSpec(
       props: panelProps(
         {},
         "In-app inbox",
-        "Notifications delivered to your admin account. Configure triggers with an in_app channel to populate this feed.",
+        "Your signed-in user's in-app notifications (same feed as Account → Notifications). Org delivery config is above; use the storefront account page for end-customer inbox.",
         integrationsCommsInboxLabels,
       ),
     },
@@ -1258,7 +1305,11 @@ const accountNotificationsSpec = {
         { layout: "centered" },
         { brandTitle: "Notifications", brandSubtitle: "Your account messages" },
       ),
-      children: ["inbox"],
+      children: ["loadInbox", "inbox"],
+    },
+    loadInbox: {
+      type: "MountAction",
+      props: catalogProps({ action: "loadAccountInbox" }, {}),
     },
     inbox: {
       type: "AccountNotificationsInbox",

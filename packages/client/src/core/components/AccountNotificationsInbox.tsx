@@ -7,6 +7,7 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import type { CatalogProps } from "../../schemas/shared";
+import { ACCOUNT_INBOX_STATE } from "../login-state";
 import { useCatalogSubmit } from "../use-catalog-submit";
 import { CommsInboxPanel, type CommsInboxPanelLabels } from "./CommsInboxPanel";
 import { useMountAction } from "./MountAction";
@@ -23,7 +24,7 @@ export function AccountNotificationsInbox({
   const loggedIn = isLoggedIn();
   const { executeAction, error, clearError } = useCatalogSubmit();
 
-  useMountAction("loadCommsInbox", { unreadOnly: false });
+  useMountAction("loadAccountInbox");
 
   if (!loggedIn) {
     return (
@@ -46,6 +47,9 @@ export function AccountNotificationsInbox({
       executeAction={executeAction}
       error={error}
       clearError={clearError}
+      statePaths={ACCOUNT_INBOX_STATE}
+      loadAction="loadAccountInbox"
+      markReadAction="markAccountInboxRead"
     />
   );
 }

@@ -234,6 +234,20 @@ export const coreActionSchemas = {
   loadNotificationPreferences: {
     description: "Load signed-in user communication preferences",
   },
+  loadAccountInbox: {
+    params: z
+      .object({
+        unreadOnly: z.boolean().optional(),
+      })
+      .optional(),
+    description: "Load signed-in customer in-app notification inbox",
+  },
+  markAccountInboxRead: {
+    params: z.object({
+      itemId: z.string(),
+    }),
+    description: "Mark a customer inbox item as read",
+  },
   saveNotificationPreferences: {
     params: z.object({
       channels: z.object({

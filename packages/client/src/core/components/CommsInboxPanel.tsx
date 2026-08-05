@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
+import type { CoreActionName } from "../actions";
 import { ADMIN_STATE } from "../admin-state";
 import { useCommsInboxStream } from "../hooks/useCommsInboxStream";
 import { mergeCatalogError } from "../use-catalog-submit";
@@ -32,16 +33,24 @@ export type CommsInboxPanelLabels = {
   };
 };
 
+type InboxStatePaths = {
+  loaded: string;
+  loading: string;
+  error: string;
+};
+
 type CommsInboxPanelProps = {
   labels: CommsInboxPanelLabels;
   enabled: boolean;
-  executeAction: (
-    name: "loadCommsInbox" | "markCommsInboxRead",
-    params: Record<string, unknown>,
-  ) => void;
+  executeAction: (name: CoreActionName, params: Record<string, unknown>) => void;
   error: string | null;
   clearError: () => void;
+  statePaths?: InboxStatePaths;
+  loadAction?: "loadCommsInbox" | "loadAccountInbox";
+  markReadAction?: "markCommsInboxRead" | "markAccountInboxRead";
 };
+
+const ADMIN_INBOX_STATE = ADMIN_STATE.integrations.commsInbox;
 
 function formatWhen(value: string): string {
   const date = new Date(value);
@@ -54,22 +63,18 @@ export function CommsInboxPanel({
   executeAction,
   error,
   clearError,
+  statePaths = ADMIN_INBOX_STATE,
+  loadAction = "loadCommsInbox",
+  markReadAction = "markCommsInboxRead",
 }: CommsInboxPanelProps) {
   const [unreadOnly, setUnreadOnly] = useState(false);
 
-  const rows = useStateValue(ADMIN_STATE.integrations.commsInbox.loaded) as
-    | CommsInboxItem[]
-    | null
-    | undefined;
-  const loading =
-    (useStateValue(ADMIN_STATE.integrations.commsInbox.loading) as boolean | undefined) ?? true;
-  const loadError = useStateValue(ADMIN_STATE.integrations.commsInbox.error) as
-    | string
-    | null
-    | undefined;
+  const rows = useStateValue(statePaths.loaded) as CommsInboxItem[] | null | undefined;
+  const loading = (useStateValue(statePaths.loading) as boolean | undefined) ?? true;
+  const loadError = useStateValue(statePaths.error) as string | null | undefined;
 
   useCommsInboxStream(() => {
-    void executeAction("loadCommsInbox", { unreadOnly });
+    void executeAction(loadAction, { unreadOnly });
   }, enabled);
 
   const displayError = mergeCatalogError(error, loadError);
@@ -95,7 +100,7 @@ export function CommsInboxPanel({
             onClick={() => {
               clearError();
               setUnreadOnly(true);
-              void executeAction("loadCommsInbox", { unreadOnly: true });
+              void executeAction(loadAction, { unreadOnly: true });
             }}
           >
             {labels.unreadOnlyLabel}
@@ -107,7 +112,7 @@ export function CommsInboxPanel({
             onClick={() => {
               clearError();
               setUnreadOnly(false);
-              void executeAction("loadCommsInbox", { unreadOnly: false });
+              void executeAction(loadAction, { unreadOnly: false });
             }}
           >
             {labels.allLabel}
@@ -119,7 +124,7 @@ export function CommsInboxPanel({
             disabled={loading}
             onClick={() => {
               clearError();
-              void executeAction("loadCommsInbox", { unreadOnly });
+              void executeAction(loadAction, { unreadOnly });
             }}
           >
             {labels.refreshLabel}
@@ -164,7 +169,7 @@ export function CommsInboxPanel({
                           variant="outline"
                           onClick={() => {
                             clearError();
-                            void executeAction("markCommsInboxRead", { itemId: row.id });
+                            void executeAction(markReadAction, { itemId: row.id });
                           }}
                         >
                           {labels.markReadLabel}

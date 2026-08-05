@@ -2,7 +2,7 @@ import type { CommsCredentials } from "../secrets/ports";
 import type {
   NotificationCategoryPrefs,
   NotificationChannelPrefs,
-  NotificationPreferences,
+  NotificationPreferencesUpdate,
   NotificationTriggerPref,
 } from "./preferences";
 
@@ -120,6 +120,6 @@ export interface NotificationsService {
   updatePreferences(
     orgId: string,
     userId: string,
-    patch: Partial<NotificationPreferences>,
+    patch: NotificationPreferencesUpdate,
   ): Promise<NotificationPreferencesDTO>;
 }

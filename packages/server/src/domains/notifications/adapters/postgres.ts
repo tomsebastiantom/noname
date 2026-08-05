@@ -78,7 +78,7 @@ export interface NotificationsStorage {
   upsertPreferences(
     orgId: string,
     userId: string,
-    patch: Partial<import("../preferences").NotificationPreferences>,
+    patch: import("../preferences").NotificationPreferencesUpdate,
   ): Promise<NotificationPreferencesRow>;
   insertInboxItem(
     input: Omit<CommsInboxItemRow, "createdAt" | "readAt"> & { readAt?: Date | null },
