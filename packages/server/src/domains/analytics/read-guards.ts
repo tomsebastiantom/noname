@@ -35,6 +35,6 @@ export function assertReplayStorageKey(orgId: string, storageKey: string): boole
   const prefix = `replays/${orgId}/`;
   if (!storageKey.startsWith(prefix)) return false;
   if (storageKey.includes("..")) return false;
-  if (!storageKey.endsWith(".json")) return false;
+  if (!/\.json(\.gz)?$/.test(storageKey)) return false;
   return true;
 }

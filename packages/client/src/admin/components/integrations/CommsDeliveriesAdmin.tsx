@@ -35,9 +35,15 @@ type CommsDeliveriesLabels = {
     subject: string;
     trigger: string;
     attempts: string;
+    engagement: string;
     actions: string;
   };
 };
+
+function formatEngagement(events: CommsDeliveryRow["events"]): string {
+  if (!events?.length) return "—";
+  return events.map((event) => event.eventType).join(" → ");
+}
 
 function formatWhen(value: string): string {
   const date = new Date(value);
@@ -92,6 +98,7 @@ function DeliveriesTable({
               <th className="px-3 py-2 font-medium">{labels.columns.subject}</th>
               <th className="px-3 py-2 font-medium">{labels.columns.trigger}</th>
               <th className="px-3 py-2 font-medium">{labels.columns.attempts}</th>
+              <th className="px-3 py-2 font-medium">{labels.columns.engagement}</th>
               <th className="px-3 py-2 font-medium">{labels.columns.actions}</th>
             </tr>
           </thead>
@@ -104,6 +111,9 @@ function DeliveriesTable({
                 <td className="px-3 py-2 max-w-[200px] truncate">{row.subject ?? "—"}</td>
                 <td className="px-3 py-2">{row.trigger ?? row.templateId ?? "—"}</td>
                 <td className="px-3 py-2">{row.attemptCount}</td>
+                <td className="px-3 py-2 text-xs text-muted-foreground">
+                  {formatEngagement(row.events)}
+                </td>
                 <td className="px-3 py-2">
                   {row.status === "failed" ? (
                     <Button

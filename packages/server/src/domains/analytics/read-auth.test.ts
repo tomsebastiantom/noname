@@ -33,9 +33,19 @@ function testApp(service: AnalyticsService, replayStorage: ReplayBlobStorage | n
   return app;
 }
 
+function replayService(overrides: Partial<AnalyticsService>): AnalyticsService {
+  return {
+    query: vi.fn(async () => []),
+    listReplaySessionIdsForUser: vi.fn(async () => []),
+    loadReplaySessionIdentities: vi.fn(async () => ({})),
+    ...overrides,
+  } as unknown as AnalyticsService;
+}
+
 describe("assertReplayStorageKey", () => {
   it("accepts org-prefixed json keys", () => {
     expect(assertReplayStorageKey("org-1", "replays/org-1/s1/chunk.json")).toBe(true);
+    expect(assertReplayStorageKey("org-1", "replays/org-1/s1/chunk.json.gz")).toBe(true);
   });
 
   it("rejects cross-org and traversal", () => {
@@ -63,7 +73,7 @@ describe("analytics read auth", () => {
   };
 
   it("GET /events returns 401 without bearer token", async () => {
-    const app = testApp({ query: vi.fn(async () => []) } as unknown as AnalyticsService);
+    const app = testApp(replayService({}));
     const res = await app.request("/api/analytics/events", {
       headers: { "x-org-id": "org-1" },
     });
@@ -71,7 +81,7 @@ describe("analytics read auth", () => {
   });
 
   it("GET /events returns 403 for editor", async () => {
-    const app = testApp({ query: vi.fn(async () => []) } as unknown as AnalyticsService);
+    const app = testApp(replayService({}));
     const res = await app.request("/api/analytics/events", {
       headers: {
         Authorization: `Bearer ${editorToken}`,
@@ -83,7 +93,7 @@ describe("analytics read auth", () => {
 
   it("GET /events uses trusted org id for admin", async () => {
     const query = vi.fn(async () => []);
-    const app = testApp({ query } as unknown as AnalyticsService);
+    const app = testApp(replayService({ query }));
     const res = await app.request("/api/analytics/events?orgId=other-org&limit=5", {
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -96,7 +106,14 @@ describe("analytics read auth", () => {
 
   it("GET /replay/sessions groups chunk events for admin", async () => {
     const query = vi.fn(async () => [sampleEvent]);
-    const app = testApp({ query } as unknown as AnalyticsService);
+    const loadReplaySessionIdentities = vi.fn(async () => ({
+      "sess-1": {
+        userId: "user-1",
+        userEmail: "editor@zitadel.localhost",
+        identifiedMidSession: true,
+      },
+    }));
+    const app = testApp(replayService({ query, loadReplaySessionIdentities }));
     const res = await app.request("/api/analytics/replay/sessions", {
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -105,11 +122,52 @@ describe("analytics read auth", () => {
     });
     expect(res.status).toBe(200);
     const body = (await res.json()) as {
-      data: { sessions: Array<{ sessionId: string; chunkCount: number }> };
+      data: {
+        sessions: Array<{
+          sessionId: string;
+          chunkCount: number;
+          userId: string | null;
+          identifiedMidSession: boolean;
+        }>;
+      };
     };
     expect(body.data.sessions).toHaveLength(1);
     expect(body.data.sessions[0]?.sessionId).toBe("sess-1");
     expect(body.data.sessions[0]?.chunkCount).toBe(1);
+    expect(body.data.sessions[0]?.userId).toBe("user-1");
+    expect(body.data.sessions[0]?.identifiedMidSession).toBe(true);
+  });
+
+  it("GET /replay/sessions filters by userId via query-time stitch", async () => {
+    const listReplaySessionIdsForUser = vi.fn(async () => ["sess-1"]);
+    const query = vi.fn(async () => [sampleEvent]);
+    const app = testApp(replayService({ query, listReplaySessionIdsForUser }));
+    const res = await app.request("/api/analytics/replay/sessions?userId=user-1", {
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        "x-org-id": "org-1",
+      },
+    });
+    expect(res.status).toBe(200);
+    expect(listReplaySessionIdsForUser).toHaveBeenCalledWith("org-1", { userId: "user-1" });
+    expect(query).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: "org-1",
+        eventType: "session_replay.chunk",
+        sessionIds: ["sess-1"],
+      }),
+    );
+  });
+
+  it("GET /replay/sessions rejects invalid user filter", async () => {
+    const app = testApp(replayService({}));
+    const res = await app.request("/api/analytics/replay/sessions?userId=bad%20id", {
+      headers: {
+        Authorization: `Bearer ${adminToken}`,
+        "x-org-id": "org-1",
+      },
+    });
+    expect(res.status).toBe(400);
   });
 
   it("GET /replay/chunks rejects cross-org storage key", async () => {
@@ -119,7 +177,7 @@ describe("analytics read auth", () => {
       getChunk,
     };
     const app = testApp(
-      { query: vi.fn(async () => []) } as unknown as AnalyticsService,
+      replayService({ query: vi.fn(async () => []) }),
       replayStorage,
     );
     const res = await app.request("/api/analytics/replay/chunks/replays/other-org/s1/c.json", {
@@ -139,7 +197,7 @@ describe("analytics read auth", () => {
       getChunk,
     };
     const app = testApp(
-      { query: vi.fn(async () => []) } as unknown as AnalyticsService,
+      replayService({ query: vi.fn(async () => []) }),
       replayStorage,
     );
     const res = await app.request("/api/analytics/replay/chunks/replays/org-1/s1/c.json", {

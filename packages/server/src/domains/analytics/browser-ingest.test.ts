@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { gzipSync } from "node:zlib";
 import { describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
 import { createAnalyticsRoutes } from "./api";
@@ -145,11 +146,57 @@ describe("analytics browser ingest routes", () => {
     });
 
     expect(res.status).toBe(201);
-    expect(putChunk).toHaveBeenCalled();
+    expect(putChunk).toHaveBeenCalledWith(
+      "org-1",
+      "s1",
+      expect.stringMatching(/^\d+-/),
+      expect.any(Buffer),
+      false,
+    );
     expect(track).toHaveBeenCalledWith(
       "org-1",
       expect.objectContaining({
-        meta: expect.objectContaining({ storageKey: "replays/org-1/s1/chunk.json" }),
+        meta: expect.objectContaining({
+          storageKey: "replays/org-1/s1/chunk.json",
+          compressed: false,
+        }),
+      }),
+    );
+  });
+
+  it("POST /replay accepts gzip envelope and stores compressed events blob", async () => {
+    const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
+    const putChunk = vi.fn(async () => "replays/org-1/s1/chunk.json.gz");
+    const app = testApp({ track } as unknown as AnalyticsService, {
+      putChunk,
+      getChunk: vi.fn(async () => null),
+    });
+
+    const envelope = JSON.stringify({
+      sessionId: "s1",
+      timestamp: 1_700_000_000_000,
+      events: [{ type: 2 }],
+    });
+    const gzipBody = gzipSync(Buffer.from(envelope, "utf8"));
+
+    const res = await app.request("/api/analytics/replay", {
+      method: "POST",
+      headers: { "Content-Type": "application/gzip", "x-org-id": "org-1" },
+      body: gzipBody,
+    });
+
+    expect(res.status).toBe(201);
+    expect(putChunk).toHaveBeenCalledWith(
+      "org-1",
+      "s1",
+      expect.stringMatching(/^\d+-/),
+      expect.any(Buffer),
+      true,
+    );
+    expect(track).toHaveBeenCalledWith(
+      "org-1",
+      expect.objectContaining({
+        meta: expect.objectContaining({ compressed: true, eventCount: 1 }),
       }),
     );
   });

@@ -182,6 +182,13 @@ export const adminActionSchemas = {
     description: "Save the storefront URL page tree",
   },
   listReplaySessions: {
+    params: z
+      .object({
+        q: z.string().optional(),
+        userId: z.string().optional(),
+        userEmail: z.string().optional(),
+      })
+      .optional(),
     description: "List session replay summaries for this org (admin only)",
   },
   loadAnalyticsAdmin: {

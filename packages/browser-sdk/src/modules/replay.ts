@@ -1,5 +1,6 @@
 import { onUnload } from "../core/lifecycle";
-import { sendBeacon } from "../core/transport";
+import { gzipReplayPayload } from "../core/replay-compress";
+import { sendBeacon, sendBeaconBytes } from "../core/transport";
 import type { ReplayModule } from "../types";
 
 const RING_BUFFER_MS = 60_000;
@@ -51,14 +52,18 @@ export async function createReplayModule(
     if (buffer.length === 0) return;
     const chunk = buffer;
     buffer = [];
-    sendBeacon(
-      endpoint,
-      JSON.stringify({
-        sessionId,
-        timestamp: Date.now(),
-        events: chunk,
-      }),
-    );
+    const payload = {
+      sessionId,
+      timestamp: Date.now(),
+      events: chunk,
+    };
+    void gzipReplayPayload(payload)
+      .then((bytes) => {
+        sendBeaconBytes(endpoint, bytes, "application/gzip");
+      })
+      .catch(() => {
+        sendBeacon(endpoint, JSON.stringify(payload));
+      });
     lastFlushTime = Date.now();
   }
 

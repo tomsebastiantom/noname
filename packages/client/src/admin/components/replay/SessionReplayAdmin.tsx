@@ -10,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../../../components/ui/card";
+import { Input } from "../../../components/ui/input";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import type { CatalogProps } from "../../../schemas/shared";
@@ -25,8 +26,13 @@ type SessionReplayLabels = {
   loadingLabel: string;
   empty: string;
   sessionColumnHeader: string;
+  userColumnHeader?: string;
   chunksColumnHeader: string;
   lastSeenColumnHeader: string;
+  searchPlaceholder?: string;
+  searchLabel?: string;
+  clearSearchLabel?: string;
+  identifiedMidSessionLabel?: string;
   previewTitle: string;
   previewLoadingLabel: string;
   loadChunkLabel: string;
@@ -35,6 +41,12 @@ type SessionReplayLabels = {
   forbiddenLabel: string;
   noChunksLabel: string;
 };
+
+function formatSessionUser(row: ReplaySessionSummary): string {
+  if (row.userEmail) return row.userEmail;
+  if (row.userId) return row.userId;
+  return "—";
+}
 
 export function SessionReplayAdmin({
   props,
@@ -64,12 +76,33 @@ export function SessionReplayAdmin({
     (useStateValue(ADMIN_STATE.replay.playerLoading) as boolean | undefined) ?? false;
 
   const [selected, setSelected] = useState<ReplaySessionSummary | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeSearch, setActiveSearch] = useState<string | undefined>(undefined);
+
+  const userColumnHeader = labels.userColumnHeader ?? "User";
+  const searchPlaceholder = labels.searchPlaceholder ?? "User id or email";
+  const searchLabel = labels.searchLabel ?? "Search";
+  const clearSearchLabel = labels.clearSearchLabel ?? "Clear";
+  const identifiedMidSessionLabel =
+    labels.identifiedMidSessionLabel ?? "Identified mid-session";
 
   const columns: DataTableColumn<ReplaySessionSummary>[] = [
     {
       key: "sessionId",
       header: labels.sessionColumnHeader,
       cell: (row) => <span className="font-mono text-xs">{row.sessionId}</span>,
+    },
+    {
+      key: "user",
+      header: userColumnHeader,
+      cell: (row) => (
+        <div className="space-y-1 text-xs">
+          <div>{formatSessionUser(row)}</div>
+          {row.identifiedMidSession ? (
+            <span className="text-muted-foreground">{identifiedMidSessionLabel}</span>
+          ) : null}
+        </div>
+      ),
     },
     {
       key: "chunks",
@@ -82,6 +115,13 @@ export function SessionReplayAdmin({
       cell: (row) => new Date(row.lastTimestamp).toLocaleString(),
     },
   ];
+
+  async function loadSessions(filter?: { q?: string }) {
+    await execute({
+      action: "listReplaySessions",
+      params: filter ?? {},
+    });
+  }
 
   async function handleSelectSession(row: ReplaySessionSummary) {
     setSelected(row);
@@ -117,7 +157,44 @@ export function SessionReplayAdmin({
           <CardTitle>{labels.title}</CardTitle>
           {labels.description ? <CardDescription>{labels.description}</CardDescription> : null}
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <form
+            className="flex flex-wrap items-end gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const q = searchQuery.trim();
+              setActiveSearch(q || undefined);
+              void loadSessions(q ? { q } : undefined);
+            }}
+          >
+            <div className="min-w-[16rem] flex-1">
+              <Input
+                type="search"
+                value={searchQuery}
+                placeholder={searchPlaceholder}
+                onChange={(event) => setSearchQuery(event.target.value)}
+              />
+            </div>
+            <Button type="submit" size="sm" disabled={loading}>
+              {searchLabel}
+            </Button>
+            {activeSearch ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={loading}
+                onClick={() => {
+                  setSearchQuery("");
+                  setActiveSearch(undefined);
+                  void loadSessions();
+                }}
+              >
+                {clearSearchLabel}
+              </Button>
+            ) : null}
+          </form>
+
           {loading ? (
             <p className="text-sm text-muted-foreground">{labels.loadingLabel}</p>
           ) : (

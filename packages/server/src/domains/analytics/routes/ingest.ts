@@ -1,7 +1,9 @@
 import type { Hono } from "hono";
+import { gzipSync } from "node:zlib";
 import { getUserId, requireHeaderOrgId } from "../../../shared/org";
 import { created } from "../../../shared/respond";
 import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "../browser-ingest";
+import { isGzipBuffer, parseReplayIngestBody } from "../replay-ingest";
 import { recordBrowserSpans } from "../browser-span-export";
 import { parseSpanIngest } from "../browser-span-ingest";
 import type { AnalyticsRouteDeps } from "./deps";
@@ -47,22 +49,36 @@ export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRoute
   });
 
   routes.post("/replay", async (c) => {
-    const body = (await c.req.json()) as {
-      sessionId?: string;
-      timestamp?: number;
-      events?: unknown[];
-    };
+    const raw = Buffer.from(await c.req.arrayBuffer());
+    const contentType = c.req.header("Content-Type") ?? undefined;
     const orgId = requireHeaderOrgId(c);
     if (orgId instanceof Response) return orgId;
 
-    const sessionId = body.sessionId ?? "";
-    const timestamp = body.timestamp ?? Date.now();
-    const events = Array.isArray(body.events) ? body.events : [];
+    let sessionId = "";
+    let timestamp = Date.now();
+    let events: unknown[] = [];
+    try {
+      const parsed = parseReplayIngestBody(raw, contentType);
+      sessionId = parsed.sessionId;
+      timestamp = parsed.timestamp;
+      events = parsed.events;
+    } catch {
+      return c.json({ error: "invalid replay payload" }, 400);
+    }
+
+    const gzipStored =
+      contentType?.includes("application/gzip") === true ||
+      contentType?.includes("application/x-gzip") === true ||
+      isGzipBuffer(raw);
     let storageKey: string | null = null;
 
     if (replayStorage && events.length > 0) {
       const chunkId = `${timestamp}-${crypto.randomUUID().slice(0, 8)}`;
-      storageKey = await replayStorage.putChunk(orgId, sessionId, chunkId, JSON.stringify(events));
+      const eventsJson = JSON.stringify(events);
+      const storeBody = gzipStored
+        ? gzipSync(Buffer.from(eventsJson, "utf8"))
+        : Buffer.from(eventsJson, "utf8");
+      storageKey = await replayStorage.putChunk(orgId, sessionId, chunkId, storeBody, gzipStored);
     }
 
     await service.track(orgId, {
@@ -72,6 +88,7 @@ export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRoute
         eventCount: events.length,
         timestamp,
         storageKey,
+        compressed: gzipStored,
       }),
     });
     return created(c, { accepted: true, storageKey });

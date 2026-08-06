@@ -8,14 +8,15 @@ import { ADMIN_STATE } from "../admin-state";
 import type { CatalogActionHandler } from "./types";
 
 export const replayActions = {
-  listReplaySessions: (async (_params, setState) => {
+  listReplaySessions: (async (params, setState) => {
+    const filter = params as { q?: string; userId?: string; userEmail?: string } | undefined;
     setState(ADMIN_STATE.replay.loading, true);
     setState(ADMIN_STATE.replay.error, null);
     setState(ADMIN_STATE.replay.selectedSessionId, null);
     setState(ADMIN_STATE.replay.chunkPreview, null);
     setState(ADMIN_STATE.replay.playerEvents, null);
     try {
-      const sessions = await fetchReplaySessions();
+      const sessions = await fetchReplaySessions(filter);
       setState(ADMIN_STATE.replay.sessions, sessions);
     } catch (err) {
       setState(ADMIN_STATE.replay.error, err instanceof Error ? err.message : String(err));

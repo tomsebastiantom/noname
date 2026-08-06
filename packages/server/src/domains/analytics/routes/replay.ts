@@ -6,6 +6,7 @@ import {
   denyUnlessSessionReplay,
   requireTrustedOrgId,
 } from "../read-guards";
+import { listReplaySessions, parseReplayUserFilter } from "../replay-sessions";
 import type { AnalyticsRouteDeps } from "./deps";
 
 function replayChunkKeyFromPath(path: string): string {
@@ -25,38 +26,19 @@ export function registerAnalyticsReplayRoutes(routes: Hono, deps: AnalyticsRoute
     if (orgId instanceof Response) return orgId;
 
     const { limit } = parseLimitOffset(c, { defaultLimit: 500, maxLimit: 500 });
-    const events = await service.query({
-      orgId,
-      eventType: "session_replay.chunk",
-      limit,
+    const userFilter = parseReplayUserFilter({
+      userId: c.req.query("userId"),
+      userEmail: c.req.query("userEmail"),
+      q: c.req.query("q"),
     });
-
-    const bySession = new Map<
-      string,
-      { sessionId: string; chunkCount: number; lastTimestamp: string; storageKeys: string[] }
-    >();
-    for (const event of events) {
-      const sessionId = event.sessionId || "unknown";
-      const storageKey = typeof event.meta.storageKey === "string" ? event.meta.storageKey : null;
-      const existing = bySession.get(sessionId);
-      const ts = event.timestamp.toISOString();
-      if (existing) {
-        existing.chunkCount += 1;
-        if (ts > existing.lastTimestamp) existing.lastTimestamp = ts;
-        if (storageKey) existing.storageKeys.push(storageKey);
-      } else {
-        bySession.set(sessionId, {
-          sessionId,
-          chunkCount: 1,
-          lastTimestamp: ts,
-          storageKeys: storageKey ? [storageKey] : [],
-        });
-      }
+    if (
+      (c.req.query("userId") || c.req.query("userEmail") || c.req.query("q")) &&
+      userFilter === null
+    ) {
+      return c.json({ error: "Invalid user search filter" }, 400);
     }
 
-    const sessions = [...bySession.values()].sort((a, b) =>
-      b.lastTimestamp.localeCompare(a.lastTimestamp),
-    );
+    const sessions = await listReplaySessions(service, orgId, { limit, userFilter });
     return ok(c, { sessions });
   });
 

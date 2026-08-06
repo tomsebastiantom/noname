@@ -104,3 +104,24 @@ export function sendBeacon(url: string, body: string): void {
     // sendBeacon failed — acceptable loss for analytics
   }
 }
+
+/** sendBeacon for binary bodies (e.g. gzip replay chunks). Falls back to keepalive fetch. */
+export function sendBeaconBytes(url: string, bytes: Uint8Array, mimeType: string): void {
+  const body = Uint8Array.from(bytes);
+  try {
+    const blob = new Blob([body], { type: mimeType });
+    if (navigator.sendBeacon(url, blob)) return;
+  } catch {
+    // try fetch below
+  }
+  try {
+    void fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": mimeType },
+      body,
+      keepalive: true,
+    });
+  } catch {
+    // acceptable loss for analytics
+  }
+}

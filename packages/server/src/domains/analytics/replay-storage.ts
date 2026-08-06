@@ -1,8 +1,16 @@
+import { gunzipSync } from "node:zlib";
 import { GetObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { createR2AssetStorage, type R2Config, r2ConfigFromEnv } from "../documents/contracts";
+import { isGzipBuffer, replayChunkExtension } from "./replay-ingest";
 
 export interface ReplayBlobStorage {
-  putChunk(orgId: string, sessionId: string, chunkId: string, json: string): Promise<string>;
+  putChunk(
+    orgId: string,
+    sessionId: string,
+    chunkId: string,
+    body: Buffer,
+    gzip: boolean,
+  ): Promise<string>;
   getChunk(storageKey: string): Promise<string | null>;
 }
 
@@ -32,9 +40,11 @@ export function createReplayBlobStorage(): ReplayBlobStorage | null {
   const client = createS3Client(cfg);
 
   return {
-    async putChunk(orgId, sessionId, chunkId, json) {
-      const key = `replays/${orgId}/${sessionId}/${chunkId}.json`;
-      await assets.put(key, Buffer.from(json, "utf8"), "application/json");
+    async putChunk(orgId, sessionId, chunkId, body, gzip) {
+      const ext = replayChunkExtension(gzip);
+      const key = `replays/${orgId}/${sessionId}/${chunkId}${ext}`;
+      const mimeType = gzip ? "application/gzip" : "application/json";
+      await assets.put(key, body, mimeType);
       return key;
     },
 
@@ -47,7 +57,11 @@ export function createReplayBlobStorage(): ReplayBlobStorage | null {
           }),
         );
         if (!res.Body) return null;
-        return await res.Body.transformToString("utf8");
+        const raw = Buffer.from(await res.Body.transformToByteArray());
+        if (storageKey.endsWith(".json.gz") || isGzipBuffer(raw)) {
+          return gunzipSync(raw).toString("utf8");
+        }
+        return raw.toString("utf8");
       } catch {
         return null;
       }

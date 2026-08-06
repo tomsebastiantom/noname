@@ -85,8 +85,8 @@ Tracked in [`ANALYTICS-REPLAY-PENDING.md`](./ANALYTICS-REPLAY-PENDING.md) § **P
 
 | # | Item | Plan |
 |---|------|------|
-| **4a** | Pre-login events in same tab | Query-time session join — no row backfill |
-| **4b** | Admin replay filter by user | API `?userId=` + `SessionReplayAdmin` search |
+| **4a** | Pre-login events in same tab | **Shipped** — query-time session join on replay list API |
+| **4b** | Admin replay filter by user | **Shipped** — search + user column in `SessionReplayAdmin` |
 
 Also open (lower priority):
 

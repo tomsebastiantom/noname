@@ -7,12 +7,17 @@ import { ok } from "../../shared/respond";
 import { requireAuthenticatedUser, requireHumanPermission } from "../auth/guards";
 import type { NotificationsService } from "./ports";
 import { notificationPreferencesUpdateSchema } from "./preferences";
+import { registerCommsWebhookRoutes } from "./routes/webhooks";
 import { registerNotificationsStreamRoutes } from "./routes/stream";
 
 const listDeliveriesSchema = z.object({
   status: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
   offset: z.coerce.number().int().min(0).optional(),
+  includeEvents: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((value) => value === "true"),
 });
 
 const listInboxSchema = z.object({
@@ -65,6 +70,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
       status: c.req.query("status"),
       limit: c.req.query("limit"),
       offset: c.req.query("offset"),
+      includeEvents: c.req.query("includeEvents"),
     });
     if (!query.success) {
       return c.json({ error: "Invalid query" }, 400);
@@ -127,6 +133,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
   });
 
   registerNotificationsStreamRoutes(routes);
+  registerCommsWebhookRoutes(routes, service);
 
   return routes;
 }

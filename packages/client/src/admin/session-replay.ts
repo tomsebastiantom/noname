@@ -5,6 +5,9 @@ export interface ReplaySessionSummary {
   chunkCount: number;
   lastTimestamp: string;
   storageKeys: string[];
+  userId: string | null;
+  userEmail: string | null;
+  identifiedMidSession: boolean;
 }
 
 export interface ReplayChunkPreview {
@@ -12,9 +15,27 @@ export interface ReplayChunkPreview {
   eventCount: number;
 }
 
-export async function fetchReplaySessions(): Promise<ReplaySessionSummary[]> {
+export interface ReplaySessionListFilter {
+  userId?: string;
+  userEmail?: string;
+  q?: string;
+}
+
+function replaySessionsQuery(filter?: ReplaySessionListFilter): string {
+  if (!filter) return "";
+  const params = new URLSearchParams();
+  if (filter.userId?.trim()) params.set("userId", filter.userId.trim());
+  if (filter.userEmail?.trim()) params.set("userEmail", filter.userEmail.trim());
+  if (filter.q?.trim()) params.set("q", filter.q.trim());
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
+}
+
+export async function fetchReplaySessions(
+  filter?: ReplaySessionListFilter,
+): Promise<ReplaySessionSummary[]> {
   const body = await apiFetch<{ data?: { sessions?: ReplaySessionSummary[] } }>(
-    "/api/analytics/replay/sessions",
+    `/api/analytics/replay/sessions${replaySessionsQuery(filter)}`,
   );
   return body.data?.sessions ?? [];
 }

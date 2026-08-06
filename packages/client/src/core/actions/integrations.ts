@@ -114,7 +114,7 @@ export const integrationsActions = {
     try {
       const query = (params ?? {}) as { status?: string };
       const status = typeof query.status === "string" ? query.status : undefined;
-      const rows = await loadCommsDeliveries({ status, limit: 50 });
+      const rows = await loadCommsDeliveries({ status, limit: 50, includeEvents: true });
       setState(ADMIN_STATE.integrations.commsDeliveries.loaded, rows);
     } catch (err) {
       setState(

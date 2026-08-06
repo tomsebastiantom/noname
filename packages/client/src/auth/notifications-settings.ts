@@ -46,6 +46,13 @@ export async function saveNotificationPreferences(
   return body.data;
 }
 
+export interface CommsDeliveryEventRow {
+  id: string;
+  deliveryId: string;
+  eventType: string;
+  occurredAt: string;
+}
+
 export interface CommsDeliveryRow {
   id: string;
   orgId: string;
@@ -63,15 +70,18 @@ export interface CommsDeliveryRow {
   attemptCount: number;
   createdAt: string;
   sentAt: string | null;
+  events?: CommsDeliveryEventRow[];
 }
 
 export async function loadCommsDeliveries(query?: {
   status?: string;
   limit?: number;
+  includeEvents?: boolean;
 }): Promise<CommsDeliveryRow[]> {
   const params = new URLSearchParams();
   if (query?.status) params.set("status", query.status);
   if (query?.limit) params.set("limit", String(query.limit));
+  if (query?.includeEvents) params.set("includeEvents", "true");
 
   const qs = params.toString();
   const body = await apiFetch<{ data?: CommsDeliveryRow[] }>(

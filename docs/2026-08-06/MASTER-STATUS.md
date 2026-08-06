@@ -20,6 +20,8 @@
 | Admin soft nav + U1–U4 (401, catalog, prefetch) | [`ADMIN-SOFT-NAV-HANDOFF.md`](../2026-08-03/ADMIN-SOFT-NAV-HANDOFF.md) |
 | Welcome email on user invite | `auth/service.ts` → `notify(welcome)` |
 | Role matrix V1 | [`E2E-OPS-BATCH-VALIDATION.md`](../2026-08-04/E2E-OPS-BATCH-VALIDATION.md) |
+| Replay user stitch + admin search (O1–O2) | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) |
+| Replay gzip compression (O3) | SDK `fflate` + worker; R2 `.json.gz` |
 
 ---
 
@@ -42,7 +44,8 @@
 | **C2** | Comms delivery analytics (opens/clicks) |
 | **C4** | Mobile push |
 | **E3** | Live CRDT collab |
-| **O1–O4** | Replay stitch / compression / Playwright |
+| **O3** | Replay gzip compression | Shipped |
+| **O4** | Playwright E2E for replay | Deferred |
 | **I1–I2** | Bot SSR / R2 client deploy |
 
 ---

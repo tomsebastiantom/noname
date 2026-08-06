@@ -38,6 +38,9 @@ importers:
 
   packages/browser-sdk:
     dependencies:
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.3
       rrweb:
         specifier: ^2.0.0
         version: 2.1.0
@@ -2995,7 +2998,7 @@ packages:
     engines: {node: '>= 14'}
 
   ajv-formats@2.1.1:
-    resolution: {integrity: sha1-bmaUAGWet0lzu/LjMycYCgmWtSA=}
+    resolution: {integrity: sha512-Wx0Kx52hxE7C18hkMEggYlEifqWZtYaRgouJor+WMdPnQyEK13vgEWyVNup7SoeeoLMsr4kf5h6dOW11I15MUA==}
     peerDependencies:
       ajv: ^8.0.0
     peerDependenciesMeta:
@@ -3565,6 +3568,9 @@ packages:
   fflate@0.4.9:
     resolution: {integrity: sha512-zdxgIEddhfsyCaWpJ2SdXEP8ZMrKJ6+5jl4OupODcywU0IhRk6gdXuVGcPICyfx2H97hVK7xmJtRLPjkxAX8Vw==}
 
+  fflate@0.8.3:
+    resolution: {integrity: sha512-tbZNuJrLwGUp3zshBtdy4W+ORxZuIh8a5ilyIEQDC5rY1f3U20JMry0Ll3WBzU58EZKsEuJFXhb5gwv8CsPvgA==}
+
   figures@6.1.0:
     resolution: {integrity: sha512-d+l3qxjSesT4V7v2fh+QnmFnUWv9lSpjarhShNTgBOfA0ttejbQUAlHLitbjkoRiDulW0OPoQPYIGhIC8ohejg==}
     engines: {node: '>=18'}
@@ -4126,7 +4132,7 @@ packages:
     resolution: {integrity: sha512-zpe98Q6kvavpCr1NPVSCMebCKfD7CA2NqZ+rykeNhONIJBpc1tFKt9hucLGwha3jNTNI8lHpctWJWoimVF4PfA==}
 
   mime-db@1.52.0:
-    resolution: {integrity: sha1-u6vNwChZ9JhzAchW4zh85exDv3A=}
+    resolution: {integrity: sha512-sPU4uV7dYlvtWJxwwxHD0PuihVNiE7TyAbQ5SWxDCB9mUYvOgroQOwYQQOKPJ8CIbE+1ETVlOoK1UC2nU3gYvg==}
     engines: {node: '>= 0.6'}
 
   mime-db@1.54.0:
@@ -8178,6 +8184,8 @@ snapshots:
       web-streams-polyfill: 3.3.3
 
   fflate@0.4.9: {}
+
+  fflate@0.8.3: {}
 
   figures@6.1.0:
     dependencies:

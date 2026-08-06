@@ -4,6 +4,8 @@ import { coerceScalarString } from "@noname/shared";
 import type {
   AnalyticsEventDTO,
   AnalyticsStorage,
+  ReplaySessionIdentity,
+  ReplayUserFilter,
   SegmentEventsInput,
   SegmentEventsResult,
 } from "../ports";
@@ -89,6 +91,22 @@ function sessionIdForRow(value: string | null | undefined): string {
   return uuidOrNull(value) ?? "00000000-0000-0000-0000-000000000000";
 }
 
+const NIL_SESSION_ID = "00000000-0000-0000-0000-000000000000";
+
+function userMatchConditions(filter: ReplayUserFilter): { sql: string; params: Record<string, string> } {
+  const parts: string[] = [];
+  const params: Record<string, string> = {};
+  if (filter.userId) {
+    parts.push(`JSONExtractString(meta, 'userId') = {userId:String}`);
+    params.userId = filter.userId;
+  }
+  if (filter.userEmail) {
+    parts.push(`lower(JSONExtractString(meta, 'userEmail')) = {userEmail:String}`);
+    params.userEmail = filter.userEmail.toLowerCase();
+  }
+  return { sql: parts.join(" OR "), params };
+}
+
 function toRow(e: AnalyticsEventDTO) {
   return {
     event_id: e.eventId,
@@ -151,6 +169,9 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
       if (filters.to) conditions.push(`timestamp <= {to:DateTime64(3)}`);
       if (filters.sessionId) conditions.push(`session_id = {sessionId:String}`);
+      if (filters.sessionIds && filters.sessionIds.length > 0) {
+        conditions.push(`session_id IN {sessionIds:Array(String)}`);
+      }
       if (filters.schemaId) conditions.push(`schema_id = {schemaId:String}`);
       if (filters.variantId) conditions.push(`variant_id = {variantId:String}`);
       if (filters.contextHash) conditions.push(`context_hash = {contextHash:String}`);
@@ -169,6 +190,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
           sessionId: filters.sessionId,
+          sessionIds: filters.sessionIds,
           schemaId: filters.schemaId,
           variantId: filters.variantId,
           contextHash: filters.contextHash,
@@ -313,6 +335,67 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
       }));
 
       return { clusters, totalEvents };
+    },
+
+    async listReplaySessionIdsForUser(orgId, filter) {
+      const { sql, params } = userMatchConditions(filter);
+      if (!sql) return [];
+
+      const rs = await client!.query({
+        query: `
+          SELECT DISTINCT session_id AS sessionId
+          FROM analytics_events
+          WHERE org_id = {orgId:String}
+            AND session_id != {nilSessionId:String}
+            AND (${sql})
+          ORDER BY sessionId DESC
+          LIMIT 500
+        `,
+        format: "JSONEachRow",
+        query_params: {
+          orgId,
+          nilSessionId: NIL_SESSION_ID,
+          ...params,
+        },
+      });
+      const rows = await rs.json<{ sessionId: string }>();
+      return rows.map((r) => String(r.sessionId));
+    },
+
+    async loadReplaySessionIdentities(orgId, sessionIds) {
+      if (sessionIds.length === 0) return {};
+
+      const rs = await client!.query({
+        query: `
+          SELECT
+            session_id AS sessionId,
+            nullIf(anyIf(JSONExtractString(meta, 'userId'), JSONExtractString(meta, 'userId') != ''), '') AS userId,
+            nullIf(anyIf(JSONExtractString(meta, 'userEmail'), JSONExtractString(meta, 'userEmail') != ''), '') AS userEmail,
+            max(event_type = 'user_identified') AS identifiedMidSession
+          FROM analytics_events
+          WHERE org_id = {orgId:String}
+            AND session_id IN {sessionIds:Array(String)}
+          GROUP BY session_id
+        `,
+        format: "JSONEachRow",
+        query_params: { orgId, sessionIds },
+      });
+      const rows = await rs.json<{
+        sessionId: string;
+        userId: string | null;
+        userEmail: string | null;
+        identifiedMidSession: number | boolean;
+      }>();
+
+      const out: Record<string, ReplaySessionIdentity> = {};
+      for (const row of rows) {
+        out[String(row.sessionId)] = {
+          userId: row.userId ?? null,
+          userEmail: row.userEmail ?? null,
+          identifiedMidSession: Boolean(row.identifiedMidSession),
+        };
+      }
+      return out;
     },
   };
 }

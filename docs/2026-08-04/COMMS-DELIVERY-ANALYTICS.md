@@ -1,6 +1,6 @@
 # Comms delivery analytics vs product analytics
 
-**Status:** Not planned for v1. Documented for roadmap item ~20 in [COMMUNICATIONS-PLATFORM-RFC.md](./COMMUNICATIONS-PLATFORM-RFC.md).
+**Status:** **v2 shipped (2026-08-06)** — Resend webhook ingest + delivery log engagement timeline. SMS/other providers: future adapters.
 
 ## Two different systems
 
@@ -17,6 +17,14 @@ In-app inbox (`comms_inbox_items`) is a **third** surface: persisted notificatio
 Do not merge these into one pipeline. Product events are high-volume behavioral data; comms telemetry is low-volume, provider-sourced, and PII-adjacent.
 
 ---
+
+## What v2 ships (2026-08-06)
+
+- **Schema:** `comms_delivery_events` — linked to `comms_deliveries` via `deliveryId`
+- **Ingest:** `POST /api/notifications/webhooks/resend` — Svix signature via `RESEND_WEBHOOK_SECRET`
+- **API:** `GET /api/notifications/deliveries?includeEvents=true` — event timeline per row
+- **UI:** Admin → Integrations → Email & delivery — **Engagement** column (`delivered → opened → clicked`)
+- **Still separate** from product analytics (ClickHouse)
 
 ## What v1 ships instead
 

@@ -29,11 +29,24 @@ export interface EventQueryFilters {
   from?: Date;
   to?: Date;
   sessionId?: string;
+  /** When set, restricts results to these session ids (query-time replay user filter). */
+  sessionIds?: string[];
   schemaId?: string;
   variantId?: string;
   contextHash?: string;
   limit?: number;
   offset?: number;
+}
+
+export interface ReplayUserFilter {
+  userId?: string;
+  userEmail?: string;
+}
+
+export interface ReplaySessionIdentity {
+  userId: string | null;
+  userEmail: string | null;
+  identifiedMidSession: boolean;
 }
 
 export interface AggregationFilters {
@@ -71,6 +84,12 @@ export interface AnalyticsStorage {
   aggregate(filters: AggregationFilters): Promise<AggregationResult[]>;
   conversionRates(filters: ConversionFilters): Promise<ConversionResult[]>;
   segmentEvents(filters: SegmentEventsInput): Promise<SegmentEventsResult>;
+  /** Sessions where any event (or user_identified) carries the user — O1 stitch at read time. */
+  listReplaySessionIdsForUser(orgId: string, filter: ReplayUserFilter): Promise<string[]>;
+  loadReplaySessionIdentities(
+    orgId: string,
+    sessionIds: string[],
+  ): Promise<Record<string, ReplaySessionIdentity>>;
 }
 
 export interface SegmentEventsInput {
@@ -104,4 +123,9 @@ export interface AnalyticsService {
   aggregate(filters: AggregationFilters): Promise<AggregationResult[]>;
   conversionRates(filters: ConversionFilters): Promise<ConversionResult[]>;
   segmentEvents(filters: SegmentEventsInput): Promise<SegmentEventsResult>;
+  listReplaySessionIdsForUser(orgId: string, filter: ReplayUserFilter): Promise<string[]>;
+  loadReplaySessionIdentities(
+    orgId: string,
+    sessionIds: string[],
+  ): Promise<Record<string, ReplaySessionIdentity>>;
 }

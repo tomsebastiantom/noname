@@ -50,7 +50,7 @@ NOW     Validation & hardening — mostly done (2026-08-06)
 
 NEXT    Product polish on shipped platform — done (2026-08-06)
         ├── [x] I-c.6c — marketing compliance — C1
-        ├── [ ] Comms delivery analytics — C2 deferred v2
+        ├── [x] Comms delivery analytics — C2 (Resend opens/clicks/bounces)
         ├── [x] Admin soft-nav session refresh + 401 redirect — U1/U2
         ├── [x] SSE stream ticket — C3
         ├── [x] Catalog hash refresh on soft nav — U3
@@ -90,7 +90,7 @@ LATER   Explicit product gates only
 | ID | Work | Source doc | Notes |
 |----|------|------------|-------|
 | **C1** | I-c.6c — List-Unsubscribe + prefs link in marketing template footer | [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](../2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) | **Shipped** 2026-08-05 |
-| **C2** | Comms **delivery** analytics (opens/clicks/bounces) | [`COMMS-DELIVERY-ANALYTICS.md`](../2026-08-04/COMMS-DELIVERY-ANALYTICS.md) | **Deferred v2** — distinct from product analytics |
+| **C2** | Comms **delivery** analytics (opens/clicks/bounces) | [`COMMS-DELIVERY-ANALYTICS.md`](../2026-08-04/COMMS-DELIVERY-ANALYTICS.md) | **Shipped** — Resend webhook + delivery log engagement |
 | **C3** | SSE stream ticket endpoint (60s TTL) instead of raw JWT in query | [`IN-APP-INBOX-SSE.md`](../2026-08-04/IN-APP-INBOX-SSE.md) § Stream ticket | **Shipped** 2026-08-05 |
 | **C4** | Mobile push channel (FCM/APNs) | Same SSE doc § Future | Same `notify()` trigger pattern |
 | **C5** | Trigger catalog product decisions (platform-owned vs merchant-defined) | [`COMMUNICATIONS-PLATFORM-RFC.md`](../2026-08-04/COMMUNICATIONS-PLATFORM-RFC.md) § Open questions | RFC “not yet product feature” gaps mostly closed in code — update RFC when C2 ships |
@@ -139,9 +139,9 @@ LATER   Explicit product gates only
 
 | ID | Work | Source doc | Notes |
 |----|------|------------|-------|
-| **O1** | Replay P4a — pre-login events in same session (query-time join) | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) | No ClickHouse backfill |
-| **O2** | Replay P4b — admin filter sessions by user | Same doc | Depends on O1 |
-| **O3** | Replay compression | Same doc | Not started |
+| **O1** | Replay P4a — pre-login events in same session (query-time join) | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) | **Shipped** 2026-08-06 |
+| **O2** | Replay P4b — admin filter sessions by user | Same doc | **Shipped** 2026-08-06 |
+| **O3** | Replay compression | Same doc | **Later phase** — gzip when volume warrants |
 | **O4** | Playwright E2E for replay | Same doc | Deferred |
 | **O5** | Flags per-user targeting — SDK `contextProperties` | [`FLAGS-PER-USER-TARGETING.md`](../2026-07-27/FLAGS-PER-USER-TARGETING.md) | Checklist open |
 | **O6** | ClickHouse optional `user_id` column | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) | In `meta` today |

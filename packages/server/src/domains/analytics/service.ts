@@ -74,5 +74,13 @@ export function createAnalyticsService(
     async segmentEvents(filters) {
       return storage.segmentEvents(filters);
     },
+
+    async listReplaySessionIdsForUser(orgId, filter) {
+      return storage.listReplaySessionIdsForUser(orgId, filter);
+    },
+
+    async loadReplaySessionIdentities(orgId, sessionIds) {
+      return storage.loadReplaySessionIdentities(orgId, sessionIds);
+    },
   };
 }
