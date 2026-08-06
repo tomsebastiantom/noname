@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { InboundWebhookAdapter } from "../ports";
 
-export function createGenericHmacAdapter(secret: string): import("../ports").InboundWebhookAdapter {
+export function createGenericHmacAdapter(secret: string): InboundWebhookAdapter {
   return {
     verify(rawBody, headers) {
       const signature = headers["x-webhook-signature"] ?? headers["X-Webhook-Signature"];

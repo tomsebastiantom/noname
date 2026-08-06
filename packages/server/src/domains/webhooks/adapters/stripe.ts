@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import type { InboundWebhookAdapter } from "../ports";
 
 function parseStripeSignature(header: string): { timestamp: string; signatures: string[] } | null {
   const parts = header.split(",");
@@ -15,7 +16,7 @@ function parseStripeSignature(header: string): { timestamp: string; signatures: 
 
 export function createStripeWebhookAdapter(
   secret: string,
-): import("../ports").InboundWebhookAdapter {
+): InboundWebhookAdapter {
   return {
     verify(rawBody, headers) {
       const header = headers["stripe-signature"] ?? headers["Stripe-Signature"];

@@ -1,10 +1,10 @@
-import { PERMISSIONS, writeAuditFromActor } from "@noname/auth";
+import { PERMISSIONS, writeAuditFromActor, type PermissionKey } from "@noname/auth";
 import type { Context, Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, ok } from "../../../shared/respond";
 import { requireHumanPermission } from "../../auth/guards";
 import type { AgentRegistryStorage } from "../adapters/registry-postgres";
-import type { AgentTaskFilters } from "../ports";
+import type { AgentTaskFilters, AgentTaskType } from "../ports";
 import {
   canReviewAgentTask,
   isRegisteredAgentOwner,
@@ -15,7 +15,7 @@ import type { AgentRouteDeps } from "./deps";
 type TaskRouteAuth = {
   userId: string;
   userToken: string;
-  permissions: import("@noname/auth").PermissionKey[];
+  permissions: PermissionKey[];
 };
 
 async function requireTaskListAccess(c: Context): Promise<TaskRouteAuth | Response> {
@@ -76,7 +76,7 @@ export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): voi
     const task = await service.create(
       orgId,
       {
-        type: body.type as import("../ports").AgentTaskType,
+        type: body.type as AgentTaskType,
         prompt: body.prompt,
         input: body.input,
         registeredAgentId,

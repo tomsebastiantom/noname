@@ -2,7 +2,7 @@ import { flushEvents } from "../../../shared/aggregate-root";
 import { recordDocumentOp } from "../../../shared/document-audit";
 import { buildDataPatchPayload, type DocumentOpPayload } from "../document-op-payload";
 import { ContentDocument } from "../entity";
-import type { ContentDocumentService, DocumentStorage } from "../ports";
+import type { AssetDTO, ContentDocumentService, DocumentStorage } from "../ports";
 import { contentSearchMeta } from "../shared/content-search-meta";
 import { extractCollectionFromBody } from "../shared/document-collection";
 import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
@@ -13,7 +13,7 @@ import { requireContentEntry } from "./document-guards";
 
 export interface ContentServiceOptions {
   onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
-  getAsset?: (orgId: string, documentId: string) => Promise<import("../ports").AssetDTO | null>;
+  getAsset?: (orgId: string, documentId: string) => Promise<AssetDTO | null>;
 }
 
 export function createContentService(

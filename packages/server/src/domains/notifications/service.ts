@@ -1,7 +1,7 @@
 import type { Queue } from "bullmq";
 import { eventBus } from "../../shared/event-bus";
 import { broadcast } from "../../shared/sse-manager";
-import type { TenantSettingsService } from "../documents/ports";
+import type { ContentDocumentService, TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import type { NotificationsStorage } from "./adapters/postgres";
 import { toDeliveryDTO, toDeliveryEventDTO, toInboxItemDTO } from "./adapters/postgres";
@@ -212,10 +212,7 @@ export function createNotificationsService(deps: {
   secrets: Pick<SecretsService, "resolveCommsCredentials">;
   storage: NotificationsStorage;
   queue: Queue<EmailOutboundJobData>;
-  content: Pick<
-    import("../documents/ports").ContentDocumentService,
-    "findById" | "findByType" | "resolve"
-  >;
+  content: Pick<ContentDocumentService, "findById" | "findByType" | "resolve">;
   tenantSettings?: Pick<TenantSettingsService, "get">;
 }): NotificationsService {
   const { secrets, storage, queue, content, tenantSettings } = deps;

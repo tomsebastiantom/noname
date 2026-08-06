@@ -1,3 +1,4 @@
+import type { TenantSettingsService } from "../documents/ports";
 import { createEnvFallbackSecretStore } from "./adapters/env-fallback";
 import { createVaultSecretStore, vaultConfigFromEnv } from "./adapters/vault";
 import type { SecretStorePort, VaultConfig } from "./ports";
@@ -11,7 +12,7 @@ export { createSecretsService } from "./service";
 export interface SecretsDomainDeps {
   store?: SecretStorePort;
   vault?: VaultConfig | null;
-  tenantSettings?: import("../documents/ports").TenantSettingsService;
+  tenantSettings?: TenantSettingsService;
 }
 
 export function createSecretsDomain(deps: SecretsDomainDeps = {}) {

@@ -1,3 +1,4 @@
+import type { Context } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
 describe("shared", () => {
@@ -59,7 +60,7 @@ describe("shared", () => {
     const { handleDomainError } = await import("./error-handler");
     const { UnauthorizedError, ValidationError } = await import("./domain-error");
     const json = vi.fn((_body: unknown, status: number) => new Response(null, { status }));
-    const c = { json } as unknown as import("hono").Context;
+    const c = { json } as unknown as Context;
 
     handleDomainError(new ValidationError("hero", "missing ref"), c);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "VALIDATION_ERROR" }), 400);
@@ -72,7 +73,7 @@ describe("shared", () => {
   it("handleDomainError maps postgres unique violation to 409", async () => {
     const { handleDomainError } = await import("./error-handler");
     const json = vi.fn((_body: unknown, status: number) => new Response(null, { status }));
-    const c = { json } as unknown as import("hono").Context;
+    const c = { json } as unknown as Context;
 
     handleDomainError({ cause: { code: "23505", constraint: "content_collections_org_slug" } }, c);
     expect(json).toHaveBeenCalledWith(expect.objectContaining({ code: "CONFLICT" }), 409);

@@ -7,6 +7,7 @@
 // type behind one interface so the shared machinery lives once.
 
 import type { WriteAudit } from "@noname/auth";
+import type { CommsProviderName } from "@noname/shared";
 import type { ContentFieldSchema, ContentTypeSchema, FieldType } from "@noname/documents";
 
 import type { ContentEntryRef, MediaRef } from "./refs";
@@ -97,7 +98,7 @@ export interface TenantLlmIntegration {
 }
 
 export interface TenantCommsIntegration {
-  emailProvider?: import("@noname/shared").CommsProviderName;
+  emailProvider?: CommsProviderName;
   fromEmail?: string;
   fromName?: string;
   /** Mailgun verified sending domain (e.g. mg.example.com). Not a secret. */

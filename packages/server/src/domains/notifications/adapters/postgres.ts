@@ -10,6 +10,8 @@ import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   mergeNotificationPreferences,
   normalizeNotificationPreferences,
+  type NotificationPreferences,
+  type NotificationPreferencesUpdate,
 } from "../preferences";
 import {
   commsDeliveries,
@@ -42,7 +44,7 @@ export interface CommsDeliveryRow {
 export interface NotificationPreferencesRow {
   orgId: string;
   userId: string;
-  preferences: import("../preferences").NotificationPreferences;
+  preferences: NotificationPreferences;
   updatedAt: Date;
 }
 
@@ -107,7 +109,7 @@ export interface NotificationsStorage {
   upsertPreferences(
     orgId: string,
     userId: string,
-    patch: import("../preferences").NotificationPreferencesUpdate,
+    patch: NotificationPreferencesUpdate,
   ): Promise<NotificationPreferencesRow>;
   insertInboxItem(
     input: Omit<CommsInboxItemRow, "createdAt" | "readAt"> & { readAt?: Date | null },

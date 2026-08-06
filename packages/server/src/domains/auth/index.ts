@@ -1,3 +1,4 @@
+import type { Database } from "../../drizzle";
 import type {
   AssetDocumentService,
   ContentDocumentService,
@@ -14,7 +15,7 @@ import { createScopeService } from "./scope/service";
 import { createAuthService } from "./service";
 
 export function createAuthDomain(deps: {
-  db: import("../../drizzle").Database;
+  db: Database;
   tenantSettings: TenantSettingsService;
   assets: AssetDocumentService;
   content: Pick<ContentDocumentService, "findByType">;

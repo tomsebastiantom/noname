@@ -1,8 +1,9 @@
 import { commerceComponentSchemas } from "@noname/extensions/commerce/catalog-schemas";
+import type { ZodType } from "zod";
 import { coreComponentSchemas } from "../../core/catalog-schemas";
 
 export type CatalogComponentSchemaEntry = {
-  props: import("zod").ZodType;
+  props: ZodType;
   description?: string;
   slots?: string[];
 };
