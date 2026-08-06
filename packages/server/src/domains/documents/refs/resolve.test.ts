@@ -68,6 +68,7 @@ function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
     findCollectionSlug: vi.fn(async () => null),
     findCollectionIdBySlug: vi.fn(async () => null),
     recordDocumentOp: vi.fn(async () => ({ serverVersion: 1 })),
+    listDocumentOps: vi.fn(async () => []),
   };
 }
 

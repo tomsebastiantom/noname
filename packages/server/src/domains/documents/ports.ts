@@ -41,6 +41,23 @@ export interface DocumentDTO {
   updatedAt: Date;
 }
 
+/** Append-only edit log row (`document_ops`). */
+export interface DocumentOpDTO {
+  id: string;
+  orgId: string;
+  documentId: string;
+  serverVersion: number;
+  operation: string;
+  actorType: string;
+  actorId: string;
+  onBehalfOf: string | null;
+  taskId: string | null;
+  clientId: string | null;
+  clientSeq: number | null;
+  payload: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
 export type ContentEntryDTO = DocumentDTO;
 
 // ---------------------------------------------------------------------------
@@ -326,6 +343,12 @@ export interface DocumentStorage {
     clientId?: string;
     clientSeq?: number;
   }): Promise<{ serverVersion: number } | null>;
+  listDocumentOps(input: {
+    orgId: string;
+    documentId: string;
+    fromVersion?: number;
+    limit?: number;
+  }): Promise<DocumentOpDTO[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -350,6 +373,8 @@ export interface ContentContentOpts {
   locale?: string;
   role?: string;
   audit?: WriteAudit;
+  clientId?: string;
+  clientSeq?: number;
 }
 
 export interface ContentDocumentService {

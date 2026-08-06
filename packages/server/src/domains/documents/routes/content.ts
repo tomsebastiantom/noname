@@ -1,7 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
-import { auditFromContext } from "../../../shared/request-audit";
+import { auditFromContext, clientOpFromRequest } from "../../../shared/request-audit";
 import { created, deleted, notFound, ok } from "../../../shared/respond";
 import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
 import { requireActorPermission } from "../../auth/guards";
@@ -90,10 +90,12 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
     const actor = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
     if (actor instanceof Response) return actor;
     const { type } = c.req.param();
+    const clientOp = clientOpFromRequest(c);
     const updated = await content.updateById(orgId, type, entryId, body, {
       locale: c.req.query("locale"),
       role: c.req.query("role"),
       audit: auditFromContext(c, actor),
+      ...clientOp,
     });
     return ok(c, updated);
   });

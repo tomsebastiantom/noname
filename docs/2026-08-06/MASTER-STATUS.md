@@ -45,7 +45,6 @@
 | **C4** | Mobile push |
 | **E3** | Live CRDT collab |
 | **O4** | Playwright E2E for replay |
-| **I1–I2** | Bot HTML + R2 client deploy | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) — **shipped** |
 
 ---
 
@@ -65,5 +64,6 @@ pnpm dev
 
 | Date | Change |
 |------|--------|
+| 2026-08-06 | **I1–I2** storefront prod: bot HTML + R2 client deploy |
 | 2026-08-06 | Removed separate “embed token” backlog — SDK/partner uses `nag.*` |
 | 2026-08-06 | Created master status + `docs/2026-08-06/` folder |

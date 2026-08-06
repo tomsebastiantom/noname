@@ -5,8 +5,8 @@ export function createStaticRoutes() {
   const routes = new Hono<{ Bindings: Env }>();
 
   routes.get("/_assets/*", async (c) => {
-    const path = new URL(c.req.url).pathname.replace("/_assets/", "");
-    const object = await c.env.R2.get(path);
+    const key = new URL(c.req.url).pathname.replace(/^\//, "");
+    const object = await c.env.R2.get(key);
     if (!object) return c.notFound();
 
     const headers = new Headers();

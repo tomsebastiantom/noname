@@ -12,7 +12,7 @@
 
 Run an **offline spike** comparing **Automerge** vs **Loro** for merging concurrent edits on a **json-render layout spec** (`{ root, elements }`). No WebSocket, no product UI — prove merge semantics on real seed specs.
 
-**Deliverable:** One markdown report + one runnable script under `packages/server/src/domains/documents/collab-spike/` (or `scripts/e3-spike/`) with PASS/FAIL matrix.
+**Deliverable:** [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) (PASS/FAIL matrix + E3a recommendation). Spike script was temporary; removed after doc capture.
 
 ---
 
@@ -99,7 +99,7 @@ pnpm add -D @automerge/automerge loro-crdt --filter @noname/server
 
 ## After spike
 
-Post report link in PR / issue. **E3a** starts only after:
+**Report:** [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) — **Automerge primary**, Loro fallback. Post link in PR / issue. **E3a** starts only after:
 
 - Product gate Phase C, **or** explicit override
 - Spike recommendation accepted

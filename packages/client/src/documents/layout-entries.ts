@@ -1,4 +1,5 @@
 import { apiFetch, apiFetchVoid, unwrapData } from "../lib/api";
+import { clientOpHeaders } from "../lib/client-op";
 
 export interface LayoutRow {
   id: string;
@@ -102,7 +103,10 @@ export async function saveLayout(input: {
     body.collectionId = input.collectionId;
   }
 
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...clientOpHeaders(),
+  };
   if (input.ifMatchUpdatedAt) {
     headers["If-Match"] = `"${input.ifMatchUpdatedAt}"`;
   }

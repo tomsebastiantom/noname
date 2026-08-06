@@ -308,18 +308,12 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
-      '@automerge/automerge':
-        specifier: ^3.4.0
-        version: 3.4.0
       '@types/node':
         specifier: ^26.0.0
         version: 26.1.1
       drizzle-kit:
         specifier: ^0.31.0
         version: 0.31.10
-      loro-crdt:
-        specifier: ^1.13.9
-        version: 1.13.9
       tsx:
         specifier: ^4.0.0
         version: 4.22.3
@@ -413,9 +407,6 @@ packages:
     resolution: {integrity: sha512-zZOWyIuznx2uqiRcCNuidkAsLC8IBHgS9lTwSVEB29sUCwEcqL95MWpWP1nccHSKfiZga+hbZaI0btR2zjuMmw==}
     engines: {node: '>= 20'}
     hasBin: true
-
-  '@automerge/automerge@3.4.0':
-    resolution: {integrity: sha512-THmghtTNGGt2xsI0pM3o1i3PM8oZKcYFgOj25FOzW7l6e94SQOivNtCwy6xc0I8hVJsQSSotoBNs+yk/9hM2dg==}
 
   '@aws-sdk/checksums@3.1000.16':
     resolution: {integrity: sha512-EKnvkXSmz3IpA99tCNuI+dLFXyZyClSm8zns9sB/elvkU+MTuomAs6toJMPMBf98/fICG/urXDkzGz0/c3yyAQ==}
@@ -3977,9 +3968,6 @@ packages:
   longest-streak@3.1.0:
     resolution: {integrity: sha512-9Ri+o0JYgehTaVBBDoMqIl8GXtbWg711O3srftcHhZ0dqnETqLaoIK0x17fUw9rFSlK/0NlsKe0Ahhyl5pXE2g==}
 
-  loro-crdt@1.13.9:
-    resolution: {integrity: sha512-gZYkMy1mqP1wzZqhQ69rNQowOuohLPcLbVQ+MjeJh3dbiXR+XJnbbP1GMxkJ0uBNbRbGmR2w+LazSDQImIJDrw==}
-
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
@@ -5049,8 +5037,6 @@ snapshots:
   '@alloc/quick-lru@5.2.0': {}
 
   '@anthropic-ai/sdk@0.50.4': {}
-
-  '@automerge/automerge@3.4.0': {}
 
   '@aws-sdk/checksums@3.1000.16':
     dependencies:
@@ -8574,8 +8560,6 @@ snapshots:
   long@5.3.2: {}
 
   longest-streak@3.1.0: {}
-
-  loro-crdt@1.13.9: {}
 
   lru-cache@10.4.3: {}
 

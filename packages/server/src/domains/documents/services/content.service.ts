@@ -112,6 +112,8 @@ export function createContentService(
             builtData,
             existing.updatedAt.toISOString(),
           ),
+          clientId: opts?.clientId,
+          clientSeq: opts?.clientSeq,
         });
       }
       return updated;

@@ -36,6 +36,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
       shellRef: body.shellRef,
       collectionId,
       audit: auditFromContext(c, actor),
+      ...clientOpFromRequest(c),
     });
     return created(c, createdLayout);
   });

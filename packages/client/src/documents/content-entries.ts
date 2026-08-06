@@ -2,6 +2,7 @@ import { type ContentTypeSchema, DEFAULT_CONTENT_LOCALE } from "@noname/document
 import { coerceScalarString } from "@noname/shared";
 import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
 import { assetUrlFromData } from "../lib/asset-url";
+import { clientOpHeaders } from "../lib/client-op";
 
 export type { ContentFieldSchema, ContentTypeSchema } from "@noname/documents";
 export { documentIdFromFieldValue, entryLabel } from "@noname/documents";
@@ -138,7 +139,7 @@ export async function saveContentEntry(input: {
   collectionId?: string | null;
 }): Promise<void> {
   const locale = input.locale ?? DEFAULT_LOCALE;
-  const headers = { "Content-Type": "application/json" };
+  const headers = { "Content-Type": "application/json", ...clientOpHeaders() };
   const { localizable, global } = splitSavePayload(input.values, input.schema);
 
   if (Object.keys(localizable).length > 0) {

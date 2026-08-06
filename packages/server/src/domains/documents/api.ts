@@ -7,6 +7,7 @@ import { registerAssetRoutes } from "./routes/assets";
 import { registerContentRoutes } from "./routes/content";
 import { registerContentTypeRoutes } from "./routes/content-types";
 import type { DocumentsRouteDeps } from "./routes/deps";
+import { registerDocumentOpsRoutes } from "./routes/document-ops";
 import { registerLayoutRoutes } from "./routes/layout";
 import { registerPageRoutes } from "./routes/pages";
 import { registerRefRoutes } from "./routes/refs";
@@ -28,6 +29,7 @@ export function createDocumentsRoutes(
   registerLayoutRoutes(routes, deps);
   registerPageRoutes(routes, deps);
   registerRefRoutes(routes, deps);
+  registerDocumentOpsRoutes(routes, deps);
   registerContentRoutes(routes, deps);
 
   return routes;

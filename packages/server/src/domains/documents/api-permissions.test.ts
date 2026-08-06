@@ -53,6 +53,7 @@ function mockStorage(): DocumentStorage {
       updatedAt: new Date(),
     })),
     findCollectionSlug: vi.fn(async () => "marketing"),
+    listDocumentOps: vi.fn(async () => []),
   } as unknown as DocumentStorage;
 }
 
@@ -182,5 +183,56 @@ describe("documents API permission guards", () => {
     });
     expect(res.status).toBe(403);
     expect(content.updateById).not.toHaveBeenCalled();
+  });
+
+  it("lists document ops when editor has document access", async () => {
+    const ops = [
+      {
+        id: "op-1",
+        orgId: "org-1",
+        documentId: "layout-1",
+        serverVersion: 1,
+        operation: "update",
+        actorType: "human",
+        actorId: "user-editor",
+        onBehalfOf: null,
+        taskId: null,
+        clientId: null,
+        clientSeq: null,
+        payload: { opType: "patch_data", patch: [] },
+        createdAt: new Date("2026-08-06T12:00:00.000Z"),
+      },
+    ];
+    const storage = mockStorage();
+    vi.mocked(storage.listDocumentOps).mockResolvedValue(ops);
+    const layout = {
+      publish: vi.fn(async () => ({ id: "layout-1", status: "published" })),
+      update: vi.fn(async () => ({ id: "layout-1", spec: {} })),
+    };
+    const service = { layout, content: { updateById: vi.fn() } } as unknown as DocumentService;
+    const app = new Hono();
+    app.use("*", orgMiddleware);
+    app.route(
+      "/api/documents",
+      createDocumentsRoutes(service, storage, mockAssetBinary, mockAuthorization()),
+    );
+
+    const res = await app.request("/api/documents/document/layout-1/ops?from_version=1", {
+      headers: {
+        "x-org-id": "org-1",
+        Authorization: `Bearer ${editorToken()}`,
+      },
+    });
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { data: { documentId: string; ops: unknown[] } };
+    expect(body.data.documentId).toBe("layout-1");
+    expect(body.data.ops).toHaveLength(1);
+    expect(storage.listDocumentOps).toHaveBeenCalledWith({
+      orgId: "org-1",
+      documentId: "layout-1",
+      fromVersion: 1,
+      limit: 50,
+    });
   });
 });

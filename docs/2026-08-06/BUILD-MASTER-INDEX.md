@@ -155,7 +155,7 @@ LATER   Explicit product gates only
 | **E1** | Complete smoke checklists (A5, B6, C9) | [`VISUAL-EDITOR-BUILD-PLAN.md`](../2026-08-01/VISUAL-EDITOR-BUILD-PLAN.md), [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](../2026-08-01/EDITOR-SMOKE-PRODUCT-DETAIL.md) | Phases A–D code done |
 | **E2** | Remaining gap items (409 API test, layer reparent) | [`VISUAL-EDITOR-GAP-ANALYSIS.md`](../2026-08-01/VISUAL-EDITOR-GAP-ANALYSIS.md) | Publish/exit **PASS** 2026-08-05; 409 covered by `layouts.service.test.ts` |
 | **E3-pre** | `document_ops` JSON Patch + replay | [`SPEC-STORAGE-MERGE.md`](../2026-07-25/SPEC-STORAGE-MERGE.md), `document-op-payload.ts` | **Shipped** — layout/content saves append RFC 6902 patches |
-| **E3-spike** | Automerge vs Loro offline merge | [`E3-SPIKE-HANDOFF.md`](./E3-SPIKE-HANDOFF.md) | **Parallel agent** — no WS; informs E3a library choice |
+| **E3-spike** | Automerge vs Loro offline merge | [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) · [`E3-SPIKE-HANDOFF.md`](./E3-SPIKE-HANDOFF.md) | **Done** — Automerge primary; Loro fallback |
 | **E3** | Live CRDT / presence | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) | **Do not start** until product gate ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C) |
 
 ---

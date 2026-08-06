@@ -1,9 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
   DocumentDTO,
+  DocumentOpDTO,
   DocumentStorage,
   TenantSettingsDTO,
 } from "../ports";
@@ -322,6 +323,44 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
 
       return { serverVersion };
     },
+
+    async listDocumentOps(input) {
+      const limit = input.limit ?? 50;
+      const conditions = [
+        eq(documentOps.orgId, input.orgId),
+        eq(documentOps.documentId, input.documentId),
+      ];
+      if (input.fromVersion !== undefined) {
+        conditions.push(gte(documentOps.serverVersion, input.fromVersion));
+      }
+
+      const rows = await db
+        .select()
+        .from(documentOps)
+        .where(and(...conditions))
+        .orderBy(asc(documentOps.serverVersion))
+        .limit(limit);
+
+      return rows.map(mapDocumentOp);
+    },
+  };
+}
+
+function mapDocumentOp(row: typeof documentOps.$inferSelect): DocumentOpDTO {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    documentId: row.documentId,
+    serverVersion: row.serverVersion,
+    operation: row.operation,
+    actorType: row.actorType,
+    actorId: row.actorId,
+    onBehalfOf: row.onBehalfOf,
+    taskId: row.taskId,
+    clientId: row.clientId,
+    clientSeq: row.clientSeq,
+    payload: row.payload ?? null,
+    createdAt: row.created_at,
   };
 }
 
