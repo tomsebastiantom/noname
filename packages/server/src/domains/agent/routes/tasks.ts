@@ -10,6 +10,7 @@ import {
   isRegisteredAgentOwner,
   isStoreAgentAdmin,
 } from "../task-review-guard";
+import { revertAgentTaskLayoutPatches } from "../revert-layout-patch";
 import type { AgentRouteDeps } from "./deps";
 
 type TaskRouteAuth = {
@@ -31,6 +32,20 @@ async function listFiltersForActor(
   const filters: AgentTaskFilters = {};
   if (query.status) filters.status = query.status as AgentTaskFilters["status"];
   if (query.type) filters.type = query.type as AgentTaskFilters["type"];
+  const layoutDocumentId = query.layoutDocumentId?.trim();
+  if (layoutDocumentId) {
+    if (layoutDocumentId.length > 128) {
+      throw new Error("layoutDocumentId too long");
+    }
+    filters.targetLayoutDocumentId = layoutDocumentId;
+  }
+  if (query.limit) {
+    const parsed = Number.parseInt(query.limit, 10);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      throw new Error("invalid limit");
+    }
+    filters.limit = Math.min(parsed, 100);
+  }
   if (isStoreAgentAdmin(auth.permissions)) return filters;
 
   const ownedAgentIds = (await registry.list(orgId))
@@ -41,7 +56,7 @@ async function listFiltersForActor(
 }
 
 export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): void {
-  const { service, registryStorage } = deps;
+  const { service, registryStorage, layoutPatchRevert } = deps;
   if (!registryStorage) {
     throw new Error("Agent task routes require registryStorage");
   }
@@ -90,7 +105,13 @@ export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): voi
     const auth = await requireTaskListAccess(c);
     if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
-    const filters = await listFiltersForActor(orgId, auth, registryStorage, c.req.query());
+    let filters: AgentTaskFilters;
+    try {
+      filters = await listFiltersForActor(orgId, auth, registryStorage, c.req.query());
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Invalid query";
+      return c.json({ error: message }, 400);
+    }
     const tasks = await service.list(orgId, filters);
     return ok(c, tasks);
   });
@@ -154,6 +175,11 @@ export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): voi
       userId: auth.userId,
       permissions: auth.permissions,
     });
+    if (layoutPatchRevert) {
+      const revertedLayouts = await revertAgentTaskLayoutPatches(orgId, task, layoutPatchRevert);
+      const rejected = await service.reject(orgId, c.req.param("id"), audit);
+      return ok(c, { ...rejected, revertedLayouts });
+    }
     const rejected = await service.reject(orgId, c.req.param("id"), audit);
     return ok(c, rejected);
   });

@@ -314,30 +314,34 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         }
       }
 
-      const [maxRow] = await db
-        .select({
-          maxVersion: sql<number>`coalesce(max(${documentOps.serverVersion}), 0)`,
-        })
-        .from(documentOps)
-        .where(
-          and(eq(documentOps.orgId, input.orgId), eq(documentOps.documentId, input.documentId)),
-        );
-      const serverVersion = (maxRow?.maxVersion ?? 0) + 1;
+      const payloadJson = input.payload != null ? JSON.stringify(input.payload) : null;
 
-      await db.insert(documentOps).values({
-        orgId: input.orgId,
-        documentId: input.documentId,
-        serverVersion,
-        operation: input.operation,
-        actorType: input.audit.actorType,
-        actorId: input.audit.actorId,
-        onBehalfOf: input.audit.onBehalfOf ?? null,
-        taskId: input.audit.taskId ?? null,
-        clientId: input.clientId ?? null,
-        clientSeq: input.clientSeq ?? null,
-        payload: input.payload ?? null,
-      });
+      const [inserted] = await db.execute<{ server_version: string }>(sql`
+        INSERT INTO document_ops (
+          org_id, document_id, server_version, operation,
+          actor_type, actor_id, on_behalf_of, task_id, client_id, client_seq, payload
+        )
+        VALUES (
+          ${input.orgId},
+          ${input.documentId},
+          (
+            SELECT coalesce(max(server_version), 0::bigint) + 1
+            FROM document_ops
+            WHERE org_id = ${input.orgId} AND document_id = ${input.documentId}
+          ),
+          ${input.operation},
+          ${input.audit.actorType},
+          ${input.audit.actorId},
+          ${input.audit.onBehalfOf ?? null},
+          ${input.audit.taskId ?? null},
+          ${input.clientId ?? null},
+          ${input.clientSeq ?? null},
+          ${payloadJson}::jsonb
+        )
+        RETURNING server_version
+      `);
 
+      const serverVersion = Number(inserted?.server_version ?? 1);
       return { serverVersion };
     },
 

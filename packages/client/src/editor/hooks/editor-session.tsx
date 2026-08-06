@@ -1,10 +1,20 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { createContext, type ReactNode, useContext, useMemo, useRef } from "react";
+import type { CollabPeerPresence } from "../collab/presence";
+import type { LayoutAgentActivity } from "../collab/collab-peer-display";
 import type { ContentDraftEditor } from "../components/panel/PropsPanel";
 import type { LayerReorderPlacement } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
 import type { EditorShellLabels } from "../schemas/components";
+
+export type AgentTargetField = {
+  fieldKey: string;
+  locale: string;
+  fieldLabel: string;
+  fieldType: string;
+  excerpt?: string;
+};
 
 export type EditorSessionData = {
   templateName: string;
@@ -16,6 +26,7 @@ export type EditorSessionData = {
   selection: EditSelection | null;
   pendingAdd: PendingBlockAdd | null;
   contentDraft: ContentDraftEditor;
+  agentTargetField: AgentTargetField | null;
   dirty: boolean;
   draftStatus: string | null;
   canPublish: boolean;
@@ -25,6 +36,12 @@ export type EditorSessionData = {
   lastActivity: string | null;
   canUndo: boolean;
   canRedo: boolean;
+  collabEnabled: boolean;
+  collabConnected: boolean;
+  collabError: string | null;
+  collabPeers: CollabPeerPresence[];
+  agentTaskActivity: LayoutAgentActivity | null;
+  layoutDocumentId: string | null;
 };
 
 export type EditorSessionActions = {
@@ -44,6 +61,9 @@ export type EditorSessionActions = {
   handleDuplicate: (elementId: string) => void;
   handleReorder: (elementId: string, targetId: string, placement: LayerReorderPlacement) => void;
   isStoredElement: (elementId: string) => boolean;
+  reportCollabPointerMove: (cursorX: number | null, cursorY: number | null) => void;
+  reloadLayoutAfterAgentPatch: () => Promise<void>;
+  applyAgentRevertedLayoutSpec: (spec: Spec) => void;
 };
 
 /** @deprecated Use useEditorSessionData + useEditorSessionActions */
@@ -82,6 +102,10 @@ export function EditorSessionProvider({ data, actions, children }: EditorSession
       handleReorder: (elementId, targetId, placement) =>
         actionsRef.current.handleReorder(elementId, targetId, placement),
       isStoredElement: (id) => actionsRef.current.isStoredElement(id),
+      reportCollabPointerMove: (x, y) => actionsRef.current.reportCollabPointerMove(x, y),
+      reloadLayoutAfterAgentPatch: () => actionsRef.current.reloadLayoutAfterAgentPatch(),
+      applyAgentRevertedLayoutSpec: (spec) =>
+        actionsRef.current.applyAgentRevertedLayoutSpec(spec),
     }),
     [],
   );

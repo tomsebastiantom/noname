@@ -91,6 +91,7 @@ export function ContentEntryEditor(props: ContentEntryEditorProps) {
                   mediaLabels={mediaLabels}
                   referenceLabels={referenceLabels}
                   referenceOptions={referenceOptions}
+                  contentDocumentId={selectedId}
                 />
               ))}
 

@@ -4,7 +4,7 @@ import { createArtifactCollector } from "./artifacts";
 import { createTokenAccumulator, parseAgentRunContext, writeAuditFromRunContext } from "./context";
 import type { MastraExecutorDeps } from "./executor";
 import { assertOrchestrateOutput } from "./orchestrate-output";
-import type { AgentStepRecord } from "./types";
+import type { AgentArtifact, AgentStepRecord } from "./types";
 
 function mockOrchestrateEnabled(): boolean {
   const flag = process.env.MASTRA_ORCHESTRATE_MOCK?.trim().toLowerCase();
@@ -28,6 +28,7 @@ async function runStep(
   steps: AgentStepRecord[],
   tool: string,
   fn: () => Promise<unknown>,
+  onStep?: () => Promise<void>,
 ): Promise<void> {
   const startedAt = new Date().toISOString();
   const t0 = Date.now();
@@ -42,6 +43,7 @@ async function runStep(
       durationMs: Date.now() - t0,
       outputSummary: summary,
     });
+    if (onStep) await onStep();
   } catch (err) {
     steps.push({
       index: steps.length,
@@ -59,95 +61,154 @@ export function shouldUseMockOrchestrate(): boolean {
   return mockOrchestrateEnabled();
 }
 
+function publishProgress(
+  onProgress: ((output: Record<string, unknown>) => Promise<void>) | undefined,
+  steps: AgentStepRecord[],
+  artifacts: AgentArtifact[],
+  summary: string,
+): Promise<void> {
+  if (!onProgress) return Promise.resolve();
+  const output = assertOrchestrateOutput({
+    summary,
+    steps,
+    artifacts,
+    stoppedReason: "completed",
+  });
+  return onProgress(output as unknown as Record<string, unknown>);
+}
+
 export async function runMockOrchestrate(
   deps: MastraExecutorDeps,
   orgId: string,
   prompt: string,
   input: Record<string, unknown>,
   activeTools: string[],
+  onProgress?: (output: Record<string, unknown>) => Promise<void>,
 ): Promise<AgentToolResult> {
   const runContext = parseAgentRunContext(orgId, input);
   const audit = runContext ? writeAuditFromRunContext(runContext) : undefined;
   const artifacts = createArtifactCollector();
   const pipelineTokens = createTokenAccumulator();
   const steps: AgentStepRecord[] = [];
+  const report = (summary: string) => publishProgress(onProgress, steps, artifacts.list(), summary);
+
+  await report("Starting mock orchestration…");
 
   if (activeTools.includes("readAnalytics")) {
-    await runStep(steps, "readAnalytics", async () => {
-      const analytics = deps.analytics as Pick<AnalyticsService, "query" | "aggregate">;
-      const [events, aggregates] = await Promise.all([
-        analytics.query({ orgId, limit: 25 }),
-        analytics.aggregate({ orgId, groupBy: "eventType", limit: 20 }),
-      ]);
-      return { eventCount: events.length, aggregates };
-    });
+    await runStep(
+      steps,
+      "readAnalytics",
+      async () => {
+        const analytics = deps.analytics as Pick<AnalyticsService, "query" | "aggregate">;
+        const [events, aggregates] = await Promise.all([
+          analytics.query({ orgId, limit: 25 }),
+          analytics.aggregate({ orgId, groupBy: "eventType", limit: 20 }),
+        ]);
+        return { eventCount: events.length, aggregates };
+      },
+      () => report("Read analytics"),
+    );
   }
 
   if (activeTools.includes("readDocument")) {
-    await runStep(steps, "readDocument", async () => {
-      const storage = deps.documents;
-      try {
-        const doc = await storage.findDocumentById("mock-doc");
-        if (!doc || doc.orgId !== orgId) {
-          return { found: false, documentId: "mock-doc" };
+    await runStep(
+      steps,
+      "readDocument",
+      async () => {
+        const storage = deps.documents;
+        try {
+          const doc = await storage.findDocumentById("mock-doc");
+          if (!doc || doc.orgId !== orgId) {
+            return { found: false, documentId: "mock-doc" };
+          }
+          return { found: true, documentId: doc.id, type: doc.type };
+        } catch {
+          return {
+            found: false,
+            documentId: "mock-doc",
+            reason: "not a valid document id in mock",
+          };
         }
-        return { found: true, documentId: doc.id, type: doc.type };
-      } catch {
-        return { found: false, documentId: "mock-doc", reason: "not a valid document id in mock" };
-      }
-    });
+      },
+      () => report("Read document"),
+    );
   }
 
   if (activeTools.includes("listFolderDocuments")) {
-    await runStep(steps, "listFolderDocuments", async () => {
-      const storage = deps.documents;
-      const collectionId = await storage.findCollectionIdBySlug(orgId, "marketing");
-      if (!collectionId) {
-        return { found: false, folderSlug: "marketing", count: 0 };
-      }
-      const rows = await storage.listDocuments(orgId, { collectionId });
-      return { found: true, folderSlug: "marketing", count: rows.length };
-    });
+    await runStep(
+      steps,
+      "listFolderDocuments",
+      async () => {
+        const storage = deps.documents;
+        const collectionId = await storage.findCollectionIdBySlug(orgId, "marketing");
+        if (!collectionId) {
+          return { found: false, folderSlug: "marketing", count: 0 };
+        }
+        const rows = await storage.listDocuments(orgId, { collectionId });
+        return { found: true, folderSlug: "marketing", count: rows.length };
+      },
+      () => report("Listed folder documents"),
+    );
   }
 
   if (activeTools.includes("generateLayoutDraft")) {
     const baseName = slugFromPrompt(prompt, "orchestrate-hero");
     const templateName = `${baseName}-${Date.now().toString(36)}`;
-    await runStep(steps, "generateLayoutDraft", async () => {
-      const layout = await deps.layout.create(orgId, {
-        templateName,
-        spec: {
-          root: "root",
-          elements: {
-            root: { type: "Container", props: {}, children: [] },
+    await runStep(
+      steps,
+      "generateLayoutDraft",
+      async () => {
+        const layout = await deps.layout.create(orgId, {
+          templateName,
+          spec: {
+            root: "root",
+            elements: {
+              root: { type: "Container", props: {}, children: [] },
+            },
           },
-        },
-        audit,
-      });
-      artifacts.push({ kind: "layout", documentId: layout.id, label: templateName });
-      return { layoutId: layout.id, templateName: layout.key };
-    });
+          audit,
+        });
+        artifacts.push({ kind: "layout", documentId: layout.id, label: templateName });
+        return { layoutId: layout.id, templateName: layout.key };
+      },
+      () => report("Generated layout draft"),
+    );
   }
 
   if (activeTools.includes("generateContentDraft")) {
-    await runStep(steps, "generateContentDraft", async () => ({
-      skipped: true,
-      reason: "mock orchestrate skips content draft (needs locale-aware CMS write)",
-    }));
+    await runStep(
+      steps,
+      "generateContentDraft",
+      async () => ({
+        skipped: true,
+        reason: "mock orchestrate skips content draft (needs locale-aware CMS write)",
+      }),
+      () => report("Skipped content draft"),
+    );
   }
 
   if (activeTools.includes("generateMachineDraft")) {
-    await runStep(steps, "generateMachineDraft", async () => ({
-      skipped: true,
-      reason: "mock orchestrate skips machine draft",
-    }));
+    await runStep(
+      steps,
+      "generateMachineDraft",
+      async () => ({
+        skipped: true,
+        reason: "mock orchestrate skips machine draft",
+      }),
+      () => report("Skipped machine draft"),
+    );
   }
 
   if (activeTools.includes("nango_trigger")) {
-    await runStep(steps, "nango_trigger", async () => ({
-      skipped: true,
-      reason: "mock orchestrate does not call live OAuth integrations",
-    }));
+    await runStep(
+      steps,
+      "nango_trigger",
+      async () => ({
+        skipped: true,
+        reason: "mock orchestrate does not call live OAuth integrations",
+      }),
+      () => report("Skipped integration trigger"),
+    );
   }
 
   const output = assertOrchestrateOutput({

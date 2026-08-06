@@ -7,6 +7,8 @@
   flex-direction: column;
   min-height: 0;
   flex-shrink: 0;
+  align-self: stretch;
+  overflow: hidden;
   background: hsl(var(--muted) / 0.2);
 }
 
@@ -246,6 +248,11 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+.editor-layout-panel-body--agent {
+  padding: 0;
+  background: hsl(var(--background));
 }
 
 .editor-layout--dragging {

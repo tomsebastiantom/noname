@@ -62,6 +62,7 @@ describe("createMastraExecutor", () => {
         findCollectionIdBySlug: vi.fn(async () => null),
         findCollectionSlug: vi.fn(async () => null),
         listDocuments: vi.fn(async () => []),
+        recordDocumentOp: vi.fn(async () => ({ serverVersion: 1 })),
       },
       analytics: {
         query: vi.fn(async () => []),
@@ -83,9 +84,19 @@ describe("createMastraExecutor", () => {
         generateContent: vi.fn(),
         generateMachine: vi.fn(),
       },
-      layout: { create: layoutCreate },
+      layout: {
+        create: layoutCreate,
+        update: vi.fn(),
+        get: vi.fn(async () => null),
+      },
       content: { create: vi.fn(), updateById: vi.fn() },
       machines: { define: vi.fn() },
+      layoutCollabRooms: {
+        getSpec: vi.fn(async () => ({ root: "", elements: {} })),
+        applySpec: vi.fn(async (_orgId, _id, spec) => spec),
+        flushPersist: vi.fn(async () => undefined),
+        broadcastAgentTask: vi.fn(),
+      },
     });
 
     const result = await executor.execute("org-1", "orchestrate", "Improve checkout", {
@@ -128,6 +139,7 @@ describe("createMastraExecutor", () => {
         findCollectionIdBySlug: vi.fn(async () => null),
         findCollectionSlug: vi.fn(async () => null),
         listDocuments: vi.fn(async () => []),
+        recordDocumentOp: vi.fn(async () => ({ serverVersion: 1 })),
       },
       analytics: { query: vi.fn(), aggregate: vi.fn() },
       integrations: { triggerOAuthAction: vi.fn() },
@@ -136,9 +148,15 @@ describe("createMastraExecutor", () => {
         generateContent: vi.fn(),
         generateMachine: vi.fn(),
       },
-      layout: { create: vi.fn() },
+      layout: { create: vi.fn(), update: vi.fn(), get: vi.fn(async () => null) },
       content: { create: vi.fn(), updateById: vi.fn() },
       machines: { define: vi.fn() },
+      layoutCollabRooms: {
+        getSpec: vi.fn(async () => ({ root: "", elements: {} })),
+        applySpec: vi.fn(async (_orgId, _id, spec) => spec),
+        flushPersist: vi.fn(async () => undefined),
+        broadcastAgentTask: vi.fn(),
+      },
     });
 
     await expect(

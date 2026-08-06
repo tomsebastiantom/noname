@@ -40,7 +40,7 @@ export function createAgentService(storage: AgentTaskStorage): AgentService {
           ...injectTraceCarrier(),
         },
         {
-          attempts: 3,
+          attempts: entity.type === "orchestrate" ? 1 : 3,
           backoff: { type: "exponential", delay: 2000 },
         },
       );

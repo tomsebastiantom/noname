@@ -156,19 +156,19 @@ pnpm dev
 
 ---
 
-## D7 — Live rich-text collab (explicitly out of R1)
+## D7 — Live rich-text collab (v1 dogfood)
 
 | | Layout spec (E3) | Rich text (D7) |
 |--|------------------|----------------|
 | **Data** | json-render `{ root, elements }` | `RichTextDocument` per field |
 | **CRDT** | Automerge (primary) / Loro | **Yjs** |
-| **Transport** | automerge-repo WS adapter | **Hocuspocus** |
-| **Editor** | Custom spec canvas + props | **TipTap** + `@tiptap/extension-collaboration` |
-| **When** | Phase C product gate | Only if Google-Docs-style simultaneous edit on long text |
+| **Transport** | automerge-repo WS adapter | **y-websocket** relay (`/api/collab/richtext/ws/:room`) |
+| **Editor** | Custom spec canvas + props | **TipTap** + `@tiptap/extension-collaboration` + `CollaborationCursor` |
+| **Live collab** | `?edit=true` on layout | CMS content entry edit (saved entry + `richText` field) |
 
-See [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) § Yjs + Hocuspocus.
+**Code:** `packages/server/src/domains/collab/richtext-*`, `packages/client/src/components/rich-text/use-rich-text-collab.ts`
 
-**R1 must not block D7:** Solo save + `document_ops` audit is enough until collab is requested. TipTap doc can add Yjs extension later without changing storage format.
+See [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) for the full collab architecture.
 
 ---
 

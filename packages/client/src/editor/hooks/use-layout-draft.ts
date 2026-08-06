@@ -139,6 +139,25 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
     }
   }, [draft]);
 
+  const reloadFromServer = useCallback(async (): Promise<Spec | null> => {
+    const row = await getLayoutForTemplate(templateName, segment);
+    if (!row) return null;
+    const spec = (row.data.spec ?? { root: "", elements: {} }) as unknown as Spec;
+    setDraft((current) =>
+      current
+        ? {
+            ...current,
+            status: row.status,
+            storedSpec: cloneSpec(spec),
+            updatedAt: row.updatedAt,
+          }
+        : current,
+    );
+    setStoredSpec(cloneSpec(spec));
+    setDirty(false);
+    return spec;
+  }, [templateName, segment]);
+
   return useMemo(
     () => ({
       draft,
@@ -151,6 +170,7 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
       saveDraft,
       publishDraft,
       discardChanges,
+      reloadFromServer,
     }),
     [
       draft,
@@ -163,6 +183,7 @@ export function useLayoutDraft(templateName: string, displaySpec: Spec, segment 
       saveDraft,
       publishDraft,
       discardChanges,
+      reloadFromServer,
     ],
   );
 }

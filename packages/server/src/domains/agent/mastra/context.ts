@@ -5,7 +5,12 @@ export interface AgentRunContext {
   taskId: string;
   registeredAgentId: string;
   agentSlug: string;
+  agentLabel?: string;
   onBehalfOf: string;
+  targetLayoutDocumentId?: string;
+  targetContentDocumentId?: string;
+  targetFieldKey?: string;
+  targetLocale?: string;
 }
 
 export interface TokenAccumulator {
@@ -42,7 +47,15 @@ export function parseAgentRunContext(
   const registeredAgentId =
     typeof input.registeredAgentId === "string" ? input.registeredAgentId : null;
   const agentSlug = typeof input.agentSlug === "string" ? input.agentSlug : "";
+  const agentLabel = typeof input.agentLabel === "string" ? input.agentLabel.trim() : undefined;
   const onBehalfOf = typeof input.onBehalfOf === "string" ? input.onBehalfOf : "";
+  const targetLayoutDocumentId =
+    typeof input.targetLayoutDocumentId === "string" ? input.targetLayoutDocumentId : undefined;
+  const targetContentDocumentId =
+    typeof input.targetContentDocumentId === "string" ? input.targetContentDocumentId : undefined;
+  const targetFieldKey =
+    typeof input.targetFieldKey === "string" ? input.targetFieldKey : undefined;
+  const targetLocale = typeof input.targetLocale === "string" ? input.targetLocale : undefined;
 
   if (!taskId || !registeredAgentId) return null;
 
@@ -51,6 +64,11 @@ export function parseAgentRunContext(
     taskId,
     registeredAgentId,
     agentSlug,
+    ...(agentLabel ? { agentLabel } : {}),
     onBehalfOf,
+    ...(targetLayoutDocumentId ? { targetLayoutDocumentId } : {}),
+    ...(targetContentDocumentId ? { targetContentDocumentId } : {}),
+    ...(targetFieldKey ? { targetFieldKey } : {}),
+    ...(targetLocale ? { targetLocale } : {}),
   };
 }

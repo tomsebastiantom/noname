@@ -4,12 +4,17 @@ export interface AgentToolResult {
   tokens: number;
 }
 
+export interface AgentExecuteOptions {
+  onProgress?: (output: Record<string, unknown>) => Promise<void>;
+}
+
 export interface AgentExecutor {
   execute(
     orgId: string,
     type: string,
     prompt: string,
     input: Record<string, unknown>,
+    options?: AgentExecuteOptions,
   ): Promise<AgentToolResult>;
 }
 

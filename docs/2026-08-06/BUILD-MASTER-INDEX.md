@@ -34,7 +34,7 @@
 | SSE stream ticket (C3) | **Shipped** | [`IN-APP-INBOX-SSE.md`](../2026-08-04/IN-APP-INBOX-SSE.md) § Stream ticket |
 | Catalog hash + sidebar prefetch (U3–U4) | **Shipped** | [`ADMIN-SOFT-NAV-HANDOFF.md`](../2026-08-03/ADMIN-SOFT-NAV-HANDOFF.md) |
 | Welcome email on user invite | **Shipped** | `auth/service.ts` → `notify(welcome)` |
-| Live CRDT collab | **Deferred** | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) |
+| Live CRDT collab | **E3a v1** (dogfood) | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) |
 | Field-level CMS ACL | **Deferred** | [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
 
 ---
@@ -63,7 +63,8 @@ THEN    Scale & production gates (or V4 live LLM when Vault key ready)
         └── B5 + A′.5 — agent Keto tuples on folders/docs (if agents go multi-tenant prod)
 
 LATER   Explicit product gates only
-        ├── Phase C — live CRDT collab ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md))
+        ├── D7 rich text collab (Yjs) — separate from layout E3a
+        ├── Automerge blob storage — [`COLLAB-BLOB-STORAGE.md`](./COLLAB-BLOB-STORAGE.md)
         ├── Replay P4 — pre-login session stitch + admin filter by user
         ├── Mobile push (FCM/APNs)
         └── Bot SSR / R2 client deploy ([`CLIENT_BUNDLE.md`](../2026-07-11/CLIENT_BUNDLE.md))
@@ -156,9 +157,10 @@ LATER   Explicit product gates only
 | **E2** | Remaining gap items (409 API test, layer reparent) | [`VISUAL-EDITOR-GAP-ANALYSIS.md`](../2026-08-01/VISUAL-EDITOR-GAP-ANALYSIS.md) | Publish/exit **PASS** 2026-08-05; 409 covered by `layouts.service.test.ts` |
 | **E3-pre** | `document_ops` JSON Patch + replay | [`SPEC-STORAGE-MERGE.md`](../2026-07-25/SPEC-STORAGE-MERGE.md), `document-op-payload.ts` | **Shipped** — layout/content saves append RFC 6902 patches |
 | **E3-spike** | Automerge vs Loro offline merge | [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) · [`E3-SPIKE-HANDOFF.md`](./E3-SPIKE-HANDOFF.md) | **Done** — Automerge primary; Loro fallback |
-| **E3** | Live CRDT / presence | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) | **Do not start** until product gate ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C) |
+| **E3** | Live CRDT / presence | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) | **Shipped** — Automerge + Yjs + IndexedDB + Postgres/R2 |
+| **E3e** | Agent full collab peer | [`E3e-AGENT-FULL-COLLAB-PEER.md`](./E3e-AGENT-FULL-COLLAB-PEER.md) | **Spec** — WS peer, virtual pointer, our stack |
 | **R1** | Rich text — admin UI + storage + storefront render | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) · [`RICH-TEXT-PARITY.md`](./RICH-TEXT-PARITY.md) | **Shipped** — full R1 parity including RT-8 search indexing |
-| **D7** | Rich text live collab (Yjs + Hocuspocus) | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) § D7 | Deferred — only if simultaneous long-text edit required |
+| **D7** | Rich text live collab (Yjs) | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) § D7 | **Shipped** v1 |
 
 ---
 

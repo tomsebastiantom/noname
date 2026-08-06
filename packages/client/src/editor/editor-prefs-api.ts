@@ -18,6 +18,8 @@ export type EditorPrefsData = {
   palettePins: string[];
   layout: EditorLayoutPrefs;
   layersTreeCollapsed: Record<string, string[]>;
+  /** layoutDocumentId → ISO timestamp; tasks at or before this are hidden in agent chat */
+  agentChatClearedAt: Record<string, string>;
 };
 
 export type EditorPrefsLoadResult = EditorPrefsData & {
@@ -28,6 +30,7 @@ export const EDITOR_PREFS_DEFAULTS: Omit<EditorPrefsData, "userId"> = {
   palettePins: [],
   layout: { ...EDITOR_LAYOUT_DEFAULTS },
   layersTreeCollapsed: {},
+  agentChatClearedAt: {},
 };
 
 interface EditorPrefsEntry {
@@ -37,6 +40,7 @@ interface EditorPrefsEntry {
     palettePins?: unknown;
     layout?: unknown;
     layersTreeCollapsed?: unknown;
+    agentChatClearedAt?: unknown;
   };
 }
 
@@ -46,6 +50,17 @@ let cachedData: EditorPrefsData | null = null;
 function parsePalettePins(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
   return raw.filter((entry): entry is string => typeof entry === "string");
+}
+
+function parseAgentChatClearedAt(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string" && value.trim()) {
+      out[key] = value;
+    }
+  }
+  return out;
 }
 
 function parseLayersTreeCollapsed(raw: unknown): Record<string, string[]> {
@@ -85,17 +100,30 @@ function parseEditorPrefsData(
 ): EditorPrefsLoadResult {
   const layoutFromApi = raw.layout !== undefined ? normalizeLayoutPrefs(raw.layout) : null;
   const legacyLayout = layoutFromApi ? null : loadLegacyLayoutFromLocalStorage();
+  const legacyTopLevelCleared = parseAgentChatClearedAt(raw.agentChatClearedAt);
 
   if (legacyLayout) {
     clearLegacyLayoutLocalStorage();
   }
 
+  let layout = layoutFromApi ?? legacyLayout ?? { ...EDITOR_LAYOUT_DEFAULTS };
+  if (Object.keys(legacyTopLevelCleared).length > 0) {
+    layout = normalizeLayoutPrefs({
+      ...layout,
+      agentChatClearedAt: {
+        ...legacyTopLevelCleared,
+        ...layout.agentChatClearedAt,
+      },
+    });
+  }
+
   return {
     userId,
     palettePins: parsePalettePins(raw.palettePins),
-    layout: layoutFromApi ?? legacyLayout ?? { ...EDITOR_LAYOUT_DEFAULTS },
+    layout,
     layersTreeCollapsed: parseLayersTreeCollapsed(raw.layersTreeCollapsed),
-    migratedFromLegacy: Boolean(legacyLayout),
+    agentChatClearedAt: layout.agentChatClearedAt,
+    migratedFromLegacy: Boolean(legacyLayout) || Object.keys(legacyTopLevelCleared).length > 0,
   };
 }
 
@@ -137,6 +165,7 @@ export async function loadEditorPrefsFromApi(): Promise<EditorPrefsLoadResult | 
     palettePins: parsed.palettePins,
     layout: parsed.layout,
     layersTreeCollapsed: parsed.layersTreeCollapsed,
+    agentChatClearedAt: parsed.agentChatClearedAt,
   };
   return parsed;
 }
@@ -160,6 +189,7 @@ async function ensurePrefsEntry(userId: string): Promise<string> {
         palettePins: [],
         layout: EDITOR_LAYOUT_DEFAULTS,
         layersTreeCollapsed: {},
+        agentChatClearedAt: {},
       }),
     },
   );

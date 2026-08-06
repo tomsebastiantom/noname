@@ -10,6 +10,8 @@ import {
   useState,
 } from "react";
 import { CatalogUiShell } from "../../../platform/catalog-ui-shell";
+import type { CollabPeerPresence } from "../../collab/presence";
+import { peerPresenceColor } from "../../collab/presence";
 import { getEditorDragComponentType, setEditorDragComponentType } from "../../editor-drag-state";
 import type { CanvasPreviewWidth } from "../../editor-layout-prefs";
 import { editMetaForType } from "../../lib/edit-metadata";
@@ -17,6 +19,7 @@ import { canRemoveElement, findParentId, getElement, specStructureKey } from "..
 import type { EditSelection } from "../../lib/types";
 import { EDITOR_DRAG_MIME, PALETTE_DRAG_MIME } from "../../lib/types";
 import type { EditorShellLabels } from "../../schemas/components";
+import { CollabRemoteCursors } from "./CollabRemoteCursors";
 import {
   type DropPlacement,
   dropGhostRect,
@@ -109,6 +112,8 @@ export function EditorCanvas({
   onAdd,
   onDelete,
   onDuplicate,
+  onCollabPointerMove,
+  collabPeers = [],
 }: {
   previewSpec: Spec;
   registry: ComponentRegistry;
@@ -120,6 +125,7 @@ export function EditorCanvas({
   canvasPreview?: CanvasPreviewWidth;
   canUndo?: boolean;
   canRedo?: boolean;
+  collabPeers?: CollabPeerPresence[];
   onUndo?: () => void;
   onRedo?: () => void;
   onSelect: (selection: EditSelection) => void;
@@ -127,6 +133,7 @@ export function EditorCanvas({
   onAdd: (componentType: string, parentId?: string, insertIndex?: number) => void;
   onDelete: (elementId: string) => void;
   onDuplicate?: (elementId: string) => void;
+  onCollabPointerMove?: (cursorX: number | null, cursorY: number | null) => void;
 }) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const suppressClickAfterDropRef = useRef(false);
@@ -140,6 +147,42 @@ export function EditorCanvas({
     left: number;
     label: string;
   } | null>(null);
+  const collabPointerThrottleRef = useRef(0);
+
+  const handleCollabPointerMove = useCallback(
+    (event: MouseEvent<HTMLDivElement>) => {
+      if (!onCollabPointerMove) return;
+      const root = canvasRef.current;
+      if (!root) return;
+      const now = Date.now();
+      if (now - collabPointerThrottleRef.current < 50) return;
+      collabPointerThrottleRef.current = now;
+      const rect = root.getBoundingClientRect();
+      onCollabPointerMove(
+        event.clientX - rect.left + root.scrollLeft,
+        event.clientY - rect.top + root.scrollTop,
+      );
+    },
+    [onCollabPointerMove],
+  );
+
+  const handleCollabPointerLeave = useCallback(() => {
+    onCollabPointerMove?.(null, null);
+  }, [onCollabPointerMove]);
+
+  useLayoutEffect(() => {
+    if (!onCollabPointerMove || !selection) return;
+    const root = canvasRef.current;
+    if (!root) return;
+    const node = root.querySelector(`[data-jr-key="${CSS.escape(selection.elementId)}"]`);
+    if (!(node instanceof HTMLElement)) return;
+    const canvasRect = root.getBoundingClientRect();
+    const nodeRect = node.getBoundingClientRect();
+    onCollabPointerMove(
+      nodeRect.left - canvasRect.left + root.scrollLeft + nodeRect.width / 2,
+      nodeRect.top - canvasRect.top + root.scrollTop + 24,
+    );
+  }, [onCollabPointerMove, previewSpec, selection]);
 
   useLayoutEffect(() => {
     if (!selection) {
@@ -198,6 +241,27 @@ export function EditorCanvas({
       label: blockLabel(selection.componentType, shellLabels),
     });
   }, [previewSpec, selection, pendingElementId, shellLabels]);
+
+  useLayoutEffect(() => {
+    const root = canvasRef.current;
+    if (!root) return;
+
+    root.querySelectorAll("[data-editor-remote-peer]").forEach((node) => {
+      if (node instanceof HTMLElement) {
+        node.removeAttribute("data-editor-remote-peer");
+        node.style.removeProperty("outline-color");
+      }
+    });
+
+    for (const peer of collabPeers) {
+      if (!peer.selectedElementId) continue;
+      const node = root.querySelector(`[data-jr-key="${CSS.escape(peer.selectedElementId)}"]`);
+      if (!(node instanceof HTMLElement)) continue;
+      if (node.getAttribute("data-editor-selected") === "true") continue;
+      node.setAttribute("data-editor-remote-peer", peer.peerId);
+      node.style.outlineColor = peerPresenceColor(peer.peerId);
+    }
+  }, [collabPeers]);
 
   useLayoutEffect(() => {
     const root = canvasRef.current;
@@ -469,6 +533,8 @@ export function EditorCanvas({
         }
       }}
       onDrop={handleDrop}
+      onMouseMove={onCollabPointerMove ? handleCollabPointerMove : undefined}
+      onMouseLeave={onCollabPointerMove ? handleCollabPointerLeave : undefined}
     >
       <CatalogUiShell key={specStructureKey(previewSpec)} spec={previewSpec} registry={registry} />
 
@@ -519,6 +585,8 @@ export function EditorCanvas({
           </div>
         </>
       ) : null}
+
+      <CollabRemoteCursors peers={collabPeers} labels={shellLabels} />
     </div>
   );
 }

@@ -1,7 +1,8 @@
 # E3 — Live CRDT collab (implementation guide)
 
 > **Date:** 2026-08-06  
-> **Status:** **Research + implementation spec** — code not started (product gate: Phase C)  
+> **Status:** **Live collab shipped** — always on in edit mode  
+> **automerge-repo detail:** [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md)
 > **Track ID:** **E3** in [`BUILD-MASTER-INDEX.md`](./BUILD-MASTER-INDEX.md)  
 > **Supersedes depth:** [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) (strategy) · this doc is the **OSS cheat sheet + build plan**
 
@@ -41,10 +42,32 @@ Publish      → Unchanged — full validated spec replace (strong convergence b
 | Keto `Document` / `Collection` edit | ✅ | **Gate WS room** — same as HTTP write guard |
 | `document_ops` table | ✅ audit + **JSON Patch payloads (E3-pre)** | Patch log + replay; CRDT blobs in E3a |
 | Edge `?edit=true` + `EditPageView` | ✅ | Wire CRDT provider in orchestration hook |
-| WebSocket infra | ❌ | **New** — collab service or worker route |
+| WebSocket infra | ✅ **E3a v1** | Same-origin WS via edge proxy → API (`proxy-websocket.ts`) |
 
-Key client paths: `packages/client/src/editor/hooks/use-edit-page-orchestration.ts`, `use-layout-draft.ts`  
-Key server paths: `packages/server/src/domains/documents/services/layouts.service.ts`, `document-write-guard.ts`
+**E3a v1 code paths (dogfood):**
+
+| Layer | Path |
+|-------|------|
+| Server collab domain | `packages/server/src/domains/collab/` — ticket, Keto gate, **automerge-repo** room (`Repo` + `LayoutCollabNetworkAdapter`), debounced snapshot |
+| WS protocol | **CBOR** automerge-repo messages (binary) + **JSON** presence (text) on same socket |
+| WS upgrade | `packages/server/src/index.ts` — `WebSocketServer({ noServer: true })` on `/api/collab/layout/ws` |
+| Edge proxy | `packages/workers/src/routes/proxy-websocket.ts` — forwards WS upgrade to `API_ORIGIN` |
+| Client hook | `packages/client/src/editor/collab/use-layout-collab.ts` — `Repo` + `LayoutCollabWsAdapter` |
+| Orchestration | `packages/client/src/editor/hooks/use-edit-page-orchestration.ts` |
+| DnD list ops | `packages/client/src/editor/collab/automerge-spec.ts` — `deleteAt`/`insertAt` for same-parent reorder; `applyLocalSpecToDraft` for props/text |
+
+**Implementer rule:** local layout writes **must** use `handle.change()` (not `handle.update()`) or peers never receive CBOR sync — [`E3-AUTOMERGE-REPO.md` § Local edits](./E3-AUTOMERGE-REPO.md#local-edits-must-use-change-not-update). Incident write-up: [`COLLAB-SYNC-INCIDENT-FIXES.md`](./COLLAB-SYNC-INCIDENT-FIXES.md).
+
+**Try it:** run API (:3000) + edge (:8787) + client (:5173); open same layout with `?edit=true` in two tabs.
+
+**Remaining (not E3a v1):**
+
+| Gap | Notes |
+|-----|-------|
+| **E3c — Presence / cursors** | **Shipped v1** — peer list, remote selection outline, canvas pointer cursors (`CollabRemoteCursors`) |
+| **`automerge-repo`** | **Shipped** — see [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md); client IndexedDB blobs [`COLLAB-BLOB-STORAGE.md`](./COLLAB-BLOB-STORAGE.md) |
+| **Reparent list ops** | Cross-parent DnD still uses whole-spec merge (works; list ops optional hardening) |
+| **D7 — Rich text collab** | **Shipped v1** — Yjs WS + TipTap `Collaboration` / `CollaborationCursor`; client IndexedDB offline; always on for saved entries |
 
 ---
 
@@ -281,7 +304,7 @@ Only if D7 inline rich text + simultaneous edit is a requirement.
 | No auth on WS rooms | y-websocket demos | **Keto before join** |
 | CRDT snapshot = publish | Automerge demos | **Always validateSpec on publish** |
 | Giant CRDT doc never compacted | Long-lived docs | Snapshot + trim history |
-| Collab before ACL stable | Startups | **Phase C gate** — Keto folders done |
+| Collab before ACL stable | Startups | Keto folders done — **E3a v1 uses same `document#edit` gate** |
 | Replacing client undo with CRDT | Confusion | Keep session undo; CRDT for multi-peer |
 | Content PUT without If-Match | Our gap | Add optimistic lock on content before E3b |
 | Agent + human live merge | Agent plan | Agents use **sequential** ops (A′), not CRDT v1 |
@@ -293,21 +316,33 @@ Only if D7 inline rich text + simultaneous edit is a requirement.
 | Domain | E3 touch |
 |--------|----------|
 | **documents** | Snapshot target; publish unchanged semantics |
-| **edge** | Optional: collab WS on same host or `collab.*` subdomain |
+| **edge** | Same-origin WS via worker proxy → API (`proxy-websocket.ts`) |
 | **auth / Keto** | WS auth middleware mirrors `document-write-guard.ts` |
 | **workers** | Public WS route pattern (like comms webhooks) — **authenticated** |
-| **agents** | No live CRDT for agent writes in v1; queue ops sequentially |
+| **agents** | E3e: agent as full WS collab peer — [`E3e-AGENT-FULL-COLLAB-PEER.md`](./E3e-AGENT-FULL-COLLAB-PEER.md). **Do not** HTTP+CRDT hybrid on live path — see E3e pitfalls. |
 | **analytics** | Do not stream CRDT ops to ClickHouse — product analytics separate |
 
 ---
 
 ## Open decisions (resolve in spike)
 
-1. **Automerge vs Loro** for layout spec — run E3-spike table above
-2. **Collab service placement** — sidecar Node process vs route on existing server vs worker Durable Object (future)
-3. **Snapshot frequency** — 5s debounce vs on-idle vs on-last-participant
+1. ~~**Automerge vs Loro**~~ — **Automerge primary** ([`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md))
+2. ~~**Collab service placement**~~ — **v1:** collab routes on existing API server; edge proxies WS
+3. ~~**Snapshot frequency**~~ — **5s debounce** in `layout-room.ts`
 4. **Content fields in layout collab** — bind `$state` refs only vs include inline strings in CRDT
-5. **E3b gate** — is simultaneous rich-text edit actually requested?
+5. **E3b gate** — is simultaneous rich-text edit actually requested? (D7 track)
+
+---
+
+## Suggested next PR slices
+
+1. **E3c** — presence map (peer list + selected element id) — **done**
+2. ~~**`automerge-repo`**~~ — **done** — [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md)
+3. **Durable blob storage** — client IndexedDB + **server Postgres shipped** — [`COLLAB-BLOB-STORAGE.md`](./COLLAB-BLOB-STORAGE.md)
+4. **Reparent list ops** — multi-list `deleteAt`/`insertAt` when DnD moves across parents
+5. **Prod edge validation** — Cloudflare WS upgrade on deployed worker
+
+~~First PR slice (when gate opens)~~ — **Done in E3a v1** (see table above).
 
 ---
 
@@ -315,20 +350,9 @@ Only if D7 inline rich text + simultaneous edit is a requirement.
 
 | Question | Read |
 |----------|------|
-| When to build (product gate) | [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C |
-| Strategy (defer rationale) | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) |
+| Spike results | [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) |
+| Strategy (historical) | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) |
 | Setup examples | [`COLLAB-EDITOR-SETUP.md`](../2026-08-01/COLLAB-EDITOR-SETUP.md) |
-| OSS permissions context | [`PERMISSIONS-OSS-REFERENCES.md`](../2026-07-25/PERMISSIONS-OSS-REFERENCES.md) |
+| Rich text (separate track) | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) |
 | Patch / merge storage | [`SPEC-STORAGE-MERGE.md`](../2026-07-25/SPEC-STORAGE-MERGE.md) |
 | Build index E3 row | [`BUILD-MASTER-INDEX.md`](./BUILD-MASTER-INDEX.md) |
-
----
-
-## Suggested first PR slice (when gate opens)
-
-1. `packages/server/src/domains/collab/` — WS auth + Keto gate + room registry (no CRDT yet)
-2. Automerge offline spike test in `packages/server/src/domains/documents/` or `packages/client/src/editor/__tests__/`
-3. Client feature flag `?edit=true&collab=1` for internal dogfood
-4. Extend `document_ops` with patch payload column
-
-*Do not merge E3a until E3-spike passes on real json-render specs from seed demo.*

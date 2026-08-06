@@ -10,6 +10,7 @@ export function createAgentRoutes(deps: AgentRouteDeps) {
   registerAgentTaskRoutes(routes, {
     service: deps.service,
     registryStorage: deps.registryStorage,
+    layoutPatchRevert: deps.layoutPatchRevert,
   });
   if (deps.registry) {
     registerAgentRegistryRoutes(routes, deps.registry);

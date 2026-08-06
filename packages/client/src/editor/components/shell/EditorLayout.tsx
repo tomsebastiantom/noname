@@ -65,26 +65,39 @@ function LeftActivityRail({
   );
 }
 
-/** Edge label hidden while Properties panel is open. */
+/** Edge labels hidden while that panel is open. */
 function RightActivityRail({
   propsOpen,
+  agentOpen,
   labels,
   onToggleProps,
+  onToggleAgent,
 }: {
   propsOpen: boolean;
+  agentOpen: boolean;
   labels: EditorShellLabels;
   onToggleProps: () => void;
+  onToggleAgent: () => void;
 }) {
-  if (propsOpen) return null;
+  const showProps = !propsOpen;
+  const showAgent = !agentOpen;
+  if (!showProps && !showAgent) return null;
 
   return (
     <aside
-      className="editor-layout-rail editor-layout-rail--right editor-layout-rail--persistent"
+      className={`editor-layout-rail editor-layout-rail--right editor-layout-rail--persistent${showProps && showAgent ? " editor-layout-rail--dual" : ""}`}
       aria-label={labels.rightPanelsAriaLabel}
     >
-      <button type="button" className="editor-layout-rail-button" onClick={onToggleProps}>
-        {labels.propertiesPanelTitle}
-      </button>
+      {showProps ? (
+        <button type="button" className="editor-layout-rail-button" onClick={onToggleProps}>
+          {labels.propertiesPanelTitle}
+        </button>
+      ) : null}
+      {showAgent ? (
+        <button type="button" className="editor-layout-rail-button" onClick={onToggleAgent}>
+          {labels.openAgentPanelLabel}
+        </button>
+      ) : null}
     </aside>
   );
 }
@@ -115,34 +128,63 @@ export function EditorLayout({
   layers,
   canvas,
   panel,
+  agentPanel,
   shellLabels,
 }: {
   palette: ReactNode;
   layers: ReactNode;
   canvas: ReactNode;
   panel: ReactNode;
+  agentPanel: ReactNode;
   shellLabels: EditorShellLabels;
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
-  const { layout: prefs, setLayout: setPrefs } = useEditorPrefs();
+  const { layout: prefs, setLayout: setPrefs, setLayoutPersist: persistPrefs } = useEditorPrefs();
   const [activeEdge, setActiveEdge] = useState<"palette" | "props" | null>(null);
   const dragRef = useRef<"palette" | "props" | null>(null);
 
   const blocksOpen = prefs.paletteOpen;
   const layersOpen = prefs.layersOpen;
   const leftPanelOpen = blocksOpen || layersOpen;
+  const rightPanelOpen = prefs.propsOpen || prefs.agentOpen;
 
   const toggleBlocks = useCallback(() => {
-    setPrefs((current) => ({ ...current, paletteOpen: !current.paletteOpen }));
-  }, [setPrefs]);
+    persistPrefs((current) => ({ ...current, paletteOpen: !current.paletteOpen }));
+  }, [persistPrefs]);
 
   const toggleLayers = useCallback(() => {
-    setPrefs((current) => ({ ...current, layersOpen: !current.layersOpen }));
-  }, [setPrefs]);
+    persistPrefs((current) => ({ ...current, layersOpen: !current.layersOpen }));
+  }, [persistPrefs]);
 
   const toggleProps = useCallback(() => {
-    setPrefs((current) => ({ ...current, propsOpen: !current.propsOpen }));
-  }, [setPrefs]);
+    persistPrefs((current) => {
+      const opening = !current.propsOpen;
+      return {
+        ...current,
+        propsOpen: opening,
+        agentOpen: opening ? false : current.agentOpen,
+      };
+    });
+  }, [persistPrefs]);
+
+  const toggleAgent = useCallback(() => {
+    persistPrefs((current) => {
+      const opening = !current.agentOpen;
+      return {
+        ...current,
+        agentOpen: opening,
+        propsOpen: opening ? false : current.propsOpen,
+      };
+    });
+  }, [persistPrefs]);
+
+  const closeRightPanel = useCallback(() => {
+    persistPrefs((current) => ({
+      ...current,
+      propsOpen: false,
+      agentOpen: false,
+    }));
+  }, [persistPrefs]);
 
   const startResize = useCallback(
     (edge: "palette" | "props") => (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -204,8 +246,8 @@ export function EditorLayout({
         <EditorLeftPanel
           layersOpen
           labels={shellLabels}
-          onBlocksOpenChange={(open) => setPrefs((p) => ({ ...p, paletteOpen: open }))}
-          onLayersOpenChange={(open) => setPrefs((p) => ({ ...p, layersOpen: open }))}
+          onBlocksOpenChange={(open) => persistPrefs((p) => ({ ...p, paletteOpen: open }))}
+          onLayersOpenChange={(open) => persistPrefs((p) => ({ ...p, layersOpen: open }))}
           palette={palette}
           layers={layers}
         />
@@ -217,7 +259,7 @@ export function EditorLayout({
         <PanelHeader
           title={shellLabels.blocksPanelTitle}
           closeLabel={shellLabels.closePanelLabel}
-          onClose={() => setPrefs((p) => ({ ...p, paletteOpen: false }))}
+          onClose={() => persistPrefs((p) => ({ ...p, paletteOpen: false }))}
         />
         <div className="editor-layout-panel-body editor-sidebar-scroll overflow-y-auto">
           {palette}
@@ -230,7 +272,7 @@ export function EditorLayout({
         <PanelHeader
           title={shellLabels.layersPanelTitle}
           closeLabel={shellLabels.closePanelLabel}
-          onClose={() => setPrefs((p) => ({ ...p, layersOpen: false }))}
+          onClose={() => persistPrefs((p) => ({ ...p, layersOpen: false }))}
         />
         <div className="editor-layout-panel-body editor-sidebar-scroll overflow-y-auto">
           {layers}
@@ -269,7 +311,7 @@ export function EditorLayout({
         {canvas}
       </div>
 
-      {prefs.propsOpen ? (
+      {rightPanelOpen ? (
         <>
           <ResizeHandle
             active={activeEdge === "props"}
@@ -281,19 +323,31 @@ export function EditorLayout({
             style={{ width: prefs.propsWidth }}
           >
             <PanelHeader
-              title={shellLabels.propertiesPanelTitle}
+              title={
+                prefs.agentOpen ? shellLabels.agentPanelTitle : shellLabels.propertiesPanelTitle
+              }
               closeLabel={shellLabels.closePanelLabel}
-              onClose={() => setPrefs((p) => ({ ...p, propsOpen: false }))}
+              onClose={closeRightPanel}
             />
-            <div className="editor-layout-panel-body">{panel}</div>
+            <div
+              className={
+                prefs.agentOpen
+                  ? "editor-layout-panel-body editor-layout-panel-body--agent"
+                  : "editor-layout-panel-body"
+              }
+            >
+              {prefs.agentOpen ? agentPanel : panel}
+            </div>
           </aside>
         </>
       ) : null}
 
       <RightActivityRail
         propsOpen={prefs.propsOpen}
+        agentOpen={prefs.agentOpen}
         labels={shellLabels}
         onToggleProps={toggleProps}
+        onToggleAgent={toggleAgent}
       />
     </div>
   );

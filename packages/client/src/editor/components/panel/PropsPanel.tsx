@@ -31,6 +31,7 @@ export type ContentDraftEditor = {
   locale: string;
   loading: boolean;
   onFieldChange: (key: string, value: string) => void;
+  onFieldFocus?: (field: { key: string; type: string; label: string }) => void;
 };
 
 function contentFieldForKey(
@@ -343,7 +344,15 @@ function CmsFieldInput({
             value={displayValue}
             locale={contentDraft.locale}
             mediaLabels={mediaLabels}
+            contentDocumentId={contentDraft.contentRef}
             onChange={(value) => contentDraft.onFieldChange(stateKey, value)}
+            onFieldFocus={() =>
+              contentDraft.onFieldFocus?.({
+                key: stateKey,
+                type: cmsField.type,
+                label: cmsField.label,
+              })
+            }
           />
         </>
       ) : (

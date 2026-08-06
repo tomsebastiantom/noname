@@ -778,6 +778,69 @@ const visualEditorShellSpec = {
           saveConflictMessage:
             "Someone else saved this layout — refresh to see their changes.",
           refreshLayoutLabel: "Refresh",
+          runAgentLabel: "Run agent",
+          runAgentDisabledHint: "Save or load a layout draft before running an agent.",
+          runAgentDialogTitle: "Run agent on this page",
+          runAgentDialogBody:
+            "The agent joins live collab on this layout while it works. Review drafts before publish.",
+          runAgentSelectLabel: "Agent",
+          runAgentSelectPlaceholder: "Choose an agent…",
+          runAgentPromptLabel: "Prompt",
+          runAgentPromptPlaceholder: "Ask the agent to change something on this page…",
+          runAgentSubmitLabel: "Start task",
+          runAgentSubmittingLabel: "Starting…",
+          runAgentStartedLabel: "Agent task started",
+          agentPanelTitle: "Assistant",
+          openAgentPanelLabel: "Assistant",
+          agentContextLabel: "Focused on",
+          agentFailureDetailsLabel: "What happened",
+          agentClearChatLabel: "Clear chat",
+          agentClearChatDisabledHint: "Wait until your message finishes sending",
+          agentReviewDraftsHint:
+            "Draft changes were made on the canvas. Approve to keep them or reject to discard this run.",
+          agentLiveUndoHint:
+            "This change is already live on the canvas. Undo restores the previous version.",
+          agentUndoLabel: "Undo",
+          agentContinueHint: "Reply below — each message starts a new agent turn.",
+          agentStatusReplyLabel: "Reply",
+          agentEmptyHint:
+            "Ask a question or describe a change. Follow up in the box below — no Approve button needed until the agent edits drafts.",
+          agentRunningLabel: "Running…",
+          agentActivityTitle: "Activity",
+          agentActivityExpandLabel: "Show steps",
+          agentActivityCollapseLabel: "Hide steps",
+          agentSummaryLabel: "Summary",
+          agentStepsLabel: "Steps",
+          agentArtifactsLabel: "Artifacts",
+          agentApproveLabel: "Approve",
+          agentRejectLabel: "Reject",
+          agentPeerBadgeLabel: "agent",
+          agentConsoleTitle: "Console",
+          agentConsoleQueuedLabel: "Task queued…",
+          agentConsoleStartingLabel: "Starting orchestration…",
+          agentConsoleCollabLabel: "Joining live collab on this layout…",
+          agentConsoleReadingLabel: "Reading page and layout context…",
+          agentConsolePlanningLabel: "Planning changes…",
+          agentConsoleToolsLabel: "Running tools…",
+          agentConsoleThinkingLabel: "Thinking…",
+          agentConsoleWorkingLabel: "Working…",
+          agentStatusPendingLabel: "Queued",
+          agentStatusRunningLabel: "Working",
+          agentStatusDoneLabel: "Done",
+          agentStatusFailedLabel: "Failed",
+          agentRetryLabel: "Try again",
+          agentWhatIDidLabel: "What I did",
+          collabLiveLabel: "Live",
+          collabSelfLabel: "You",
+          collabPeopleCountTemplate: "People ({count})",
+          collabAgentsCountTemplate: "Agents ({count})",
+          collabEditingAloneLabel: "Editing alone",
+          collabHumanFallbackLabel: "Collaborator",
+          collabAgentFallbackLabel: "Agent",
+          collabExpandGroupLabel: "Show everyone",
+          collabCollapseGroupLabel: "Hide list",
+          collabConnectedTitle: "Connected",
+          collabReconnectingTitle: "Reconnecting",
           previewBarAriaLabel: "Canvas preview width",
           previewFullLabel: "Desktop",
           previewTabletLabel: "Tablet",
@@ -1428,6 +1491,13 @@ const editorPrefsContentType = {
       isLocalizable: false,
       label: "Collapsed layer-tree branches per template",
     },
+    {
+      key: "agentChatClearedAt",
+      type: "json",
+      required: false,
+      isLocalizable: false,
+      label: "Agent chat cleared timestamps per layout",
+    },
   ],
 };
 
@@ -2042,7 +2112,10 @@ async function ensureEditorPrefsContentType(): Promise<void> {
       "/api/documents/content-types/editor_prefs",
     );
     const fieldKeys = new Set(typeDef.schema.fields.map((field) => field.key));
-    const needsSync = !fieldKeys.has("layout") || !fieldKeys.has("layersTreeCollapsed");
+    const needsSync =
+      !fieldKeys.has("layout") ||
+      !fieldKeys.has("layersTreeCollapsed") ||
+      !fieldKeys.has("agentChatClearedAt");
     if (needsSync) {
       await api("PUT", "/api/documents/content-types/editor_prefs", {
         schema: editorPrefsContentType,

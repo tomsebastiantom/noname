@@ -25,4 +25,42 @@ describe("normalizeLayoutPrefs", () => {
     expect(next.layersOpen).toBe(true);
     expect(next.paletteOpen).toBe(true);
   });
+
+  it("defaults agentOpen to false", () => {
+    const next = normalizeLayoutPrefs({});
+    expect(next.agentOpen).toBe(false);
+  });
+
+  it("preserves agentOpen through normalizeLayoutPrefs", () => {
+    const next = normalizeLayoutPrefs({
+      paletteWidth: 224,
+      propsWidth: 288,
+      paletteOpen: true,
+      layersOpen: false,
+      propsOpen: false,
+      agentOpen: true,
+      chromeOpen: true,
+      canvasPreview: "full",
+    });
+    expect(next.agentOpen).toBe(true);
+    expect(next.propsOpen).toBe(false);
+  });
+
+  it("prefers agent over properties when both are open in stored prefs", () => {
+    const next = normalizeLayoutPrefs({
+      propsOpen: true,
+      agentOpen: true,
+    });
+    expect(next.agentOpen).toBe(true);
+    expect(next.propsOpen).toBe(false);
+  });
+
+  it("preserves agentChatClearedAt through normalizeLayoutPrefs", () => {
+    const next = normalizeLayoutPrefs({
+      paletteWidth: 224,
+      propsWidth: 288,
+      agentChatClearedAt: { layout_abc: "2026-08-06T12:00:00.000Z" },
+    });
+    expect(next.agentChatClearedAt.layout_abc).toBe("2026-08-06T12:00:00.000Z");
+  });
 });

@@ -40,6 +40,8 @@ export interface AgentArtifact {
   kind: "layout" | "content" | "insight" | "machine";
   documentId?: string;
   label: string;
+  revertSpec?: Record<string, unknown>;
+  liveEditorPatch?: boolean;
 }
 
 export interface OrchestrateOutput {
@@ -128,6 +130,18 @@ export async function fetchAgentTasks(status?: AgentTaskStatus): Promise<AgentTa
   return apiFetchData<AgentTask[]>(`/api/agents/tasks${query}`);
 }
 
+export async function fetchAgentTasksForLayout(
+  layoutDocumentId: string,
+  limit = 50,
+): Promise<AgentTask[]> {
+  const params = new URLSearchParams({
+    type: "orchestrate",
+    layoutDocumentId,
+    limit: String(limit),
+  });
+  return apiFetchData<AgentTask[]>(`/api/agents/tasks?${params.toString()}`);
+}
+
 export async function fetchAgentTaskById(taskId: string): Promise<AgentTask> {
   return apiFetchData<AgentTask>(`/api/agents/tasks/${encodeURIComponent(taskId)}`);
 }
@@ -151,8 +165,35 @@ export async function approveAgentTask(taskId: string): Promise<AgentTask> {
   });
 }
 
-export async function rejectAgentTask(taskId: string): Promise<AgentTask> {
-  return apiFetchData<AgentTask>(`/api/agents/tasks/${encodeURIComponent(taskId)}/reject`, {
+export type RevertedLayoutSpec = {
+  layoutDocumentId: string;
+  spec: Record<string, unknown>;
+  label: string;
+};
+
+export type RejectAgentTaskResult = AgentTask & {
+  revertedLayouts?: RevertedLayoutSpec[];
+};
+
+export async function rejectAgentTask(taskId: string): Promise<RejectAgentTaskResult> {
+  return apiFetchData<RejectAgentTaskResult>(`/api/agents/tasks/${encodeURIComponent(taskId)}/reject`, {
     method: "PUT",
   });
+}
+
+export function parseOrchestrateOutput(
+  output: Record<string, unknown> | null,
+): OrchestrateOutput | null {
+  if (!output || typeof output !== "object") return null;
+  const summary = typeof output.summary === "string" ? output.summary : "";
+  const steps = Array.isArray(output.steps) ? (output.steps as AgentStepRecord[]) : [];
+  const artifacts = Array.isArray(output.artifacts) ? (output.artifacts as AgentArtifact[]) : [];
+  const stoppedReason =
+    output.stoppedReason === "max_steps" ||
+    output.stoppedReason === "error" ||
+    output.stoppedReason === "denied"
+      ? output.stoppedReason
+      : "completed";
+  if (!summary && steps.length === 0 && artifacts.length === 0) return null;
+  return { summary, steps, artifacts, stoppedReason };
 }

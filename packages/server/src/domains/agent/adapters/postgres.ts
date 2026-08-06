@@ -1,4 +1,4 @@
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import type { AgentTaskDTO, AgentTaskStorage, TaskAuditRecord } from "../ports";
 import { agentTasks } from "../schema";
@@ -57,10 +57,25 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
       if (filters.registeredAgentIds?.length) {
         conditions.push(inArray(agentTasks.registeredAgentId, filters.registeredAgentIds));
       }
+      if (filters.targetLayoutDocumentId) {
+        conditions.push(
+          sql`${agentTasks.input}->>'targetLayoutDocumentId' = ${filters.targetLayoutDocumentId}`,
+        );
+      }
+      if (filters.limit) {
+        const rows = await db
+          .select()
+          .from(agentTasks)
+          .where(and(...conditions))
+          .orderBy(desc(agentTasks.created_at))
+          .limit(filters.limit);
+        return [...rows].reverse().map(mapTask);
+      }
       const rows = await db
         .select()
         .from(agentTasks)
-        .where(and(...conditions));
+        .where(and(...conditions))
+        .orderBy(asc(agentTasks.created_at));
       return rows.map(mapTask);
     },
 

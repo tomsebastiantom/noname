@@ -53,7 +53,12 @@ export function createListFolderDocumentsTool(
         return { allowed: false, reason: "missing_agent_context", folderSlug };
       }
 
-      const allowed = await agentCanViewCollection(deps.authorization, agentSlug, folderSlug);
+      const allowed = await agentCanViewCollection(
+        deps.authorization,
+        agentSlug,
+        folderSlug,
+        deps.runContext?.onBehalfOf,
+      );
       if (!allowed) {
         return { allowed: false, reason: "forbidden", folderSlug };
       }

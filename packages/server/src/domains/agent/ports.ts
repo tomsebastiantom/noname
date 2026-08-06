@@ -52,6 +52,10 @@ export interface AgentTaskFilters {
   status?: AgentTaskStatus;
   type?: AgentTaskType;
   registeredAgentIds?: string[];
+  /** Matches `input.targetLayoutDocumentId` (editor agent thread restore). */
+  targetLayoutDocumentId?: string;
+  /** When set, returns the N most recent tasks (ascending by createdAt for display). */
+  limit?: number;
 }
 
 export interface AgentTaskStorage {

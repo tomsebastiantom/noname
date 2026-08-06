@@ -23,6 +23,7 @@
 | Replay user stitch + admin search (O1–O2) | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) |
 | Replay gzip compression (O3) | SDK `fflate` + worker; R2 `.json.gz` |
 | Storefront R2 deploy + bot HTML (I1–I2) | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) |
+| Live layout collab E3 | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) — Automerge WS, edge proxy, E3c presence |
 
 ---
 
@@ -43,7 +44,7 @@
 |----|------|
 | **C2** | Comms delivery analytics (opens/clicks) |
 | **C4** | Mobile push |
-| **E3** | Live CRDT collab |
+| **E3c / D7** | Rich-text live edit (D7); optional Automerge blob storage — [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md) |
 | **O4** | Playwright E2E for replay |
 
 ---
@@ -66,4 +67,4 @@ pnpm dev
 |------|--------|
 | 2026-08-06 | **I1–I2** storefront prod: bot HTML + R2 client deploy |
 | 2026-08-06 | Removed separate “embed token” backlog — SDK/partner uses `nag.*` |
-| 2026-08-06 | Created master status + `docs/2026-08-06/` folder |
+| 2026-08-06 | **automerge-repo** — Repo sync replaces manual WS relay; see [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md) |

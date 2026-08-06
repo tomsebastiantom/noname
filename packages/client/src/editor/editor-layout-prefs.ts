@@ -7,8 +7,12 @@ export type EditorLayoutPrefs = {
   /** Layer tree dock at bottom of left sidebar (blocks stay visible above). */
   layersOpen: boolean;
   propsOpen: boolean;
+  /** Agent chat sidebar (right); mutually exclusive with propsOpen when toggled. */
+  agentOpen: boolean;
   chromeOpen: boolean;
   canvasPreview: CanvasPreviewWidth;
+  /** layoutDocumentId → ISO timestamp; agent chat before this is hidden */
+  agentChatClearedAt: Record<string, string>;
 };
 
 export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutPrefs = {
@@ -17,8 +21,10 @@ export const EDITOR_LAYOUT_DEFAULTS: EditorLayoutPrefs = {
   paletteOpen: true,
   layersOpen: false,
   propsOpen: true,
+  agentOpen: false,
   chromeOpen: true,
   canvasPreview: "full",
+  agentChatClearedAt: {},
 };
 
 export const EDITOR_LAYOUT_LIMITS = {
@@ -32,6 +38,17 @@ export const EDITOR_LAYOUT_LIMITS = {
 type LegacyEditorLayoutPrefs = Partial<EditorLayoutPrefs> & {
   leftTab?: "blocks" | "layers";
 };
+
+function parseAgentChatClearedAtMap(raw: unknown): Record<string, string> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, string> = {};
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === "string" && value.trim()) {
+      out[key] = value;
+    }
+  }
+  return out;
+}
 
 export function migrateLegacyLayoutPrefs(
   parsed: LegacyEditorLayoutPrefs,
@@ -57,8 +74,10 @@ export function migrateLegacyLayoutPrefs(
     paletteOpen,
     layersOpen,
     propsOpen: parsed.propsOpen,
+    agentOpen: parsed.agentOpen,
     chromeOpen: parsed.chromeOpen,
     canvasPreview: parsed.canvasPreview,
+    agentChatClearedAt: parseAgentChatClearedAtMap(parsed.agentChatClearedAt),
   };
 }
 
@@ -68,7 +87,7 @@ export function normalizeLayoutPrefs(raw: unknown): EditorLayoutPrefs {
       ? migrateLegacyLayoutPrefs(raw as LegacyEditorLayoutPrefs)
       : {};
 
-  return {
+  const result: EditorLayoutPrefs = {
     paletteWidth: clamp(
       typeof parsed.paletteWidth === "number"
         ? parsed.paletteWidth
@@ -91,6 +110,8 @@ export function normalizeLayoutPrefs(raw: unknown): EditorLayoutPrefs {
         : EDITOR_LAYOUT_DEFAULTS.layersOpen,
     propsOpen:
       typeof parsed.propsOpen === "boolean" ? parsed.propsOpen : EDITOR_LAYOUT_DEFAULTS.propsOpen,
+    agentOpen:
+      typeof parsed.agentOpen === "boolean" ? parsed.agentOpen : EDITOR_LAYOUT_DEFAULTS.agentOpen,
     chromeOpen:
       typeof parsed.chromeOpen === "boolean"
         ? parsed.chromeOpen
@@ -101,7 +122,14 @@ export function normalizeLayoutPrefs(raw: unknown): EditorLayoutPrefs {
       parsed.canvasPreview === "full"
         ? parsed.canvasPreview
         : EDITOR_LAYOUT_DEFAULTS.canvasPreview,
+    agentChatClearedAt: parseAgentChatClearedAtMap(parsed.agentChatClearedAt),
   };
+
+  if (result.agentOpen && result.propsOpen) {
+    result.propsOpen = false;
+  }
+
+  return result;
 }
 
 function clamp(value: number, min: number, max: number): number {

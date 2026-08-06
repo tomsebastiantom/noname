@@ -2,6 +2,8 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import type { AuthorizationPort } from "../../../auth/authorization-port";
 import type { ContentDocumentService, DocumentStorage } from "../../../documents/ports";
+import type { AgentCollabRuntime } from "../../collab/agent-collab-runtime";
+import { parseAgentRichTextFieldValue } from "../../collab/parse-agent-richtext-value";
 import type { ArtifactCollector } from "../artifacts";
 import type { AgentRunContext } from "../context";
 import { writeAuditFromRunContext } from "../context";
@@ -14,6 +16,7 @@ export function createUpdateDraftFieldTool(
     authorization: AuthorizationPort;
     artifacts: ArtifactCollector;
     runContext: AgentRunContext | null;
+    collabRuntime: AgentCollabRuntime;
   },
   orgId: string,
 ) {
@@ -62,21 +65,48 @@ export function createUpdateDraftFieldTool(
         ? await deps.storage.findCollectionSlug(orgId, doc.collectionId)
         : null;
 
-      const allowed = await agentCanEditDocument(deps.authorization, agentSlug, {
-        id: doc.id,
-        collectionSlug,
-      });
+      const allowed = await agentCanEditDocument(
+        deps.authorization,
+        agentSlug,
+        { id: doc.id, collectionSlug },
+        deps.runContext?.onBehalfOf,
+      );
       if (!allowed) {
         return { allowed: false, reason: "forbidden", documentId };
       }
 
       const audit = deps.runContext ? writeAuditFromRunContext(deps.runContext) : undefined;
+      const resolvedLocale = locale ?? "en-US";
+      const richTextSession = deps.collabRuntime.getRichTextSession();
+      const viaCollabSession =
+        richTextSession?.matches(documentId, fieldKey, resolvedLocale) ?? false;
+      const richTextDoc = viaCollabSession ? parseAgentRichTextFieldValue(value) : null;
+
+      if (viaCollabSession && richTextDoc) {
+        await richTextSession.applyRichTextDocument(richTextDoc);
+        deps.artifacts.push({
+          kind: "content",
+          documentId: doc.id,
+          label: `${contentType}.${fieldKey}`,
+        });
+        return {
+          updated: true,
+          via: "collab",
+          contentId: doc.id,
+          contentType,
+          fieldKey,
+          status: doc.status,
+        };
+      } else if (viaCollabSession) {
+        richTextSession.pulseAwareness();
+      }
+
       const updated = await deps.content.updateById(
         orgId,
         contentType,
         documentId,
         { [fieldKey]: value },
-        { locale, audit },
+        { locale: resolvedLocale, audit },
       );
 
       deps.artifacts.push({
@@ -87,6 +117,7 @@ export function createUpdateDraftFieldTool(
 
       return {
         updated: true,
+        via: "http",
         contentId: updated.id,
         contentType: updated.type,
         fieldKey,

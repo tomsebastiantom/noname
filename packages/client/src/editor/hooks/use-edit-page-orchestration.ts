@@ -1,10 +1,12 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { createStateStore, type SetState } from "@json-render/react";
+import { parseRichTextFieldValue, richTextToPlainText } from "@noname/documents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearSession } from "../../auth/session";
 import { ApiConflictError, isAuthErrorMessage } from "../../lib/api";
 import { activateEditorDevtools, releaseEditorDevtools } from "../activate-editor-devtools";
+import { useLayoutCollab } from "../collab/use-layout-collab";
 import { defaultPropsForType } from "../components/palette/ComponentPalette";
 import { CONTENT_DEFAULT_LOCALE } from "../content-entries";
 import {
@@ -62,6 +64,7 @@ export function useEditPageOrchestration({
     saveDraft,
     publishDraft,
     discardChanges,
+    reloadFromServer,
   } = useLayoutDraft(templateName, displaySpec);
 
   const contentDraft = useContentDraft(pageContentRef);
@@ -69,6 +72,13 @@ export function useEditPageOrchestration({
   const dirty = layoutDirty || contentDraft.dirty || pendingAdd !== null;
 
   const [selection, setSelection] = useState<EditSelection | null>(null);
+  const [agentTargetField, setAgentTargetField] = useState<{
+    fieldKey: string;
+    locale: string;
+    fieldLabel: string;
+    fieldType: string;
+    excerpt?: string;
+  } | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveConflict, setSaveConflict] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
@@ -143,13 +153,68 @@ export function useEditPageOrchestration({
     },
   });
 
+  const collabEnabled = !loading && Boolean(draft?.layoutId && storedSpec);
+
+  const layoutCollab = useLayoutCollab({
+    enabled: collabEnabled && !loading && Boolean(draft?.layoutId && storedSpec),
+    layoutDocumentId: draft?.layoutId ?? null,
+    initialSpec: storedSpec,
+    onRemoteSpec: updateStoredSpec,
+  });
+
+  useEffect(() => {
+    if (!collabEnabled || !layoutCollab.connected) return;
+    layoutCollab.updatePresence({ selectedElementId: selection?.elementId ?? null });
+  }, [collabEnabled, layoutCollab.connected, layoutCollab.updatePresence, selection?.elementId]);
+
+  const reportCollabPointerMove = useCallback(
+    (cursorX: number | null, cursorY: number | null) => {
+      if (!collabEnabled || !layoutCollab.connected) return;
+      layoutCollab.updatePresence({
+        selectedElementId: selectionRef.current?.elementId ?? null,
+        cursorX,
+        cursorY,
+      });
+    },
+    [collabEnabled, layoutCollab.connected, layoutCollab.updatePresence],
+  );
+
+  const reloadLayoutAfterAgentPatch = useCallback(async () => {
+    const delaysMs = [0, 400, 1_200];
+    for (const delayMs of delaysMs) {
+      if (delayMs > 0) {
+        await new Promise<void>((resolve) => {
+          window.setTimeout(resolve, delayMs);
+        });
+      }
+      const spec = await reloadFromServer();
+      if (spec && collabEnabled) {
+        layoutCollab.applyLocalSpec(spec);
+      }
+    }
+  }, [reloadFromServer, collabEnabled, layoutCollab]);
+
+  const applyAgentRevertedLayoutSpec = useCallback(
+    (spec: Spec) => {
+      updateStoredSpec(spec);
+      if (collabEnabled) {
+        layoutCollab.applyLocalSpec(spec);
+      }
+      setSaveSuccess(null);
+    },
+    [updateStoredSpec, collabEnabled, layoutCollab],
+  );
+
   const handleStoredChange = useCallback(
     (next: Spec) => {
       history.recordBeforeFieldChange();
       updateStoredSpec(next);
+      if (collabEnabled) {
+        layoutCollab.applyLocalSpec(next);
+      }
       setSaveSuccess(null);
     },
-    [updateStoredSpec, history],
+    [updateStoredSpec, history, collabEnabled, layoutCollab],
   );
 
   const stageAdd = useCallback(
@@ -247,9 +312,12 @@ export function useEditPageOrchestration({
       const next = reorderElement(storedSpec, elementId, targetId, placement);
       if (!next) return;
       updateStoredSpec(next);
+      if (collabEnabled) {
+        layoutCollab.applyLocalSpec(next);
+      }
       setSaveSuccess(null);
     },
-    [storedSpec, pendingAdd, updateStoredSpec, history],
+    [storedSpec, pendingAdd, updateStoredSpec, history, collabEnabled, layoutCollab],
   );
 
   const handleDuplicate = useCallback(
@@ -259,13 +327,16 @@ export function useEditPageOrchestration({
       const result = duplicateElementSubtree(storedSpec, elementId);
       if (!result) return;
       updateStoredSpec(result.spec);
+      if (collabEnabled) {
+        layoutCollab.applyLocalSpec(result.spec);
+      }
       const el = getElement(result.spec, result.newElementId);
       if (el) {
         setSelection({ elementId: result.newElementId, componentType: el.type });
       }
       setSaveSuccess(null);
     },
-    [storedSpec, pendingAdd, updateStoredSpec, history],
+    [storedSpec, pendingAdd, updateStoredSpec, history, collabEnabled, layoutCollab],
   );
 
   const exitEditMode = useCallback(() => {
@@ -364,6 +435,28 @@ export function useEditPageOrchestration({
     [contentDraft, history],
   );
 
+  const handleContentFieldFocus = useCallback(
+    (field: { key: string; type: string; label: string }) => {
+      const rawValue = contentDraft.values[field.key] ?? "";
+      let excerpt: string | undefined;
+      if (field.type === "richText" && rawValue.trim()) {
+        const parsed = parseRichTextFieldValue(rawValue);
+        if (parsed) {
+          const plain = richTextToPlainText(parsed).trim();
+          if (plain) excerpt = plain.slice(0, 200);
+        }
+      }
+      setAgentTargetField({
+        fieldKey: field.key,
+        locale: CONTENT_DEFAULT_LOCALE,
+        fieldLabel: field.label,
+        fieldType: field.type,
+        ...(excerpt ? { excerpt } : {}),
+      });
+    },
+    [contentDraft.values],
+  );
+
   const contentDraftEditor = useMemo(
     () => ({
       values: contentDraft.values,
@@ -373,6 +466,7 @@ export function useEditPageOrchestration({
       locale: CONTENT_DEFAULT_LOCALE,
       loading: contentDraft.loading,
       onFieldChange: handleContentFieldChange,
+      onFieldFocus: handleContentFieldFocus,
     }),
     [
       contentDraft.values,
@@ -380,11 +474,12 @@ export function useEditPageOrchestration({
       contentDraft.schema,
       contentDraft.loading,
       handleContentFieldChange,
+      handleContentFieldFocus,
       pageContentRef,
     ],
   );
 
-  const chromeError = saveError ?? loadError ?? contentDraft.loadError;
+  const chromeError = saveError ?? loadError ?? contentDraft.loadError ?? layoutCollab.error;
 
   const handleDiscard = useCallback(() => {
     discardChanges();
@@ -408,6 +503,7 @@ export function useEditPageOrchestration({
       selection,
       pendingAdd,
       contentDraft: contentDraftEditor,
+      agentTargetField,
       dirty,
       draftStatus: draft?.status ?? null,
       canPublish,
@@ -417,6 +513,12 @@ export function useEditPageOrchestration({
       lastActivity,
       canUndo: history.canUndo,
       canRedo: history.canRedo,
+      collabEnabled,
+      collabConnected: layoutCollab.connected,
+      collabError: layoutCollab.error,
+      collabPeers: layoutCollab.peers,
+      agentTaskActivity: layoutCollab.agentTaskActivity,
+      layoutDocumentId: draft?.layoutId ?? null,
     };
   }, [
     shellLabels,
@@ -428,6 +530,7 @@ export function useEditPageOrchestration({
     selection,
     pendingAdd,
     contentDraftEditor,
+    agentTargetField,
     dirty,
     draft?.status,
     canPublish,
@@ -437,6 +540,12 @@ export function useEditPageOrchestration({
     lastActivity,
     history.canUndo,
     history.canRedo,
+    collabEnabled,
+    layoutCollab.connected,
+    layoutCollab.error,
+    layoutCollab.peers,
+    layoutCollab.agentTaskActivity,
+    draft?.layoutId,
   ]);
 
   const sessionActions: EditorSessionActions = {
@@ -456,6 +565,9 @@ export function useEditPageOrchestration({
     handleDuplicate,
     handleReorder,
     isStoredElement,
+    reportCollabPointerMove,
+    reloadLayoutAfterAgentPatch,
+    applyAgentRevertedLayoutSpec,
   };
 
   const editorActionHandlers = useMemo(

@@ -5,6 +5,7 @@ startTracing();
 
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
+import { WebSocketServer } from "ws";
 import { createAgentDomain } from "./domains/agent";
 import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
 import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
@@ -13,6 +14,7 @@ import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notif
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
+import { createCollabDomain } from "./domains/collab";
 import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
@@ -135,6 +137,15 @@ registerWebhookOutboundRouter({
 
 app.route("/api/documents", docs.routes);
 
+const collab = createCollabDomain({
+  storage,
+  layout: docs.service.layout,
+  content: docs.service.content,
+  authorization,
+  db,
+});
+app.route("/api/collab", collab.routes);
+
 const ctx = createContextDomain({ db });
 app.route("/api/context", ctx.routes);
 
@@ -164,6 +175,7 @@ const agentExecutor = createCompositeAgentExecutor({
     layout: docs.service.layout,
     content: docs.service.content,
     machines: machines.engine,
+    layoutCollabRooms: collab.rooms,
   }),
 });
 
@@ -171,6 +183,8 @@ const agent = createAgentDomain({
   db,
   authorization,
   executor: agentExecutor,
+  layout: docs.service.layout,
+  layoutCollabRooms: collab.rooms,
   workerHooks: {
     async onTaskCompleted({ orgId, type, prompt, input, output }) {
       const notify = parseTaskNotify(input);
@@ -208,7 +222,12 @@ app.route("/api/notifications", notifications.routes);
 app.route("/api/webhooks", webhooks.routes);
 
 const port = Number(process.env.PORT) || 3000;
-serve({ fetch: app.fetch, port });
+const wss = new WebSocketServer({ noServer: true });
+serve({
+  fetch: app.fetch,
+  port,
+  websocket: { server: wss },
+});
 console.log(`Server running at http://localhost:${port}`);
 
 export default app;

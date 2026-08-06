@@ -1,6 +1,7 @@
 import { type WriteAudit, withWriteAudit } from "@noname/auth";
 import { AggregateRoot } from "../../shared/aggregate-root";
 import { AgentEvents } from "./events";
+import { mergeOrchestrateProgress } from "./orchestrate-progress";
 import type { AgentTaskDTO, AgentTaskStatus, AgentTaskType } from "./ports";
 
 export class AgentTask extends AggregateRoot {
@@ -57,6 +58,17 @@ export class AgentTask extends AggregateRoot {
       taskId: this.id,
       orgId: this.orgId,
     });
+  }
+
+  /** Partial orchestrate output while status is still running (for live UI polling). */
+  setProgressOutput(output: Record<string, unknown>): void {
+    if (this.status !== "running") return;
+    if (this.output) {
+      this.output = mergeOrchestrateProgress(this.output, output);
+    } else {
+      this.output = output;
+    }
+    this.updatedAt = new Date();
   }
 
   complete(output: Record<string, unknown>, model: string, tokens: number): void {

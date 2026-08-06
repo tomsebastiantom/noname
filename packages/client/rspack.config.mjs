@@ -30,6 +30,7 @@ export default {
         context: ["/api"],
         target: `http://localhost:${edgeDevPort}`,
         changeOrigin: false,
+        ws: true,
       },
     ],
   },

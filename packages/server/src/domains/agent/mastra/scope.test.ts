@@ -37,6 +37,22 @@ describe("agentCanViewDocument", () => {
     expect(allowed).toBe(true);
     expect(check).toHaveBeenCalledTimes(2);
   });
+
+  it("falls back to agent owner when direct agent access is denied", async () => {
+    const check = vi.fn(async (input) => {
+      if (input.subject.type === "User" && input.subject.id === "owner-1") {
+        return input.namespace === "Collection" && input.permission === "view";
+      }
+      return false;
+    });
+    const allowed = await agentCanViewDocument(
+      mockAuth(check),
+      "demo-agent",
+      { id: "doc-1", collectionSlug: "marketing" },
+      "owner-1",
+    );
+    expect(allowed).toBe(true);
+  });
 });
 
 describe("agentCanEditDocument", () => {

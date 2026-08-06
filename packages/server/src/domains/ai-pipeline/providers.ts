@@ -1,3 +1,9 @@
+import {
+  envOpenAiApiKey,
+  openAiCompatibleBaseUrl,
+  openAiCompatibleModelId,
+} from "../agent/mastra/llm-env";
+
 export interface LLMRequest {
   prompt: string;
   systemPrompt?: string;
@@ -17,8 +23,8 @@ export interface LLMProvider {
 }
 
 export function createLLMProvider(): LLMProvider {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey = envOpenAiApiKey();
+  const anthropicKey = process.env.ANTHROPIC_API_KEY?.trim();
 
   if (openaiKey) return createOpenAIProvider(openaiKey);
   if (anthropicKey) return createAnthropicProvider(anthropicKey);
@@ -35,16 +41,19 @@ export function createLLMProviderForApiKey(
 }
 
 function createOpenAIProvider(apiKey: string): LLMProvider {
+  const chatUrl = `${openAiCompatibleBaseUrl() ?? "https://api.openai.com/v1"}/chat/completions`;
+  const model = openAiCompatibleModelId();
+
   return {
     async generate(req) {
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      const response = await fetch(chatUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model: "gpt-4o",
+          model,
           messages: [
             { role: "system", content: buildSystemPrompt(req.targetType) },
             { role: "user", content: req.prompt },
@@ -59,7 +68,7 @@ function createOpenAIProvider(apiKey: string): LLMProvider {
 
       return {
         response: JSON.parse(content),
-        model: data.model ?? "gpt-4o",
+        model: data.model ?? model,
         tokens: data.usage?.total_tokens ?? 0,
       };
     },

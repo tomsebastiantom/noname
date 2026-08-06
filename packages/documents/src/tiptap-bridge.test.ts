@@ -7,9 +7,10 @@ import {
   embeddedVideoBlockNode,
   plainTextToRichTextDocument,
   richTextToPlainText,
+  richTextToTipTapJson,
+  tipTapJsonToRichText,
 } from "@noname/documents";
 import { describe, expect, it } from "vitest";
-import { richTextToTipTapJson, tipTapJsonToRichText } from "./tiptap-bridge";
 
 describe("tiptap bridge", () => {
   it("round-trips paragraph and marks", () => {

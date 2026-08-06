@@ -9,6 +9,11 @@ import { Hono } from "hono";
 import { tryParseJwt, validateJwt } from "../auth";
 import { hmacHeaders } from "../hmac";
 import type { Env } from "../types";
+import {
+  isCollabWsWithTicket,
+  isWebSocketUpgrade,
+  proxyWebSocketToOrigin,
+} from "./proxy-websocket";
 import { isPublicGet, isPublicPost } from "./public-routes";
 import { resolveProxyOrgId } from "./resolve-proxy-org";
 import {
@@ -48,7 +53,9 @@ export function createApiProxyRoutes() {
     const target = `${c.env.API_ORIGIN}${pathname}${search}`;
     const isPublic = routeIsPublic(c.req.method, pathname);
     const streamTicketBypass = isNotificationsStreamWithTicket(incoming);
+    const collabTicketBypass = isCollabWsWithTicket(incoming);
     const editMode = isEditModeUrl(incoming);
+    const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
 
     let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
@@ -59,7 +66,7 @@ export function createApiProxyRoutes() {
       if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
-    } else if (!isPublic && !streamTicketBypass) {
+    } else if (!isPublic && !streamTicketBypass && !collabTicketBypass) {
       const auth = await resolveJwt(c.req.raw, c.env);
       if (auth instanceof Response) return auth;
       jwt = auth;
@@ -79,6 +86,10 @@ export function createApiProxyRoutes() {
     }
 
     const signed = await hmacHeaders(orgId, jwt?.userId ?? "", jwt?.role ?? "", c.env);
+
+    if (webSocketUpgrade) {
+      return proxyWebSocketToOrigin(target, c.req.raw.headers, signed);
+    }
 
     const headers = new Headers();
     for (const [key, value] of Object.entries(signed)) {

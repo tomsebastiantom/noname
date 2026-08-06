@@ -140,7 +140,7 @@ flowchart LR
 
 | Track | ID | Data | CRDT | Status |
 |-------|-----|------|------|--------|
-| Layout live collab | **E3a** | json-render spec | Automerge → Loro fallback | Spike done; **wait Phase C gate** |
+| Layout live collab | **E3a** | json-render spec | Automerge → Loro fallback | **v1 dogfood** — `?collab=1`, edge WS proxy, list ops for reorder |
 | Rich text solo | **R1** | `documents.data` field | None (HTTP save) | **Not started** — [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) |
 | Rich text live collab | **D7** | Same JSON tree | Yjs + Hocuspocus | Deferred until product asks |
 
@@ -162,15 +162,18 @@ None — all scenarios passed on both libraries.
 
 ---
 
-## E3a entry checklist (after product gate)
+## E3a entry checklist
 
-- [ ] E3-pre merged and stable in prod (`document_ops`, client op headers, ops list API)  
-- [ ] Spike recommendation accepted (this doc)  
-- [ ] Phase C gate from [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md)  
-- [ ] Implement Automerge ↔ spec adapter (mapping above)  
-- [ ] `automerge-repo` network adapter + Keto WS auth  
-- [ ] Wire provider in `use-edit-page-orchestration.ts`  
-- [ ] Snapshot persistence + publish export path  
+- [x] E3-pre merged and stable (`document_ops`, client op headers, ops list API)  
+- [x] Spike recommendation accepted (this doc)  
+- [x] Automerge ↔ spec adapter (mapping above) — v1 merge + list ops for reorder  
+- [x] WS auth + Keto gate + manual Automerge sync relay  
+- [x] Wire provider in `use-edit-page-orchestration.ts` (`?collab=1`)  
+- [x] Snapshot persistence (debounced → `layout.update`)  
+- [x] Edge WS proxy (same-origin; no direct `:3000` bypass)  
+- [x] **`automerge-repo`** network adapter — [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md)  
+- [x] **E3c** presence / cursors  
+- [ ] Publish export path validation in prod  
 - [ ] **Do not** start Yjs/Hocuspocus for layout  
 - [ ] **Do not** block on R1 rich text  
 

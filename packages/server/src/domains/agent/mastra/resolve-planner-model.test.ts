@@ -5,7 +5,9 @@ describe("resolvePlannerModel", () => {
   afterEach(() => {
     delete process.env.MASTRA_PLANNER_MODEL;
     delete process.env.OPENAI_API_KEY;
+    delete process.env.OPENAI_BASE_URL;
     delete process.env.ANTHROPIC_API_KEY;
+    delete process.env.NODE_ENV;
   });
 
   it("uses org Vault key for the requested provider in the model id", async () => {
@@ -38,6 +40,25 @@ describe("resolvePlannerModel", () => {
     expect(resolved.model).toEqual({
       id: "openai/gpt-4o-mini",
       apiKey: "sk-env-openai",
+    });
+  });
+
+  it("passes OPENAI_BASE_URL to OpenAI-compatible config", async () => {
+    process.env.OPENAI_BASE_URL = "http://localhost:4000/v1";
+    process.env.OPENAI_API_KEY = "sk-local";
+    process.env.NODE_ENV = "development";
+
+    const resolved = await resolvePlannerModel(
+      "org-1",
+      { resolveLlmApiKey: vi.fn(async () => null) },
+      "openai/playground-gpt-5-mini",
+    );
+
+    expect(resolved.model).toEqual({
+      providerId: "openai",
+      modelId: "playground-gpt-5-mini",
+      apiKey: "sk-local",
+      url: "http://localhost:4000/v1",
     });
   });
 

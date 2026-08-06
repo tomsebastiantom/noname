@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { type ReactNode, useState } from "react";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import type { EditorShellLabels } from "../../schemas/components";
@@ -13,6 +13,7 @@ export function SaveBar({
   success,
   saveConflict,
   activityLabel,
+  presence,
   labels,
   onSave,
   onPublish,
@@ -29,6 +30,7 @@ export function SaveBar({
   success: string | null;
   saveConflict?: boolean;
   activityLabel?: string | null;
+  presence?: ReactNode;
   labels: EditorShellLabels;
   onSave: () => Promise<void>;
   onPublish: () => Promise<void>;
@@ -52,6 +54,7 @@ export function SaveBar({
         ) : null}
         <span className="text-sm font-medium">{labels.title}</span>
         <span className="text-xs text-muted-foreground">{statusLabel}</span>
+        {presence}
       </div>
       <div className="ml-auto flex flex-wrap items-center gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onExitEdit}>

@@ -1,4 +1,6 @@
-# Visual Editor — Collab & CRDT (deferred)
+# Visual Editor — Collab & CRDT
+
+> **Status:** **E3a v1 dogfood** — see [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) for shipped paths and remaining gaps (E3c, D7).
 
 > **Date:** 2026-08-01 (updated 2026-08-06)  
 > **Status:** Not building now — required later when **multiple people edit the same draft at the same time**  

@@ -9,6 +9,7 @@ export const TOOL_GUARDS: Record<string, ToolGuard> = {
   generateContentDraft: "human_approval",
   generateMachineDraft: "human_approval",
   updateDraftField: "human_approval",
+  patchLayoutDraft: "human_approval",
   publish: "denied",
 };
 
@@ -21,6 +22,7 @@ export const ORCHESTRATE_TOOL_IDS = [
   "generateContentDraft",
   "generateMachineDraft",
   "updateDraftField",
+  "patchLayoutDraft",
 ] as const;
 
 export type OrchestrateToolId = (typeof ORCHESTRATE_TOOL_IDS)[number];

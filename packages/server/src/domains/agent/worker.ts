@@ -3,7 +3,10 @@ import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import type { AgentRegistryStorage } from "./adapters/registry-postgres";
+import { inferAgentFailurePhase } from "./agent-failure-phase";
+import { humanizeAgentTaskErrorFromUnknown } from "./agent-task-error";
 import { AgentTask } from "./entity";
+import { mergeOrchestrateProgress } from "./orchestrate-progress";
 import type { AgentTaskStorage } from "./ports";
 import type { AgentJobData } from "./queue";
 import { requireAgentTask } from "./task-guards";
@@ -65,16 +68,26 @@ export function startAgentWorker(
               if (deps.registryStorage && row.registeredAgentId) {
                 const agent = await deps.registryStorage.findById(orgId, row.registeredAgentId);
                 if (agent) {
+                  const delegatorUserId =
+                    row.createdBy?.actorType === "human" && row.createdBy.actorId
+                      ? row.createdBy.actorId
+                      : agent.ownerUserId;
                   executorInput = {
                     ...executorInput,
                     agentSlug: agent.slug,
-                    onBehalfOf: agent.ownerUserId,
+                    agentLabel: agent.label,
+                    onBehalfOf: delegatorUserId,
                     ...(agent.allowedTools.length > 0 ? { allowedTools: agent.allowedTools } : {}),
                   };
                 }
               }
 
-              const result = await executor.execute(orgId, type, prompt, executorInput);
+              const result = await executor.execute(orgId, type, prompt, executorInput, {
+                onProgress: async (partialOutput) => {
+                  entity.setProgressOutput(partialOutput);
+                  await persistAgentTask(storage, orgId, entity);
+                },
+              });
               span.setAttribute("agent.model", result.model);
               span.setAttribute("agent.tokens", result.tokens);
               entity.complete(result.output, result.model, result.tokens);
@@ -94,9 +107,28 @@ export function startAgentWorker(
             } catch (err) {
               span.recordException(err as Error);
               span.setStatus({ code: SpanStatusCode.ERROR });
-              entity.fail(err instanceof Error ? err.message : "unknown error");
+              const rawMessage = err instanceof Error ? err.message : String(err);
+              const traceId = span.spanContext().traceId;
+              const phase = inferAgentFailurePhase(entity.output, rawMessage);
+              entity.output = mergeOrchestrateProgress(entity.output ?? {}, {
+                summary: `Failed during ${phase}`,
+                steps: [],
+                artifacts: [],
+                stoppedReason: "error",
+                diagnostics: {
+                  phase,
+                  rawError: rawMessage,
+                  traceId,
+                  executor: "mastra",
+                  queue: BULLMQ_QUEUES.AGENT,
+                },
+              });
+              console.error(`[agent-worker] task ${taskId} failed during ${phase}`, {
+                traceId,
+                error: rawMessage,
+              });
+              entity.fail(humanizeAgentTaskErrorFromUnknown(err));
               await persistAgentTask(storage, orgId, entity);
-              throw err;
             }
           } finally {
             span.end();

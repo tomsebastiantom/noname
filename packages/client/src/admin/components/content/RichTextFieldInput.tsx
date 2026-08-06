@@ -9,6 +9,10 @@ export function RichTextFieldInput({
   referenceTarget,
   mediaLabels,
   constraints,
+  contentDocumentId,
+  fieldKey,
+  locale,
+  onFocus,
 }: Readonly<{
   label: string;
   required?: boolean;
@@ -17,6 +21,10 @@ export function RichTextFieldInput({
   referenceTarget?: string;
   mediaLabels?: MediaFieldLabels;
   constraints?: Record<string, unknown>;
+  contentDocumentId?: string | null;
+  fieldKey?: string;
+  locale?: string;
+  onFocus?: () => void;
 }>) {
   const labels: MediaFieldLabels = mediaLabels ?? {
     uploadFileLabel: "Upload file",
@@ -35,6 +43,10 @@ export function RichTextFieldInput({
       referenceTarget={referenceTarget}
       mediaLabels={labels}
       constraints={constraints}
+      contentDocumentId={contentDocumentId}
+      fieldKey={fieldKey}
+      locale={locale}
+      onFocus={onFocus}
     />
   );
 }

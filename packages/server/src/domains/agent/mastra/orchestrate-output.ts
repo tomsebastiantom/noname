@@ -16,6 +16,8 @@ const agentArtifactSchema = z.object({
   kind: z.enum(["layout", "content", "insight", "machine"]),
   documentId: z.string().optional(),
   label: z.string().min(1),
+  revertSpec: z.record(z.string(), z.unknown()).optional(),
+  liveEditorPatch: z.boolean().optional(),
 });
 
 export const orchestrateOutputSchema = z.object({

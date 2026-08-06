@@ -2,6 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as agentSchema from "./domains/agent/schema";
 import * as aiPipelineSchema from "./domains/ai-pipeline/schema";
+import * as collabSchema from "./domains/collab/schema";
 import * as contextSchema from "./domains/context/schema";
 import * as documentSchema from "./domains/documents/schema";
 import * as flagsSchema from "./domains/flags/schema";
@@ -16,6 +17,7 @@ export function createDatabase(connectionString: string) {
   return drizzle(client, {
     schema: {
       ...documentSchema,
+      ...collabSchema,
       ...machineSchema,
       ...contextSchema,
       ...flagsSchema,

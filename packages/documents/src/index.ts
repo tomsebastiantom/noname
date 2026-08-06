@@ -65,3 +65,8 @@ export {
   resolvedEmbedMeta,
 } from "./richtext-resolve";
 export type { ContentFieldSchema, ContentTypeSchema, FieldType } from "./schema";
+export {
+  richTextToTipTapJson,
+  type TipTapJsonContent,
+  tipTapJsonToRichText,
+} from "./tiptap-bridge";

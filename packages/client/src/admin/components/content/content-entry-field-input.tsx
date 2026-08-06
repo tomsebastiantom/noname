@@ -25,6 +25,8 @@ export function ContentEntryFieldInput({
   mediaLabels,
   referenceLabels = defaultReferenceLabels,
   referenceOptions,
+  contentDocumentId,
+  onFieldFocus,
 }: {
   field: ContentFieldSchema;
   value: string;
@@ -34,6 +36,8 @@ export function ContentEntryFieldInput({
   mediaLabels: MediaFieldLabels;
   referenceLabels?: ReferenceFieldLabels;
   referenceOptions?: Record<string, ReferenceFieldOptions>;
+  contentDocumentId?: string | null;
+  onFieldFocus?: () => void;
 }) {
   if (contentType === "notification_email" && field.key === "spec") {
     return <EmailSpecFieldInput field={field} value={value} onChange={onChange} />;
@@ -50,6 +54,7 @@ export function ContentEntryFieldInput({
           id={field.key}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFieldFocus}
           rows={8}
           required={field.required}
           spellCheck={false}
@@ -112,6 +117,7 @@ export function ContentEntryFieldInput({
           id={field.key}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onFocus={onFieldFocus}
           rows={5}
           required={field.required}
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
@@ -130,6 +136,10 @@ export function ContentEntryFieldInput({
         referenceTarget={field.references}
         mediaLabels={mediaLabels}
         constraints={field.constraints}
+        contentDocumentId={contentDocumentId}
+        fieldKey={field.key}
+        locale={locale}
+        onFocus={onFieldFocus}
       />
     );
   }
@@ -146,6 +156,7 @@ export function ContentEntryFieldInput({
         type={field.type === "number" ? "number" : "text"}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onFocus={onFieldFocus}
         required={field.required}
       />
     </div>

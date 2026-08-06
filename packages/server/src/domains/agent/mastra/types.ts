@@ -13,6 +13,10 @@ export interface AgentArtifact {
   kind: "layout" | "content" | "insight" | "machine";
   documentId?: string;
   label: string;
+  /** Pre-patch layout spec — used to undo on task reject. */
+  revertSpec?: Record<string, unknown>;
+  /** True when patch ran on the open editor (live canvas) — undo via reject, not approve gate. */
+  liveEditorPatch?: boolean;
 }
 
 export interface OrchestrateOutput {

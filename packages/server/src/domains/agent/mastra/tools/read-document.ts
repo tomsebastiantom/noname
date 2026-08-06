@@ -3,7 +3,7 @@ import { z } from "zod";
 import type { AuthorizationPort } from "../../../auth/authorization-port";
 import type { DocumentDTO, DocumentStorage } from "../../../documents/ports";
 import type { AgentRunContext } from "../context";
-import { agentCanViewDocument } from "../scope";
+import { agentCanViewDocument, isEditorScopedLayout } from "../scope";
 
 function summarizeDocument(doc: DocumentDTO) {
   const title =
@@ -55,12 +55,19 @@ export function createReadDocumentTool(
         ? await deps.storage.findCollectionSlug(orgId, doc.collectionId)
         : null;
 
-      const allowed = await agentCanViewDocument(deps.authorization, agentSlug, {
-        id: doc.id,
-        collectionSlug,
-      });
-      if (!allowed) {
-        return { allowed: false, reason: "forbidden", documentId };
+      const editorScoped =
+        doc.type === "layout" && isEditorScopedLayout(deps.runContext, documentId);
+
+      if (!editorScoped) {
+        const allowed = await agentCanViewDocument(
+          deps.authorization,
+          agentSlug,
+          { id: doc.id, collectionSlug },
+          deps.runContext?.onBehalfOf,
+        );
+        if (!allowed) {
+          return { allowed: false, reason: "forbidden", documentId };
+        }
       }
 
       return {

@@ -24,11 +24,16 @@ type EditorPrefsContextValue = {
   ready: boolean;
   layout: EditorLayoutPrefs;
   setLayout: (value: EditorLayoutPrefs | ((prev: EditorLayoutPrefs) => EditorLayoutPrefs)) => void;
+  /** Persist layout immediately (panel open/close) — same path as other sidebar prefs. */
+  setLayoutPersist: (
+    value: EditorLayoutPrefs | ((prev: EditorLayoutPrefs) => EditorLayoutPrefs),
+  ) => void;
   pinnedTypes: string[];
   pin: (componentType: string) => void;
   unpin: (componentType: string) => void;
   layersTreeCollapsed: ReadonlySet<string>;
   toggleLayerCollapsed: (elementId: string) => void;
+  clearAgentChatForLayout: (layoutDocumentId: string) => void;
 };
 
 const EditorPrefsContext = createContext<EditorPrefsContextValue | null>(null);
@@ -159,6 +164,18 @@ export function EditorPrefsProvider({
     [],
   );
 
+  const setLayoutPersist = useCallback(
+    (value: EditorLayoutPrefs | ((prev: EditorLayoutPrefs) => EditorLayoutPrefs)) => {
+      setLayoutState((prev) => {
+        const next = normalizeLayoutPrefs(typeof value === "function" ? value(prev) : value);
+        if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+        void saveEditorPrefsToApi({ layout: next }).catch(() => {});
+        return next;
+      });
+    },
+    [],
+  );
+
   const pin = useCallback((componentType: string) => {
     setPalettePins((prev) => pinComponentType(prev, componentType));
   }, []);
@@ -184,18 +201,47 @@ export function EditorPrefsProvider({
     [templateName],
   );
 
+  const clearAgentChatForLayout = useCallback((layoutDocumentId: string) => {
+    const clearedAt = new Date().toISOString();
+    setLayoutState((prev) => {
+      const next = normalizeLayoutPrefs({
+        ...prev,
+        agentChatClearedAt: {
+          ...prev.agentChatClearedAt,
+          [layoutDocumentId]: clearedAt,
+        },
+      });
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+      void saveEditorPrefsToApi({ layout: next }).catch(() => {});
+      return next;
+    });
+  }, []);
+
   const value = useMemo<EditorPrefsContextValue>(
     () => ({
       ready,
       layout,
       setLayout,
+      setLayoutPersist,
       pinnedTypes: palettePins,
       pin,
       unpin,
       layersTreeCollapsed: collapsedForTemplate,
       toggleLayerCollapsed,
+      clearAgentChatForLayout,
     }),
-    [ready, layout, setLayout, palettePins, pin, unpin, collapsedForTemplate, toggleLayerCollapsed],
+    [
+      ready,
+      layout,
+      setLayout,
+      setLayoutPersist,
+      palettePins,
+      pin,
+      unpin,
+      collapsedForTemplate,
+      toggleLayerCollapsed,
+      clearAgentChatForLayout,
+    ],
   );
 
   return <EditorPrefsContext.Provider value={value}>{children}</EditorPrefsContext.Provider>;

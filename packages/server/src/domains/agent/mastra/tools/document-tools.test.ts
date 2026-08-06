@@ -25,6 +25,19 @@ function mockAuth(allowed = true): AuthorizationPort {
   };
 }
 
+function mockCollabRuntime() {
+  return {
+    getRichTextSession: vi.fn(() => null),
+    getLayoutSession: vi.fn(() => null),
+    hasLayoutSession: vi.fn(() => false),
+    hasRichTextSession: vi.fn(() => false),
+    openLayoutSession: vi.fn(),
+    ensureLayoutSession: vi.fn(async () => null),
+    openRichTextSession: vi.fn(),
+    close: vi.fn(async () => undefined),
+  };
+}
+
 describe("createReadDocumentTool", () => {
   it("returns document payload when agent has Keto view access", async () => {
     const doc = {
@@ -87,6 +100,45 @@ describe("createReadDocumentTool", () => {
 
     const result = await tool.execute?.({ documentId: "doc-1" }, {} as never);
     expect(result).toEqual({ found: false, documentId: "doc-1" });
+  });
+
+  it("allows read via agent owner delegation when agent lacks folder view", async () => {
+    const doc = {
+      ...documentRow("layout-home", "layout"),
+      collectionId: "col-1",
+      status: "published" as const,
+      data: { spec: { root: "r", elements: {} } },
+    };
+    const check = vi.fn(async (input) => {
+      if (input.subject.type === "User" && input.subject.id === runContext.onBehalfOf) {
+        return input.namespace === "Collection" && input.permission === "view";
+      }
+      return false;
+    });
+    const tool = createReadDocumentTool(
+      {
+        storage: {
+          findDocumentById: vi.fn(async () => doc),
+          findCollectionSlug: vi.fn(async () => "marketing"),
+        },
+        authorization: {
+          check,
+          grant: vi.fn(),
+          revoke: vi.fn(),
+          listDirectUserEditors: vi.fn(async () => []),
+          listDirectUserPublishers: vi.fn(async () => []),
+          listRelationTuples: vi.fn(async () => []),
+        },
+        runContext,
+      },
+      "org-1",
+    );
+
+    const result = await tool.execute?.({ documentId: "layout-home" }, {} as never);
+    expect(result).toMatchObject({
+      found: true,
+      document: expect.objectContaining({ id: "layout-home", type: "layout" }),
+    });
   });
 });
 
@@ -159,6 +211,7 @@ describe("createUpdateDraftFieldTool", () => {
         authorization: mockAuth(true),
         artifacts,
         runContext,
+        collabRuntime: mockCollabRuntime(),
       },
       "org-1",
     );
@@ -202,6 +255,7 @@ describe("createUpdateDraftFieldTool", () => {
         authorization: mockAuth(true),
         artifacts: { push: vi.fn(), list: vi.fn(() => []) },
         runContext,
+        collabRuntime: mockCollabRuntime(),
       },
       "org-1",
     );

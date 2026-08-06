@@ -1,5 +1,6 @@
 import type { OpenAICompatibleConfig } from "@mastra/core/llm";
 import type { ResolvedLlmApiKey, SecretsService } from "../../secrets/ports";
+import { envOpenAiApiKey, openAiCompatibleBaseUrl } from "./llm-env";
 
 export type PlannerCredentialSource = ResolvedLlmApiKey["source"] | "env" | "router";
 
@@ -31,11 +32,25 @@ function parseModelRouterId(model: string): { provider: string; modelId: string 
 }
 
 function withApiKey(model: string, apiKey: string): OpenAICompatibleConfig {
-  return { id: model as `${string}/${string}`, apiKey };
+  const baseUrl = openAiCompatibleBaseUrl();
+  const { provider, modelId } = parseModelRouterId(model);
+  if (baseUrl) {
+    // OpenAI-compatible proxies (LiteLLM) expect bare model names in API bodies.
+    return {
+      providerId: provider,
+      modelId,
+      apiKey,
+      url: baseUrl,
+    };
+  }
+  return {
+    id: model as `${string}/${string}`,
+    apiKey,
+  };
 }
 
 function envApiKey(provider: LlmProviderName): string | null {
-  if (provider === "openai") return process.env.OPENAI_API_KEY?.trim() || null;
+  if (provider === "openai") return envOpenAiApiKey();
   return process.env.ANTHROPIC_API_KEY?.trim() || null;
 }
 

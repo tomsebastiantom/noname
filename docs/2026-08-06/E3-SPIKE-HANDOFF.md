@@ -24,7 +24,7 @@ Run an **offline spike** comparing **Automerge** vs **Loro** for merging concurr
 | Layout save + `If-Match` 409 | ✅ | `layouts.service.ts`, `use-layout-draft.ts` |
 | Keto document `edit` guard | ✅ | `document-write-guard.ts` |
 | **`document_ops` audit + JSON Patch** | ✅ **E3-pre** | `document-op-payload.ts`, `schema.ts` `document_ops.payload` |
-| Live WS / CRDT | ❌ | Your spike informs E3a choice |
+| Live WS / CRDT | ✅ **E3a v1** | `packages/server/src/domains/collab/`, `?collab=1` |
 
 **E3-pre gives you:** ordered patch log + `replaySpecPatches()` — use the same seed specs to compare “replay patches” vs “CRDT merge” convergence.
 
@@ -99,8 +99,6 @@ pnpm add -D @automerge/automerge loro-crdt --filter @noname/server
 
 ## After spike
 
-**Report:** [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) — **Automerge primary**, Loro fallback. Post link in PR / issue. **E3a** starts only after:
+**Report:** [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) — **Automerge primary**, Loro fallback.
 
-- Product gate Phase C, **or** explicit override
-- Spike recommendation accepted
-- E3-pre merged (patch log live)
+**E3a v1** is in dogfood — see [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) for paths, WS routing, and remaining gaps (E3c, `automerge-repo`, D7).
