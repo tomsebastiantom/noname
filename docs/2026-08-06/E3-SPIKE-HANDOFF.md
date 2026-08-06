@@ -82,8 +82,8 @@ pnpm add -D @automerge/automerge loro-crdt --filter @noname/server
 - WebSocket server / `automerge-repo` network adapter
 - Keto on WS connect
 - Client `EditPageView` wiring
-- Yjs / Hocuspocus (rich text — separate D7 track)
-- `GET /documents/:id/ops` API (E3-pre follow-up)
+- Yjs / Hocuspocus (rich text — separate **D7** track; see [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md))
+- `GET /documents/:id/ops` API (E3-pre follow-up) — **shipped**
 
 ---
 

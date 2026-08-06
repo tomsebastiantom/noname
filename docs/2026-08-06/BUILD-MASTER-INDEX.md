@@ -157,6 +157,8 @@ LATER   Explicit product gates only
 | **E3-pre** | `document_ops` JSON Patch + replay | [`SPEC-STORAGE-MERGE.md`](../2026-07-25/SPEC-STORAGE-MERGE.md), `document-op-payload.ts` | **Shipped** — layout/content saves append RFC 6902 patches |
 | **E3-spike** | Automerge vs Loro offline merge | [`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md) · [`E3-SPIKE-HANDOFF.md`](./E3-SPIKE-HANDOFF.md) | **Done** — Automerge primary; Loro fallback |
 | **E3** | Live CRDT / presence | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) | **Do not start** until product gate ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C) |
+| **R1** | Rich text — admin UI + storage + storefront render | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) | Server validation only; **no client UI** |
+| **D7** | Rich text live collab (Yjs + Hocuspocus) | [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) § D7 | Deferred — only if simultaneous long-text edit required |
 
 ---
 
