@@ -5,6 +5,7 @@ import type { EditorShellLabels } from "../../schemas/components";
 export function EditorChromeRail({
   dirty,
   hasError,
+  activityLabel,
   labels,
   onExpand,
   onExitEdit,
@@ -12,6 +13,7 @@ export function EditorChromeRail({
 }: Readonly<{
   dirty: boolean;
   hasError: boolean;
+  activityLabel?: string | null;
   labels: EditorShellLabels;
   onExpand: () => void;
   onExitEdit: () => void;
@@ -21,6 +23,9 @@ export function EditorChromeRail({
     <aside className="editor-chrome-rail shrink-0" aria-label={labels.chromeRailAriaLabel}>
       <button type="button" className="editor-chrome-rail-expand" onClick={onExpand}>
         {labels.chromeRailTitle}
+        {!dirty && activityLabel ? (
+          <span className="editor-chrome-rail-activity">{activityLabel}</span>
+        ) : null}
         {dirty ? (
           <span className="editor-chrome-rail-dot editor-chrome-rail-dot--dirty" aria-hidden />
         ) : null}

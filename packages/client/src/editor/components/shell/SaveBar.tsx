@@ -12,6 +12,7 @@ export function SaveBar({
   error,
   success,
   saveConflict,
+  activityLabel,
   labels,
   onSave,
   onPublish,
@@ -27,6 +28,7 @@ export function SaveBar({
   error: string | null;
   success: string | null;
   saveConflict?: boolean;
+  activityLabel?: string | null;
   labels: EditorShellLabels;
   onSave: () => Promise<void>;
   onPublish: () => Promise<void>;
@@ -40,9 +42,8 @@ export function SaveBar({
 
   const statusLabel = dirty
     ? labels.unsavedLabel
-    : status === "published"
-      ? labels.publishedLabel
-      : labels.draftSavedLabel;
+    : activityLabel ??
+      (status === "published" ? labels.publishedLabel : labels.draftSavedLabel);
 
   return (
     <header className="z-20 flex shrink-0 flex-wrap items-center gap-3 border-b bg-background px-4 py-2">

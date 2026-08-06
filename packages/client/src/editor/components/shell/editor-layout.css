@@ -75,6 +75,14 @@
   background: hsl(var(--muted) / 0.6);
 }
 
+.editor-chrome-rail-activity {
+  font-size: 0.65rem;
+  font-weight: 400;
+  letter-spacing: normal;
+  text-transform: none;
+  color: hsl(var(--muted-foreground));
+}
+
 .editor-chrome-rail-actions {
   display: flex;
   align-items: center;

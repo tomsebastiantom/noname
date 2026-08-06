@@ -31,6 +31,7 @@ import { useContentDraft } from "./use-content-draft";
 import { useEditorHistory } from "./use-editor-history";
 import { parseShellFromSpec, useEditorShell } from "./use-editor-shell-labels";
 import { useLayoutDraft } from "./use-layout-draft";
+import { useDocumentActivity } from "./use-document-activity";
 
 const editorShellStore = createStateStore({});
 
@@ -71,6 +72,7 @@ export function useEditPageOrchestration({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveConflict, setSaveConflict] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const {
     spec: fetchedShellSpec,
     labels: fetchedShellLabels,
@@ -82,6 +84,10 @@ export function useEditPageOrchestration({
   const parsedShell = parseShellFromSpec(shellSpec);
   const shellLabels = shellSpecFromEdge ? parsedShell.labels : fetchedShellLabels;
   const shellLabelsMissing = shellSpecFromEdge ? !parsedShell.labels : fetchedShellMissing;
+
+  const lastActivity = useDocumentActivity(draft?.layoutId, shellLabels, activityRefreshKey, {
+    enabled: !loading && Boolean(shellLabels),
+  });
 
   useEffect(() => {
     activateEditorDevtools();
@@ -283,6 +289,7 @@ export function useEditPageOrchestration({
       }
       setSaveSuccess(shellLabels.draftSavedLabel);
       history.clearHistory();
+      setActivityRefreshKey((key) => key + 1);
       onReload();
     } catch (err) {
       if (err instanceof ApiConflictError) {
@@ -320,6 +327,7 @@ export function useEditPageOrchestration({
       }
       setSaveSuccess(shellLabels.publishedLabel);
       history.clearHistory();
+      setActivityRefreshKey((key) => key + 1);
       onReload();
     } catch (err) {
       if (err instanceof ApiConflictError) {
@@ -406,6 +414,7 @@ export function useEditPageOrchestration({
       chromeError,
       saveSuccess,
       saveConflict,
+      lastActivity,
       canUndo: history.canUndo,
       canRedo: history.canRedo,
     };
@@ -425,6 +434,7 @@ export function useEditPageOrchestration({
     chromeError,
     saveSuccess,
     saveConflict,
+    lastActivity,
     history.canUndo,
     history.canRedo,
   ]);

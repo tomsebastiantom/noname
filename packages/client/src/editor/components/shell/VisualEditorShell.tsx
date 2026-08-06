@@ -39,6 +39,7 @@ function EditorTopChrome() {
           error={session.chromeError}
           success={session.saveSuccess}
           saveConflict={session.saveConflict}
+          activityLabel={session.lastActivity}
           labels={labels}
           onSave={session.handleSave}
           onPublish={session.handlePublish}
@@ -60,6 +61,7 @@ function EditorTopChrome() {
     <EditorChromeRail
       dirty={session.dirty}
       hasError={Boolean(session.chromeError)}
+      activityLabel={session.lastActivity}
       labels={labels}
       onExpand={() => setLayout((current) => ({ ...current, chromeOpen: true }))}
       onExitEdit={session.exitEditMode}

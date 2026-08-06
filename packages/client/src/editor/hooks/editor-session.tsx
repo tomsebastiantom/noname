@@ -22,6 +22,7 @@ export type EditorSessionData = {
   chromeError: string | null;
   saveSuccess: string | null;
   saveConflict: boolean;
+  lastActivity: string | null;
   canUndo: boolean;
   canRedo: boolean;
 };
