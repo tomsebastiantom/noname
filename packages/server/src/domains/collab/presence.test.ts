@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  collabPeersForRecipient,
   parseCollabAgentTaskServerMessage,
   parseCollabPresenceClientMessage,
-  collabPeersForRecipient,
   serializeCollabPresenceServerMessage,
 } from "./presence";
 
@@ -110,13 +110,11 @@ describe("collab presence protocol", () => {
         cursorY: null,
       },
     ];
-    expect(collabPeersForRecipient(peers, { peerId: "tab-1", userId: "u1", peerKind: "human" })).toEqual([
-      peers[0],
-      peers[2],
-    ]);
-    expect(collabPeersForRecipient(peers, { peerId: "tab-2", userId: "u1", peerKind: "human" })).toEqual([
-      peers[1],
-      peers[2],
-    ]);
+    expect(
+      collabPeersForRecipient(peers, { peerId: "tab-1", userId: "u1", peerKind: "human" }),
+    ).toEqual([peers[0], peers[2]]);
+    expect(
+      collabPeersForRecipient(peers, { peerId: "tab-2", userId: "u1", peerKind: "human" }),
+    ).toEqual([peers[1], peers[2]]);
   });
 });

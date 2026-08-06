@@ -70,11 +70,7 @@ export function useEditorAgentPanel({
     for (const entry of thread) {
       const task = tasksById[entry.taskId];
       if (!task) continue;
-      if (
-        task.status !== "completed" &&
-        task.status !== "approved" &&
-        task.status !== "running"
-      ) {
+      if (task.status !== "completed" && task.status !== "approved" && task.status !== "running") {
         continue;
       }
       const orchestrate = parseOrchestrateOutput(task.output);
@@ -311,29 +307,30 @@ export function useEditorAgentPanel({
     }
   }, []);
 
-  const rejectTask = useCallback(async (taskId: string) => {
-    setReviewPending(true);
-    setError(null);
-    try {
-      const result = await rejectAgentTask(taskId);
-      const { revertedLayouts, ...task } = result;
-      setTasksById((current) => ({ ...current, [taskId]: task }));
-      const reverted = revertedLayouts?.find(
-        (row) => row.layoutDocumentId === layoutDocumentId,
-      );
-      if (reverted?.spec && onLayoutReverted) {
-        onLayoutReverted(reverted.spec);
+  const rejectTask = useCallback(
+    async (taskId: string) => {
+      setReviewPending(true);
+      setError(null);
+      try {
+        const result = await rejectAgentTask(taskId);
+        const { revertedLayouts, ...task } = result;
+        setTasksById((current) => ({ ...current, [taskId]: task }));
+        const reverted = revertedLayouts?.find((row) => row.layoutDocumentId === layoutDocumentId);
+        if (reverted?.spec && onLayoutReverted) {
+          onLayoutReverted(reverted.spec);
+        }
+        if (onLayoutPatched) {
+          layoutSyncedTaskIdsRef.current.delete(taskId);
+          await onLayoutPatched();
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setReviewPending(false);
       }
-      if (onLayoutPatched) {
-        layoutSyncedTaskIdsRef.current.delete(taskId);
-        await onLayoutPatched();
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setReviewPending(false);
-    }
-  }, [layoutDocumentId, onLayoutPatched, onLayoutReverted]);
+    },
+    [layoutDocumentId, onLayoutPatched, onLayoutReverted],
+  );
 
   const clearChat = useCallback(() => {
     onClearChat();

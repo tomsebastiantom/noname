@@ -7,13 +7,13 @@ import {
 } from "@automerge/automerge-repo/slim";
 import type { Spec } from "@json-render/core";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { sessionUserId } from "../../auth/session";
 import { createAutomergeIndexedDbStorage } from "../../platform/persistence";
-import { applyLocalSpecToDraft, type AutomergeSpecDoc } from "./automerge-spec";
+import { type AutomergeSpecDoc, applyLocalSpecToDraft } from "./automerge-spec";
 import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { layoutCollabWsUrl, mintLayoutCollabTicket } from "./collab-api";
 import { collabHumanDisplayName } from "./collab-display-name";
 import type { LayoutAgentActivity } from "./collab-peer-display";
-import { sessionUserId } from "../../auth/session";
 import { LayoutCollabWsAdapter } from "./layout-collab-ws-adapter";
 import {
   type CollabPeerPresence,
@@ -193,11 +193,7 @@ export function useLayoutCollab({
           const sync = parseCollabPresenceServerMessage(raw);
           if (!sync) return;
           setSelfPeerId(sync.selfPeerId);
-          const remotePeers = remoteCollabPeers(
-            sync.peers,
-            sync.selfPeerId,
-            sessionUserId(),
-          );
+          const remotePeers = remoteCollabPeers(sync.peers, sync.selfPeerId, sessionUserId());
           setPeers(remotePeers);
           if (remotePeers.some((peer) => peer.peerKind === "agent")) {
             setAgentTaskActivity(null);

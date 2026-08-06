@@ -213,11 +213,7 @@ function applyElementDiffToDraft(
 }
 
 /** Scalar / structural spec diff via in-place draft mutation (for handle.change). */
-export function applySpecTreeDiffToDraft(
-  draft: AutomergeSpecDoc,
-  prev: Spec,
-  next: Spec,
-): void {
+export function applySpecTreeDiffToDraft(draft: AutomergeSpecDoc, prev: Spec, next: Spec): void {
   if (prev.root !== next.root) {
     draft.root = next.root;
   }

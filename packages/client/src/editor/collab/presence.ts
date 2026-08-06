@@ -78,7 +78,9 @@ export function parseCollabPresenceServerMessage(raw: string): CollabPresenceSer
   }
 }
 
-export function parseCollabAgentTaskServerMessage(raw: string): CollabAgentTaskServerMessage | null {
+export function parseCollabAgentTaskServerMessage(
+  raw: string,
+): CollabAgentTaskServerMessage | null {
   if (raw.length > 4_096) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;

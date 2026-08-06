@@ -91,7 +91,9 @@ export function serializeCollabPresenceClientMessage(message: CollabPresenceClie
   return JSON.stringify(message);
 }
 
-export function serializeCollabAgentTaskServerMessage(message: CollabAgentTaskServerMessage): string {
+export function serializeCollabAgentTaskServerMessage(
+  message: CollabAgentTaskServerMessage,
+): string {
   return JSON.stringify(message);
 }
 
@@ -113,7 +115,9 @@ export function collabPeersForRecipient(
   });
 }
 
-export function parseCollabAgentTaskServerMessage(raw: string): CollabAgentTaskServerMessage | null {
+export function parseCollabAgentTaskServerMessage(
+  raw: string,
+): CollabAgentTaskServerMessage | null {
   if (raw.length > 4_096) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;

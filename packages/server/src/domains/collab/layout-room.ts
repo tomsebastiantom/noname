@@ -251,21 +251,21 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     return room;
   }
 
-function pruneInvalidHumanPeers(room: Room): boolean {
-  let removed = false;
-  for (const [peerId, meta] of room.peerMeta) {
-    if (meta.peerKind !== "human" || meta.displayName?.trim()) continue;
-    room.peerMeta.delete(peerId);
-    room.network.unregisterSocket(meta.ws);
-    try {
-      meta.ws.close(4000, "invalid peer");
-    } catch {
-      // Socket may already be closed.
+  function pruneInvalidHumanPeers(room: Room): boolean {
+    let removed = false;
+    for (const [peerId, meta] of room.peerMeta) {
+      if (meta.peerKind !== "human" || meta.displayName?.trim()) continue;
+      room.peerMeta.delete(peerId);
+      room.network.unregisterSocket(meta.ws);
+      try {
+        meta.ws.close(4000, "invalid peer");
+      } catch {
+        // Socket may already be closed.
+      }
+      removed = true;
     }
-    removed = true;
+    return removed;
   }
-  return removed;
-}
 
   function presenceSnapshot(room: Room): CollabPeerPresence[] {
     pruneDeadPeers(room);
@@ -428,8 +428,7 @@ function pruneInvalidHumanPeers(room: Room): boolean {
     if (!meta) return;
 
     if (message.displayName !== undefined) {
-      const trimmed =
-        typeof message.displayName === "string" ? message.displayName.trim() : "";
+      const trimmed = typeof message.displayName === "string" ? message.displayName.trim() : "";
       if (trimmed) {
         meta.displayName = trimmed;
       }

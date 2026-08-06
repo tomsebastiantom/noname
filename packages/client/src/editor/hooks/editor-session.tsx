@@ -1,8 +1,8 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { createContext, type ReactNode, useContext, useMemo, useRef } from "react";
-import type { CollabPeerPresence } from "../collab/presence";
 import type { LayoutAgentActivity } from "../collab/collab-peer-display";
+import type { CollabPeerPresence } from "../collab/presence";
 import type { ContentDraftEditor } from "../components/panel/PropsPanel";
 import type { LayerReorderPlacement } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
@@ -104,8 +104,7 @@ export function EditorSessionProvider({ data, actions, children }: EditorSession
       isStoredElement: (id) => actionsRef.current.isStoredElement(id),
       reportCollabPointerMove: (x, y) => actionsRef.current.reportCollabPointerMove(x, y),
       reloadLayoutAfterAgentPatch: () => actionsRef.current.reloadLayoutAfterAgentPatch(),
-      applyAgentRevertedLayoutSpec: (spec) =>
-        actionsRef.current.applyAgentRevertedLayoutSpec(spec),
+      applyAgentRevertedLayoutSpec: (spec) => actionsRef.current.applyAgentRevertedLayoutSpec(spec),
     }),
     [],
   );

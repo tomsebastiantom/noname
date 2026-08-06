@@ -38,9 +38,6 @@ export function normalizeLayoutSpec(spec: Record<string, unknown>): Record<strin
   return next;
 }
 
-export function layoutSpecsEqual(
-  a: Record<string, unknown>,
-  b: Record<string, unknown>,
-): boolean {
+export function layoutSpecsEqual(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }

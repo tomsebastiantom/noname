@@ -5,8 +5,9 @@ import WebSocket from "isomorphic-ws";
 export class LayoutCollabWsAdapter extends WebSocketClientAdapter {
   onPresenceMessage: ((raw: string) => void) | null = null;
   /** Fired when the socket opens (true) or closes (false). Close code/reason when available. */
-  onConnectionChange: ((connected: boolean, close?: { code: number; reason: string }) => void) | null =
-    null;
+  onConnectionChange:
+    | ((connected: boolean, close?: { code: number; reason: string }) => void)
+    | null = null;
 
   constructor(url: string) {
     super(url);

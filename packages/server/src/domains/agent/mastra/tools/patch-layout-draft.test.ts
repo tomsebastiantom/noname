@@ -28,10 +28,7 @@ describe("createPatchLayoutDraftTool", () => {
     const ensureLayoutSession = vi.fn(async () => ({ focusElement }));
     const applySpec = vi.fn(async () => nextSpec);
     const flushPersist = vi.fn(async () => undefined);
-    const getSpec = vi
-      .fn()
-      .mockResolvedValueOnce(previousSpec)
-      .mockResolvedValueOnce(nextSpec);
+    const getSpec = vi.fn().mockResolvedValueOnce(previousSpec).mockResolvedValueOnce(nextSpec);
 
     const tool = createPatchLayoutDraftTool(
       {

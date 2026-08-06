@@ -138,8 +138,7 @@ export class AgentLayoutCollabSession {
     prev?: Record<string, unknown>,
     next?: Record<string, unknown>,
   ): void {
-    const focusId =
-      focusElementId ?? (prev && next ? inferFocusElementId(prev, next) : null);
+    const focusId = focusElementId ?? (prev && next ? inferFocusElementId(prev, next) : null);
     this.sendPresence({ selectedElementId: focusId, cursorX: null, cursorY: null });
   }
 

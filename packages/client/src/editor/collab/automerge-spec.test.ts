@@ -169,8 +169,9 @@ describe("applyLocalSpecToDraft", () => {
     const doc = Automerge.change(specToAutomergeDoc(prev), (draft) => {
       applyLocalSpecToDraft(draft, prev, next);
     });
-    const labels = (automergeDocToSpec(doc).elements!.promo!.props as { labels: { content: string } })
-      .labels;
+    const labels = (
+      automergeDocToSpec(doc).elements!.promo!.props as { labels: { content: string } }
+    ).labels;
     expect(labels.content).toBe("Winter Sale — 20% off yoga mats v this week!");
   });
 });

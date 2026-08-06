@@ -149,8 +149,7 @@ export function AgentAssistantBubble({
 }>) {
   const orchestrate = useMemo(() => parseOrchestrateOutput(task.output), [task.output]);
   const running = task.status === "pending" || task.status === "running";
-  const liveUndo =
-    task.status === "completed" && taskShowsLiveUndo(orchestrate, layoutDocumentId);
+  const liveUndo = task.status === "completed" && taskShowsLiveUndo(orchestrate, layoutDocumentId);
   const coldReview =
     task.status === "completed" && taskNeedsColdReview(orchestrate, layoutDocumentId);
   const reviewable = liveUndo || coldReview;

@@ -1,11 +1,11 @@
 import type { LayoutCollabRoomManager } from "../collab/layout-room";
 import type { LayoutDocumentService } from "../documents/ports";
 import { normalizeLayoutSpec } from "../documents/services/normalize-layout-spec";
-import type { AgentTaskDTO } from "./ports";
 import {
-  layoutPatchRevertTargetsFromTask,
   type LayoutPatchRevertTarget,
+  layoutPatchRevertTargetsFromTask,
 } from "./layout-patch-revert-specs";
+import type { AgentTaskDTO } from "./ports";
 
 export type LayoutPatchRevertDeps = {
   layout: Pick<LayoutDocumentService, "update" | "get">;

@@ -1,35 +1,29 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import type { LayoutCollabRoomManager } from "../../../collab/layout-room";
+import { recordDocumentOp } from "../../../../shared/document-audit";
 import type { AuthorizationPort } from "../../../auth/authorization-port";
+import type { LayoutCollabRoomManager } from "../../../collab/layout-room";
 import { buildSpecPatchPayload } from "../../../documents/document-op-payload";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../../../documents/ports";
 import {
   layoutSpecsEqual,
   normalizeLayoutSpec,
 } from "../../../documents/services/normalize-layout-spec";
-import { recordDocumentOp } from "../../../../shared/document-audit";
-import type { ArtifactCollector } from "../artifacts";
 import type { AgentCollabRuntime } from "../../collab/agent-collab-runtime";
 import { layoutCollabSessionOptions } from "../../collab/layout-collab-session-options";
+import type { ArtifactCollector } from "../artifacts";
 import type { AgentRunContext } from "../context";
 import { writeAuditFromRunContext } from "../context";
 import { agentCanEditDocument, isEditorScopedLayout } from "../scope";
 
 export function createPatchLayoutDraftTool(
   deps: {
-    storage: Pick<
-      DocumentStorage,
-      "findDocumentById" | "findCollectionSlug" | "recordDocumentOp"
-    >;
+    storage: Pick<DocumentStorage, "findDocumentById" | "findCollectionSlug" | "recordDocumentOp">;
     layout: Pick<LayoutDocumentService, "update" | "get">;
     authorization: AuthorizationPort;
     artifacts: ArtifactCollector;
     runContext: AgentRunContext | null;
-    layoutCollabRooms: Pick<
-      LayoutCollabRoomManager,
-      "getSpec" | "applySpec" | "flushPersist"
-    >;
+    layoutCollabRooms: Pick<LayoutCollabRoomManager, "getSpec" | "applySpec" | "flushPersist">;
     collabRuntime: AgentCollabRuntime | null;
   },
   orgId: string,
@@ -97,11 +91,7 @@ export function createPatchLayoutDraftTool(
           documentId: layoutDocumentId,
           operation: "update",
           audit,
-          payload: buildSpecPatchPayload(
-            previousSpec,
-            spec,
-            row?.updatedAt.toISOString(),
-          ),
+          payload: buildSpecPatchPayload(previousSpec, spec, row?.updatedAt.toISOString()),
         });
       }
 

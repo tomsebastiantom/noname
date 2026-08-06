@@ -2,8 +2,8 @@ import { type KeyboardEvent, useRef } from "react";
 import type { AgentTask } from "../../../auth/agents";
 import { buildAgentPromptPlaceholder } from "../../agent/build-prompt-prefill";
 import type { EditorShellLabels } from "../../schemas/components";
-import { AgentChatAvatar, AgentChatSparkleIcon } from "./AgentChatAvatar";
 import { AgentAssistantBubble } from "./AgentAssistantBubble";
+import { AgentChatAvatar, AgentChatSparkleIcon } from "./AgentChatAvatar";
 import { AgentSendIcon } from "./AgentSendIcon";
 import { AgentUserMessage } from "./AgentUserMessage";
 

@@ -41,9 +41,7 @@ describe("revertAgentTaskLayoutPatches", () => {
       },
     );
 
-    expect(reverted).toEqual([
-      { layoutDocumentId: "layout-1", spec: previousSpec, label: "home" },
-    ]);
+    expect(reverted).toEqual([{ layoutDocumentId: "layout-1", spec: previousSpec, label: "home" }]);
     expect(applySpec).toHaveBeenCalledWith("org-1", "layout-1", previousSpec);
     expect(flushPersist).toHaveBeenCalledWith("org-1", "layout-1");
     expect(syncFromDatabase).toHaveBeenCalledWith("org-1", "layout-1");

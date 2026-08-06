@@ -1,12 +1,7 @@
 /** Warm assistant mark for the chat panel — separate from collab peer icons. */
 export function AgentChatSparkleIcon({ className }: Readonly<{ className?: string }>) {
   return (
-    <svg
-      aria-hidden
-      viewBox="0 0 20 20"
-      className={className}
-      fill="currentColor"
-    >
+    <svg aria-hidden viewBox="0 0 20 20" className={className} fill="currentColor">
       <title>Assistant</title>
       <path
         d="M10 1.75l1.05 3.45 3.45 1.05-3.45 1.05L10 10.75 8.95 7.3 5.5 6.25l3.45-1.05L10 1.75z"

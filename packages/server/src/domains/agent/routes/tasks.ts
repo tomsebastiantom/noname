@@ -5,12 +5,12 @@ import { created, ok } from "../../../shared/respond";
 import { requireHumanPermission } from "../../auth/guards";
 import type { AgentRegistryStorage } from "../adapters/registry-postgres";
 import type { AgentTaskFilters, AgentTaskType } from "../ports";
+import { revertAgentTaskLayoutPatches } from "../revert-layout-patch";
 import {
   canReviewAgentTask,
   isRegisteredAgentOwner,
   isStoreAgentAdmin,
 } from "../task-review-guard";
-import { revertAgentTaskLayoutPatches } from "../revert-layout-patch";
 import type { AgentRouteDeps } from "./deps";
 
 type TaskRouteAuth = {
