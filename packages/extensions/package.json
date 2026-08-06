@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./commerce": "./src/commerce/registry.ts",
-    "./commerce/catalog-schemas": "./src/commerce/catalog-schemas.ts"
+    "./commerce/catalog-schemas": "./src/commerce/catalog-schemas.ts",
+    "./rich-text": "./src/rich-text/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
@@ -16,6 +17,7 @@
   "dependencies": {
     "@json-render/core": "^0.19.0",
     "@json-render/react": "^0.19.0",
+    "@noname/documents": "workspace:*",
     "react": "19.2.7",
     "zod": "^4.4.3"
   },

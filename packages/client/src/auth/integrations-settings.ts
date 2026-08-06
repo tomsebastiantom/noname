@@ -1,6 +1,7 @@
+import type { CommsProviderName } from "@noname/shared";
 import { apiFetch } from "../lib/api";
 import { requireStoreSlug } from "./org";
-import type { CommsProviderName } from "@noname/shared";
+
 export type { CommsProviderName } from "@noname/shared";
 
 export type LlmProviderName = "openai" | "anthropic";

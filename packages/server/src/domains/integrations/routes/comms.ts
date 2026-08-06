@@ -1,5 +1,5 @@
-import { COMMS_PROVIDERS } from "@noname/shared";
 import { PERMISSIONS } from "@noname/auth";
+import { COMMS_PROVIDERS } from "@noname/shared";
 import type { Hono } from "hono";
 import { z } from "zod";
 import { parseBody } from "../../../shared/parse-body";

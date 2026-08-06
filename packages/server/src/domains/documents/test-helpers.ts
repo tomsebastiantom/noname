@@ -40,6 +40,13 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
           label: "Category",
           references: "category",
         },
+        {
+          key: "description",
+          type: "richText",
+          required: false,
+          isLocalizable: false,
+          label: "Description",
+        },
       ],
     },
     createdAt: new Date(),
@@ -64,6 +71,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     createDocument: async (input) => ({
       ...documentRow(input.key, input.type, input.orgId),
       data: input.data,
+      meta: input.meta ?? {},
       status: input.status ?? "draft",
     }),
     createContentType: async () => {
@@ -90,6 +98,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     deleteDocument: async () => {},
     findAssetByHash: async () => null,
     findDocumentsWithDataMentioning: async () => [],
+    findDocumentsBySearchText: async () => [],
     findCollectionSlug: async () => null,
     findCollectionIdBySlug: async () => null,
     recordDocumentOp: async () => ({ serverVersion: 1 }),

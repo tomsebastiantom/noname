@@ -47,6 +47,12 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
     return ok(c, await content.findByType(orgId, c.req.param("type")));
   });
 
+  routes.get("/:type/search", async (c) => {
+    const orgId = getOrgId(c);
+    const query = c.req.query("q") ?? "";
+    return ok(c, await content.search(orgId, c.req.param("type"), query));
+  });
+
   routes.get("/:type/:id", async (c) => {
     const orgId = getOrgId(c);
     const { type: _type, id } = c.req.param();

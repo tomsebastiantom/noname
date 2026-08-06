@@ -1,3 +1,4 @@
+import { plainTextToRichTextDocument } from "@noname/documents";
 import { describe, expect, it } from "vitest";
 import { ValidationError } from "../../../shared/domain-error";
 import { createDocumentsService } from "../service";
@@ -40,5 +41,21 @@ describe("content.create — document ref validation", () => {
     ).rejects.toMatchObject({
       details: { field: "hero" },
     });
+  });
+});
+
+describe("content search indexing", () => {
+  const docs = {
+    [ASSET_ID]: documentRow(ASSET_ID, "asset"),
+    [CATEGORY_ID]: documentRow(CATEGORY_ID, "category"),
+  };
+
+  it("stores meta.searchText with rich text plain text on create", async () => {
+    const { content } = createDocumentsService(mockStorage(docs));
+    const saved = await content.create(ORG, "product", {
+      title: "Trail Runner",
+      description: plainTextToRichTextDocument("Lightweight mesh upper"),
+    });
+    expect(saved.meta.searchText).toBe("Trail Runner Lightweight mesh upper");
   });
 });

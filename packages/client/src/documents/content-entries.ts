@@ -1,4 +1,9 @@
-import { type ContentTypeSchema, DEFAULT_CONTENT_LOCALE } from "@noname/documents";
+import {
+  type ContentTypeSchema,
+  DEFAULT_CONTENT_LOCALE,
+  emptyRichTextDocument,
+  parseRichTextFieldValue,
+} from "@noname/documents";
 import { coerceScalarString } from "@noname/shared";
 import { apiFetch, apiFetchDataOptional, apiFetchOptional, apiFetchVoid } from "../lib/api";
 import { assetUrlFromData } from "../lib/asset-url";
@@ -77,6 +82,13 @@ export function splitSavePayload(
       } catch {
         parsed = { documentId: raw };
       }
+    } else if (field.type === "richText") {
+      if (raw === "") {
+        if (field.required) parsed = emptyRichTextDocument();
+        else continue;
+      } else {
+        parsed = parseRichTextFieldValue(raw) ?? raw;
+      }
     }
 
     if (field.isLocalizable) {
@@ -93,6 +105,7 @@ export function isEditableField(type: string): boolean {
   return (
     type === "text" ||
     type === "longText" ||
+    type === "richText" ||
     type === "number" ||
     type === "boolean" ||
     type === "media" ||

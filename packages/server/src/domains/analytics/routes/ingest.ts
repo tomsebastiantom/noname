@@ -1,11 +1,11 @@
-import type { Hono } from "hono";
 import { gzipSync } from "node:zlib";
+import type { Hono } from "hono";
 import { getUserId, requireHeaderOrgId } from "../../../shared/org";
 import { created } from "../../../shared/respond";
 import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "../browser-ingest";
-import { isGzipBuffer, parseReplayIngestBody } from "../replay-ingest";
 import { recordBrowserSpans } from "../browser-span-export";
 import { parseSpanIngest } from "../browser-span-ingest";
+import { isGzipBuffer, parseReplayIngestBody } from "../replay-ingest";
 import type { AnalyticsRouteDeps } from "./deps";
 
 export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRouteDeps): void {

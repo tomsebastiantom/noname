@@ -1,7 +1,8 @@
 # R1 — Rich text implementation plan
 
 > **Date:** 2026-08-06  
-> **Status:** **Not started** (server schema only)  
+> **Status:** **Shipped (R1 → R1.3)** — TipTap, embed resolve, constraints toolbar, tables, video, inline embeds, paste hardening, email channel  
+> **Parity gaps:** [`RICH-TEXT-PARITY.md`](./RICH-TEXT-PARITY.md)
 > **Track ID:** **R1** in [`BUILD-MASTER-INDEX.md`](./BUILD-MASTER-INDEX.md)  
 > **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md) § Rich Text · **not** E3 collab ([`E3-SPIKE-REPORT.md`](./E3-SPIKE-REPORT.md))
 
@@ -22,7 +23,7 @@
 | Layer | Status | Evidence |
 |-------|--------|----------|
 | **Wire type** | ✅ | `FieldType` includes `"richText"` — `packages/documents/src/schema.ts` |
-| **Server validation** | ✅ | `packages/server/src/domains/documents/validation/richtext.ts` — Zod tree, node/mark allowlists via `constraints` |
+| **Server validation** | ✅ | `@noname/documents` Zod schemas + `validator.ts` — node/mark allowlists via `constraints` |
 | **Server storage** | ✅ | Values live in `documents.data` / locale overrides like any other field — no separate table |
 | **`document_ops` patches** | ✅ | Content saves append `patch_data` ops (E3-pre) — works once client sends JSON objects |
 | **Shared TS types for clients** | ❌ | `RichTextDocument` only in server validation; not exported from `@noname/documents` |
@@ -32,7 +33,7 @@
 | **`fieldsFromResolved()`** | ⚠️ | `JSON.stringify` for objects works for display in a raw editor, not WYSIWYG |
 | **Visual editor (layout props)** | ⚠️ | `EditFieldType` has no `rich-text`; introspect maps `description` → `longText` |
 | **Storefront render** | ❌ | No `RichTextRenderer` — json-render cannot display CMS rich text fields |
-| **Bot / SEO HTML** | ⚠️ | I1 bot SSR extracts plain strings from layout spec only |
+| **Bot / SEO HTML** | ✅ | I1 bot SSR — `richTextToHtml()` on resolved `$state` fields |
 | **Seed / demo content** | ❌ | No content types use `richText` in `scripts/seed/` |
 | **Live collab** | ❌ deferred | Yjs + TipTap + Hocuspocus — **D7**, not R1 |
 
@@ -81,7 +82,7 @@ Work in this order. Each step should be independently testable.
 | # | Task | Files / notes |
 |---|------|----------------|
 | 1 | Export `RichTextDocument`, node/mark constants from `@noname/documents` (move or re-export from server schema) | `packages/documents/src/richtext.ts` |
-| 2 | Add `emptyRichTextDocument()` and `plainTextToRichTextDocument(text: string)` for migration / paste fallback | same |
+| 2 | Add `emptyRichTextDocument()` helper | same |
 | 3 | Add `richTextToPlainText(doc)` for labels, search, bot SSR excerpts | same |
 | 4 | Unit tests for round-trip and allowlist walking | `richtext.test.ts` |
 
@@ -90,16 +91,15 @@ Work in this order. Each step should be independently testable.
 | # | Task | Files / notes |
 |---|------|----------------|
 | 5 | Add `richText` to `isEditableField()` | `packages/client/src/documents/content-entries.ts` |
-| 6 | Parse/stringify in `splitSavePayload()` — `field.type === "richText"` → `JSON.parse` / validate client-side before save | same |
-| 7 | `fieldsFromResolved()` — keep JSON string for form state **or** pass object to dedicated component | same |
-| 8 | **`RichTextFieldInput`** component | `packages/client/src/admin/components/content/RichTextFieldInput.tsx` |
-| 9 | Wire in `ContentEntryFieldInput` when `field.type === "richText"` | `content-entry-field-input.tsx` |
-| 10 | Respect `constraints.allowedNodeTypes` / `allowedMarks` — disable toolbar buttons | read from `ContentFieldSchema.constraints` |
-| 11 | Embedded entry/asset blocks — reuse `ReferenceFieldInput` / `MediaFieldInput` inside editor | node types `embedded-*` |
+| 6 | Parse/stringify in `splitSavePayload()` | same |
+| 7 | **`RichTextTipTapEditor`** — TipTap WYSIWYG + HTML paste | `packages/client/src/components/rich-text/` |
+| 8 | Wire in `ContentEntryFieldInput` | `RichTextFieldInput.tsx` |
+| 9 | Embedded asset/entry blocks | TipTap custom nodes + pickers |
+| 10 | Respect `constraints.allowedNodeTypes` / `allowedMarks` | ✅ RT-3 — `richTextToolbarFlags` + `field.constraints` |
+| 11 | Tables, video blocks, inline embeds | ✅ RT-4/5/11/12 — TipTap + bridge + renderer |
+| 12 | Paste sanitization | ✅ RT-6 — `PasteSanitize` extension |
 
-**Editor library (recommendation):** [TipTap](https://tiptap.dev) with a **custom document schema** that serializes to our `RichTextDocument` JSON (not HTML storage). Alternative: Lexical with custom export. Pick one; do not build a bespoke contenteditable.
-
-**Paste (R1):** Accept plain text and basic HTML paste → sanitize → convert to node tree. Defer Word-perfect paste to R1.1.
+**Editor:** TipTap with custom bridge to `RichTextDocument` JSON (not HTML storage). See [`RICH-TEXT-PARITY.md`](./RICH-TEXT-PARITY.md).
 
 ### Phase R1-c — Server + ops (mostly done)
 
@@ -114,9 +114,10 @@ Work in this order. Each step should be independently testable.
 | # | Task | Files / notes |
 |---|------|----------------|
 | 15 | **`RichTextRenderer`** — map `nodeType` → React elements | `packages/client/src/components/rich-text/` |
-| 16 | Resolve `embedded-asset-*` / `embedded-entry-*` via existing ref resolution | align with [`DOCUMENT-REFS.md`](../2026-07-25/DOCUMENT-REFS.md) |
+| 16 | Resolve `embedded-asset-*` / `embedded-entry-*` via existing ref resolution | ✅ RT-1/2 — `richtext-field-resolve.ts` + `_resolved` |
 | 17 | Register json-render component or helper for bound CMS fields | catalog / runtime |
-| 18 | Email template path — plain-text fallback via `richTextToPlainText` | notifications if needed |
+| 18 | Email template path — plain-text + HTML via `renderRichTextForEmail` | ✅ RT-7 — `{key}_html` / `{key}_text` in notification vars |
+| 19 | Search indexing — plain text from rich text + text fields | ✅ RT-8 — `meta.searchText` on create/update; `GET /content/:type/search?q=` |
 
 ### Phase R1-e — Visual editor props (optional in R1)
 

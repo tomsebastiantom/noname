@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  applyJsonPatch,
-  buildSpecPatchPayload,
-  replaySpecPatches,
-} from "./document-op-payload";
+import { applyJsonPatch, buildSpecPatchPayload, replaySpecPatches } from "./document-op-payload";
 
 describe("document-op-payload", () => {
   it("builds RFC 6902 patches for spec edits", () => {
@@ -43,10 +39,7 @@ describe("document-op-payload", () => {
       },
     };
 
-    const payloads = [
-      buildSpecPatchPayload(base, step1),
-      buildSpecPatchPayload(step1, step2),
-    ];
+    const payloads = [buildSpecPatchPayload(base, step1), buildSpecPatchPayload(step1, step2)];
 
     const replayed = replaySpecPatches(base, payloads);
     expect(replayed).toEqual(step2);

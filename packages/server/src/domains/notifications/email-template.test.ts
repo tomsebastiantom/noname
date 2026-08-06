@@ -1,3 +1,4 @@
+import { plainTextToRichTextDocument, serializeRichTextFieldValue } from "@noname/documents";
 import { describe, expect, it } from "vitest";
 import { agentTaskCompleteEmailSpec } from "../../../../../scripts/seed/email-specs";
 import { parseNotificationEmailEntry, renderNotificationEmail } from "./email-template";
@@ -52,5 +53,30 @@ describe("notification email template", () => {
     expect(rendered.html).toContain("Alex");
     expect(rendered.html).toContain("Summarize inbox");
     expect(rendered.html).toContain("Done.");
+  });
+
+  it("enriches rich text variables with _html and _text suffixes", async () => {
+    const parsed = parseNotificationEmailEntry({
+      template_key: "agent-task-complete",
+      subject: "Rich body",
+      spec: {
+        root: "body",
+        elements: {
+          body: {
+            type: "Text",
+            props: { text: { $state: "/body_html" } },
+          },
+        },
+      },
+      category: "operational",
+    });
+    expect(parsed).not.toBeNull();
+
+    const body = serializeRichTextFieldValue(
+      plainTextToRichTextDocument("Hello **world**".replace("**world**", "world")),
+    );
+    const rendered = await renderNotificationEmail(parsed!, { body });
+    expect(rendered.html).toContain("Hello world");
+    expect(rendered.text).toContain("Hello world");
   });
 });

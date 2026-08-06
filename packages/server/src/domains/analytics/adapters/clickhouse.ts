@@ -93,7 +93,10 @@ function sessionIdForRow(value: string | null | undefined): string {
 
 const NIL_SESSION_ID = "00000000-0000-0000-0000-000000000000";
 
-function userMatchConditions(filter: ReplayUserFilter): { sql: string; params: Record<string, string> } {
+function userMatchConditions(filter: ReplayUserFilter): {
+  sql: string;
+  params: Record<string, string>;
+} {
   const parts: string[] = [];
   const params: Record<string, string> = {};
   if (filter.userId) {

@@ -1,6 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import { normalizeTwilioSmsEventType } from "../../delivery-events";
-import type { CommsWebhookAdapter, CommsWebhookParseInput, CommsWebhookParseResult } from "../webhooks/types";
+import type {
+  CommsWebhookAdapter,
+  CommsWebhookParseInput,
+  CommsWebhookParseResult,
+} from "../webhooks/types";
 
 function readAuthToken(): string | null {
   const token =

@@ -34,8 +34,6 @@ describe("clientOpFromRequest", () => {
   });
 
   it("requires both headers", () => {
-    expect(
-      clientOpFromRequest(mockContext({ "x-client-id": "tab-abc" }) as never),
-    ).toEqual({});
+    expect(clientOpFromRequest(mockContext({ "x-client-id": "tab-abc" }) as never)).toEqual({});
   });
 });

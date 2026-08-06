@@ -1,19 +1,19 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { recordDocumentOp } from "../../../shared/document-audit";
+import { buildDataPatchPayload, type DocumentOpPayload } from "../document-op-payload";
 import { ContentDocument } from "../entity";
-import {
-  buildDataPatchPayload,
-  type DocumentOpPayload,
-} from "../document-op-payload";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
+import { contentSearchMeta } from "../shared/content-search-meta";
 import { extractCollectionFromBody } from "../shared/document-collection";
 import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
+import { resolveRichTextFieldValue } from "../shared/richtext-field-resolve";
 import { contentValidator } from "../validation/validator";
 import { filterReadFields, prepareContentWrite } from "./content-write";
 import { requireContentEntry } from "./document-guards";
 
 export interface ContentServiceOptions {
   onContentPublished?: (orgId: string, type: string, id: string) => Promise<void>;
+  getAsset?: (orgId: string, documentId: string) => Promise<import("../ports").AssetDTO | null>;
 }
 
 export function createContentService(
@@ -37,6 +37,9 @@ export function createContentService(
         },
       );
 
+      const schemaRow = await storage.findContentTypeByName(orgId, type);
+      const meta = schemaRow !== null ? contentSearchMeta(schemaRow.schema, builtData) : {};
+
       const audit = opts?.audit;
       const entity = ContentDocument.create(orgId, type, builtData, audit);
       const saved = await storage.createDocument({
@@ -46,6 +49,7 @@ export function createContentService(
         data: entity.data,
         status: "draft",
         collectionId,
+        meta,
       });
       flushEvents(entity);
       if (audit) {
@@ -63,6 +67,12 @@ export function createContentService(
     findByType: async (orgId, type) => {
       const rows = await storage.listDocuments(orgId, { type });
       return rows;
+    },
+
+    search: async (orgId, type, query) => {
+      const trimmed = query.trim();
+      if (!trimmed) return [];
+      return storage.findDocumentsBySearchText(orgId, type, trimmed);
     },
 
     findById: async (_orgId, id, opts) => {
@@ -91,11 +101,17 @@ export function createContentService(
         },
       );
 
+      const schemaRow = await storage.findContentTypeByName(orgId, type);
+      const meta =
+        schemaRow !== null
+          ? contentSearchMeta(schemaRow.schema, builtData, existing.meta)
+          : existing.meta;
+
       const audit = opts?.audit;
       const updated = await storage.updateDocument(
         existing.id,
         builtData,
-        undefined,
+        meta,
         collectionId !== undefined ? collectionId : undefined,
       );
       const entity = new ContentDocument(existing.id, orgId, type, updated.data, "draft");
@@ -169,11 +185,22 @@ export function createContentService(
       for (const field of schema.schema.fields) {
         const value = existing.data[field.key];
         if (value === undefined) continue;
+        let resolvedValue: unknown;
         if (field.isLocalizable && value && typeof value === "object" && !Array.isArray(value)) {
-          resolved[field.key] = pickLocalizedValue(value, locale, defaultLocale);
+          resolvedValue = pickLocalizedValue(value, locale, defaultLocale);
         } else {
-          resolved[field.key] = value;
+          resolvedValue = value;
         }
+        if (field.type === "richText" && options.getAsset) {
+          resolvedValue = await resolveRichTextFieldValue(
+            resolvedValue,
+            orgId,
+            locale,
+            storage,
+            options.getAsset,
+          );
+        }
+        resolved[field.key] = resolvedValue;
       }
       return resolved;
     },

@@ -11,7 +11,12 @@ import {
   mergeNotificationPreferences,
   normalizeNotificationPreferences,
 } from "../preferences";
-import { commsDeliveries, commsDeliveryEvents, commsInboxItems, notificationPreferences } from "../schema";
+import {
+  commsDeliveries,
+  commsDeliveryEvents,
+  commsInboxItems,
+  notificationPreferences,
+} from "../schema";
 
 export interface CommsDeliveryRow {
   id: string;

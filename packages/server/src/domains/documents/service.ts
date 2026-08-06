@@ -23,9 +23,12 @@ export function createDocumentsService(
 ): DocumentService {
   const contentTypes = createContentTypesService(storage);
   const tenantSettings = createTenantSettingsService(storage);
-  const content = createContentService(storage, validator, options);
-  const layout = createLayoutService(storage);
   const assets = createAssetsService(storage);
+  const content = createContentService(storage, validator, {
+    ...options,
+    getAsset: (orgId, documentId) => assets.get(orgId, documentId),
+  });
+  const layout = createLayoutService(storage);
   const pages = createPagesService(storage);
 
   return {

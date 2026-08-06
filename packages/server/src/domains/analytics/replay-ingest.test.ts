@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import { gunzipSync, gzipSync } from "node:zlib";
+import { describe, expect, it } from "vitest";
 import { isGzipBuffer, parseReplayIngestBody, replayChunkExtension } from "./replay-ingest";
 
 describe("parseReplayIngestBody", () => {

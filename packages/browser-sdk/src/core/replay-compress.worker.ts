@@ -9,5 +9,3 @@ self.onmessage = (event: MessageEvent<CompressRequest>) => {
   const response: CompressResponse = { id, compressed };
   self.postMessage(response, { transfer: [compressed.buffer] });
 };
-
-export {};

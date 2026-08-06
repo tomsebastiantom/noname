@@ -11,10 +11,7 @@ function readWebhookToken(): string | null {
   return token || null;
 }
 
-function headerMatchesToken(
-  headers: Record<string, string | undefined>,
-  token: string,
-): boolean {
+function headerMatchesToken(headers: Record<string, string | undefined>, token: string): boolean {
   const received =
     headers["x-postmark-token"] ??
     headers["X-Postmark-Token"] ??
@@ -23,7 +20,9 @@ function headerMatchesToken(
   return received === token;
 }
 
-export function parsePostmarkWebhook(body: Record<string, unknown>): NormalizedCommsWebhookEvent | null {
+export function parsePostmarkWebhook(
+  body: Record<string, unknown>,
+): NormalizedCommsWebhookEvent | null {
   const recordType = body.RecordType;
   const messageId = body.MessageID;
   if (typeof recordType !== "string" || typeof messageId !== "string") {

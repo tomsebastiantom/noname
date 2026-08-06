@@ -1,6 +1,10 @@
 import { normalizeSesEventType } from "../../delivery-events";
 import { verifySnsMessage } from "../webhooks/sns-verify";
-import type { CommsWebhookAdapter, CommsWebhookParseInput, CommsWebhookParseResult } from "../webhooks/types";
+import type {
+  CommsWebhookAdapter,
+  CommsWebhookParseInput,
+  CommsWebhookParseResult,
+} from "../webhooks/types";
 
 function readSesEventType(message: Record<string, unknown>): string | null {
   const eventType = message.eventType;
@@ -118,7 +122,11 @@ export function createSesWebhookAdapter(): CommsWebhookAdapter {
         return null;
       }
 
-      if (parsed.inner && "kind" in parsed.inner && parsed.inner.kind === "subscription_confirmation") {
+      if (
+        parsed.inner &&
+        "kind" in parsed.inner &&
+        parsed.inner.kind === "subscription_confirmation"
+      ) {
         return parsed.inner;
       }
 

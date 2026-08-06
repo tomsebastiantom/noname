@@ -1,12 +1,12 @@
-import { z } from "zod";
-import type { ContentTypeSchema, FieldDefinition } from "../ports";
-import type { RichTextNode } from "./richtext";
 import {
   isRichTextDocument,
   RICH_TEXT_BLOCK_NODES,
   RICH_TEXT_INLINE_NODES,
   RICH_TEXT_MARKS,
-} from "./richtext";
+  type RichTextNode,
+} from "@noname/documents";
+import { z } from "zod";
+import type { ContentTypeSchema, FieldDefinition } from "../ports";
 
 const ALL_NODE_TYPES = [...RICH_TEXT_BLOCK_NODES, ...RICH_TEXT_INLINE_NODES] as readonly string[];
 const ALL_MARKS = RICH_TEXT_MARKS as readonly string[];

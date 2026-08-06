@@ -6,7 +6,7 @@ import {
   verifySvixWebhook,
 } from "./resend-webhook";
 
-const SECRET = "whsec_" + Buffer.from("test-secret-key-32bytes-long!!").toString("base64");
+const SECRET = `whsec_${Buffer.from("test-secret-key-32bytes-long!!").toString("base64")}`;
 
 function signPayload(payload: string, id: string, timestamp: string): Record<string, string> {
   const signed = `${id}.${timestamp}.${payload}`;

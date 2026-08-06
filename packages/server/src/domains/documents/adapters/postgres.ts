@@ -246,6 +246,23 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       return rows.map(mapDocument);
     },
 
+    async findDocumentsBySearchText(orgId, type, query) {
+      const trimmed = query.trim();
+      if (!trimmed) return [];
+      const pattern = `%${trimmed.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+      const rows = await db
+        .select()
+        .from(documents)
+        .where(
+          and(
+            eq(documents.orgId, orgId),
+            eq(documents.type, type),
+            sql`${documents.meta}->>'searchText' ILIKE ${pattern} ESCAPE '\\'`,
+          ),
+        );
+      return rows.map(mapDocument);
+    },
+
     async findAssetByHash(orgId, hash) {
       const [row] = await db
         .select()

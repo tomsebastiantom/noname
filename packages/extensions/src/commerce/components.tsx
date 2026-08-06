@@ -1,7 +1,14 @@
+import { isRichTextDocument } from "@noname/documents";
 import { useState } from "react";
 import type { CatalogProps } from "../catalog-props";
+import { RichTextRenderer } from "../rich-text/RichTextRenderer";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
+
+function renderDescription(description: unknown) {
+  if (!isRichTextDocument(description)) return null;
+  return <RichTextRenderer document={description} className="mt-1 text-sm text-muted-foreground" />;
+}
 
 type HeroConfig = {
   image: string | null;
@@ -48,7 +55,7 @@ type ProductCardConfig = {
   title: string;
   price: number;
   image: string | null;
-  description: string | null;
+  description: unknown;
 };
 
 type ProductCardLabels = {
@@ -88,9 +95,7 @@ export function ProductCard({
       )}
       <div className="p-4">
         <h3 className="text-lg font-semibold">{config.title}</h3>
-        {config.description && (
-          <p className="mt-1 text-sm text-muted-foreground">{config.description}</p>
-        )}
+        {renderDescription(config.description)}
         <div className="mt-4 flex items-center justify-between gap-4">
           <span className="text-xl font-bold">${config.price.toFixed(2)}</span>
           <button

@@ -93,6 +93,7 @@ export default {
         dir,
         "../extensions/src/commerce/catalog-schemas.ts",
       ),
+      "@noname/extensions/rich-text": join(dir, "../extensions/src/rich-text/index.ts"),
     },
   },
   plugins: [

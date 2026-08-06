@@ -54,14 +54,21 @@ export function createStorefrontRoutes() {
     const url = new URL(c.req.url);
     const pathname = url.pathname;
 
-    if (pathname.startsWith("/_assets/") || pathname.startsWith("/api/") || pathname === "/health") {
+    if (
+      pathname.startsWith("/_assets/") ||
+      pathname.startsWith("/api/") ||
+      pathname === "/health"
+    ) {
       return c.notFound();
     }
 
     const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "";
     const siteId = storeSlugFromHost(host);
     if (!siteId) {
-      return c.text("Use {slug}.localhost — e.g. yogastore.localhost (deploy client bundle to R2)", 404);
+      return c.text(
+        "Use {slug}.localhost — e.g. yogastore.localhost (deploy client bundle to R2)",
+        404,
+      );
     }
 
     const userAgent = c.req.header("User-Agent");

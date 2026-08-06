@@ -2,7 +2,10 @@ import { gzipSync } from "fflate";
 
 let worker: Worker | null = null;
 let seq = 0;
-const pending = new Map<number, { resolve: (v: Uint8Array) => void; reject: (err: Error) => void }>();
+const pending = new Map<
+  number,
+  { resolve: (v: Uint8Array) => void; reject: (err: Error) => void }
+>();
 
 function gzipSyncMain(json: string): Uint8Array {
   return gzipSync(new TextEncoder().encode(json));
@@ -20,7 +23,9 @@ function getWorker(): Worker | null {
   if (typeof Worker === "undefined" || !canUseModuleWorker()) return null;
   if (worker) return worker;
   try {
-    worker = new Worker(new URL("./replay-compress.worker.ts", import.meta.url), { type: "module" });
+    worker = new Worker(new URL("./replay-compress.worker.ts", import.meta.url), {
+      type: "module",
+    });
     worker.onmessage = (event: MessageEvent<{ id: number; compressed: Uint8Array }>) => {
       const { id, compressed } = event.data;
       const entry = pending.get(id);

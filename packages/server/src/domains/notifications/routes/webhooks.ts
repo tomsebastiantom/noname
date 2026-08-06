@@ -22,10 +22,7 @@ function mapWebhookError(err: unknown): Response {
   });
 }
 
-export function registerCommsWebhookRoutes(
-  routes: Hono,
-  service: NotificationsService,
-): void {
+export function registerCommsWebhookRoutes(routes: Hono, service: NotificationsService): void {
   routes.post("/webhooks/:provider", async (c) => {
     const provider = c.req.param("provider");
     const rawBody = await c.req.text();

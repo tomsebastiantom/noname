@@ -1,5 +1,6 @@
 export type LlmProviderName = "openai" | "anthropic";
 export type { CommsProviderName } from "@noname/shared";
+
 import type { CommsProviderName } from "@noname/shared";
 
 /** External integration unique key — any id enabled in the platform OAuth catalog. */

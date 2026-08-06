@@ -9,11 +9,11 @@ export {
   COMMS_EMAIL_PROVIDERS,
   COMMS_PROVIDERS,
   COMMS_SMS_PROVIDERS,
-  isCommsEmailProviderName,
-  isCommsProviderName,
   type CommsEmailProviderName,
   type CommsProviderName,
   type CommsSmsProviderName,
+  isCommsEmailProviderName,
+  isCommsProviderName,
 } from "./comms-providers";
 export {
   assertValidStoreSlug,

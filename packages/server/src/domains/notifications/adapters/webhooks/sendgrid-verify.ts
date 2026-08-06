@@ -10,12 +10,7 @@ export function verifySendGridEventWebhook(
   try {
     const payload = Buffer.concat([Buffer.from(timestamp, "utf8"), Buffer.from(rawBody, "utf8")]);
     const key = createPublicKey(publicKeyPem);
-    return verify(
-      "sha256",
-      payload,
-      { key, dsaEncoding: "der" },
-      Buffer.from(signature, "base64"),
-    );
+    return verify("sha256", payload, { key, dsaEncoding: "der" }, Buffer.from(signature, "base64"));
   } catch {
     return false;
   }

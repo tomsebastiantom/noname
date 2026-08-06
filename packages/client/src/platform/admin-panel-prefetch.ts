@@ -1,8 +1,8 @@
 import type { Spec } from "@json-render/core";
 import { fetchWithTimeout } from "@noname/auth";
 import { apiHeaders } from "../auth/session";
-import { assertAdminPanelSpec } from "./admin-layout";
 import { platformTemplateFromPath } from "../platform-routes";
+import { assertAdminPanelSpec } from "./admin-layout";
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
 

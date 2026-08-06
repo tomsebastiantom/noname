@@ -2,9 +2,9 @@ import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { notFound, ok } from "../../../shared/respond";
 import { requireActorPermission } from "../../auth/guards";
+import { draftWritePermissionForDocumentType } from "../shared/document-draft-permission";
 import type { DocumentsRouteDeps } from "./deps";
 import { denyUnlessDocumentWrite } from "./document-write-guard";
-import { draftWritePermissionForDocumentType } from "../shared/document-draft-permission";
 
 const DEFAULT_OPS_LIMIT = 50;
 const MAX_OPS_LIMIT = 200;

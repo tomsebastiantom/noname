@@ -5,6 +5,7 @@ import type { ContentFieldSchema } from "../../content-entries";
 import { EmailSpecFieldInput } from "./EmailSpecFieldInput";
 import { MediaFieldInput, type MediaFieldLabels } from "./MediaFieldInput";
 import { ReferenceFieldInput, type ReferenceFieldLabels } from "./ReferenceFieldInput";
+import { RichTextFieldInput } from "./RichTextFieldInput";
 
 const defaultReferenceLabels: ReferenceFieldLabels = {
   entriesLoadingLabel: "Loading entries…",
@@ -116,6 +117,20 @@ export function ContentEntryFieldInput({
           className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
         />
       </div>
+    );
+  }
+
+  if (field.type === "richText") {
+    return (
+      <RichTextFieldInput
+        label={`${field.label}${field.isLocalizable ? " (localized)" : ""}`}
+        required={field.required}
+        value={value}
+        onChange={onChange}
+        referenceTarget={field.references}
+        mediaLabels={mediaLabels}
+        constraints={field.constraints}
+      />
     );
   }
 

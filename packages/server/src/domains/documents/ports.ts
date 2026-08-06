@@ -334,6 +334,7 @@ export interface DocumentStorage {
   deleteDocument(id: string): Promise<void>;
   findAssetByHash(orgId: string, hash: string): Promise<DocumentDTO | null>;
   findDocumentsWithDataMentioning(orgId: string, needle: string): Promise<DocumentDTO[]>;
+  findDocumentsBySearchText(orgId: string, type: string, query: string): Promise<DocumentDTO[]>;
   recordDocumentOp(input: {
     orgId: string;
     documentId: string;
@@ -385,6 +386,7 @@ export interface ContentDocumentService {
     opts?: ContentContentOpts,
   ): Promise<ContentEntryDTO>;
   findByType(orgId: string, type: string): Promise<ContentEntryDTO[]>;
+  search(orgId: string, type: string, query: string): Promise<ContentEntryDTO[]>;
   findById(orgId: string, id: string, opts?: ContentContentOpts): Promise<ContentEntryDTO | null>;
   updateById(
     orgId: string,

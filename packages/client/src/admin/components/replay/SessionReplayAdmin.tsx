@@ -83,8 +83,7 @@ export function SessionReplayAdmin({
   const searchPlaceholder = labels.searchPlaceholder ?? "User id or email";
   const searchLabel = labels.searchLabel ?? "Search";
   const clearSearchLabel = labels.clearSearchLabel ?? "Clear";
-  const identifiedMidSessionLabel =
-    labels.identifiedMidSessionLabel ?? "Identified mid-session";
+  const identifiedMidSessionLabel = labels.identifiedMidSessionLabel ?? "Identified mid-session";
 
   const columns: DataTableColumn<ReplaySessionSummary>[] = [
     {

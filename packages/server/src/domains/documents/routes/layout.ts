@@ -97,9 +97,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
         shellRef: body.shellRef,
         collectionId: body.collectionId,
       },
-      ifMatch
-        ? { ifMatchUpdatedAt: ifMatch, audit, ...clientOp }
-        : { audit, ...clientOp },
+      ifMatch ? { ifMatchUpdatedAt: ifMatch, audit, ...clientOp } : { audit, ...clientOp },
     );
     return ok(c, updated);
   });

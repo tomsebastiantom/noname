@@ -7,8 +7,8 @@ import { ok } from "../../shared/respond";
 import { requireAuthenticatedUser, requireHumanPermission } from "../auth/guards";
 import type { NotificationsService } from "./ports";
 import { notificationPreferencesUpdateSchema } from "./preferences";
-import { registerCommsWebhookRoutes } from "./routes/webhooks";
 import { registerNotificationsStreamRoutes } from "./routes/stream";
+import { registerCommsWebhookRoutes } from "./routes/webhooks";
 
 const listDeliveriesSchema = z.object({
   status: z.string().optional(),

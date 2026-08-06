@@ -18,7 +18,9 @@ function verifyMailgunSignature(
   signature: string,
   signingKey: string,
 ): boolean {
-  const expected = createHmac("sha256", signingKey).update(timestamp + token).digest("hex");
+  const expected = createHmac("sha256", signingKey)
+    .update(timestamp + token)
+    .digest("hex");
   try {
     return timingSafeEqual(Buffer.from(expected), Buffer.from(signature));
   } catch {
@@ -26,7 +28,9 @@ function verifyMailgunSignature(
   }
 }
 
-export function parseMailgunWebhook(body: Record<string, unknown>): NormalizedCommsWebhookEvent | null {
+export function parseMailgunWebhook(
+  body: Record<string, unknown>,
+): NormalizedCommsWebhookEvent | null {
   const eventData = body["event-data"];
   if (!eventData || typeof eventData !== "object" || Array.isArray(eventData)) {
     return null;

@@ -65,6 +65,7 @@ function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
     deleteDocument: vi.fn(),
     findAssetByHash: vi.fn(),
     findDocumentsWithDataMentioning: vi.fn(async () => []),
+    findDocumentsBySearchText: vi.fn(async () => []),
     findCollectionSlug: vi.fn(async () => null),
     findCollectionIdBySlug: vi.fn(async () => null),
     recordDocumentOp: vi.fn(async () => ({ serverVersion: 1 })),

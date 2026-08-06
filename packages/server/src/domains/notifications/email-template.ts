@@ -1,5 +1,6 @@
 import type { Spec } from "@json-render/core";
 import { renderToHtml, renderToPlainText } from "@json-render/react-email";
+import { parseRichTextFieldValue, renderRichTextForEmail } from "@noname/documents";
 import { coerceScalarString } from "@noname/shared";
 import type { ContentDocumentService } from "../documents/ports";
 
@@ -90,8 +91,21 @@ export async function renderNotificationEmail(
   template: LoadedNotificationEmail,
   variables: Record<string, string>,
 ): Promise<{ subject: string; html: string; text: string }> {
-  const state = { ...variables };
+  const state = enrichNotificationVariables(variables);
   const html = await renderToHtml(template.spec, { state });
   const text = await renderToPlainText(template.spec, { state });
   return { subject: template.subject, html, text };
+}
+
+/** Expose `{key}_html` and `{key}_text` when a variable is serialized rich text JSON. */
+function enrichNotificationVariables(variables: Record<string, string>): Record<string, string> {
+  const state = { ...variables };
+  for (const [key, value] of Object.entries(variables)) {
+    const doc = parseRichTextFieldValue(value);
+    if (!doc) continue;
+    const rendered = renderRichTextForEmail(doc);
+    state[`${key}_html`] = rendered.html;
+    state[`${key}_text`] = rendered.text;
+  }
+  return state;
 }

@@ -1,0 +1,71 @@
+.rich-text-editor .ProseMirror {
+  min-height: 160px;
+  padding: 0.75rem;
+  outline: none;
+}
+
+.rich-text-editor .ProseMirror p {
+  margin: 0 0 0.75rem;
+}
+
+.rich-text-editor .ProseMirror h2,
+.rich-text-editor .ProseMirror h3 {
+  margin: 0 0 0.5rem;
+  font-weight: 600;
+}
+
+.rich-text-editor .ProseMirror ul,
+.rich-text-editor .ProseMirror ol {
+  margin: 0 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.rich-text-editor .ProseMirror blockquote {
+  margin: 0 0 0.75rem;
+  border-left: 3px solid color-mix(in oklab, currentColor 20%, transparent);
+  padding-left: 0.75rem;
+  font-style: italic;
+}
+
+.rich-text-editor .ProseMirror pre {
+  margin: 0 0 0.75rem;
+  border-radius: 0.375rem;
+  background: color-mix(in oklab, currentColor 8%, transparent);
+  padding: 0.75rem;
+  overflow-x: auto;
+}
+
+.rich-text-editor .rich-text-embed {
+  margin: 0 0 0.75rem;
+  border: 1px dashed color-mix(in oklab, currentColor 25%, transparent);
+  border-radius: 0.375rem;
+  padding: 0.75rem;
+  background: color-mix(in oklab, currentColor 5%, transparent);
+  font-size: 0.875rem;
+}
+
+.rich-text-editor .ProseMirror table {
+  margin: 0 0 0.75rem;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.rich-text-editor .ProseMirror td,
+.rich-text-editor .ProseMirror th {
+  border: 1px solid color-mix(in oklab, currentColor 20%, transparent);
+  padding: 0.375rem 0.5rem;
+  vertical-align: top;
+}
+
+.rich-text-editor .rich-text-embed-inline {
+  display: inline-block;
+  margin: 0 0.125rem;
+  border-radius: 0.25rem;
+  border: 1px dashed color-mix(in oklab, currentColor 25%, transparent);
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+}
+
+.rich-text-toolbar button.is-active {
+  background: color-mix(in oklab, currentColor 10%, transparent);
+}

@@ -176,10 +176,7 @@ describe("analytics read auth", () => {
       putChunk: vi.fn(async () => "replays/org-1/s1/c.json"),
       getChunk,
     };
-    const app = testApp(
-      replayService({ query: vi.fn(async () => []) }),
-      replayStorage,
-    );
+    const app = testApp(replayService({ query: vi.fn(async () => []) }), replayStorage);
     const res = await app.request("/api/analytics/replay/chunks/replays/other-org/s1/c.json", {
       headers: {
         Authorization: `Bearer ${adminToken}`,
@@ -196,10 +193,7 @@ describe("analytics read auth", () => {
       putChunk: vi.fn(async () => "replays/org-1/s1/c.json"),
       getChunk,
     };
-    const app = testApp(
-      replayService({ query: vi.fn(async () => []) }),
-      replayStorage,
-    );
+    const app = testApp(replayService({ query: vi.fn(async () => []) }), replayStorage);
     const res = await app.request("/api/analytics/replay/chunks/replays/org-1/s1/c.json", {
       headers: {
         Authorization: `Bearer ${adminToken}`,

@@ -29,7 +29,7 @@ const productContentType = {
     { key: "price", type: "number", required: true, isLocalizable: false, label: "Price" },
     {
       key: "description",
-      type: "longText",
+      type: "richText",
       required: false,
       isLocalizable: true,
       label: "Description",
@@ -181,6 +181,33 @@ async function ensureProductContentType(): Promise<void> {
   console.log("Product content type created.");
 }
 
+const demoProductDescription = {
+  nodeType: "document",
+  content: [
+    {
+      nodeType: "paragraph",
+      content: [
+        { nodeType: "text", value: "Comfortable running shoes for ", marks: [] },
+        { nodeType: "text", value: "everyday wear", marks: [{ type: "bold" }] },
+        { nodeType: "text", value: ".", marks: [] },
+      ],
+    },
+    {
+      nodeType: "unordered-list",
+      content: [
+        {
+          nodeType: "list-item",
+          content: [{ nodeType: "text", value: "Lightweight mesh upper", marks: [] }],
+        },
+        {
+          nodeType: "list-item",
+          content: [{ nodeType: "text", value: "Cushioned sole", marks: [] }],
+        },
+      ],
+    },
+  ],
+};
+
 async function seedDemoProduct(): Promise<string> {
   const { data: existing } = await api<{ data: ContentEntryRow[] }>("GET", "/api/documents/product");
   const published = existing.find((row) => row.status === "published");
@@ -196,7 +223,7 @@ async function seedDemoProduct(): Promise<string> {
       productId: "demo-sneakers",
       title: "Blue Sneakers",
       price: 99.99,
-      description: "Comfortable running shoes for everyday wear.",
+      description: demoProductDescription,
     },
   );
   await api("PUT", `/api/documents/product/${created.id}/publish`);

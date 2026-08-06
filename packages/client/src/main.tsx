@@ -15,7 +15,13 @@ import {
   useTransition,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn, redirectToLoginAfterUnauthorized } from "./auth/session";
+import {
+  apiHeaders,
+  clearSession,
+  hydrateTokenFromCookie,
+  isLoggedIn,
+  redirectToLoginAfterUnauthorized,
+} from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
 import { type CatalogManifest, loadCatalogs, manifestFingerprint } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";

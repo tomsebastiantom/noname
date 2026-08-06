@@ -11,6 +11,7 @@ import {
   resolveLoginProviders,
   type TenantSettingsService,
 } from "../documents/contracts";
+import type { NotificationsService } from "../notifications/ports";
 import { teamRoleAssignments, upsertUserTeamRole } from "./adapters/zitadel/authorizations";
 import {
   buildOAuthAuthorizeUrl,
@@ -45,7 +46,6 @@ import {
   resolveIdpUpdate,
 } from "./idp-registry";
 import type { AuthConfig, AuthService } from "./ports";
-import type { NotificationsService } from "../notifications/ports";
 
 export function createAuthService(deps: {
   tenantSettings: TenantSettingsService;

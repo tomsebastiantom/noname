@@ -23,7 +23,15 @@ describe("edge public routes", () => {
   });
 
   it("allows comms provider webhooks POST without JWT", () => {
-    for (const provider of ["resend", "ses", "sendgrid", "mailgun", "postmark", "brevo", "twilio"]) {
+    for (const provider of [
+      "resend",
+      "ses",
+      "sendgrid",
+      "mailgun",
+      "postmark",
+      "brevo",
+      "twilio",
+    ]) {
       expect(isPublicPost("POST", `/api/notifications/webhooks/${provider}`)).toBe(true);
     }
   });

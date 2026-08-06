@@ -279,7 +279,10 @@ describe("createNotificationsService", () => {
   });
 
   it("handleResendWebhook ingests delivery event when delivery matches", async () => {
-    vi.stubEnv("RESEND_WEBHOOK_SECRET", "whsec_" + Buffer.from("test-secret-key-32bytes-long!!").toString("base64"));
+    vi.stubEnv(
+      "RESEND_WEBHOOK_SECRET",
+      `whsec_${Buffer.from("test-secret-key-32bytes-long!!").toString("base64")}`,
+    );
 
     const delivery = {
       id: "del-1",

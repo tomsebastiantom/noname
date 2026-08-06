@@ -1,6 +1,6 @@
+import { type CommsProviderName, isCommsProviderName } from "@noname/shared";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
-import { isCommsProviderName, type CommsProviderName } from "@noname/shared";
 import { parseIntegrationId } from "./integration-id";
 import { mergeOAuthConnections, readOAuthConnectionMap } from "./oauth-connections";
 import type {

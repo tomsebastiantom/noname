@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
-import { apiFetchData } from "../../lib/api";
 import { getAccessToken, hydrateTokenFromCookie, sessionUserId } from "../../auth/session";
+import { apiFetchData } from "../../lib/api";
 
 /** Live inbox refresh via SSE (`GET /api/notifications/stream`). Falls back to caller polling if no token. */
 export function useCommsInboxStream(onInboxEvent: () => void, enabled = true): void {

@@ -11,10 +11,7 @@ function readWebhookSecret(): string | null {
   return secret || null;
 }
 
-function headerMatchesSecret(
-  headers: Record<string, string | undefined>,
-  secret: string,
-): boolean {
+function headerMatchesSecret(headers: Record<string, string | undefined>, secret: string): boolean {
   const received =
     headers["x-brevo-secret"] ??
     headers["X-Brevo-Secret"] ??
@@ -23,7 +20,9 @@ function headerMatchesSecret(
   return received === secret;
 }
 
-export function parseBrevoWebhook(body: Record<string, unknown>): NormalizedCommsWebhookEvent | null {
+export function parseBrevoWebhook(
+  body: Record<string, unknown>,
+): NormalizedCommsWebhookEvent | null {
   const nativeEvent = body.event;
   const messageId = body["message-id"] ?? body.messageId;
   if (typeof nativeEvent !== "string" || typeof messageId !== "string") {

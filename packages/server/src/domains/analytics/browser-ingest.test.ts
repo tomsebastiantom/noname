@@ -1,5 +1,5 @@
-import { Hono } from "hono";
 import { gzipSync } from "node:zlib";
+import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
 import { createAnalyticsRoutes } from "./api";
