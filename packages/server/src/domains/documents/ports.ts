@@ -7,8 +7,8 @@
 // type behind one interface so the shared machinery lives once.
 
 import type { WriteAudit } from "@noname/auth";
-import type { CommsProviderName } from "@noname/shared";
 import type { ContentFieldSchema, ContentTypeSchema, FieldType } from "@noname/documents";
+import type { CommsProviderName } from "@noname/shared";
 
 import type { ContentEntryRef, MediaRef } from "./refs";
 

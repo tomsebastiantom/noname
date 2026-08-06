@@ -16,7 +16,10 @@ function interpolate(template: string, values: Record<string, string>): string {
 
 function formatActorName(
   op: DocumentOpRow,
-  labels: Pick<DocumentActivityLabels, "lastEditYouLabel" | "lastEditAgentLabel" | "lastEditSomeoneLabel">,
+  labels: Pick<
+    DocumentActivityLabels,
+    "lastEditYouLabel" | "lastEditAgentLabel" | "lastEditSomeoneLabel"
+  >,
 ): string {
   const selfId = sessionUserId();
   if (selfId && op.actorId === selfId) return labels.lastEditYouLabel;
@@ -29,10 +32,7 @@ function formatActorName(
   return labels.lastEditSomeoneLabel;
 }
 
-function activityTemplateForOp(
-  op: DocumentOpRow,
-  labels: DocumentActivityLabels,
-): string | null {
+function activityTemplateForOp(op: DocumentOpRow, labels: DocumentActivityLabels): string | null {
   if (op.operation === "publish") return labels.lastPublishTemplate;
   if (op.operation === "update" || op.operation === "create") return labels.lastEditTemplate;
   return null;

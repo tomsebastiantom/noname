@@ -42,8 +42,7 @@ export function SaveBar({
 
   const statusLabel = dirty
     ? labels.unsavedLabel
-    : activityLabel ??
-      (status === "published" ? labels.publishedLabel : labels.draftSavedLabel);
+    : (activityLabel ?? (status === "published" ? labels.publishedLabel : labels.draftSavedLabel));
 
   return (
     <header className="z-20 flex shrink-0 flex-wrap items-center gap-3 border-b bg-background px-4 py-2">

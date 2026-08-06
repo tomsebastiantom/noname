@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { formatDocumentActivity, pickActivityOp } from "./format-document-activity";
 import type { DocumentOpRow } from "./document-ops";
+import { formatDocumentActivity, pickActivityOp } from "./format-document-activity";
 
 vi.mock("../auth/session", () => ({
   sessionUserId: vi.fn(() => "user-alice"),

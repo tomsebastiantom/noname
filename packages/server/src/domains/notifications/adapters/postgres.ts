@@ -9,9 +9,9 @@ import type {
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   mergeNotificationPreferences,
-  normalizeNotificationPreferences,
   type NotificationPreferences,
   type NotificationPreferencesUpdate,
+  normalizeNotificationPreferences,
 } from "../preferences";
 import {
   commsDeliveries,

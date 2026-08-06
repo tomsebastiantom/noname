@@ -1,4 +1,4 @@
-import { PERMISSIONS, writeAuditFromActor, type PermissionKey } from "@noname/auth";
+import { PERMISSIONS, type PermissionKey, writeAuditFromActor } from "@noname/auth";
 import type { Context, Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
 import { created, ok } from "../../../shared/respond";

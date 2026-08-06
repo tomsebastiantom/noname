@@ -28,10 +28,10 @@ import {
   mergeShellRuntimeConfig,
 } from "./editor-session";
 import { useContentDraft } from "./use-content-draft";
+import { useDocumentActivity } from "./use-document-activity";
 import { useEditorHistory } from "./use-editor-history";
 import { parseShellFromSpec, useEditorShell } from "./use-editor-shell-labels";
 import { useLayoutDraft } from "./use-layout-draft";
-import { useDocumentActivity } from "./use-document-activity";
 
 const editorShellStore = createStateStore({});
 
