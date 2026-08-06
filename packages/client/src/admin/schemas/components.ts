@@ -106,6 +106,8 @@ export const adminComponentSchemas = {
         configuredBadgeLabel: z.string(),
         fromEmailLabel: z.string(),
         fromNameLabel: z.string(),
+        mailgunDomainLabel: z.string(),
+        mailgunDomainPlaceholder: z.string(),
         saveLabel: z.string(),
         savingLabel: z.string(),
         successMessage: z.string(),

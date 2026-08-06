@@ -4,7 +4,10 @@ import { broadcast } from "../../shared/sse-manager";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import type { NotificationsStorage } from "./adapters/postgres";
-import { toDeliveryDTO, toInboxItemDTO } from "./adapters/postgres";
+import { toDeliveryDTO, toDeliveryEventDTO, toInboxItemDTO } from "./adapters/postgres";
+import { applyCommsWebhookEvent } from "./adapters/webhooks/apply-event";
+import { getCommsWebhookAdapter } from "./adapters/webhooks/registry";
+import { isCommsDeliveryWebhookEvent } from "./adapters/webhooks/types";
 import { loadPublishedNotificationEmail, renderNotificationEmail } from "./email-template";
 import { CommsEvents } from "./events";
 import {
@@ -376,7 +379,62 @@ export function createNotificationsService(deps: {
 
     async listDeliveries(orgId: string, query?: ListDeliveriesQuery) {
       const rows = await storage.listDeliveries(orgId, query);
-      return rows.map(toDeliveryDTO);
+      if (!query?.includeEvents) {
+        return rows.map((row) => toDeliveryDTO(row));
+      }
+
+      const deliveryIds = rows.map((row) => row.id);
+      const eventRows = await storage.listDeliveryEventsForDeliveries(deliveryIds);
+      const eventsByDelivery = new Map<string, ReturnType<typeof toDeliveryEventDTO>[]>();
+      for (const eventRow of eventRows) {
+        const dto = toDeliveryEventDTO(eventRow);
+        const list = eventsByDelivery.get(eventRow.deliveryId) ?? [];
+        list.push(dto);
+        eventsByDelivery.set(eventRow.deliveryId, list);
+      }
+
+      return rows.map((row) => toDeliveryDTO(row, eventsByDelivery.get(row.id) ?? []));
+    },
+
+    async handleProviderWebhook(
+      provider: string,
+      rawBody: string,
+      headers: Record<string, string | undefined>,
+      options?: { webhookUrl?: string },
+    ) {
+      const adapter = getCommsWebhookAdapter(provider);
+      if (!adapter) {
+        throw new Error(`Unknown comms webhook provider: ${provider}`);
+      }
+
+      const parsed = await adapter.parse({
+        rawBody,
+        headers,
+        webhookUrl: options?.webhookUrl,
+      });
+
+      if (!parsed) {
+        throw new Error(`Invalid ${provider} webhook signature or payload`);
+      }
+
+      if ("kind" in parsed && parsed.kind === "subscription_confirmation") {
+        await fetch(parsed.subscribeUrl, { method: "GET" });
+        return { received: true, matched: false, subscribed: true };
+      }
+
+      if (!isCommsDeliveryWebhookEvent(parsed)) {
+        throw new Error(`Invalid ${provider} webhook signature or payload`);
+      }
+
+      return applyCommsWebhookEvent(storage, parsed);
+    },
+
+    async handleResendWebhook(rawBody, headers) {
+      const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
+      if (!secret) {
+        throw new Error("Resend webhook not configured");
+      }
+      return this.handleProviderWebhook("resend", rawBody, headers);
     },
 
     async retryDelivery(orgId: string, deliveryId: string) {

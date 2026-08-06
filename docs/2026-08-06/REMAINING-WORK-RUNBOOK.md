@@ -30,9 +30,8 @@
 2. A3   ZITADEL machine user / PAT    ← this doc § A3 (verify + sign-off)
 3. K2   Prod Keto deploy              ← infra (K8s/Vela)
 4. K1   Batch Keto Check              ← when doc lists slow
-5. A2   Agent embed token flow        ← iframe / API embed product gate
-6. C2   Comms delivery analytics      ← deferred v2 unless product asks
-7. LATER CRDT, replay P4, mobile push, bot SSR
+5. C2   Comms delivery analytics      ← deferred v2 unless product asks
+6. LATER CRDT, mobile push, bot SSR
 ```
 
 ---
@@ -133,11 +132,6 @@ MASTRA_ORCHESTRATE_MOCK=false
 
 - [ ] Profile list endpoints when folders grow
 - [ ] Implement batch `Check()` if N+1 latency unacceptable
-
-### A2 — Agent embed / short-lived token
-
-- [ ] iframe / API embed flow spec
-- [ ] Token exchange or documented `nag.*` + CORS policy
 
 ### I5 — New org provisioning
 

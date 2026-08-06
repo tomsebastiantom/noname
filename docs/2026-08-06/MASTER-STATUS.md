@@ -14,7 +14,7 @@
 | Comms — email/SMS/in-app/SSE/prefs/templates | [`COMMUNICATIONS-PLATFORM-RFC.md`](../2026-08-04/COMMUNICATIONS-PLATFORM-RFC.md) |
 | Marketing compliance (List-Unsubscribe) | `marketing-compliance.ts` |
 | SSE stream ticket | [`IN-APP-INBOX-SSE.md`](../2026-08-04/IN-APP-INBOX-SSE.md) |
-| Agents — registry, orchestrate UI, mock path, Keto tools | [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) |
+| Agents — registry, orchestrate UI, mock path, Keto tools, `nag.*` tokens | [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) |
 | Keto scope + folders F1–F3 | [`FOLDERS-SCOPE-PLAN.md`](../2026-08-03/FOLDERS-SCOPE-PLAN.md) |
 | Visual editor A–D + core smoke | [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](../2026-08-01/EDITOR-SMOKE-PRODUCT-DETAIL.md) |
 | Admin soft nav + U1–U4 (401, catalog, prefetch) | [`ADMIN-SOFT-NAV-HANDOFF.md`](../2026-08-03/ADMIN-SOFT-NAV-HANDOFF.md) |
@@ -33,7 +33,6 @@
 | **A3** | ZITADEL R6/R7 verify + sign-off | Dev verify — [runbook § A3](./REMAINING-WORK-RUNBOOK.md#a3--zitadel-machine-user--pat-r6--r7) |
 | **K2** | Prod Keto deploy | Infra |
 | **K1** | Batch Keto Check | When lists slow |
-| **A2** | Agent embed token | Product gate |
 
 ---
 
@@ -44,8 +43,7 @@
 | **C2** | Comms delivery analytics (opens/clicks) |
 | **C4** | Mobile push |
 | **E3** | Live CRDT collab |
-| **O3** | Replay gzip compression | Shipped |
-| **O4** | Playwright E2E for replay | Deferred |
+| **O4** | Playwright E2E for replay |
 | **I1–I2** | Bot SSR / R2 client deploy |
 
 ---
@@ -66,4 +64,5 @@ pnpm dev
 
 | Date | Change |
 |------|--------|
+| 2026-08-06 | Removed separate “embed token” backlog — SDK/partner uses `nag.*` |
 | 2026-08-06 | Created master status + `docs/2026-08-06/` folder |

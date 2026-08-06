@@ -18,6 +18,12 @@ function buildService(storage: Partial<NotificationsStorage>) {
   const defaults: Partial<NotificationsStorage> = {
     findDeliveryByIdempotency: vi.fn(async () => null),
     listDeliveries: vi.fn(async () => []),
+    listDeliveryEventsForDeliveries: vi.fn(async () => []),
+    findDeliveryByProviderMessageId: vi.fn(async () => null),
+    insertDeliveryEvent: vi.fn(async (input) => ({
+      row: { ...input, createdAt: new Date() },
+      duplicate: false,
+    })),
     findDelivery: vi.fn(async () => null),
     getPreferences: vi.fn(async () => ({
       orgId: "org-1",
@@ -270,5 +276,72 @@ describe("createNotificationsService", () => {
         templateId: "order-shipped",
       }),
     );
+  });
+
+  it("handleResendWebhook ingests delivery event when delivery matches", async () => {
+    vi.stubEnv("RESEND_WEBHOOK_SECRET", "whsec_" + Buffer.from("test-secret-key-32bytes-long!!").toString("base64"));
+
+    const delivery = {
+      id: "del-1",
+      orgId: "org-1",
+      userId: null,
+      channel: "email",
+      provider: "resend",
+      toAddress: "user@example.com",
+      subject: "Hi",
+      status: "sent",
+      providerMessageId: "msg_resend_1",
+      error: null,
+      trigger: null,
+      templateId: null,
+      idempotencyKey: null,
+      attemptCount: 1,
+      bodyHtml: "<p>Hi</p>",
+      bodyText: "Hi",
+      createdAt: new Date(),
+      sentAt: new Date(),
+    };
+
+    const findDeliveryByProviderMessageId = vi.fn(async () => delivery);
+    const insertDeliveryEvent = vi.fn(async (input) => ({
+      row: { ...input, createdAt: new Date() },
+      duplicate: false,
+    }));
+    const updateDelivery = vi.fn();
+
+    const { service } = buildService({
+      findDeliveryByProviderMessageId,
+      insertDeliveryEvent,
+      updateDelivery,
+    });
+
+    const payload = JSON.stringify({
+      type: "email.opened",
+      created_at: "2026-08-01T12:00:00.000Z",
+      data: { email_id: "msg_resend_1" },
+    });
+    const ts = String(Math.floor(Date.now() / 1000));
+    const { createHmac } = await import("node:crypto");
+    const secret = process.env.RESEND_WEBHOOK_SECRET ?? "";
+    const raw = secret.startsWith("whsec_") ? secret.slice("whsec_".length) : secret;
+    const key = Buffer.from(raw, "base64");
+    const id = "evt_test_1";
+    const sig = createHmac("sha256", key).update(`${id}.${ts}.${payload}`).digest("base64");
+
+    const result = await service.handleResendWebhook(payload, {
+      "svix-id": id,
+      "svix-timestamp": ts,
+      "svix-signature": `v1,${sig}`,
+    });
+
+    expect(result).toEqual({ received: true, matched: true, duplicate: false });
+    expect(insertDeliveryEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        deliveryId: "del-1",
+        eventType: "opened",
+      }),
+    );
+
+    vi.unstubAllEnvs();
   });
 });

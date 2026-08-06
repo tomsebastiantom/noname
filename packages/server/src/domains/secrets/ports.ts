@@ -1,8 +1,10 @@
 import type { LLMProvider } from "../ai-pipeline/providers";
 
-export type OrgSecretKind = "llm" | "comms" | "webhooks";
+import type { CommsProviderName } from "@noname/shared";
+export type { CommsProviderName } from "@noname/shared";
+export { COMMS_PROVIDERS, isCommsProviderName } from "@noname/shared";
 
-export type CommsProviderName = "resend" | "ses" | "twilio";
+export type OrgSecretKind = "llm" | "comms" | "webhooks";
 
 export interface CommsCredentials {
   provider: CommsProviderName;
@@ -11,6 +13,8 @@ export interface CommsCredentials {
   region?: string;
   fromEmail?: string;
   fromName?: string;
+  /** Mailgun sending domain (from tenant comms settings). */
+  domain?: string;
 }
 
 export interface PutOrgSecretInput {

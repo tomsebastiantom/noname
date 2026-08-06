@@ -62,12 +62,21 @@ export interface CommsDeliveryDTO {
   attemptCount: number;
   createdAt: Date;
   sentAt: Date | null;
+  events?: CommsDeliveryEventDTO[];
+}
+
+export interface CommsDeliveryEventDTO {
+  id: string;
+  deliveryId: string;
+  eventType: string;
+  occurredAt: Date;
 }
 
 export interface ListDeliveriesQuery {
   status?: string;
   limit?: number;
   offset?: number;
+  includeEvents?: boolean;
 }
 
 export type {
@@ -115,6 +124,21 @@ export interface NotificationsService {
   notify(orgId: string, input: NotifyInput): Promise<SendEmailResult>;
   listDeliveries(orgId: string, query?: ListDeliveriesQuery): Promise<CommsDeliveryDTO[]>;
   retryDelivery(orgId: string, deliveryId: string): Promise<SendEmailResult>;
+  handleProviderWebhook(
+    provider: string,
+    rawBody: string,
+    headers: Record<string, string | undefined>,
+    options?: { webhookUrl?: string },
+  ): Promise<{
+    received: boolean;
+    matched: boolean;
+    duplicate?: boolean;
+    subscribed?: boolean;
+  }>;
+  handleResendWebhook(
+    rawBody: string,
+    headers: Record<string, string | undefined>,
+  ): Promise<{ received: boolean; matched: boolean; duplicate?: boolean }>;
   listInbox(orgId: string, userId: string, query?: ListInboxQuery): Promise<CommsInboxItemDTO[]>;
   markInboxRead(orgId: string, userId: string, itemId: string): Promise<CommsInboxItemDTO | null>;
   getPreferences(orgId: string, userId: string): Promise<NotificationPreferencesDTO>;

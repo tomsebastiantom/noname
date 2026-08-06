@@ -75,3 +75,23 @@ export const commsInboxItems = pgTable(
     index("comms_inbox_created_at_idx").on(table.createdAt),
   ],
 );
+
+/** Provider-sourced telemetry (opens/clicks/bounces) — distinct from product analytics. */
+export const commsDeliveryEvents = pgTable(
+  "comms_delivery_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    deliveryId: uuid("delivery_id").notNull(),
+    eventType: text("event_type").notNull(),
+    occurredAt: timestamp("occurred_at").notNull(),
+    providerEventId: text("provider_event_id"),
+    rawPayload: jsonb("raw_payload").$type<Record<string, unknown>>().notNull().default({}),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("comms_delivery_events_delivery_id_idx").on(table.deliveryId),
+    index("comms_delivery_events_org_id_idx").on(table.orgId),
+    uniqueIndex("comms_delivery_events_provider_event_id_idx").on(table.providerEventId),
+  ],
+);

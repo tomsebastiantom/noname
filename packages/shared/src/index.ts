@@ -6,6 +6,16 @@
  */
 export { coerceScalarString } from "./coerce-scalar-string";
 export {
+  COMMS_EMAIL_PROVIDERS,
+  COMMS_PROVIDERS,
+  COMMS_SMS_PROVIDERS,
+  isCommsEmailProviderName,
+  isCommsProviderName,
+  type CommsEmailProviderName,
+  type CommsProviderName,
+  type CommsSmsProviderName,
+} from "./comms-providers";
+export {
   assertValidStoreSlug,
   normalizeStoreSlug,
   storeSlugFromHost,

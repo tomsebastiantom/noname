@@ -1,8 +1,9 @@
 import { apiFetch } from "../lib/api";
 import { requireStoreSlug } from "./org";
+import type { CommsProviderName } from "@noname/shared";
+export type { CommsProviderName } from "@noname/shared";
 
 export type LlmProviderName = "openai" | "anthropic";
-export type CommsProviderName = "resend" | "ses" | "twilio";
 
 export interface OAuthConnectionState {
   integrationId: string;
@@ -35,6 +36,7 @@ export interface CommsIntegrationState {
   hasOrgKey: boolean;
   fromEmail?: string;
   fromName?: string;
+  mailgunDomain?: string;
 }
 
 export async function loadLlmIntegration(): Promise<LlmIntegrationState> {
@@ -59,6 +61,7 @@ export async function loadCommsIntegration(): Promise<CommsIntegrationState> {
     hasOrgKey: body.data?.hasOrgKey === true,
     fromEmail: body.data?.fromEmail,
     fromName: body.data?.fromName,
+    mailgunDomain: body.data?.mailgunDomain,
   };
 }
 
@@ -67,6 +70,7 @@ export async function saveCommsIntegration(input: {
   apiKey?: string;
   fromEmail?: string;
   fromName?: string;
+  mailgunDomain?: string;
 }): Promise<CommsIntegrationState> {
   const storeSlug = requireStoreSlug();
   const body = await apiFetch<{ data?: CommsIntegrationState }>(
@@ -79,6 +83,7 @@ export async function saveCommsIntegration(input: {
         apiKey: input.apiKey?.trim() || undefined,
         fromEmail: input.fromEmail?.trim() || undefined,
         fromName: input.fromName?.trim() || undefined,
+        mailgunDomain: input.mailgunDomain?.trim() || undefined,
       }),
     },
   );
@@ -87,6 +92,7 @@ export async function saveCommsIntegration(input: {
     hasOrgKey: body.data?.hasOrgKey === true,
     fromEmail: body.data?.fromEmail,
     fromName: body.data?.fromName,
+    mailgunDomain: body.data?.mailgunDomain,
   };
 }
 

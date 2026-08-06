@@ -80,9 +80,11 @@ export interface TenantLlmIntegration {
 }
 
 export interface TenantCommsIntegration {
-  emailProvider?: "resend" | "twilio" | "ses";
+  emailProvider?: import("@noname/shared").CommsProviderName;
   fromEmail?: string;
   fromName?: string;
+  /** Mailgun verified sending domain (e.g. mg.example.com). Not a secret. */
+  mailgunDomain?: string;
 }
 
 export interface TenantOAuthConnection {

@@ -1,7 +1,8 @@
 import { useStateValue } from "@json-render/react";
 import { useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
-import type { CommsProviderName } from "../../../auth/integrations-settings";
+import type { CommsProviderName } from "@noname/shared";
+import { COMMS_EMAIL_PROVIDERS, COMMS_SMS_PROVIDERS } from "@noname/shared";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import { Button } from "../../../components/ui/button";
 import {
@@ -32,6 +33,8 @@ type IntegrationsCommsLabels = {
   configuredBadgeLabel: string;
   fromEmailLabel: string;
   fromNameLabel: string;
+  mailgunDomainLabel: string;
+  mailgunDomainPlaceholder: string;
   saveLabel: string;
   savingLabel: string;
   successMessage: string;
@@ -53,6 +56,7 @@ function IntegrationsCommsFields({
   const [apiKey, setApiKey] = useState("");
   const [fromEmail, setFromEmail] = useState(loaded.fromEmail ?? "");
   const [fromName, setFromName] = useState(loaded.fromName ?? "");
+  const [mailgunDomain, setMailgunDomain] = useState(loaded.mailgunDomain ?? "");
 
   return (
     <form
@@ -67,6 +71,7 @@ function IntegrationsCommsFields({
             apiKey: apiKey.trim() || undefined,
             fromEmail: fromEmail.trim() || undefined,
             fromName: fromName.trim() || undefined,
+            mailgunDomain: mailgunDomain.trim() || undefined,
           },
         });
       }}
@@ -90,9 +95,18 @@ function IntegrationsCommsFields({
           value={emailProvider}
           onChange={(e) => setEmailProvider(e.target.value as CommsProviderName)}
         >
-          <option value="resend">Resend</option>
-          <option value="ses">Amazon SES</option>
-          <option value="twilio">Twilio</option>
+          {COMMS_EMAIL_PROVIDERS.map((provider) => (
+            <option key={provider} value={provider}>
+              {provider === "ses"
+                ? "Amazon SES"
+                : provider.charAt(0).toUpperCase() + provider.slice(1)}
+            </option>
+          ))}
+          {COMMS_SMS_PROVIDERS.map((provider) => (
+            <option key={provider} value={provider}>
+              Twilio (SMS)
+            </option>
+          ))}
         </select>
         {loaded.hasOrgKey ? (
           <p className="text-xs text-muted-foreground">{labels.configuredBadgeLabel}</p>
@@ -112,6 +126,18 @@ function IntegrationsCommsFields({
           }
         />
       </div>
+
+      {emailProvider === "mailgun" ? (
+        <div className="space-y-2">
+          <Label htmlFor="comms-mailgun-domain">{labels.mailgunDomainLabel}</Label>
+          <Input
+            id="comms-mailgun-domain"
+            value={mailgunDomain}
+            onChange={(e) => setMailgunDomain(e.target.value)}
+            placeholder={labels.mailgunDomainPlaceholder}
+          />
+        </div>
+      ) : null}
 
       <div className="space-y-2">
         <Label htmlFor="comms-from-email">{labels.fromEmailLabel}</Label>

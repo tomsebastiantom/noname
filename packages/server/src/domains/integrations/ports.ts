@@ -1,5 +1,6 @@
 export type LlmProviderName = "openai" | "anthropic";
-export type CommsProviderName = "resend" | "ses" | "twilio";
+export type { CommsProviderName } from "@noname/shared";
+import type { CommsProviderName } from "@noname/shared";
 
 /** External integration unique key — any id enabled in the platform OAuth catalog. */
 export type IntegrationId = string;
@@ -45,6 +46,7 @@ export interface CommsIntegrationPublic {
   hasOrgKey: boolean;
   fromEmail?: string;
   fromName?: string;
+  mailgunDomain?: string;
 }
 
 export interface CommsIntegrationUpdate {
@@ -52,6 +54,7 @@ export interface CommsIntegrationUpdate {
   apiKey?: string;
   fromEmail?: string;
   fromName?: string;
+  mailgunDomain?: string;
 }
 
 export interface LlmIntegrationPublic {

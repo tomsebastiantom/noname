@@ -108,7 +108,10 @@ export function createApiProxyRoutes() {
     };
     if (c.req.method !== "GET" && c.req.method !== "HEAD") {
       const stripOrg = shouldStripBodyOrg(pathname, c.req.method);
-      if (stripOrg) {
+      const contentType = c.req.header("Content-Type") ?? "";
+      const gzipReplay =
+        pathname === "/api/analytics/replay" && contentType.includes("application/gzip");
+      if (stripOrg && !gzipReplay) {
         let body = await c.req.raw.clone().text();
         body = stripOrgFromPublicJsonBody(pathname, body);
         init.body = body;

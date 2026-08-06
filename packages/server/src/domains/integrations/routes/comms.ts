@@ -1,3 +1,4 @@
+import { COMMS_PROVIDERS } from "@noname/shared";
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { z } from "zod";
@@ -9,10 +10,11 @@ import type { TenantSettingsService } from "../../documents/ports";
 import type { IntegrationsService } from "../ports";
 
 const commsUpdateSchema = z.object({
-  emailProvider: z.enum(["resend", "ses", "twilio"]),
+  emailProvider: z.enum(COMMS_PROVIDERS),
   apiKey: z.string().optional(),
   fromEmail: z.string().email().optional(),
   fromName: z.string().optional(),
+  mailgunDomain: z.string().trim().min(1).optional(),
 });
 
 export interface IntegrationsCommsRouteDeps {

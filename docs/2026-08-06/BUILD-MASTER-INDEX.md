@@ -102,7 +102,7 @@ LATER   Explicit product gates only
 | ID | Work | Source doc | Notes |
 |----|------|------------|-------|
 | **A1** | Agent Keto subject `Agent:{slug}` on document/folder Check | [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) B5, A′.5 | **Shipped** — tools + registry grants |
-| **A2** | Short-lived agent token / embed flow | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md), [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) A′.3 | For iframe / API embed |
+| **A2** | Agent token (`nag.*`) for API / SDK / embed | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) A′.3 | **Shipped** — mint from admin registry; no second token type |
 | **A3** | ZITADEL machine user / PAT verification (R6/R7) | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md), [`REMAINING-WORK-RUNBOOK.md`](./REMAINING-WORK-RUNBOOK.md) § A3 | **Verify + sign-off** — platform `nag.*` v1; R6 backend SA exists |
 | **A4** | Agent auto-publish on approve | [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) §8 | **Out of scope** — human publish only |
 | **A5** | Cross-task Mastra memory (30-day) | Same §8 | Phase 2.2+ |
@@ -180,6 +180,7 @@ LATER   Explicit product gates only
 | Field-level ACL | Document unit is enough | [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) |
 | SpiceDB / OpenFGA second engine | Keto only | [`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) |
 | Agent auto-publish | Human approves publish | [`AGENT-OWNERSHIP-AND-REVIEW.md`](../2026-08-03/AGENT-OWNERSHIP-AND-REVIEW.md) |
+| Separate embed token type | SDK/partner apps use minted `nag.*` + agent API | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) § Embedding |
 
 ---
 
@@ -208,8 +209,8 @@ LATER   Explicit product gates only
 | **Comms & email templates** | [`COMMUNICATIONS-PLATFORM-RFC.md`](../2026-08-04/COMMUNICATIONS-PLATFORM-RFC.md), [`EMAIL-TEMPLATES-REACT-EMAIL.md`](../2026-08-04/EMAIL-TEMPLATES-REACT-EMAIL.md) | C2–C5 |
 | **In-app inbox & SSE** | [`IN-APP-INBOX-SSE.md`](../2026-08-04/IN-APP-INBOX-SSE.md) | C4 |
 | **Webhooks** | [`WEBHOOKS-DOMAIN-SPEC.md`](../2026-08-04/WEBHOOKS-DOMAIN-SPEC.md), [`WEBHOOKS-PLATFORM-RFC.md`](../2026-08-04/WEBHOOKS-PLATFORM-RFC.md) | Shipped v1 — machine transition wiring ongoing |
-| **Agents & Mastra** | [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md), [`AGENT-ORCHESTRATE-DEMO.md`](../2026-08-04/AGENT-ORCHESTRATE-DEMO.md), [`AGENT-OWNERSHIP-AND-REVIEW.md`](../2026-08-03/AGENT-OWNERSHIP-AND-REVIEW.md) | §0 V4, §2 A2–A3 |
-| **Identity & delegation** | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md), [`ACCESS-AND-ROLES.md`](../2026-08-03/ACCESS-AND-ROLES.md) | §2 A2–A3 |
+| **Agents & Mastra** | [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md), [`AGENT-ORCHESTRATE-DEMO.md`](../2026-08-04/AGENT-ORCHESTRATE-DEMO.md), [`AGENT-OWNERSHIP-AND-REVIEW.md`](../2026-08-03/AGENT-OWNERSHIP-AND-REVIEW.md) | §0 V4, §2 A3 |
+| **Identity & delegation** | [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md), [`ACCESS-AND-ROLES.md`](../2026-08-03/ACCESS-AND-ROLES.md) | §2 A3 |
 | **Keto & scope** | [`KETO-ZANZIBAR-ROADMAP.md`](../2026-08-03/KETO-ZANZIBAR-ROADMAP.md), [`FOLDERS-SCOPE-PLAN.md`](../2026-08-03/FOLDERS-SCOPE-PLAN.md), [`KETO-IMPLEMENTATION-CHECKLIST.md`](../2026-08-03/KETO-IMPLEMENTATION-CHECKLIST.md) | §3 K1–K2 |
 | **Visual editor** | [`VISUAL-EDITOR-BUILD-PLAN.md`](../2026-08-01/VISUAL-EDITOR-BUILD-PLAN.md), [`VISUAL-EDITOR-GAP-ANALYSIS.md`](../2026-08-01/VISUAL-EDITOR-GAP-ANALYSIS.md), [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](../2026-08-01/EDITOR-SMOKE-PRODUCT-DETAIL.md) | §0, §6 |
 | **Admin client** | [`ADMIN-SOFT-NAV-HANDOFF.md`](../2026-08-03/ADMIN-SOFT-NAV-HANDOFF.md), [`CLIENT-UI-ARCHITECTURE-AUDIT.md`](../2026-08-01/CLIENT-UI-ARCHITECTURE-AUDIT.md) | §4 U5–U6 |

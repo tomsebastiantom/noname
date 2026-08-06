@@ -24,6 +24,8 @@ export const PUBLIC_POST_PATTERNS = [
   /^\/api\/flags\/evaluate$/,
   /** Provider business webhooks — verified in webhooks domain. */
   /^\/api\/webhooks\/inbound\/[^/]+$/,
+  /** Comms provider lifecycle webhooks (Resend / SES / Twilio). */
+  /^\/api\/notifications\/webhooks\/[^/]+$/,
   /** Nango OAuth connect callback. */
   /^\/api\/integrations\/nango\/webhook$/,
 ] as const;

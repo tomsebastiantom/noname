@@ -1,3 +1,4 @@
+import type { CommsProviderName } from "@noname/shared";
 import {
   type CommsIntegrationState,
   type LlmIntegrationState,
@@ -71,13 +72,20 @@ export const integrationsActions = {
   }) satisfies CatalogActionHandler,
 
   saveIntegrationsComms: (async (params, setState) => {
-    const { emailProvider, apiKey, fromEmail, fromName } = params as {
-      emailProvider: "resend" | "ses" | "twilio";
+    const { emailProvider, apiKey, fromEmail, fromName, mailgunDomain } = params as {
+      emailProvider: CommsProviderName;
       apiKey?: string;
       fromEmail?: string;
       fromName?: string;
+      mailgunDomain?: string;
     };
-    const loaded = await saveCommsIntegration({ emailProvider, apiKey, fromEmail, fromName });
+    const loaded = await saveCommsIntegration({
+      emailProvider,
+      apiKey,
+      fromEmail,
+      fromName,
+      mailgunDomain,
+    });
     setState(ADMIN_STATE.integrations.comms.loaded, { ...loaded, loadedAt: Date.now() });
   }) satisfies CatalogActionHandler,
 

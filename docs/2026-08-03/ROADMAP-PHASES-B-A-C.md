@@ -23,7 +23,7 @@ Layer 1 — Platform permissions     ✅ DONE
 Layer 2 — Document scope (Keto)    ✅ DONE (folders F1–F3)
   Team / Folder / Document tuples → AuthorizationPort → Check on write/publish
 
-Layer 3 — Actors & agents (A′)     🟡 V1 SHIPPED — embed token + agent Keto tuples open
+Layer 3 — Actors & agents (A′)     ✅ V1 SHIPPED — `nag.*` tokens; A3 verify open
   human | agent | machine; agent ⊆ creator; human approves publish
 
 Layer 4 — Live collab (CRDT)       ⏸ DEFER — only when simultaneous multi-editor is required
@@ -160,7 +160,7 @@ Admin UI: AgentsAdminForm (registry, tasks, steps, artifacts)
 | ID | Work | Owner |
 |----|------|-------|
 | **A′.1** | Actor claim in auth context (`human` \| `agent` \| `machine`) | Backend |
-| **A′.3** | Short-lived agent token (embed / API — not full admin refresh) | Backend + client |
+| **A′.3** | Short-lived agent token (`nag.*` — API, SDK, partner embed) | ✅ `agent-token.ts` + registry mint |
 | **A′.5** | Keto subject `Agent:{id}` on Check for agent writes | Backend (needs B5) |
 | **A′.6** | ZITADEL machine user / PAT verification | Backend + infra |
 
@@ -172,13 +172,14 @@ Admin UI: AgentsAdminForm (registry, tasks, steps, artifacts)
 | Agent with `auth:manage` or cross-org | Violates delegation rule |
 | Building agents before document Check works for non-admin users | Scope must be real first |
 | Nostr as identity or storage | Operational complexity; merchants need central admin |
+| Separate embed / iframe token type | Partner + SDK use minted `nag.*` + agent API |
 
 ### Who does what (Phase A′)
 
 | Role | Responsibility |
 |------|----------------|
 | **Backend** | Actor model, agent CRUD, token mint, Keto agent subjects, audit |
-| **Client** | Agent admin panel, embed token flow (iframe) |
+| **Client** | Agent admin panel, mint `nag.*` for external callers |
 | **Infra / IdP** | ZITADEL machine users — verify R6/R7 in master plan |
 | **Product** | Define first agent use case (e.g. “draft hero copy for tagged docs”) |
 
@@ -244,7 +245,7 @@ DONE    ✅ Layer 1 + Layer 2 (folders F1–F3) + agents v1 (registry, orchestra
         ✅ Platform integrations/comms/webhooks (see integrations roadmap)
 
 NEXT    B4 prod Keto · B3 list perf · role-matrix E2E smoke
-        A′.3 embed token · A′.5 + B5 agent Keto tuples
+        A3 ZITADEL verify · A′.5 + B5 agent Keto tuples
 
 LATER   Phase C — only with product gate
 

@@ -23,6 +23,13 @@ export function createTwilioSmsSender(): SmsSenderPort {
         Body: input.body,
       });
 
+      const statusCallback =
+        process.env.TWILIO_STATUS_CALLBACK_URL?.trim() ??
+        process.env.COMMS_TWILIO_STATUS_CALLBACK_URL?.trim();
+      if (statusCallback) {
+        body.set("StatusCallback", statusCallback);
+      }
+
       const response = await fetch(
         `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`,
         {

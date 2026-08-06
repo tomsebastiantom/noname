@@ -59,7 +59,7 @@ Work **top to bottom**. Do not skip to app code until infra verifies.
 |---|------|--------|
 | 5.1 | `ACTORS.md` schema | 🔲 |
 | 5.2 | Agent registration API | 🔲 |
-| 5.3 | Agent embed tokens | 🔲 |
+| 5.3 | Agent external callers | ✅ use minted `nag.*` — no embed token type |
 | 5.4 | Delegation ⊆ creator | 🔲 |
 | 5.5 | Audit on agent writes | 🔲 |
 

@@ -1,3 +1,4 @@
+import { COMMS_PROVIDERS } from "@noname/shared";
 import { z } from "zod";
 
 export const adminActionSchemas = {
@@ -271,10 +272,11 @@ export const adminActionSchemas = {
   },
   saveIntegrationsComms: {
     params: z.object({
-      emailProvider: z.enum(["resend", "ses", "twilio"]),
+      emailProvider: z.enum(COMMS_PROVIDERS),
       apiKey: z.string().optional(),
       fromEmail: z.string().email().optional(),
       fromName: z.string().optional(),
+      mailgunDomain: z.string().trim().min(1).optional(),
     }),
     description: "Save email provider and optional BYOK API key to Vault",
   },

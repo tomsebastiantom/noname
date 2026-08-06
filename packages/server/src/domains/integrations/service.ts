@@ -1,11 +1,11 @@
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
+import { isCommsProviderName, type CommsProviderName } from "@noname/shared";
 import { parseIntegrationId } from "./integration-id";
 import { mergeOAuthConnections, readOAuthConnectionMap } from "./oauth-connections";
 import type {
   CommsIntegrationPublic,
   CommsIntegrationUpdate,
-  CommsProviderName,
   ConnectSessionResult,
   IntegrationOAuthPort,
   IntegrationsService,
@@ -20,8 +20,9 @@ function normalizeProvider(value: string | undefined): LlmProviderName {
 }
 
 function normalizeCommsProvider(value: string | undefined): CommsProviderName {
-  if (value === "twilio") return "twilio";
-  if (value === "ses") return "ses";
+  if (typeof value === "string" && isCommsProviderName(value)) {
+    return value;
+  }
   return "resend";
 }
 
@@ -56,6 +57,7 @@ export function createIntegrationsService(deps: {
       hasOrgKey,
       fromEmail: comms?.fromEmail,
       fromName: comms?.fromName,
+      mailgunDomain: comms?.mailgunDomain,
     };
   }
 
@@ -142,6 +144,7 @@ export function createIntegrationsService(deps: {
             emailProvider,
             fromEmail: patch.fromEmail ?? current.integrations.comms?.fromEmail,
             fromName: patch.fromName ?? current.integrations.comms?.fromName,
+            mailgunDomain: patch.mailgunDomain ?? current.integrations.comms?.mailgunDomain,
           },
         },
       });

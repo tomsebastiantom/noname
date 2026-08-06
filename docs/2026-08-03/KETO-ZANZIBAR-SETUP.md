@@ -186,7 +186,7 @@ Implementations:
 |---|------|
 | A′.1 | `ACTORS.md` — human / agent / machine in auth context |
 | A′.2 | Agent registration API + bind to `user:sub` |
-| A′.3 | Short-lived agent tokens for embed |
+| A′.3 | Short-lived agent tokens (`nag.*`) | ✅ shipped |
 | A′.4 | Delegation ⊆ creator on agent create |
 | A′.5 | Audit fields on writes |
 

@@ -14,6 +14,7 @@ import type {
   SecretStorePort,
   SecretsService,
 } from "./ports";
+import { isCommsProviderName } from "./ports";
 
 const LLM_PROVIDERS = ["openai", "anthropic"] as const;
 type LlmProviderName = (typeof LLM_PROVIDERS)[number];
@@ -72,16 +73,15 @@ function readPreferredLlmProvider(integrations: Record<string, unknown>): LlmPro
   return typeof provider === "string" && isLlmProviderName(provider) ? provider : null;
 }
 
-const COMMS_PROVIDERS = ["resend", "ses", "twilio"] as const;
-
-function isCommsProviderName(value: string): value is CommsProviderName {
-  return (COMMS_PROVIDERS as readonly string[]).includes(value);
+function isCommsProviderNameLocal(value: string): value is CommsProviderName {
+  return isCommsProviderName(value);
 }
 
 function readCommsConfig(integrations: Record<string, unknown>): {
   provider: CommsProviderName;
   fromEmail?: string;
   fromName?: string;
+  mailgunDomain?: string;
 } {
   const comms = integrations.comms;
   if (!comms || typeof comms !== "object") {
@@ -91,15 +91,17 @@ function readCommsConfig(integrations: Record<string, unknown>): {
     emailProvider?: unknown;
     fromEmail?: unknown;
     fromName?: unknown;
+    mailgunDomain?: unknown;
   };
   const provider =
-    typeof row.emailProvider === "string" && isCommsProviderName(row.emailProvider)
+    typeof row.emailProvider === "string" && isCommsProviderNameLocal(row.emailProvider)
       ? row.emailProvider
       : "resend";
   return {
     provider,
     fromEmail: typeof row.fromEmail === "string" ? row.fromEmail : undefined,
     fromName: typeof row.fromName === "string" ? row.fromName : undefined,
+    mailgunDomain: typeof row.mailgunDomain === "string" ? row.mailgunDomain : undefined,
   };
 }
 
@@ -179,6 +181,7 @@ export function createSecretsService(deps: {
         region: orgSecret.region,
         fromEmail: config.fromEmail ?? orgSecret.fromEmail,
         fromName: config.fromName ?? orgSecret.fromName,
+        domain: config.mailgunDomain ?? orgSecret.domain,
       };
     }
 
@@ -193,6 +196,7 @@ export function createSecretsService(deps: {
         region: platformRegion ?? undefined,
         fromEmail: config.fromEmail,
         fromName: config.fromName,
+        domain: config.mailgunDomain,
       };
     }
 

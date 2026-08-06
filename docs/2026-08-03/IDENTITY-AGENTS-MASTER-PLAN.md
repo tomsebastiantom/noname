@@ -133,7 +133,7 @@ Use this to score ZITADEL vs alternatives.
 | R7 | OAuth clients per agent (optional) | 🔲 verify | Fine-grained agent tokens — **deferred v1**; spike checklist in same runbook |
 | R8 | Self-host, open source | ✅ | Apache 2.0, compose |
 | R9 | No Postgres mirror of `teamRoles` | ✅ | JWT only |
-| R10 | Embeddable token exchange (iframe) | 🔲 design | May be app-layer, not IdP |
+| R10 | Embeddable surface (iframe / SDK) | ✅ app-layer | Use minted **`nag.*`** + agent API — no separate embed token type |
 
 ---
 
@@ -194,7 +194,7 @@ Platform **permissions stay in app code** regardless of IdP ([`PERMISSIONS-IDP-C
 |------|-------------|
 | A′.1 | `ACTORS.md` schema: human / agent / machine in JWT claims or HMAC |
 | A′.2 | Agent registration API: create agent, bind to `user:sub` |
-| A′.3 | Agent token mint (short-lived) for embedded runs |
+| A′.3 | Agent token mint (`nag.*`) for API / SDK / partner embed | ✅ shipped |
 | A′.4 | Enforce delegation ⊆ creator on agent create |
 | A′.5 | Audit fields on agent task + content/layout write |
 | A′.6 | Verify ZITADEL machine user / PAT for agents (or document alternative) |
@@ -225,18 +225,22 @@ Platform **permissions stay in app code** regardless of IdP ([`PERMISSIONS-IDP-C
 
 ## Embedding model
 
+Partner iframe, mobile app, or SDK **uses the same agent surface** as first-party admin:
+
 ```
-Embedded admin / editor iframe
-  → parent passes store slug + session OR one-time code
-  → edge validates human JWT OR agent token
-  → schema / draft APIs use same Check() as full admin
-  → agent token: draft only, no publish, narrow doc scope
+External caller (SDK, iframe, Slack bot, …)
+  → admin mints nag.* (scoped permissions + exp)
+  → Bearer nag.… on POST /api/agents/…
+  → same Check() + draft-only rules as in-admin runs
 ```
+
+Humans in full admin still use **ZITADEL JWT** (publish, settings, invite).
 
 Security:
 
-- Never embed full admin refresh token in third-party origin
-- Prefer **PKCE login in popup** or **short-lived embed token** tied to actor + origin allowlist
+- Never ship **admin refresh token** to third-party origins
+- **`nag.*` only** for automated / embedded agent callers — mint from registry, short TTL, narrow permissions
+- Optional later: origin allowlist on mint — not a second token format
 
 ---
 
@@ -263,7 +267,7 @@ Security:
 
 ```
 NOW     ZITADEL + platform permissions + editor v1 + agent approve queue
-NEXT    Layer 3 actors (human + agent delegation, embed tokens)
+NEXT    Layer 3 actors — `nag.*` shipped; A3 ZITADEL verify
 THEN    Layer 2 tuples (scope docs for users AND agents)
 LATER   Layer 4 CRDT (live multi-human edit)
 MAYBE   Nostr publish bridge (not auth core)

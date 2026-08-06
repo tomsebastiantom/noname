@@ -373,6 +373,8 @@ const integrationsCommsLabels = {
   configuredBadgeLabel: "Org key stored in Vault",
   fromEmailLabel: "From email",
   fromNameLabel: "From name",
+  mailgunDomainLabel: "Mailgun sending domain",
+  mailgunDomainPlaceholder: "mg.yourstore.com",
   saveLabel: "Save comms settings",
   savingLabel: "Saving…",
   successMessage: "Comms settings saved.",

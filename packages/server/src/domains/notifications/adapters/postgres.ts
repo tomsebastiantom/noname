@@ -1,12 +1,17 @@
-import { and, desc, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
-import type { CommsDeliveryDTO, ListDeliveriesQuery, ListInboxQuery } from "../ports";
+import type {
+  CommsDeliveryDTO,
+  CommsDeliveryEventDTO,
+  ListDeliveriesQuery,
+  ListInboxQuery,
+} from "../ports";
 import {
   DEFAULT_NOTIFICATION_PREFERENCES,
   mergeNotificationPreferences,
   normalizeNotificationPreferences,
 } from "../preferences";
-import { commsDeliveries, commsInboxItems, notificationPreferences } from "../schema";
+import { commsDeliveries, commsDeliveryEvents, commsInboxItems, notificationPreferences } from "../schema";
 
 export interface CommsDeliveryRow {
   id: string;
@@ -48,6 +53,17 @@ export interface CommsInboxItemRow {
   createdAt: Date;
 }
 
+export interface CommsDeliveryEventRow {
+  id: string;
+  orgId: string;
+  deliveryId: string;
+  eventType: string;
+  occurredAt: Date;
+  providerEventId: string | null;
+  rawPayload: Record<string, unknown>;
+  createdAt: Date;
+}
+
 export interface NotificationsStorage {
   insertDelivery(
     input: Omit<
@@ -74,6 +90,14 @@ export interface NotificationsStorage {
     idempotencyKey: string,
   ): Promise<CommsDeliveryRow | null>;
   listDeliveries(orgId: string, query?: ListDeliveriesQuery): Promise<CommsDeliveryRow[]>;
+  findDeliveryByProviderMessageId(
+    provider: string,
+    providerMessageId: string,
+  ): Promise<CommsDeliveryRow | null>;
+  insertDeliveryEvent(
+    input: Omit<CommsDeliveryEventRow, "createdAt">,
+  ): Promise<{ row: CommsDeliveryEventRow; duplicate: boolean }>;
+  listDeliveryEventsForDeliveries(deliveryIds: string[]): Promise<CommsDeliveryEventRow[]>;
   getPreferences(orgId: string, userId: string): Promise<NotificationPreferencesRow>;
   upsertPreferences(
     orgId: string,
@@ -191,6 +215,92 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
         .offset(offset);
 
       return rows.map(mapRow);
+    },
+
+    async findDeliveryByProviderMessageId(provider, providerMessageId) {
+      const [row] = await db
+        .select()
+        .from(commsDeliveries)
+        .where(
+          and(
+            eq(commsDeliveries.provider, provider),
+            eq(commsDeliveries.providerMessageId, providerMessageId),
+          ),
+        )
+        .orderBy(desc(commsDeliveries.createdAt))
+        .limit(1);
+      return row ? mapRow(row) : null;
+    },
+
+    async insertDeliveryEvent(input) {
+      if (input.providerEventId) {
+        const [existing] = await db
+          .select()
+          .from(commsDeliveryEvents)
+          .where(eq(commsDeliveryEvents.providerEventId, input.providerEventId))
+          .limit(1);
+        if (existing) {
+          return {
+            row: {
+              id: existing.id,
+              orgId: existing.orgId,
+              deliveryId: existing.deliveryId,
+              eventType: existing.eventType,
+              occurredAt: existing.occurredAt,
+              providerEventId: existing.providerEventId,
+              rawPayload: existing.rawPayload ?? {},
+              createdAt: existing.createdAt,
+            },
+            duplicate: true,
+          };
+        }
+      }
+
+      const [row] = await db
+        .insert(commsDeliveryEvents)
+        .values({
+          id: input.id,
+          orgId: input.orgId,
+          deliveryId: input.deliveryId,
+          eventType: input.eventType,
+          occurredAt: input.occurredAt,
+          providerEventId: input.providerEventId ?? null,
+          rawPayload: input.rawPayload ?? {},
+        })
+        .returning();
+      if (!row) throw new Error("Failed to insert comms delivery event");
+      return {
+        row: {
+          id: row.id,
+          orgId: row.orgId,
+          deliveryId: row.deliveryId,
+          eventType: row.eventType,
+          occurredAt: row.occurredAt,
+          providerEventId: row.providerEventId,
+          rawPayload: row.rawPayload ?? {},
+          createdAt: row.createdAt,
+        },
+        duplicate: false,
+      };
+    },
+
+    async listDeliveryEventsForDeliveries(deliveryIds) {
+      if (deliveryIds.length === 0) return [];
+      const rows = await db
+        .select()
+        .from(commsDeliveryEvents)
+        .where(inArray(commsDeliveryEvents.deliveryId, deliveryIds))
+        .orderBy(commsDeliveryEvents.occurredAt);
+      return rows.map((row) => ({
+        id: row.id,
+        orgId: row.orgId,
+        deliveryId: row.deliveryId,
+        eventType: row.eventType,
+        occurredAt: row.occurredAt,
+        providerEventId: row.providerEventId,
+        rawPayload: row.rawPayload ?? {},
+        createdAt: row.createdAt,
+      }));
     },
 
     async getPreferences(orgId, userId) {
@@ -337,6 +447,18 @@ export function toInboxItemDTO(row: CommsInboxItemRow) {
   return { ...row };
 }
 
-export function toDeliveryDTO(row: CommsDeliveryRow): CommsDeliveryDTO {
-  return { ...row };
+export function toDeliveryEventDTO(row: CommsDeliveryEventRow): CommsDeliveryEventDTO {
+  return {
+    id: row.id,
+    deliveryId: row.deliveryId,
+    eventType: row.eventType,
+    occurredAt: row.occurredAt,
+  };
+}
+
+export function toDeliveryDTO(
+  row: CommsDeliveryRow,
+  events?: CommsDeliveryEventDTO[],
+): CommsDeliveryDTO {
+  return events ? { ...row, events } : { ...row };
 }
