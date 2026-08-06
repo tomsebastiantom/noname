@@ -41,16 +41,37 @@ export function useAdminSession(): {
       setLoading(false);
       return;
     }
-    setLoading(true);
-    void fetchAuthSessionStatus()
-      .then((data) => {
-        setSession(data);
-        setLoading(false);
-      })
-      .catch(() => {
-        setSession(null);
-        setLoading(false);
-      });
+
+    let cancelled = false;
+
+    const load = () => {
+      setLoading(true);
+      void fetchAuthSessionStatus()
+        .then((data) => {
+          if (cancelled) return;
+          setSession(data);
+          setLoading(false);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setSession(null);
+          setLoading(false);
+        });
+    };
+
+    load();
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        load();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [loggedIn]);
 
   return { loading, session };

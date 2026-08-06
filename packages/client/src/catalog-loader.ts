@@ -25,6 +25,11 @@ export interface LoadedCatalogs {
 
 let catalogCache: { key: string; registry: ComponentRegistry } | null = null;
 
+/** Stable fingerprint for catalog manifest change detection (admin soft-nav refresh). */
+export function manifestFingerprint(manifest: CatalogManifest): string {
+  return manifestCacheKey(manifest);
+}
+
 function manifestCacheKey(manifest: CatalogManifest): string {
   const parts = [manifest.platform.hash];
   for (const ext of manifest.extensions ?? []) {

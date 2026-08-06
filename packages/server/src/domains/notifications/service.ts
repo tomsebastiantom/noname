@@ -7,6 +7,10 @@ import type { NotificationsStorage } from "./adapters/postgres";
 import { toDeliveryDTO, toInboxItemDTO } from "./adapters/postgres";
 import { loadPublishedNotificationEmail, renderNotificationEmail } from "./email-template";
 import { CommsEvents } from "./events";
+import {
+  applyMarketingEmailCompliance,
+  resolveCommunicationPreferencesUrl,
+} from "./marketing-compliance";
 import type {
   ListDeliveriesQuery,
   NotificationsService,
@@ -185,6 +189,7 @@ async function queueRenderedEmail(
       html: input.html,
       text: input.text,
       userId: input.userId,
+      headers: input.headers,
     },
     input.idempotencyKey ? { jobId: `comms:${orgId}:${input.idempotencyKey}` } : undefined,
   );
@@ -244,15 +249,31 @@ export function createNotificationsService(deps: {
       }
 
       const rendered = await renderNotificationEmail(template, input.variables ?? {});
+
+      let emailPayload = rendered;
+      let emailHeaders: Record<string, string> | undefined;
+      if (template.category === "marketing") {
+        const settings = tenantSettings ? await tenantSettings.get(orgId) : null;
+        const prefsUrl = resolveCommunicationPreferencesUrl(settings?.slug ?? null);
+        const compliant = applyMarketingEmailCompliance(rendered, prefsUrl);
+        emailPayload = {
+          subject: compliant.subject,
+          html: compliant.html,
+          text: compliant.text,
+        };
+        emailHeaders = compliant.headers;
+      }
+
       return queueRenderedEmail(queueDeps, orgId, {
         to: input.to,
-        subject: rendered.subject,
-        html: rendered.html,
-        text: rendered.text,
+        subject: emailPayload.subject,
+        html: emailPayload.html,
+        text: emailPayload.text,
         userId: input.userId,
         trigger: input.trigger,
         templateId: input.templateId,
         idempotencyKey: input.idempotencyKey,
+        headers: emailHeaders,
       });
     },
 

@@ -10,10 +10,10 @@ const isDev = process.env.NODE_ENV !== "production";
 export default {
   entry: { main: "./src/main.tsx" },
   output: {
-    filename: "[name].[contenthash:8].js",
-    chunkFilename: "[name].[contenthash:8].js",
+    filename: isDev ? "[name].js" : "[name].[contenthash:8].js",
+    chunkFilename: isDev ? "[name].js" : "[name].[contenthash:8].js",
     publicPath: "/",
-    clean: true,
+    clean: !isDev,
   },
   target: "web",
   mode: isDev ? "development" : "production",

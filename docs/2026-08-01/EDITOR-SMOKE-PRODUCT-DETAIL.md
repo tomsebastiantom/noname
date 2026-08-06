@@ -2,7 +2,7 @@
 
 > **URL:** `http://yogastore.localhost:5173/products/demo-sneakers?edit=true`  
 > **Login:** `admin@zitadel.localhost` (demo seed)  
-> **Last run:** 2026-08-01 — automated browser pass + one code fix (D8 `hiddenFields` removed)
+> **Last run:** 2026-08-05 — browser pass (duplicate, drag, delete, publish, exit)
 
 ## Note on layout template
 
@@ -26,24 +26,24 @@ pnpm seed:demo                    # editor_prefs + visual_editor layout
 - [x] Scope banner shows layout template + content ref when linked
 - [x] Edit a **Layout** field (Text block Content) → Save draft → reload → value persists
 - [ ] Edit a **Content** field (product title on ProductCard) — *no ProductCard on this page; use a CMS-bound block or add commerce blocks to layout*
-- [ ] **Edit page** link in auth bar opens `?edit=true` — *not re-checked this run*
+- [x] **Edit page** link in auth bar opens `?edit=true` — verified 2026-08-05 visitor view
 - [x] Top **Save draft** vs panel **Save to page** copy is clear for pending blocks
 
 ## B6 — Structure
 
 - [x] Open **Layers** panel; expand/collapse chevron on parent rows
 - [x] With **both** Blocks + Layers open: **Hide blocks** → layers-only full sidebar
-- [ ] **Hide layers** → blocks-only — *not re-checked this run (Hide blocks verified)*
-- [ ] Drag layer row to reorder sibling (blue line before/after) — *manual drag not automated*
-- [ ] Drag layer row onto Stack/Grid middle zone (dashed inside) — *manual drag not automated*
+- [x] **Hide layers** → blocks-only — Close Layers leaves blocks palette open (2026-08-05)
+- [x] Drag layer row to reorder sibling (blue line before/after) — promo/intro order swapped via drag handle
+- [ ] Drag layer row onto Stack/Grid middle zone (dashed inside) — *not re-checked this run*
 - [x] Canvas selection matches layer row selection
-- [ ] Delete block updates tree and canvas — *not re-checked this run*
+- [x] Delete block updates tree and canvas — Remove from layout + duplicate cleanup verified
 
 ## Phase C
 
 - [ ] Selection chip shows component label on canvas — *visual; not asserted*
 - [ ] Double-click or Shift+click selects parent block — *not re-checked*
-- [ ] **Duplicate block** button or ⌘D creates copy — *not re-checked*
+- [x] **Duplicate block** button or ⌘D creates copy — Duplicate block in props panel verified
 - [x] Enum field (Align / Variant) renders as select
 - [x] Button **Action** field shows storefront action dropdown (D8) — `addToCart`, `navigate`, `checkout`
 - [ ] Image/src field shows media picker — *no Image block selected this run*
@@ -58,7 +58,7 @@ pnpm seed:demo                    # editor_prefs + visual_editor layout
 
 - [x] **Responsive preview** — Desktop / Tablet / Mobile toolbar above canvas
 - [ ] **Undo/redo** ⌘Z / ⌘⇧Z — *not re-checked this run*
-- [ ] **409 conflict** — two tabs save — *manual two-tab test*
+- [x] **409 conflict** — stale `If-Match` → **409** — covered by `layouts.service.test.ts`; optional two-tab UI smoke
 - [x] **D8 action picker** — Button → Action combobox (after removing stale `editor-overrides` hide)
 
 ## Cross-device prefs
@@ -68,22 +68,24 @@ pnpm seed:demo                    # editor_prefs + visual_editor layout
 
 ## Exit
 
-- [ ] Exit edit → visitor view matches saved draft — *not re-checked*
-- [ ] Publish (admin) → visitor view shows published layout — *not re-checked*
+- [x] Exit edit → visitor view matches saved draft — fixed SPA exit (`window.location.replace` without `?edit=`); verified 2026-08-05
+- [x] Publish (admin) → visitor view shows published layout — Publish toolbar → visitor reload verified
 
 ---
 
-## Fixes during this smoke run
+## Fixes during smoke runs
 
 | Issue | Fix |
 |-------|-----|
-| Button/Hero **Action** missing from props panel | Removed stale `hiddenFields: ["config.action"]` / `ctaAction` from `editor-overrides.ts` (D8 shipped but C8 override still hid fields) |
+| Button/Hero **Action** missing from props panel | Removed stale `hiddenFields` from `editor-overrides.ts` (2026-08-01) |
+| Exit edit left editor chrome mounted | `exitEditMode` uses full navigation reload without `?edit=` (2026-08-05) |
+| Dev HMR stale CSS blocked editor load | Stable dev asset names in `rspack.config.mjs` (2026-08-05, see E2E F9) |
 
 ---
 
 ## Remaining manual checks (optional)
 
 1. Content-field save on a `$state`-bound block (e.g. ProductCard when on commerce layout)
-2. Layer drag reorder / reparent
-3. Two-tab 409 conflict
-4. Publish + visitor view exit path
+2. Layer drag **reparent** onto Stack/Grid inside zone
+3. Two-tab **409 conflict**
+4. Undo/redo keyboard shortcuts

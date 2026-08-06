@@ -25,6 +25,10 @@ function routeIsPublic(method: string, pathname: string): boolean {
   return isPublicGet(method, pathname) || isPublicPost(method, pathname);
 }
 
+function isNotificationsStreamWithTicket(url: URL): boolean {
+  return url.pathname === "/api/notifications/stream" && url.searchParams.has("stream_ticket");
+}
+
 async function resolveJwt(
   req: Request,
   env: Env,
@@ -43,6 +47,7 @@ export function createApiProxyRoutes() {
     const search = stripOrgFromSearch(pathname, incoming.search);
     const target = `${c.env.API_ORIGIN}${pathname}${search}`;
     const isPublic = routeIsPublic(c.req.method, pathname);
+    const streamTicketBypass = isNotificationsStreamWithTicket(incoming);
     const editMode = isEditModeUrl(incoming);
 
     let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
@@ -54,7 +59,7 @@ export function createApiProxyRoutes() {
       if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
-    } else if (!isPublic) {
+    } else if (!isPublic && !streamTicketBypass) {
       const auth = await resolveJwt(c.req.raw, c.env);
       if (auth instanceof Response) return auth;
       jwt = auth;

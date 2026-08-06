@@ -29,6 +29,9 @@ export function createResendEmailSender(): EmailSenderPort {
           subject: input.subject,
           html: input.html,
           text: input.text,
+          ...(input.headers && Object.keys(input.headers).length > 0
+            ? { headers: input.headers }
+            : {}),
         }),
       });
 

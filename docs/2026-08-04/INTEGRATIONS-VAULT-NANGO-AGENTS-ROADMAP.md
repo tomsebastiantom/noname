@@ -1,7 +1,7 @@
 # Build roadmap — Vault, integrations, Nango, then agents (Mastra)
 
 > **Date:** 2026-08-04 (updated 2026-08-05)  
-> **Status:** **Phase I + II (mock) shipped** — see § Implementation checklist; open: **I-c.6c** only  
+> **Status:** **Phase I + II (mock) shipped** — checklist complete (2026-08-05)  
 > **Rule:** Do **integrations + secrets infrastructure** before **Mastra multi-step agents** (prerequisite met).
 
 **Related:** [`VAULT-CLIENT-SECRETS.md`](./VAULT-CLIENT-SECRETS.md) · [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`LLM-CREDENTIALS-PER-ORG.md`](../2026-08-03/LLM-CREDENTIALS-PER-ORG.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md) · [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md)
@@ -501,7 +501,7 @@ flowchart TD
 - [x] I-c.3 — `notify(trigger)` routing + admin delivery UI
 - [x] I-c.1 — wire machines + agent via `notify()` / transition `params.notify`
 - [x] I-c.6 — preferences v2 (channels × categories JSONB, `shouldDeliverNotification`, customer UI)
-- [ ] I-c.6c — marketing compliance (List-Unsubscribe + prefs link in template footer)
+- [x] I-c.6c — marketing compliance (List-Unsubscribe + prefs link in template footer)
 
 ### I-d OAuth / external integrations
 - [x] docker-compose: integrations profile

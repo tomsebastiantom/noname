@@ -25,6 +25,16 @@ export function clearSession(): void {
   clearTokenCookie();
 }
 
+/** Redirect to login after API 401 — preserves return path unless already on login. */
+export function redirectToLoginAfterUnauthorized(): void {
+  if (typeof window === "undefined") return;
+  const path = window.location.pathname;
+  if (path.startsWith("/login")) return;
+  clearSession();
+  const redirect = encodeURIComponent(path + window.location.search);
+  window.location.assign(`/login?redirect=${redirect}`);
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
   const payloadPart = token.split(".")[1];
   if (!payloadPart) return null;

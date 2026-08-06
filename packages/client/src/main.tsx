@@ -15,12 +15,17 @@ import {
   useTransition,
 } from "react";
 import { createRoot } from "react-dom/client";
-import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn } from "./auth/session";
+import { apiHeaders, clearSession, hydrateTokenFromCookie, isLoggedIn, redirectToLoginAfterUnauthorized } from "./auth/session";
 import { fetchAuthSessionStatus, sessionCanDraft } from "./auth/team-users";
-import { type CatalogManifest, loadCatalogs } from "./catalog-loader";
+import { type CatalogManifest, loadCatalogs, manifestFingerprint } from "./catalog-loader";
 import { AuthBar } from "./core/components/AuthBar";
-import { isAuthError } from "./lib/api";
+import { ApiAuthError, isAuthError } from "./lib/api";
 import { adminShellPropsFromSpec, assertAdminPanelSpec } from "./platform/admin-layout";
+import {
+  clearAdminPanelCache,
+  getCachedAdminPanel,
+  setCachedAdminPanel,
+} from "./platform/admin-panel-prefetch";
 import { AdminPlatformView } from "./platform/admin-platform-view";
 import { getPathname, subscribeAppLocation } from "./platform/app-navigation";
 import {
@@ -52,6 +57,24 @@ interface EdgeSchemaResponse {
 const EditPageView = lazy(() => import("./editor").then((m) => ({ default: m.EditPageView })));
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
+
+async function fetchTenantCatalogManifest(
+  slug: string,
+  headers: HeadersInit,
+): Promise<CatalogManifest | null> {
+  try {
+    const res = await fetchWithTimeout(
+      `/api/tenants/${slug}/catalog`,
+      { headers },
+      SCHEMA_FETCH_TIMEOUT_MS,
+    );
+    if (!res.ok) return null;
+    const body = (await res.json()) as { data?: CatalogManifest };
+    return body?.data ?? null;
+  } catch {
+    return null;
+  }
+}
 
 function redirectTo(
   url: string,
@@ -94,7 +117,7 @@ function App() {
   const contentRef = useRef<Spec | AdminShellProps | null>(null);
   const loadSeqRef = useRef(0);
   const adminShellCacheRef = useRef<{ shellRef: string; props: AdminShellProps } | null>(null);
-  const adminPanelCacheRef = useRef(new Map<string, Spec>());
+  const catalogHashRef = useRef<string | null>(null);
   const [, startPanelTransition] = useTransition();
   const storeSlug = storeSlugFromHost(window.location.hostname);
 
@@ -164,7 +187,7 @@ function App() {
     }
 
     if (softAdminNav) {
-      const cachedPanel = adminPanelCacheRef.current.get(template);
+      const cachedPanel = getCachedAdminPanel(template);
       if (cachedPanel) {
         startPanelTransition(() => {
           setAdminPanelSpec(cachedPanel);
@@ -179,12 +202,16 @@ function App() {
     setError(null);
 
     const headers = apiHeaders();
-    const manifestPromise = softAdminNav
-      ? Promise.resolve(null)
-      : fetchWithTimeout(`/api/tenants/${storeSlug}/catalog`, { headers }, SCHEMA_FETCH_TIMEOUT_MS)
-          .then((res) => (res.ok ? (res.json() as Promise<{ data: CatalogManifest }>) : null))
-          .then((body) => body?.data ?? null)
-          .catch(() => null);
+    const manifestPromise = fetchTenantCatalogManifest(storeSlug, headers).then((manifest) => {
+      if (!manifest) return null;
+      const hash = manifestFingerprint(manifest);
+      const previousHash = catalogHashRef.current;
+      catalogHashRef.current = hash;
+      if (softAdminNav && previousHash === hash) {
+        return null;
+      }
+      return manifest;
+    });
 
     const editQuery = editMode && !platformRoute ? "&edit=true" : "";
     const schemaQuery = platformRoute
@@ -196,6 +223,10 @@ function App() {
       { headers },
       SCHEMA_FETCH_TIMEOUT_MS,
     ).then((res) => {
+      if (res.status === 401) {
+        redirectToLoginAfterUnauthorized();
+        throw new ApiAuthError();
+      }
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       return res.json() as Promise<{ data?: EdgeSchemaResponse }>;
     });
@@ -227,7 +258,7 @@ function App() {
         }
 
         adminShellCacheRef.current = null;
-        adminPanelCacheRef.current.clear();
+        clearAdminPanelCache();
         setComposeMode("full");
         setAdminBaseShellProps(null);
         setAdminPanelSpec(null);
@@ -255,7 +286,7 @@ function App() {
           adminShellCacheRef.current = { shellRef, props: baseShellProps };
         }
 
-        adminPanelCacheRef.current.set(template, panelSpec);
+        setCachedAdminPanel(template, panelSpec);
         startPanelTransition(() => {
           setComposeMode("panel");
           setAdminBaseShellProps(baseShellProps);
@@ -267,7 +298,7 @@ function App() {
         });
       } else {
         adminShellCacheRef.current = null;
-        adminPanelCacheRef.current.clear();
+        clearAdminPanelCache();
         setComposeMode("full");
         setAdminBaseShellProps(null);
         setAdminPanelSpec(null);

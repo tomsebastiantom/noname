@@ -9,6 +9,7 @@ export interface EmailOutboundJobData {
   html: string;
   text?: string;
   userId?: string;
+  headers?: Record<string, string>;
 }
 
 const EMAIL_JOB_OPTIONS = {

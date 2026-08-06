@@ -1,4 +1,4 @@
-import { apiHeaders } from "../auth/session";
+import { apiHeaders, redirectToLoginAfterUnauthorized } from "../auth/session";
 
 export interface ApiErrorBody {
   error?: string;
@@ -66,6 +66,7 @@ function mergeHeaders(init: RequestInit): Headers {
 
 async function readApiError(res: Response): Promise<never> {
   if (res.status === 401) {
+    redirectToLoginAfterUnauthorized();
     throw new ApiAuthError();
   }
   let message = `HTTP ${res.status}`;

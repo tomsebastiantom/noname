@@ -70,6 +70,7 @@ export function startEmailOutboundWorker(deps: {
             subject,
             html,
             text,
+            headers: job.data.headers,
           });
 
           await deps.storage.updateDelivery(deliveryId, {

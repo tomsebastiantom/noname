@@ -4,7 +4,6 @@ import { createStateStore, type SetState } from "@json-render/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearSession } from "../../auth/session";
 import { ApiConflictError, isAuthErrorMessage } from "../../lib/api";
-import { navigateApp } from "../../platform/app-navigation";
 import { activateEditorDevtools, releaseEditorDevtools } from "../activate-editor-devtools";
 import { defaultPropsForType } from "../components/palette/ComponentPalette";
 import { CONTENT_DEFAULT_LOCALE } from "../content-entries";
@@ -266,7 +265,7 @@ export function useEditPageOrchestration({
   const exitEditMode = useCallback(() => {
     const url = new URL(window.location.href);
     url.searchParams.delete("edit");
-    navigateApp(url.pathname + url.search + url.hash, { replace: true });
+    window.location.replace(url.pathname + url.search + url.hash);
   }, []);
 
   const handleSave = useCallback(async () => {

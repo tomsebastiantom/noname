@@ -76,15 +76,6 @@ const docs = createDocumentsDomain({
   },
 });
 
-const auth = createAuthDomain({
-  db,
-  tenantSettings: docs.service.tenantSettings,
-  assets: docs.service.assets,
-  content: docs.service.content,
-  storage,
-});
-onAuthProviderPublished = auth.onAuthProviderPublished;
-
 const secrets = createSecretsDomain({
   tenantSettings: docs.service.tenantSettings,
 });
@@ -100,6 +91,16 @@ const notifications = createNotificationsDomain({
   content: docs.service.content,
   tenantSettings: docs.service.tenantSettings,
 });
+
+const auth = createAuthDomain({
+  db,
+  tenantSettings: docs.service.tenantSettings,
+  assets: docs.service.assets,
+  content: docs.service.content,
+  storage,
+  notifications: notifications.service,
+});
+onAuthProviderPublished = auth.onAuthProviderPublished;
 
 const machines = createMachineDomain({
   db,

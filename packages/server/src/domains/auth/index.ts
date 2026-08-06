@@ -4,6 +4,7 @@ import type {
   DocumentStorage,
   TenantSettingsService,
 } from "../documents/contracts";
+import type { NotificationsService } from "../notifications/ports";
 import { teamRoleAssignments } from "./adapters/zitadel/authorizations";
 import { zitadelProjectId } from "./adapters/zitadel/project-id";
 import { createAuthRoutes } from "./api";
@@ -18,6 +19,7 @@ export function createAuthDomain(deps: {
   assets: AssetDocumentService;
   content: Pick<ContentDocumentService, "findByType">;
   storage: DocumentStorage;
+  notifications?: Pick<NotificationsService, "notify">;
 }) {
   const service = createAuthService(deps);
   const authorization = createAuthorization();

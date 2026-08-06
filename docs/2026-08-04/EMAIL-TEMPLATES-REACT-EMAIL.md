@@ -132,7 +132,8 @@ pnpm add @json-render/react-email @react-email/components -F @noname/client
 - [x] CMS schema: `spec` json (no html fields)
 - [x] Admin: spec JSON + live preview in Content → `notification_email`
 - [x] Seed specs in `scripts/seed/email-specs.ts`
-- [ ] Wire machine transitions and admin routes to `enqueueTemplatedEmail` where applicable
+- [x] Wire machine transitions → `notify()` → `enqueueTemplatedEmail` (`index.ts` `onTransitionComplete`, `parseTransitionNotify`)
+- [x] Wire admin user invite → `welcome` template (`auth/service.ts` `inviteTeamUser`, 2026-08-05)
 - [x] Agent worker: optional `input.notify` (example consumer)
 
 ---

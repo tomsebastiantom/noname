@@ -1,6 +1,6 @@
 # Admin soft navigation — handoff
 
-> **Status:** Flicker fix shipped (Aug 2026). Hardening items below are **not** done yet — pick up when ready.  
+> **Status:** Flicker fix shipped (Aug 2026). **P1 session hardening shipped 2026-08-05** (U1/U2). P2–P4 below still open.  
 > **Related:** [LAYOUT-COMPOSITION.md](../2026-07-31/LAYOUT-COMPOSITION.md), [FLAGS-UI-LIVE-UPDATE-DECISION.md](../2026-07-27/FLAGS-UI-LIVE-UPDATE-DECISION.md)
 
 ## Problem
@@ -73,11 +73,14 @@ These do **not** require reverting soft nav. They complete the model it assumes.
 
 **Problem:** Session is checked on first admin entry only. `useAdminSession` refetches when `loggedIn` changes, not on focus or interval. Expired session or revoked role → stale sidebar until full reload; mutations 401/403 without auto-logout.
 
-**Suggested tasks:**
+**Shipped 2026-08-05:**
 
-- [ ] Add `visibilitychange` (or 5–10 min TTL) hook to refetch `fetchAuthSessionStatus` while in admin
-- [ ] On 401 from `apiFetch`, central handler: `clearSession()` + redirect to `/login?redirect=…`
-- [ ] On schema fetch 401 during soft nav, same redirect (today: error banner only)
+- [x] Add `visibilitychange` hook to refetch `fetchAuthSessionStatus` while in admin — `packages/client/src/auth/admin-access.ts`
+- [x] On 401 from `apiFetch`, central handler: `clearSession()` + redirect to `/login?redirect=…` — `packages/client/src/lib/api.ts`, `session.ts`
+- [x] On schema fetch 401 during soft nav, same redirect — `main.tsx`
+
+**Still open:**
+
 - [ ] Optional: re-run MFA gate if `requireMfaForAdmin && !mfaEnrolled` after session refetch
 
 **Files:** `main.tsx`, `lib/api.ts`, maybe `auth/admin-access.ts`
@@ -86,16 +89,17 @@ These do **not** require reverting soft nav. They complete the model it assumes.
 
 ### P2 — Catalog manifest invalidation (freshness)
 
-**Problem:** Soft nav skips `GET /api/tenants/:slug/catalog`. Mid-session deploy of new marketplace/private remotes is not picked up until hard reload or leaving admin. Flag-driven `loadPage()` also skips manifest when already in admin.
+**Problem:** Soft nav skipped `GET /api/tenants/:slug/catalog`. Mid-session deploy of new marketplace/private remotes was not picked up until hard reload or leaving admin.
 
-**Suggested tasks:**
+**Shipped 2026-08-05:**
 
-- [ ] Store last manifest hash in a ref (from first load)
-- [ ] On soft nav (or flag layout refresh): lightweight HEAD or GET catalog; if hash changed → `loadCatalogs(manifest)` + `setRegistry`
-- [ ] Or: `loadPage({ forceCatalog: true })` from `subscribeFlagLayoutRefresh` only
-- [ ] Document when operators must hard-refresh after tenant catalog publish
+- [x] Store last manifest hash in a ref (from first load) — `catalogHashRef` in `main.tsx`
+- [x] On soft nav (and flag layout refresh): GET catalog; if fingerprint changed → `loadCatalogs(manifest)` + `setRegistry`
+- [x] Fingerprint helper — `manifestFingerprint()` in `catalog-loader.ts`
 
-**Files:** `main.tsx`, `catalog-loader.ts` (`resetCatalogCache` already exists for tests)
+**Operator note:** After publishing a new tenant catalog remote, staff in admin pick up changes on the **next sidebar click** or flag-driven layout refresh — no hard reload required. If the catalog GET fails (network), the previous registry is kept.
+
+**Files:** `main.tsx`, `catalog-loader.ts`
 
 ---
 
@@ -114,7 +118,7 @@ These do **not** require reverting soft nav. They complete the model it assumes.
 
 ### P4 — Nice-to-have UX
 
-- [ ] Prefetch panel spec on sidebar link `mouseenter` (zero-wait nav)
+- [x] Prefetch panel spec on sidebar link `mouseenter` / focus — `admin-panel-prefetch.ts` + `AdminNav` (U4, 2026-08-05)
 - [ ] Crossfade between panels instead of hard `CatalogUiShell` remount (needs ActionProvider lifecycle workaround — see `catalog-ui-shell.tsx` comments on `key`)
 - [ ] Sonar: reduce `loadPage` cognitive complexity in `main.tsx` (split helpers)
 
@@ -125,8 +129,8 @@ These do **not** require reverting soft nav. They complete the model it assumes.
 | Question | Answer |
 |----------|--------|
 | Is soft admin nav long-term? | **Yes** — in-shell SPA navigation |
-| Is skipping session on every click OK? | **Yes**, if revalidated elsewhere (P1 not done yet) |
-| Is skipping catalog on every click OK? | **Yes for layout-only nav**; not OK for mid-session catalog deploys without P2 |
+| Is skipping session on every click OK? | **Yes**, with P1 shipped (visibility + 401 redirect) |
+| Is skipping catalog on every click OK? | **Yes for layout-only nav** — manifest is re-fetched; remotes reload only when fingerprint changes (P2 shipped) |
 | Still fetch panel spec every click? | **Yes** — `/api/edge/schema` always runs |
 
 ---

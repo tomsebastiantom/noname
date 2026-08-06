@@ -1,9 +1,11 @@
 import { useActions } from "@json-render/react";
+import { storeSlugFromHost } from "@noname/shared";
 import type { MouseEvent, ReactNode } from "react";
 import { useAdminNavVisibility } from "../../../auth/admin-access";
 import { isLoggedIn } from "../../../auth/session";
 import { Button } from "../../../components/ui/button";
 import { Separator } from "../../../components/ui/separator";
+import { prefetchAdminPanel } from "../../../platform/admin-panel-prefetch";
 import { navigateApp } from "../../../platform/app-navigation";
 import { isPlatformPath } from "../../../platform-routes";
 
@@ -59,14 +61,22 @@ function AdminNavLink({
   active,
   children,
   className,
+  onPrefetch,
 }: {
   href: string;
   active: boolean;
   children: ReactNode;
   className?: string;
+  onPrefetch?: () => void;
 }) {
   return (
-    <a href={href} className={className ?? navLinkClass(active)} {...useSpaNav(href)}>
+    <a
+      href={href}
+      className={className ?? navLinkClass(active)}
+      onMouseEnter={onPrefetch}
+      onFocus={onPrefetch}
+      {...useSpaNav(href)}
+    >
       {children}
     </a>
   );
@@ -76,6 +86,12 @@ export function AdminNav(props: AdminNavProps) {
   const { execute } = useActions();
   const loggedIn = isLoggedIn();
   const { canAccessNavItem } = useAdminNavVisibility();
+  const storeSlug = storeSlugFromHost(globalThis.location.hostname);
+
+  const prefetch = (href: string) => {
+    if (!storeSlug || !loggedIn) return;
+    prefetchAdminPanel(storeSlug, href);
+  };
 
   const navItems = props.navItems.filter((item) => canAccessNavItem(item.id));
   const observabilityItems = (props.observabilityItems ?? []).filter((item) =>
@@ -97,7 +113,12 @@ export function AdminNav(props: AdminNavProps) {
       <Separator />
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {navItems.map((item) => (
-          <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
+          <AdminNavLink
+            key={item.id}
+            href={item.href}
+            active={props.activeNav === item.id}
+            onPrefetch={() => prefetch(item.href)}
+          >
             {item.label}
           </AdminNavLink>
         ))}
@@ -108,7 +129,12 @@ export function AdminNav(props: AdminNavProps) {
               {props.settingsSectionLabel}
             </p>
             {settingsItems.map((item) => (
-              <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
+              <AdminNavLink
+                key={item.id}
+                href={item.href}
+                active={props.activeNav === item.id}
+                onPrefetch={() => prefetch(item.href)}
+              >
                 {item.label}
               </AdminNavLink>
             ))}
@@ -121,7 +147,12 @@ export function AdminNav(props: AdminNavProps) {
               {props.observabilitySectionLabel}
             </p>
             {observabilityItems.map((item) => (
-              <AdminNavLink key={item.id} href={item.href} active={props.activeNav === item.id}>
+              <AdminNavLink
+                key={item.id}
+                href={item.href}
+                active={props.activeNav === item.id}
+                onPrefetch={() => prefetch(item.href)}
+              >
                 {item.label}
               </AdminNavLink>
             ))}
@@ -136,6 +167,7 @@ export function AdminNav(props: AdminNavProps) {
         <AdminNavLink
           href={props.accountSecurityHref}
           active={props.activeNav === "account_security"}
+          onPrefetch={() => prefetch(props.accountSecurityHref)}
         >
           {props.accountSecurityLabel}
         </AdminNavLink>

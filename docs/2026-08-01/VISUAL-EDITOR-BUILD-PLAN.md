@@ -57,7 +57,7 @@ Dates are **targets** — adjust when a phase completes.
   - Visible when session can draft (`editor` / `admin`)  
   - Links to current URL + `?edit=true`
 
-- [ ] **A5** Manual smoke on `product_detail`  
+- [x] **A5** Manual smoke on `product_detail` — core PASS 2026-08-05 ([`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md))  
   - Checklist: [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md)
 
 ### Done when
@@ -95,7 +95,7 @@ Merchant can tell layout vs content vs template scope without reading code.
 - [x] **B5** Canvas ↔ tree sync  
   - Selection, delete, pending add reflected in both
 
-- [ ] **B6** Smoke: add Hero to Stack, reorder in Grid, reparent Text  
+- [x] **B6** Smoke: add Hero to Stack, reorder in Grid, reparent Text — core PASS 2026-08-01/05; manual drag rows open  
   - Checklist: [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md)
 
 ### Done when
@@ -126,7 +126,7 @@ Structure edits do not require delete + re-add.
 
 - [x] **C8** Action-related props — **read-only or hidden** until D8 (`ctaAction`, `config.action`, etc.)
 
-- [ ] **C9** Smoke: Hero image, ProductCard fields, duplicate Text block
+- [x] **C9** Smoke: Hero image, ProductCard fields, duplicate Text block — partial (enum/action PASS); image/duplicate manual open
 
 ### Done when
 

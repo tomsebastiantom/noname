@@ -193,7 +193,7 @@ The visual editor is **not** a general page builder. It is a **strict composer**
 
 ### P0 — Smoke (optional follow-ups)
 
-See [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md) — core paths verified 2026-08-01. Remaining: layer drag, two-tab 409, content-field on ProductCard, publish/exit visitor view.
+See [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md) — core paths verified 2026-08-05. Remaining optional: layer reparent, two-tab 409 UI smoke, content-field on ProductCard.
 
 ### P1 — Defer (build only when product asks)
 

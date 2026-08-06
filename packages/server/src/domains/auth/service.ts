@@ -45,13 +45,15 @@ import {
   resolveIdpUpdate,
 } from "./idp-registry";
 import type { AuthConfig, AuthService } from "./ports";
+import type { NotificationsService } from "../notifications/ports";
 
 export function createAuthService(deps: {
   tenantSettings: TenantSettingsService;
   assets: AssetDocumentService;
   content: Pick<ContentDocumentService, "findByType">;
+  notifications?: Pick<NotificationsService, "notify">;
 }): AuthService {
-  const { tenantSettings, assets, content } = deps;
+  const { tenantSettings, assets, content, notifications } = deps;
 
   async function loadAuth(orgId: string) {
     const settings = await tenantSettings.get(orgId);
@@ -270,6 +272,25 @@ export function createAuthService(deps: {
       const { userId } = await inviteHumanUser(orgId, slug, input);
       const projectId = zitadelProjectId();
       await upsertUserTeamRole(orgId, projectId, userId, input.role);
+
+      if (notifications) {
+        try {
+          const fullName = [input.givenName, input.familyName]
+            .map((part) => part?.trim())
+            .filter(Boolean)
+            .join(" ");
+          const name = fullName || input.email.split("@")[0] || "there";
+          await notifications.notify(orgId, {
+            trigger: "welcome",
+            to: input.email,
+            userId,
+            variables: { name, storeName: slug },
+            idempotencyKey: `welcome:${userId}`,
+          });
+        } catch (err) {
+          console.warn("[auth.inviteTeamUser] welcome notification failed:", err);
+        }
+      }
 
       return { userId };
     },

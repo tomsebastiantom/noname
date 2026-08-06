@@ -116,5 +116,17 @@ Scoped to authenticated user + org (not integrations admin permission).
 ## Future (not v1)
 
 - Mobile push channel (FCM/APNs) — separate adapter, same trigger config pattern.
-- Stream ticket endpoint instead of raw JWT in query string (edge query-token forwarding shipped 2026-08-05 — see E2E F8).
 - Optional Redis channel per user (`noname:sse:{orgId}:{userId}`) if org-wide fan-out becomes noisy at scale.
+
+## Stream ticket (shipped 2026-08-05 — C3)
+
+Prefer short-lived tickets over raw JWT in EventSource query strings.
+
+| Endpoint | Auth | Notes |
+|----------|------|-------|
+| `POST /api/notifications/stream/ticket` | Bearer | Returns `{ ticket, expiresIn: 60 }` |
+| `GET /api/notifications/stream?stream_ticket=…` | Ticket only | Edge bypasses JWT validation for ticket param; API validates HMAC ticket |
+
+**Client:** `useCommsInboxStream` mints ticket on mount, opens EventSource with `stream_ticket`. Legacy `?access_token=` still works (F8 edge fix).
+
+**Smoke:** ticket 200 → stream 200 `text/event-stream` → `connected` event.

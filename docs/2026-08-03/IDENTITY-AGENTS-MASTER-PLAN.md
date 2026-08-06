@@ -129,8 +129,8 @@ Use this to score ZITADEL vs alternatives.
 | R3 | **Project roles** in JWT (`admin`, `editor`, `customer`) | ✅ | App expands to permissions |
 | R4 | Role Assignment API (invite, change role) | ✅ | `/admin/settings/users` |
 | R5 | MFA, social IdPs | ✅ | |
-| R6 | **Machine users / service accounts** for agents | ⚠️ verify | Needed for Layer 3 |
-| R7 | OAuth clients per agent (optional) | ⚠️ verify | Fine-grained agent tokens |
+| R6 | **Machine users / service accounts** for agents | ✅ platform · ⚠️ per-agent | **Platform:** `noname-backend-sa` + login PAT (`pnpm init:zitadel`). **Agents:** app HMAC `nag.*` tokens — see [`REMAINING-WORK-RUNBOOK.md`](../2026-08-06/REMAINING-WORK-RUNBOOK.md) § A3 |
+| R7 | OAuth clients per agent (optional) | 🔲 verify | Fine-grained agent tokens — **deferred v1**; spike checklist in same runbook |
 | R8 | Self-host, open source | ✅ | Apache 2.0, compose |
 | R9 | No Postgres mirror of `teamRoles` | ✅ | JWT only |
 | R10 | Embeddable token exchange (iframe) | 🔲 design | May be app-layer, not IdP |

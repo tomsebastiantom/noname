@@ -241,6 +241,7 @@ Browser: `http://yogastore.localhost:5173`. Login as admin unless noted.
 | F6 | Seed | Observability nav items mixed into Settings flat list | **Fixed** — `observabilityItems` section in admin shell spec |
 | F7 | UX | Integrations page one long scroll | **Fixed** — `AdminCollapsibleSection` catalog component (5 categories, first open) |
 | F8 | Edge | SSE inbox live update broken — EventSource uses `?access_token=`; edge ignored query token and did not forward cookie auth as Bearer to API | **Fixed** — `accessTokenFromRequest` reads query param; proxy sets `Authorization: Bearer` when absent |
+| F9 | Client dev | Visual editor stuck after HMR — stale content-hashed CSS 404 → MIME type error | **Fixed** — stable dev asset names in `rspack.config.mjs` |
 
 ---
 
@@ -248,7 +249,24 @@ Browser: `http://yogastore.localhost:5173`. Login as admin unless noted.
 
 **Canonical backlog:** [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md) — all remaining items by track, with links to source docs.
 
-1. **Role matrix smoke** — log in as `editor@` (agents yes, integrations no) and `analyst@` (observability only).
+---
+
+## Validation batch (V1–V5) — 2026-08-05
+
+| ID | Work | Result | Notes |
+|----|------|--------|-------|
+| **V1** | Role matrix — `editor@`, `analyst@` | **PASS** | API: editor agents 200 / deliveries+analytics 403; analyst agents 403 / analytics 200. UI: editor sees Agents (no Integrations); analyst sees Analytics only (Observability nav). |
+| **V2–V3** | Visual editor smoke A5/B6/C9 | **PASS** (core) | Prior run 2026-08-01 + re-check 2026-08-05 after hard refresh. Manual drag/409/undo rows still open in [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](../2026-08-01/EDITOR-SMOKE-PRODUCT-DETAIL.md). |
+| **V4** | Live LLM orchestrate (≥3 tools) | **BLOCKED** | Task completed on **mock** path (`model: mock-orchestrate`, 7 steps). Needs `MASTRA_ORCHESTRATE_MOCK=false` + Vault LLM key in running API process. |
+| **V5** | Mock orchestrate sign-off | **PASS** | Spec §7 mock criterion `[x]`; E2E A5.3/U4.3. |
+
+### Dev note — editor CSS / HMR (F9)
+
+**Symptom:** `?edit=true` stuck on “Loading editor…”; console `Refused to apply style … MIME type ('text/html')` for `main.*.css`.
+
+**Cause:** rspack dev used content-hashed CSS/JS filenames; after HMR recompile the browser kept an old hash → 404 HTML response for stale chunk.
+
+**Fix:** `packages/client/rspack.config.mjs` — stable `[name].js` / `[name].css` in dev (contenthash production-only). **Hard refresh** after pulling this change (restart `pnpm --filter @noname/client dev`).
 
 ---
 
@@ -278,4 +296,4 @@ Browser: `http://yogastore.localhost:5173`. Login as admin unless noted.
 | UI | 17 | 0 | 0 |
 | **Total** | **60** | **0** | **0** |
 
-_Last updated: 2026-08-05 — full ops + API + UI batch PASS (60/60). SSE live inbox verified on account page._
+_Last updated: 2026-08-05 — 60/60 batch PASS + V1/V5 validation PASS; V4 blocked on live LLM env; F9 dev HMR CSS fix._

@@ -77,12 +77,12 @@ domains/notifications/
 
 | Gap | Risk | Status |
 |-----|------|--------|
-| **Marketing compliance footer** | CAN-SPAM / List-Unsubscribe | Open — **I-c.6c** |
-| **Comms delivery analytics** | Opens/clicks/bounces invisible to merchants | Open — [`COMMS-DELIVERY-ANALYTICS.md`](./COMMS-DELIVERY-ANALYTICS.md) |
+| **Marketing compliance footer** | CAN-SPAM / List-Unsubscribe | **Shipped** — I-c.6c (2026-08-05) |
+| **Comms delivery analytics** | Opens/clicks/bounces invisible to merchants | **Deferred v2** — [`COMMS-DELIVERY-ANALYTICS.md`](./COMMS-DELIVERY-ANALYTICS.md) |
 | **Single global queue** | One noisy tenant can delay others | Open — per-org rate limits later |
 | **Large HTML in Redis jobs** | Fine at low volume; object storage at scale | Open |
 | **Mobile push** | No FCM/APNs adapter | Deferred — same `notify()` pattern |
-| **Stream ticket for SSE** | Raw JWT in query string (dev OK) | Open — prod hardening |
+| **Stream ticket for SSE** | Raw JWT in query string | **Shipped** — C3 (2026-08-05) |
 
 ### Resolved in v1 (was gap in initial RFC draft)
 

@@ -47,7 +47,7 @@ Layer 4 — Live collab (CRDT)       ⏸ DEFER — only when simultaneous multi-
 | Direct doc share (editor + publisher) | ✅ | `DocumentShareField`, Keto `Document#editors\|publishers` |
 | Admin page permission UX | ✅ | `useAdminRouteAccess` on all settings + CMS panels |
 | Agent registry + orchestrate tasks | ✅ | `packages/server/src/domains/agent/`, admin UI, owner-scoped review |
-| Agent scoped document access (Keto `Agent:{id}`) | ❌ | Tools use in-process storage + human JWT today |
+| Agent scoped document access (Keto `Agent:{slug}`) | ✅ | `scope.ts` + registry grant/revoke + Mastra tools |
 | CRDT / live presence | ❌ | Solo edit + 409 on conflict only |
 | Nostr relay / nip events | ❌ | **Not planned for core** |
 
@@ -72,7 +72,7 @@ Answer: *“May **this user** edit or publish **this document**?”* — after p
 |----|------|-------|-----|
 | **B3** | **List perf** — batch Keto Check on doc lists | Backend | When lists slow at scale |
 | **B4** | **Prod Keto** — K8s/Vela, internal-only, migrate job | Infra | Required before multi-tenant prod |
-| **B5** | **Agent tuples on folders/docs** | Backend (with A′) | `Agent:{id}#editor @ Collection:marketing` |
+| **B5** | **Agent tuples on folders/docs** | Backend (with A′) | **Shipped** — register owner tuple + grant APIs; see [`AGENT-OWNERSHIP-AND-REVIEW.md`](./AGENT-OWNERSHIP-AND-REVIEW.md) |
 
 ### Done (2026-08-05)
 

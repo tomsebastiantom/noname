@@ -15,6 +15,7 @@ export interface SendEmailInput {
   trigger?: string;
   templateId?: string;
   idempotencyKey?: string;
+  headers?: Record<string, string>;
 }
 
 export interface SendTemplatedEmailInput {
@@ -104,7 +105,7 @@ export interface ListInboxQuery {
 export interface EmailSenderPort {
   send(
     credentials: CommsCredentials,
-    input: SendEmailInput & { from?: string },
+    input: SendEmailInput & { from?: string; headers?: Record<string, string> },
   ): Promise<{ provider: string; messageId: string }>;
 }
 
