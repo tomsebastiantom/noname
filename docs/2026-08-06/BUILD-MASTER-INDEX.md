@@ -154,7 +154,9 @@ LATER   Explicit product gates only
 |----|------|------------|-------|
 | **E1** | Complete smoke checklists (A5, B6, C9) | [`VISUAL-EDITOR-BUILD-PLAN.md`](../2026-08-01/VISUAL-EDITOR-BUILD-PLAN.md), [`EDITOR-SMOKE-PRODUCT-DETAIL.md`](../2026-08-01/EDITOR-SMOKE-PRODUCT-DETAIL.md) | Phases A–D code done |
 | **E2** | Remaining gap items (409 API test, layer reparent) | [`VISUAL-EDITOR-GAP-ANALYSIS.md`](../2026-08-01/VISUAL-EDITOR-GAP-ANALYSIS.md) | Publish/exit **PASS** 2026-08-05; 409 covered by `layouts.service.test.ts` |
-| **E3** | Live CRDT / presence | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) | **Do not start** until product gate ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C) |
+| **E3-pre** | `document_ops` JSON Patch + replay | [`SPEC-STORAGE-MERGE.md`](../2026-07-25/SPEC-STORAGE-MERGE.md), `document-op-payload.ts` | **Shipped** — layout/content saves append RFC 6902 patches |
+| **E3-spike** | Automerge vs Loro offline merge | [`E3-SPIKE-HANDOFF.md`](./E3-SPIKE-HANDOFF.md) | **Parallel agent** — no WS; informs E3a library choice |
+| **E3** | Live CRDT / presence | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) | **Do not start** until product gate ([`ROADMAP-PHASES-B-A-C.md`](../2026-08-03/ROADMAP-PHASES-B-A-C.md) Phase C) |
 
 ---
 
@@ -162,8 +164,8 @@ LATER   Explicit product gates only
 
 | ID | Work | Source doc | Notes |
 |----|------|------------|-------|
-| **I1** | Bot SSR (React 19 stream) in worker | [`CLIENT_BUNDLE.md`](../2026-07-11/CLIENT_BUNDLE.md) | SEO prerender TODO |
-| **I2** | Client bundle deploy to R2 | Same doc | Post-build upload script |
+| **I1** | Bot HTML from layout spec (crawler SEO) | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) | **Shipped** — `bot-ssr.ts` + `storefront.ts` |
+| **I2** | Client bundle deploy to R2 | Same runbook | **Shipped** — `pnpm deploy:client-r2` |
 | **I3** | Tenant MF remote catalog actions | [`CLIENT-ACTIONS.md`](../2026-07-25/CLIENT-ACTIONS.md) | Phase 2+ |
 | **I4** | Machine engine — full XState wrapper + AI-generated definitions | [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md) | Long-horizon |
 | **I5** | New org provisioning checklist automation | [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](../2026-08-04/PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) | ZITADEL org + Keto tuples |

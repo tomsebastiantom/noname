@@ -1,7 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
-import { auditFromContext } from "../../../shared/request-audit";
+import { auditFromContext, clientOpFromRequest } from "../../../shared/request-audit";
 import { created, notFound, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
 import { denyUnlessCollectionAccess } from "../../auth/deny-unless-document-access";
@@ -85,6 +85,7 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
     if (actor instanceof Response) return actor;
     const ifMatch = c.req.header("If-Match");
     const audit = auditFromContext(c, actor);
+    const clientOp = clientOpFromRequest(c);
     const updated = await layout.update(
       orgId,
       layoutId,
@@ -95,7 +96,9 @@ export function registerLayoutRoutes(routes: Hono, deps: DocumentsRouteDeps): vo
         shellRef: body.shellRef,
         collectionId: body.collectionId,
       },
-      ifMatch ? { ifMatchUpdatedAt: ifMatch, audit } : { audit },
+      ifMatch
+        ? { ifMatchUpdatedAt: ifMatch, audit, ...clientOp }
+        : { audit, ...clientOp },
     );
     return ok(c, updated);
   });

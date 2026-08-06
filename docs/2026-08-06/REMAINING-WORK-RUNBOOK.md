@@ -146,9 +146,9 @@ MASTRA_ORCHESTRATE_MOCK=false
 |----|------|------|
 | **C2** | Comms delivery analytics (opens/clicks) | Product asks — [`COMMS-DELIVERY-ANALYTICS.md`](../2026-08-04/COMMS-DELIVERY-ANALYTICS.md) |
 | **C4** | Mobile push FCM/APNs | Same `notify()` pattern |
-| **E3** | Live CRDT collab | [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) |
+| **E3** | Live CRDT collab | [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) |
 | **O1–O2** | Replay pre-login stitch + admin filter by user | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) |
-| **I1–I2** | Bot SSR + R2 client deploy | [`CLIENT_BUNDLE.md`](../2026-07-11/CLIENT_BUNDLE.md) |
+| **I1–I2** | Bot SSR + R2 client deploy | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) |
 
 ---
 

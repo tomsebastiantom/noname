@@ -1,4 +1,5 @@
 import type { WriteAudit } from "@noname/auth";
+import type { DocumentOpPayload } from "../domains/documents/document-op-payload";
 import type { DocumentStorage } from "../domains/documents/ports";
 
 export async function recordDocumentOp(
@@ -8,7 +9,13 @@ export async function recordDocumentOp(
     documentId: string;
     operation: string;
     audit: WriteAudit;
+    payload?: DocumentOpPayload;
+    clientId?: string;
+    clientSeq?: number;
   },
-): Promise<void> {
-  await storage.recordDocumentOp(input);
+): Promise<{ serverVersion: number } | null> {
+  return storage.recordDocumentOp({
+    ...input,
+    payload: input.payload as Record<string, unknown> | undefined,
+  });
 }

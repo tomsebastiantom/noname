@@ -1,7 +1,8 @@
 # Visual Editor — Collab & CRDT (deferred)
 
-> **Date:** 2026-08-01  
+> **Date:** 2026-08-01 (updated 2026-08-06)  
 > **Status:** Not building now — required later when **multiple people edit the same draft at the same time**  
+> **Implementation spec (E3):** [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) — OSS cheat sheet, stack choice, phases  
 > **Related:** [`VISUAL-EDITOR-GAP-ANALYSIS.md`](./VISUAL-EDITOR-GAP-ANALYSIS.md) · [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](../2026-07-25/VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) · [`PERMISSIONS-OSS-REFERENCES.md`](../2026-07-25/PERMISSIONS-OSS-REFERENCES.md)
 
 ---

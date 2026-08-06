@@ -280,15 +280,47 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
     },
 
     async recordDocumentOp(input) {
+      if (input.clientId && input.clientSeq !== undefined) {
+        const [existing] = await db
+          .select({ serverVersion: documentOps.serverVersion })
+          .from(documentOps)
+          .where(
+            and(
+              eq(documentOps.clientId, input.clientId),
+              eq(documentOps.clientSeq, input.clientSeq),
+            ),
+          )
+          .limit(1);
+        if (existing) {
+          return { serverVersion: existing.serverVersion };
+        }
+      }
+
+      const [maxRow] = await db
+        .select({
+          maxVersion: sql<number>`coalesce(max(${documentOps.serverVersion}), 0)`,
+        })
+        .from(documentOps)
+        .where(
+          and(eq(documentOps.orgId, input.orgId), eq(documentOps.documentId, input.documentId)),
+        );
+      const serverVersion = (maxRow?.maxVersion ?? 0) + 1;
+
       await db.insert(documentOps).values({
         orgId: input.orgId,
         documentId: input.documentId,
+        serverVersion,
         operation: input.operation,
         actorType: input.audit.actorType,
         actorId: input.audit.actorId,
         onBehalfOf: input.audit.onBehalfOf ?? null,
         taskId: input.audit.taskId ?? null,
+        clientId: input.clientId ?? null,
+        clientSeq: input.clientSeq ?? null,
+        payload: input.payload ?? null,
       });
+
+      return { serverVersion };
     },
   };
 }

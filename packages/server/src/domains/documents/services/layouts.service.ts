@@ -1,6 +1,11 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { recordDocumentOp } from "../../../shared/document-audit";
 import { ConflictError, ValidationError } from "../../../shared/domain-error";
+import {
+  buildLayoutDataPatchPayload,
+  buildSpecPatchPayload,
+  type DocumentOpPayload,
+} from "../document-op-payload";
 import { LayoutDocument } from "../entity";
 import { applyOverrides, deepClone } from "../merge";
 import type { DocumentStorage, LayoutDocumentService, LayoutDTO } from "../ports";
@@ -58,6 +63,9 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           documentId: saved.id,
           operation: "create",
           audit,
+          payload: buildSpecPatchPayload(undefined, input.spec),
+          clientId: input.clientId,
+          clientSeq: input.clientSeq,
         });
       }
       return saved as unknown as LayoutDTO;
@@ -102,11 +110,19 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       const updated = await storage.updateDocument(id, nextData, existing.meta, input.collectionId);
       flushEvents(entity);
       if (audit) {
+        const payload = buildLayoutDataPatchPayload(
+          existing.data as Record<string, unknown>,
+          nextData,
+          existing.updatedAt.toISOString(),
+        );
         await recordDocumentOp(storage, {
           orgId,
           documentId: id,
           operation: "update",
           audit,
+          payload,
+          clientId: options?.clientId,
+          clientSeq: options?.clientSeq,
         });
       }
       return updated as unknown as LayoutDTO;
@@ -182,6 +198,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           documentId: id,
           operation: "publish",
           audit,
+          payload: { opType: "lifecycle", action: "publish" } satisfies DocumentOpPayload,
         });
       }
       return published as unknown as LayoutDTO;
@@ -202,6 +219,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
           documentId: id,
           operation: "archive",
           audit,
+          payload: { opType: "lifecycle", action: "archive" } satisfies DocumentOpPayload,
         });
       }
       return archived as unknown as LayoutDTO;

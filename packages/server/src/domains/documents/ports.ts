@@ -168,6 +168,8 @@ export interface CreateLayoutInput {
   shellRef?: string | null;
   collectionId?: string | null;
   audit?: WriteAudit;
+  clientId?: string;
+  clientSeq?: number;
 }
 
 export interface UpdateLayoutInput {
@@ -320,7 +322,10 @@ export interface DocumentStorage {
     documentId: string;
     operation: string;
     audit: WriteAudit;
-  }): Promise<void>;
+    payload?: Record<string, unknown>;
+    clientId?: string;
+    clientSeq?: number;
+  }): Promise<{ serverVersion: number } | null>;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,7 +384,12 @@ export interface LayoutDocumentService {
     orgId: string,
     id: string,
     input: UpdateLayoutInput,
-    options?: { ifMatchUpdatedAt?: string; audit?: WriteAudit },
+    options?: {
+      ifMatchUpdatedAt?: string;
+      audit?: WriteAudit;
+      clientId?: string;
+      clientSeq?: number;
+    },
   ): Promise<LayoutDTO>;
   addVariant(
     orgId: string,

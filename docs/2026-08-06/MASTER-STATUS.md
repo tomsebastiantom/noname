@@ -22,6 +22,7 @@
 | Role matrix V1 | [`E2E-OPS-BATCH-VALIDATION.md`](../2026-08-04/E2E-OPS-BATCH-VALIDATION.md) |
 | Replay user stitch + admin search (O1–O2) | [`ANALYTICS-REPLAY-PENDING.md`](../2026-07-27/ANALYTICS-REPLAY-PENDING.md) |
 | Replay gzip compression (O3) | SDK `fflate` + worker; R2 `.json.gz` |
+| Storefront R2 deploy + bot HTML (I1–I2) | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) |
 
 ---
 
@@ -44,7 +45,7 @@
 | **C4** | Mobile push |
 | **E3** | Live CRDT collab |
 | **O4** | Playwright E2E for replay |
-| **I1–I2** | Bot SSR / R2 client deploy |
+| **I1–I2** | Bot HTML + R2 client deploy | [`STOREFRONT-PROD-I1-I2-RUNBOOK.md`](./STOREFRONT-PROD-I1-I2-RUNBOOK.md) — **shipped** |
 
 ---
 

@@ -59,3 +59,45 @@ describe("createLayoutService update If-Match", () => {
     expect(storage.updateDocument).toHaveBeenCalledOnce();
   });
 });
+
+describe("createLayoutService document_ops payload", () => {
+  it("records JSON Patch payload on layout update", async () => {
+    const previousSpec = {
+      root: "r",
+      elements: { r: { type: "Stack", props: { title: "Hi" }, children: [] } },
+    };
+    const nextSpec = {
+      root: "r",
+      elements: { r: { type: "Stack", props: { title: "Bye" }, children: [] } },
+    };
+    const layout = {
+      ...documentRow("layout-1", "layout"),
+      key: "home",
+      data: { spec: previousSpec },
+    };
+
+    const updated = { ...layout, data: { spec: nextSpec } };
+    const recordDocumentOp = vi.fn(async () => ({ serverVersion: 1 }));
+    const storage = {
+      findDocumentById: vi.fn(async () => layout),
+      updateDocument: vi.fn(async () => updated),
+      recordDocumentOp,
+    };
+
+    const service = createLayoutService(storage as never);
+    await service.update(
+      ORG,
+      "layout-1",
+      { spec: nextSpec },
+      { audit: { actorType: "human", actorId: "user-1" } },
+    );
+
+    expect(recordDocumentOp).toHaveBeenCalledOnce();
+    const call = recordDocumentOp.mock.calls[0]?.[0];
+    expect(call?.operation).toBe("update");
+    expect(call?.payload?.opType).toBe("patch_data");
+    expect(call?.payload?.patch).toEqual([
+      { op: "replace", path: "/spec/elements/r/props/title", value: "Bye" },
+    ]);
+  });
+});

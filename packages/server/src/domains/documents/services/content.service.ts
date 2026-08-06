@@ -1,6 +1,10 @@
 import { flushEvents } from "../../../shared/aggregate-root";
 import { recordDocumentOp } from "../../../shared/document-audit";
 import { ContentDocument } from "../entity";
+import {
+  buildDataPatchPayload,
+  type DocumentOpPayload,
+} from "../document-op-payload";
 import type { ContentDocumentService, DocumentStorage } from "../ports";
 import { extractCollectionFromBody } from "../shared/document-collection";
 import { pickLocalizedValue, resolveTenantLocales } from "../shared/locale";
@@ -50,6 +54,7 @@ export function createContentService(
           documentId: saved.id,
           operation: "create",
           audit,
+          payload: buildDataPatchPayload(undefined, builtData),
         });
       }
       return saved;
@@ -102,6 +107,11 @@ export function createContentService(
           documentId: updated.id,
           operation: "update",
           audit,
+          payload: buildDataPatchPayload(
+            existing.data as Record<string, unknown>,
+            builtData,
+            existing.updatedAt.toISOString(),
+          ),
         });
       }
       return updated;
@@ -119,6 +129,7 @@ export function createContentService(
           documentId: existing.id,
           operation: "delete",
           audit,
+          payload: { opType: "lifecycle", action: "delete" } satisfies DocumentOpPayload,
         });
       }
     },
@@ -135,6 +146,7 @@ export function createContentService(
           documentId: existing.id,
           operation: "publish",
           audit,
+          payload: { opType: "lifecycle", action: "publish" } satisfies DocumentOpPayload,
         });
       }
       if (options.onContentPublished) {

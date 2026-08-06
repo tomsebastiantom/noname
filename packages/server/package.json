@@ -51,8 +51,10 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@automerge/automerge": "^3.4.0",
     "@types/node": "^26.0.0",
     "drizzle-kit": "^0.31.0",
+    "loro-crdt": "^1.13.9",
     "tsx": "^4.0.0",
     "typescript": "^7.0.0"
   }

@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  bigint,
   index,
   integer,
   jsonb,
@@ -123,21 +124,26 @@ export const documentTypes = pgTable(
   }),
 );
 
-/** Append-only audit log for content/layout document writes (A′.8). */
+/** Append-only audit log for content/layout document writes (A′.8, E3-pre). */
 export const documentOps = pgTable(
   "document_ops",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     orgId: text("org_id").notNull(),
     documentId: uuid("document_id").notNull(),
+    serverVersion: bigint("server_version", { mode: "number" }).notNull(),
     operation: text("operation").notNull(),
     actorType: text("actor_type").notNull(),
     actorId: text("actor_id").notNull(),
     onBehalfOf: text("on_behalf_of"),
     taskId: uuid("task_id"),
+    clientId: text("client_id"),
+    clientSeq: bigint("client_seq", { mode: "number" }),
+    payload: jsonb("payload").$type<Record<string, unknown>>(),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => ({
     documentIdx: index("document_ops_document").on(t.orgId, t.documentId),
+    clientDedupIdx: uniqueIndex("document_ops_client_dedup").on(t.clientId, t.clientSeq),
   }),
 );

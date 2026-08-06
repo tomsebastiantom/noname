@@ -12,7 +12,7 @@ export default {
   output: {
     filename: isDev ? "[name].js" : "[name].[contenthash:8].js",
     chunkFilename: isDev ? "[name].js" : "[name].[contenthash:8].js",
-    publicPath: "/",
+    publicPath: isDev ? "/" : "/_assets/",
     clean: !isDev,
   },
   target: "web",
