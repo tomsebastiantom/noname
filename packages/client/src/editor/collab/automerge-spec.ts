@@ -217,8 +217,8 @@ export function applySpecTreeDiffToDraft(draft: AutomergeSpecDoc, prev: Spec, ne
   if (prev.root !== next.root) {
     draft.root = next.root;
   }
-  const prevEls = (prev.elements ?? {}) as Record<string, Record<string, unknown>>;
-  const nextEls = (next.elements ?? {}) as Record<string, Record<string, unknown>>;
+  const prevEls = (prev.elements ?? {}) as unknown as Record<string, Record<string, unknown>>;
+  const nextEls = (next.elements ?? {}) as unknown as Record<string, Record<string, unknown>>;
   if (!draft.elements) draft.elements = {};
   const draftEls = draft.elements as Record<string, Record<string, unknown>>;
 

@@ -30,7 +30,6 @@
     "@react-email/render": "^2.1.0",
     "@tiptap/core": "^3.29.2",
     "@tiptap/extension-collaboration": "^3.29.2",
-    "@tiptap/y-tiptap": "^3.0.8",
     "@tiptap/extension-link": "^3.29.2",
     "@tiptap/extension-placeholder": "^3.29.2",
     "@tiptap/extension-table": "^3.29.2",

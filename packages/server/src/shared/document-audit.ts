@@ -3,7 +3,7 @@ import type { DocumentOpPayload } from "../domains/documents/document-op-payload
 import type { DocumentStorage } from "../domains/documents/ports";
 
 export async function recordDocumentOp(
-  storage: DocumentStorage,
+  storage: Pick<DocumentStorage, "recordDocumentOp">,
   input: {
     orgId: string;
     documentId: string;

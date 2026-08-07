@@ -6,7 +6,7 @@ export function formatAgentTaskError(raw: string): string {
     if (/collab|automerge|layout/i.test(message)) {
       return "The layout could not be updated safely while live collaboration was active. Refresh the page, then ask the agent to try again.";
     }
-    return "Live collaboration hit a sync conflict while the agent was working. Refresh the page, then try again.";
+    return "The agent hit an internal error while working on this task. Refresh the page, then try again.";
   }
 
   if (/layout collab session not connected/i.test(message)) {

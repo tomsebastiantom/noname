@@ -7,12 +7,24 @@ import * as syncProtocol from "y-protocols/sync";
 import * as Y from "yjs";
 import { AgentRichTextYjsEditor } from "../agent/collab/agent-richtext-yjs-editor";
 import type { ContentDocumentService, DocumentStorage } from "../documents/ports";
+import { onCollabRelayMessage, publishCollabRelay } from "./collab-redis-relay";
 import { parseRichTextCollabRoomName } from "./richtext-collab-ticket";
 import { sendAutomergeBytes } from "./ws-bytes";
 
 const messageSync = 0;
 const messageAwareness = 1;
 const SNAPSHOT_DEBOUNCE_MS = 5_000;
+
+/** Room kinds registered with the cross-replica relay (see `collab-redis-relay.ts`). */
+const RELAY_KIND_DOC = "richtext-doc";
+const RELAY_KIND_AWARENESS = "richtext-awareness";
+
+/**
+ * Marks a Yjs transaction as originating from another replica (relayed via Redis) rather than a
+ * local peer or this process's own snapshot editor — used to avoid re-publishing a message this
+ * replica only just received, which would otherwise ping-pong forever between replicas.
+ */
+const RELAY_ORIGIN = Symbol("collab-relay-origin");
 
 type RoomMeta = {
   orgId: string;
@@ -60,20 +72,22 @@ function broadcastRoom(room: YjsRoom, message: Uint8Array, exclude?: object): vo
 
 function onAwarenessUpdate(
   room: YjsRoom,
+  roomName: string,
   { added, updated, removed }: { added: number[]; updated: number[]; removed: number[] },
   origin: unknown,
 ): void {
   const changedClients = added.concat(updated, removed);
   if (changedClients.length === 0) return;
 
+  const rawUpdate = awarenessProtocol.encodeAwarenessUpdate(room.awareness, changedClients);
   const encoder = encoding.createEncoder();
   encoding.writeVarUint(encoder, messageAwareness);
-  encoding.writeVarUint8Array(
-    encoder,
-    awarenessProtocol.encodeAwarenessUpdate(room.awareness, changedClients),
-  );
+  encoding.writeVarUint8Array(encoder, rawUpdate);
   const message = encoding.toUint8Array(encoder);
   broadcastRoom(room, message, origin as object | undefined);
+  if (origin !== RELAY_ORIGIN) {
+    publishCollabRelay(RELAY_KIND_AWARENESS, roomName, rawUpdate);
+  }
 }
 
 function handleSyncMessage(room: YjsRoom, ws: WSContext, decoder: decoding.Decoder): void {
@@ -157,13 +171,21 @@ export function createRichTextYjsRoomManager(deps: RichTextYjsRoomManagerDeps) {
     }
   }
 
-  function onDocumentUpdate(room: YjsRoom, update: Uint8Array, origin: unknown): void {
+  function onDocumentUpdate(
+    room: YjsRoom,
+    roomName: string,
+    update: Uint8Array,
+    origin: unknown,
+  ): void {
     const encoder = encoding.createEncoder();
     encoding.writeVarUint(encoder, messageSync);
     syncProtocol.writeUpdate(encoder, update);
     const message = encoding.toUint8Array(encoder);
     broadcastRoom(room, message, origin as object | undefined);
     schedulePersist(room);
+    if (origin !== RELAY_ORIGIN) {
+      publishCollabRelay(RELAY_KIND_DOC, roomName, update);
+    }
   }
 
   function getOrCreateRoom(roomName: string): YjsRoom | null {
@@ -186,18 +208,32 @@ export function createRichTextYjsRoomManager(deps: RichTextYjsRoomManagerDeps) {
     };
 
     doc.on("update", (update: Uint8Array, origin: unknown) => {
-      onDocumentUpdate(room, update, origin);
+      onDocumentUpdate(room, roomName, update, origin);
     });
     awareness.on(
       "update",
       (payload: { added: number[]; updated: number[]; removed: number[] }, origin: unknown) => {
-        onAwarenessUpdate(room, payload, origin);
+        onAwarenessUpdate(room, roomName, payload, origin);
       },
     );
 
     rooms.set(roomName, room);
     return room;
   }
+
+  // Registered once per process — applies messages from other replicas' rooms of the same
+  // name to this replica's local room (if one exists; if not, there are no local peers to
+  // relay to, so the message is simply dropped — that replica's own room will persist it).
+  onCollabRelayMessage(RELAY_KIND_DOC, ({ roomName, data }) => {
+    const room = rooms.get(roomName);
+    if (!room) return;
+    Y.applyUpdate(room.doc, data, RELAY_ORIGIN);
+  });
+  onCollabRelayMessage(RELAY_KIND_AWARENESS, ({ roomName, data }) => {
+    const room = rooms.get(roomName);
+    if (!room) return;
+    awarenessProtocol.applyAwarenessUpdate(room.awareness, data, RELAY_ORIGIN);
+  });
 
   return {
     joinPeer(roomName: string, ws: WSContext): void {

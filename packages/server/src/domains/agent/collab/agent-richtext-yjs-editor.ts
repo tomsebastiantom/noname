@@ -3,8 +3,7 @@ import {
   richTextToTipTapJson,
   tipTapJsonToRichText,
 } from "@noname/documents";
-import { Editor, Extension } from "@tiptap/core";
-import Collaboration from "@tiptap/extension-collaboration";
+import { type Extensions, getSchema } from "@tiptap/core";
 import Link from "@tiptap/extension-link";
 import { Table } from "@tiptap/extension-table";
 import TableCell from "@tiptap/extension-table-cell";
@@ -12,35 +11,47 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
-import { defaultSelectionBuilder, yCursorPlugin } from "@tiptap/y-tiptap";
-import { Window } from "happy-dom";
+import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProseMirrorRootNode } from "@tiptap/y-tiptap";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import type * as Y from "yjs";
 import { agentRichTextEmbedExtensions } from "./richtext-tiptap-extensions";
 
-let domElement: HTMLElement | null = null;
+/** Yjs collaboration field TipTap's Collaboration extension defaults to (`ydoc.getXmlFragment("default")`). */
+const COLLAB_FIELD = "default";
 
-function editorElement(): HTMLElement {
-  if (domElement) return domElement;
-  const window = new Window({ url: "https://localhost" });
-  const globalRecord = globalThis as typeof globalThis & {
-    window?: Window;
-    document?: Document;
-    navigator?: Navigator;
-    HTMLElement?: typeof HTMLElement;
-    getComputedStyle?: typeof getComputedStyle;
-  };
-  globalRecord.window = window as unknown as Window & typeof globalThis.window;
-  globalRecord.document = window.document;
-  globalRecord.HTMLElement = window.HTMLElement;
-  globalRecord.getComputedStyle = window.getComputedStyle.bind(window);
-  domElement = window.document.createElement("div");
-  return domElement;
-}
+/**
+ * Same node/mark set the browser editor renders (StarterKit + table/link/underline +
+ * embed extensions) — everything except `Collaboration`/`CollaborationCursor`, which are
+ * ProseMirror-view plugins with nothing to attach to here; there is no `EditorView`.
+ */
+const AGENT_RICHTEXT_EXTENSIONS: Extensions = [
+  StarterKit.configure({
+    heading: { levels: [2, 3] },
+    undoRedo: false,
+    link: false,
+    underline: false,
+  }),
+  Underline,
+  Link.configure({ openOnClick: false }),
+  Table.configure({ resizable: true }),
+  TableRow,
+  TableHeader,
+  TableCell,
+  ...agentRichTextEmbedExtensions,
+];
 
-/** Headless TipTap editor bound to a shared Y.Doc — mirrors browser rich-text collab schema. */
+/** Built once — pure function of the fixed extension set above, not of any document/session. */
+const richTextSchema = getSchema(AGENT_RICHTEXT_EXTENSIONS);
+
+/**
+ * Headless Yjs<->rich-text bridge for the AI agent, operating directly on the ProseMirror
+ * document model via `@tiptap/y-tiptap`'s low-level Yjs<->ProseMirror conversion functions
+ * (the same functions `ySyncPlugin` uses internally to apply transactions) — no TipTap
+ * `Editor`/`EditorView` and no DOM shim. This works because Yjs collaboration syncs the
+ * document model (a Y.XmlFragment), not a rendered view; nothing here is ever displayed.
+ */
 export class AgentRichTextYjsEditor {
-  private editor: Editor | null = null;
+  private fragment: Y.XmlFragment | null = null;
 
   bind(
     ydoc: Y.Doc,
@@ -49,62 +60,33 @@ export class AgentRichTextYjsEditor {
       user: { name: string; color: string };
     },
   ): void {
-    this.destroy();
-    const extensions = [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-        undoRedo: false,
-        link: false,
-        underline: false,
-      }),
-      Underline,
-      Link.configure({ openOnClick: false }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      ...agentRichTextEmbedExtensions,
-      Collaboration.configure({ document: ydoc }),
-    ];
-    if (collab) {
-      collab.awareness.setLocalStateField("user", collab.user);
-      extensions.push(
-        Extension.create({
-          name: "collaborationCursor",
-          addProseMirrorPlugins() {
-            return [
-              yCursorPlugin(collab.awareness, {
-                selectionBuilder: defaultSelectionBuilder,
-              }),
-            ];
-          },
-        }),
-      );
-    }
-    this.editor = new Editor({
-      element: editorElement(),
-      extensions,
-    });
+    this.fragment = ydoc.getXmlFragment(COLLAB_FIELD);
+    // Presence only — no ProseMirror view/cursor plugin exists here to render into.
+    collab?.awareness.setLocalStateField("user", collab.user);
   }
 
   applyDocument(doc: RichTextDocument): void {
-    const editor = this.editor;
-    if (!editor) {
+    const fragment = this.fragment;
+    if (!fragment) {
       throw new Error("Rich text Yjs editor not bound");
     }
-    editor.commands.setContent(richTextToTipTapJson(doc), { emitUpdate: true });
+    // Diffs the given ProseMirror JSON against the fragment's current content in place —
+    // the same `updateYFragment` mechanism `ySyncPlugin` runs per keystroke, so this is a
+    // safe incremental write against an already-shared Y.Doc, not a destructive re-import.
+    prosemirrorJSONToYXmlFragment(richTextSchema, richTextToTipTapJson(doc), fragment);
   }
 
   currentDocument(): RichTextDocument {
-    const editor = this.editor;
-    if (!editor) {
+    const fragment = this.fragment;
+    if (!fragment) {
       throw new Error("Rich text Yjs editor not bound");
     }
-    return tipTapJsonToRichText(editor.getJSON());
+    return tipTapJsonToRichText(
+      yXmlFragmentToProseMirrorRootNode(fragment, richTextSchema).toJSON(),
+    );
   }
 
   destroy(): void {
-    this.editor?.destroy();
-    this.editor = null;
+    this.fragment = null;
   }
 }

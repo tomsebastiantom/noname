@@ -100,13 +100,14 @@ export class RichTextCollabWsClient {
   }
 
   setAwarenessUser(user: { name: string; color: string }): void {
-    this.awareness.setLocalState({ user }, this.origin);
+    // y-protocols' setLocalState takes only the state — there is no origin parameter.
+    this.awareness.setLocalState({ user });
   }
 
   pulseAwareness(): void {
     const state = this.awareness.getLocalState();
     if (!state) return;
-    this.awareness.setLocalState({ ...state, activeAt: Date.now() }, this.origin);
+    this.awareness.setLocalState({ ...state, activeAt: Date.now() });
   }
 
   private async openSocket(url: string): Promise<void> {

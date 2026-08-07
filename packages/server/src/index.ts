@@ -15,6 +15,7 @@ import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
 import { createCollabDomain } from "./domains/collab";
+import { initCollabRedisRelay } from "./domains/collab/collab-redis-relay";
 import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
@@ -39,6 +40,7 @@ import { initSseManager } from "./shared/sse-manager";
 
 initEventBus();
 initSseManager();
+initCollabRedisRelay();
 
 const app = new Hono();
 

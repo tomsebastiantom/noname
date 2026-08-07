@@ -36,6 +36,8 @@ URL → templateFromPath → layout document → GET /api/edge/schema → <Rende
 
 **Stop and reject** if the approach is: hand-written React route per screen, a `pages/` tree for org UI, or commerce-specific one-off admin forms.
 
+**Named exception — visual editor (`?edit=true`).** The storefront visual editor does not resolve through `templateFromPath` + edge schema like every other org-facing surface — it lazy-loads a standalone `EditPageView` tree. This is deliberate: the editor's canvas/drag-drop/layer-tree UX is materially more complex than the spec pipeline is designed for. Treat editor-internal code as its own bespoke surface with its own test/perf bar; it does not need to itself be spec-driven the way admin panels and storefront pages do. The exception is for *how the editor loads* — editor code must still never import from `admin/*` (see PR checklist).
+
 ---
 
 ## Skeleton (catalog layers)
@@ -51,6 +53,29 @@ host                # template routing, auth gate, load spec + catalog
 admin panels        # feature components + admin registry (operator tools)
 extensions          # optional storefront packs (schema, components, actions, registry)
 ```
+
+---
+
+## The persistence layer (CMS/documents) — not part of `@json-render`
+
+**`@json-render` has no opinion on where a spec comes from.** Everything in this section is this platform's own layer on top of the rendering engine — know that it's a deliberate addition, not something the underlying library provides, when extending it.
+
+```
+templateFromPath(pathname)
+  → layout document (Postgres, via documents domain)
+  → GET /api/edge/schema (draft-aware, tenant-scoped)
+  → Spec { root, elements, state }
+  → <Renderer spec={…} registry={…} />
+```
+
+| Concept | Where it lives | Not the same as |
+|---|---|---|
+| **Layout document** | `documents` domain, one row per template | A `Spec` — becomes one once resolved, not the wire format itself |
+| **Content type / entry** | `documents` domain, schema-validated CMS rows | A catalog component prop schema — describes data, not UI |
+| **Refs** | `@noname/documents` | A `$state` path — refs resolve server-side before reaching `$state` |
+| **Draft vs. published** | A flag on the document; edge schema is draft-aware for editor sessions | Not a renderer concept — the renderer always gets one resolved `Spec` |
+
+Adding a content type, admin panel, or domain touches this layer, not the rendering engine — expect multiple registries/files to stay in sync by hand (nothing currently checks this automatically).
 
 ---
 
@@ -182,6 +207,10 @@ Do **not** use `registerHandler` in `useEffect` for initial catalog handlers.
 <CatalogUiShell spec={spec} registry={registry} />
 ```
 
+### Registry composition — no type-erasure
+
+Compose a registry's `components`/`actions` maps as one typed object literal (`{ ...setA, ...setB }`), never a cast. Needing `as never`/`as any` at a `defineRegistry` call means the handler map's declared type doesn't match its catalog — fix the declaration, don't cast around it; a cast disables the compiler check that catches a broken action signature.
+
 ### Load on mount — json-render has no built-in hook
 
 Official json-render examples **do not** load remote data inside catalog components on mount:
@@ -279,7 +308,7 @@ Implementation: shared `useCatalogSubmit` hook.
 | Catalog component — editable draft save | `useCatalogSubmit()` | Pending/error/success around `execute` |
 | Layout spec (`watch`, `action` on Pressable) | Same — resolved by `ActionProvider` | Spec-driven side effects |
 | Outside React tree (tests, one-off scripts) | `executeAction(name, params, set, state)` from registry | Imperative, no provider context |
-| **Never** in components | `fetch("/api/…")` directly | Bypasses catalog validation; use action handler helpers |
+| **Never** in a component registered in a catalog registry | `fetch("/api/…")` directly | Bypasses catalog validation; use action handler helpers. Does **not** apply to host-level files (route page, a data-owning hook) that load data from *outside* the spec tree — matches how `@json-render`'s own hooks (`useUIStream`, `useChatUI`) and example apps work. See [reference.md § Host vs. catalog boundary](reference.md#host-vs-catalog-boundary). |
 
 **Domain helpers** — only **action handlers** (or server) may call them, not components.
 
@@ -415,6 +444,21 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 pnpm typecheck
 pnpm test          # if actions/schemas changed
 # re-run layout/content seed if spec changed
+```
+
+**PR review checklist — spec-driven UI:**
+
+```
+- [ ] No new hand-written route pages for org UI (editor's ?edit=true is the one named exception — see above)
+- [ ] No fetch() inside a component registered in admin/editor/platform registry — host/page/hook-level fetch is fine (see boundary above)
+- [ ] Copy in props.labels or layout seed — not TSX literals
+- [ ] New catalog components: catalogProps(config, labels) — no top-level flat props
+- [ ] Mount load: MountAction or useMountAction — never [execute] in a useEffect dep array
+- [ ] Editor code does not import admin/* (re-exports, types, or components)
+- [ ] Registry composition uses typed object literals — no `as never`/`as any` at defineRegistry boundaries
+- [ ] New editor strings: editorShellLabelsSchema + layout seed
+- [ ] Interactive UI: keyboard path + aria where applicable
+- [ ] New content type / admin panel: confirm every registry touched (admin/registry.ts, admin/schemas/*, platform-routes.ts, auth/admin-routes.ts) — nothing currently checks these stay in sync automatically
 ```
 
 Manual: load the org URL — page must render from edge schema, not a blank shell.

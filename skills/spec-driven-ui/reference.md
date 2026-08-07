@@ -90,6 +90,23 @@ components → useActions().execute({ action, params }) · useStateValue(path)
 
 ---
 
+## Host vs. catalog boundary
+
+A component registered in any registry merged by `catalog-loader.ts` — `admin/registry.ts`, `editor/registry.ts`, `platform/registry.ts`, and every `packages/extensions/src/*/registry.ts` (and, once built, tenant-private/marketplace registries) — never calls `fetch` — it reads `props`/`$state` and emits actions. A host-level file (route page, a hook producing a surface's initial state) may fetch directly, the same way `@json-render/react`'s own hooks (`useUIStream`, `useChatUI`) and example apps do.
+
+**Why:** catalog components are the AI/CMS safety boundary — a component the spec can place and fully describe via its schema. A component that fetches on its own has a side-channel the spec can't see or constrain. It also means loading/error/auth state is handled once centrally (`ActionProvider.execute`) instead of ad hoc per component, components stay portable across renderer targets (React/Vue/PDF/email/etc.), and components stay unit-testable without a mocked network layer.
+
+**Exception criteria — all four required:**
+
+1. Never mounts as part of spec-addressed render output — not just "is this file itself a registry key," but "does it render inside the tree a catalog component produces, even transitively" (e.g. `AdminNav` isn't a registry key but renders inside `AdminShell`, which is — so `AdminNav` still fails this criterion)
+2. Owns a surface's lifecycle (route/page/bootstrap-level), not a leaf's data
+3. Inherently single-renderer-target (browser-only concern like routing/auth redirect)
+4. No existing catalog action already covers the same fetch
+
+If any fails, route it through an action handler instead — failing criterion 1 is never resolved by registering the file as its own catalog type (for a bootstrap file that's circular; for a nested file, use an action + `$state` instead).
+
+---
+
 ## UI patterns
 
 Hand-authored layout specs + server actions — not runtime LLM-generated UI. Pick by **UI shape**:

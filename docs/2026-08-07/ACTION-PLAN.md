@@ -8,13 +8,13 @@
 
 ---
 
-## P0 — now
+## P0 — now — **all three done, 2026-08-07**
 
 | # | Action | Why | Ref |
 |---|---|---|---|
-| 1 | **Reconcile the failing `pnpm -r typecheck`** — either fix the real TS errors in `packages/server` or confirm CI is actually failing and treat it as a broken build. | A "passing" CI gate that doesn't actually gate is worse than no gate — it's false confidence. | `MAINTAINABILITY.md` |
-| 2 | **Fix the `/admin/settings/traces` route mapping gap** in `platform-routes.ts`. | Confirmed live bug: the route is unreachable via its intended template resolution and prefetch. | `ARCHITECTURE.md`, `EXPANDABILITY.md` |
-| 3 | **Add `CommsEvents`/`WebhookEvents` to `DOMAIN_EVENT_SOURCES`** in `domain-events.ts` (or explicitly document why they're excluded). | Comms/webhook lifecycle events are currently invisible to analytics — a silent product/data gap, not just style. | `ARCHITECTURE.md` |
+| 1 | ~~**Reconcile the failing `pnpm -r typecheck`**~~ — **Fixed.** All `happy-dom`/type-cast errors in `packages/server` and `packages/client` resolved (see `RICHTEXT-YJS-REWRITE-VERIFICATION.md`); `pnpm -r exec tsc --noEmit` is clean across all 10 packages. | A "passing" CI gate that doesn't actually gate is worse than no gate — it's false confidence. | `MAINTAINABILITY.md` |
+| 2 | ~~**Fix the `/admin/settings/traces` route mapping gap**~~ — **Fixed.** `platform-routes.ts` maps `/admin/settings/traces` to `admin_traces`/`traces` nav; `scripts/seed/demo.ts` seeds the corresponding layout document. | Confirmed live bug: the route is unreachable via its intended template resolution and prefetch. | `ARCHITECTURE.md`, `EXPANDABILITY.md` |
+| 3 | ~~**Add `CommsEvents`/`WebhookEvents` to `DOMAIN_EVENT_SOURCES`**~~ — **Fixed** in `domain-events.ts`. | Comms/webhook lifecycle events are currently invisible to analytics — a silent product/data gap, not just style. | `ARCHITECTURE.md` |
 
 ---
 
@@ -36,7 +36,7 @@
 |---|---|---|
 | 5 | Add pagination (`parseLimitOffset`, already exists) to `documents.listDocuments`, `findContentTypes`, `machines.listInstances`/`listDefinitions`/`listTransitions`, and any other unbounded list route. | `SCALABILITY.md` |
 | 6 | Add missing indexes: `machine_instances(orgId)`, `machine_transitions(instanceId)`, and a GIN/functional index for the JSONB paths actually queried (`documents.data->>'slug'`, `documents.meta->>'searchText'`). Replace the `documents.data::text LIKE` search with a JSONB-native or full-text approach. | `SCALABILITY.md`, `EFFICIENCY-PERFORMANCE.md` |
-| 7 | Decide and document the horizontal-scaling story for collab rooms and SSE: either (a) enforce document-scoped sticky sessions at the LB and document it as a hard constraint, or (b) move room state to Redis/Hocuspocus-style shared storage. Do this **before** running >1 replica in production, not after an incident. | `SCALABILITY.md` |
+| 7 | ~~Decide and document the horizontal-scaling story for collab rooms and SSE~~ — **Decided and built, 2026-08-07: Redis-backed shared room state**, not sticky sessions. Both room managers now relay live collab state across replicas via a new `collab-redis-relay.ts` (same pub/sub idiom as `event-bus.ts`/`sse-manager.ts`, same silent single-instance fallback without Redis). Yjs rich-text rooms relay raw doc/awareness updates and apply them via `Y.applyUpdate`; Automerge layout rooms relay full `Automerge.save()` snapshots and merge them via `Automerge.merge()`/`DocHandle.update()` — commutative/idempotent, so no peer-handshake protocol was needed across replicas, unlike each room's own local WS peer protocol. See `RICHTEXT-YJS-REWRITE-VERIFICATION.md` for the manual cross-replica checks still needed (real 2-replica smoke test) and one flagged pre-existing gap: rich-text rooms don't hydrate from Postgres on room creation (they start blank and rely on the connecting client's own state) — real even on a single replica after all peers leave, but more visible once rooms can be created independently per-replica. | `SCALABILITY.md` |
 | 8 | Add alerting on the event-bus Redis-fallback path (`event-bus.ts`'s `catch { publisher = null }`) so a silent degrade-to-single-instance failure is visible. | `SCALABILITY.md` |
 | 9 | Fix N+1s: batch Zitadel MFA lookups in `auth/service.ts` team listing; batch Keto tuple revokes in `scope/service.ts`; reconsider per-flag DB writes in the hot evaluation path (`flags/service.ts`). | `SCALABILITY.md` |
 | 10 | Separate background workers from the API process (or at minimum make worker concurrency independently configurable) so HTTP and job-processing scale independently and don't compete for the fixed 10-connection DB pool. | `SCALABILITY.md` |
@@ -86,7 +86,7 @@ The design in `skills/spec-driven-ui/SKILL.md` is sound; these are the violation
 | 25c | Evaluate `@json-render/directives`' built-in `$t` i18n directive (or a project directive via the already-installed `defineDirective`/`createDirectiveRegistry`) before building a bespoke localization layer for the hardcoded-copy findings. | `JSON-RENDER-REFERENCE-PATTERNS.md`, `SPEC-DRIVEN-UI-COMPLIANCE.md` |
 | 25d | When rewriting `skills/spec-driven-ui/SKILL.md`, scope the "never fetch in components" rule to "components registered in a catalog registry," matching how the upstream library's own hooks (`useUIStream`, `useChatUI`) and example host pages fetch directly — the current blanket rule is stricter than the library it's built on. | `JSON-RENDER-REFERENCE-PATTERNS.md` |
 | 25e | **When rewriting the skill, add a dedicated, from-scratch section for the CMS/documents/persistence layer** (layout documents, content types/entries, refs, draft/publish, edge schema caching) — no upstream `@json-render` skill covers this, since the library itself has no concept of it. Don't let it get folded into or overshadowed by sections that mirror upstream's catalog/registry/action guidance. | `JSON-RENDER-REFERENCE-PATTERNS.md`, `EXPANDABILITY.md` |
-| 25f | **Review and apply [`SKILL-REWRITE-PROPOSAL.md`](./SKILL-REWRITE-PROPOSAL.md)** — a drafted, ready-to-paste rewrite of `skills/spec-driven-ui/SKILL.md` covering 25d/25e above plus a merged, expanded PR-review checklist. Not yet applied to the live skill file; needs a decision on which parts to accept before editing `skills/spec-driven-ui/SKILL.md` itself. | `SKILL-REWRITE-PROPOSAL.md` |
+| 25f | ~~Review and apply [`SKILL-REWRITE-PROPOSAL.md`](./SKILL-REWRITE-PROPOSAL.md)~~ — **Applied 2026-08-07** to `skills/spec-driven-ui/SKILL.md` and `skills/spec-driven-ui/reference.md`: narrowed fetch rule + host/catalog boundary section, new persistence-layer section, named `?edit=true` exception, registry-composition guidance, merged PR checklist. **Re-verified same day** (`SPEC-DRIVEN-UI-COMPLIANCE.md` § Re-verification) — none of items 24–25's files reclassify as exceptions; proceed with 22–25 as originally scoped. | `SKILL-REWRITE-PROPOSAL.md` |
 
 ---
 

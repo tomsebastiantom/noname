@@ -82,7 +82,7 @@ export function createUpdateDraftFieldTool(
         richTextSession?.matches(documentId, fieldKey, resolvedLocale) ?? false;
       const richTextDoc = viaCollabSession ? parseAgentRichTextFieldValue(value) : null;
 
-      if (viaCollabSession && richTextDoc) {
+      if (richTextSession && viaCollabSession && richTextDoc) {
         await richTextSession.applyRichTextDocument(richTextDoc);
         deps.artifacts.push({
           kind: "content",
@@ -97,7 +97,7 @@ export function createUpdateDraftFieldTool(
           fieldKey,
           status: doc.status,
         };
-      } else if (viaCollabSession) {
+      } else if (richTextSession && viaCollabSession) {
         richTextSession.pulseAwareness();
       }
 

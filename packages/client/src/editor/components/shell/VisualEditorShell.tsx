@@ -1,3 +1,4 @@
+import type { Spec } from "@json-render/core";
 import { Children } from "react";
 import type { ComponentCtx } from "../../../core/components/types";
 import type { CatalogProps } from "../../../schemas/shared";
@@ -234,7 +235,9 @@ export function EditorAgentPanelSlot() {
       if (layoutDocumentId) clearAgentChatForLayout(layoutDocumentId);
     },
     onLayoutPatched: reloadLayoutAfterAgentPatch,
-    onLayoutReverted: applyAgentRevertedLayoutSpec,
+    // Wire payload is untyped JSON (RevertedLayoutSpec.spec) until resolved — the shape
+    // is assumed to be a valid Spec here, same trust boundary as the rest of the agent panel.
+    onLayoutReverted: (spec) => applyAgentRevertedLayoutSpec(spec as unknown as Spec),
   });
 
   const agentInPresence =

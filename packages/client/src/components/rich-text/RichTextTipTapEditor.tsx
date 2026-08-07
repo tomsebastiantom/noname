@@ -486,11 +486,7 @@ function RichTextCollabEditor({
     [binding, contentDocumentId, fieldKey],
   );
   const extensions = useMemo(
-    () => [
-      ...buildBaseExtensions(true),
-      collabExt.collaboration,
-      collabExt.collaborationCursor,
-    ],
+    () => [...buildBaseExtensions(true), collabExt.collaboration, collabExt.collaborationCursor],
     [collabExt],
   );
   const editor = useEditor(

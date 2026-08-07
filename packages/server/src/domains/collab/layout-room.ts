@@ -18,6 +18,7 @@ import {
 } from "./automerge-spec";
 import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { createCollabAutomergeChunkStore } from "./collab-automerge-chunk-store";
+import { onCollabRelayMessage, publishCollabRelay } from "./collab-redis-relay";
 import { PostgresAutomergeStorageAdapter } from "./postgres-automerge-storage";
 import {
   type CollabAgentTaskServerMessage,
@@ -31,6 +32,17 @@ import { LayoutCollabNetworkAdapter } from "./repo-network-hub";
 
 const SNAPSHOT_DEBOUNCE_MS = 5_000;
 const WS_OPEN = 1;
+
+/**
+ * Cross-replica relay kind for layout Automerge snapshots. Automerge merges are commutative and
+ * idempotent, so — unlike the layout room's own peer-to-peer sync protocol (join/peer handshake
+ * over `LayoutCollabNetworkAdapter`) — replicas don't need to negotiate a peer session with each
+ * other at all: each replica just publishes its full local `Automerge.save()` snapshot on every
+ * local change, and any other replica with local peers for that room merges it straight in.
+ * Merging an already-known snapshot is a no-op (no new ops to apply), so this naturally
+ * terminates instead of ping-ponging once replicas converge.
+ */
+const RELAY_KIND_LAYOUT_SNAPSHOT = "layout-snapshot";
 
 function isCollabSocketOpen(ws: WSContext): boolean {
   const raw = ws.raw;
@@ -73,6 +85,8 @@ type Room = {
   /** Last spec known to match Postgres; detects external HTTP writes (e.g. agent). */
   baselineSpec: Record<string, unknown>;
   reimporting: boolean;
+  /** True while merging a snapshot relayed from another replica — suppresses re-publishing it. */
+  applyingRelay: boolean;
 };
 
 function cloneSpec(spec: Record<string, unknown>): Record<string, unknown> {
@@ -240,16 +254,36 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
       persisting: false,
       baselineSpec: cloneSpec(spec),
       reimporting: false,
+      applyingRelay: false,
     };
 
     handle.on("change", () => {
       if (room.reimporting) return;
       schedulePersist(room);
+      if (!room.applyingRelay) {
+        publishCollabRelay(RELAY_KIND_LAYOUT_SNAPSHOT, key, Automerge.save(room.handle.doc()));
+      }
     });
 
     rooms.set(key, room);
     return room;
   }
+
+  // Registered once per process — merges layout snapshots relayed from other replicas into this
+  // replica's local room, if one exists (no local room means no local peers to relay to; that
+  // replica's own room already has the change and will persist it on its own debounce timer).
+  onCollabRelayMessage(RELAY_KIND_LAYOUT_SNAPSHOT, ({ roomName, data }) => {
+    const room = rooms.get(roomName);
+    if (!room || room.reimporting) return;
+    room.applyingRelay = true;
+    try {
+      room.handle.update((doc) => Automerge.merge(doc, Automerge.load(data)) as typeof doc);
+    } catch (err) {
+      console.error("[collab] layout relay merge failed", err);
+    } finally {
+      room.applyingRelay = false;
+    }
+  });
 
   function pruneInvalidHumanPeers(room: Room): boolean {
     let removed = false;

@@ -1,12 +1,12 @@
 import Collaboration from "@tiptap/extension-collaboration";
 import { useEffect, useRef, useState } from "react";
-import { YTiptapCollaborationCursor } from "./y-tiptap-collaboration-cursor";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
 import { sessionUserEmail } from "../../auth/session";
 import { mintRichTextCollabTicket, richTextCollabWsBaseUrl } from "../../editor/collab/collab-api";
 import { peerPresenceColor } from "../../editor/collab/presence";
+import { YTiptapCollaborationCursor } from "./y-tiptap-collaboration-cursor";
 
 export type RichTextCollabBinding = {
   ydoc: Y.Doc;

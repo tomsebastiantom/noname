@@ -1065,6 +1065,47 @@ const adminReplaySpec = adminPanelSpec(["loadReplay", "replayAdmin"], {
   },
 });
 
+const tracesAdminLabels = {
+  loadingLabel: "Loading traces…",
+  empty: "No traces recorded yet.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "You do not have permission to view traces.",
+  operationColumnHeader: "Operation",
+  durationColumnHeader: "Duration",
+  spansColumnHeader: "Spans",
+  statusColumnHeader: "Status",
+  timeColumnHeader: "Time",
+  traceIdColumnHeader: "Trace ID",
+  detailTitle: "Trace detail",
+  detailHint: "Select a trace to inspect its span waterfall.",
+  detailLoadingLabel: "Loading spans…",
+  detailEmptyLabel: "No spans recorded for this trace.",
+  okLabel: "OK",
+  errorLabel: "Error",
+  serviceColumnHeader: "Service",
+  spanTagsLabel: "Tags",
+  copyTraceIdLabel: "Copy trace ID",
+  copiedTraceIdLabel: "Copied",
+  openJaegerLabel: "Open in Jaeger",
+};
+
+const adminTracesSpec = adminPanelSpec(["loadTraces", "tracesAdmin"], {
+  loadTraces: {
+    type: "MountAction",
+    props: catalogProps({ action: "loadTracesAdmin" }, {}),
+  },
+  tracesAdmin: {
+    type: "TracesAdmin",
+    props: panelProps(
+      {},
+      "Traces",
+      "Distributed traces captured from instrumented server requests.",
+      tracesAdminLabels,
+    ),
+  },
+});
+
 const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdmin"], {
   loadAnalytics: {
     type: "MountAction",
@@ -1805,6 +1846,10 @@ async function main() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_flags", adminFlagsSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_traces", adminTracesSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
   await upsertLayout("admin_replay", adminReplaySpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
@@ -1896,7 +1941,7 @@ async function main() {
   console.log("Demo seed complete.");
   console.log(`  Org:     ${demoOrgId}`);
   console.log(`  Slug:    yogastore`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_analytics + admin_replay`);
+  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_analytics + admin_replay + admin_traces`);
   console.log(`  Client:  http://yogastore.localhost:5173`);
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);

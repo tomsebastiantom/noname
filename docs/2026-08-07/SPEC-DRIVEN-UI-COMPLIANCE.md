@@ -101,4 +101,23 @@ Treat this the same as the rest of this audit's expandability findings: the desi
 1. A Biome/custom lint rule banning `fetch(` under `src/admin/**` and `src/editor/**` (allow-list `lib/api.ts` and the auth module) — turns rule violations into CI failures instead of audit findings.
 2. A lint rule (or a simple import-graph script in CI) banning `editor/**` → `admin/**` imports.
 3. Fix the two `as never` casts in `platform/registry.ts` and `editor/registry.ts` by making the handler maps actually satisfy their schemas — this is the highest-leverage single fix since it turns on a compiler check that covers future action additions too, not just today's gap.
-4. Either formally document the `?edit=true` editor bypass as an approved, permanent exception in `SKILL.md` itself (with the reasoning), or put it on a roadmap to route through the schema pipeline like everything else — right now it's an undocumented exception to the team's own stated rule, which is confusing for anyone reading the skill at face value.
+4. ~~Either formally document the `?edit=true` editor bypass...~~ **Done** — see re-verification below.
+
+---
+
+## Re-verification against the finalized skill (2026-08-07)
+
+[`SKILL-REWRITE-PROPOSAL.md`](./SKILL-REWRITE-PROPOSAL.md) has been applied to `skills/spec-driven-ui/SKILL.md`/`reference.md`, including the narrowed fetch rule and its four-criteria host-vs-catalog boundary test. Re-checked every file named above against that test — **none reclassify as legitimate exceptions**; the new wording only makes explicit *why* they're violations:
+
+| File | Criterion 1 result | How |
+|---|---|---|
+| `AccountSecurityForm.tsx` | Fails directly | Is itself a key in `admin/registry.ts`'s `adminComponents` map |
+| `AgentsAdminForm.tsx` | Fails directly | Is itself a key in `admin/registry.ts`'s `adminComponents` map |
+| `LoginForm.tsx` | Fails directly | Is itself a key in `core/components.tsx`'s `coreComponents` map |
+| `AdminNav.tsx` | Fails transitively | Rendered inside `AdminShell` (`AdminShell.tsx:47`), which is a registry key |
+| `ReferenceFieldInput.tsx`, `MediaFieldInput.tsx` | Fail transitively | Rendered via `content-entry-field-input.tsx`, mounted inside `ContentEntryAdmin` (a registry key) |
+| `DocumentShareField.tsx` | Fails transitively | Rendered via `DocumentAccessFields.tsx`, mounted inside `LayoutEntryAdmin` (a registry key) |
+
+Only `main.tsx`'s editor bootstrap (`loadPage`, the `?edit=true` lazy-load) passes all four criteria — it's the one legitimate exception, and it's now named and explained directly in `SKILL.md`'s "When to use this skill" section, closing recommendation #4 above.
+
+**Practical effect:** items 1–3 above (and `ACTION-PLAN.md` items 22–23, 25) proceed exactly as originally scoped — fix `AgentsAdminForm.tsx`, `ReferenceFieldInput.tsx`, `MediaFieldInput.tsx`, `AccountSecurityForm.tsx` by wiring them onto `MountAction`/catalog actions, no file gets a pass.

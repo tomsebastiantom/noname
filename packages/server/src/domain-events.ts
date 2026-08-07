@@ -11,6 +11,8 @@ import {
 } from "./domains/documents/events";
 import { FlagEvents } from "./domains/flags/events";
 import { MachineEvents } from "./domains/machines/events";
+import { CommsEvents } from "./domains/notifications/events";
+import { WebhookEvents } from "./domains/webhooks/events";
 
 type ValueOf<T> = T[keyof T];
 
@@ -27,6 +29,8 @@ export const DOMAIN_EVENT_SOURCES = [
   TenantSettingsEvents,
   FlagEvents,
   MachineEvents,
+  CommsEvents,
+  WebhookEvents,
 ] as const;
 
 /** Event names with active publishers — analytics and other subscribers use this list. */
@@ -41,7 +45,9 @@ export type DomainEventName =
   | ValueOf<typeof PageTreeEvents>
   | ValueOf<typeof TenantSettingsEvents>
   | ValueOf<typeof FlagEvents>
-  | ValueOf<typeof MachineEvents>;
+  | ValueOf<typeof MachineEvents>
+  | ValueOf<typeof CommsEvents>
+  | ValueOf<typeof WebhookEvents>;
 
 export const ALL_DOMAIN_EVENTS: readonly DomainEventName[] = DOMAIN_EVENT_SOURCES.flatMap(
   (events) => Object.values(events),

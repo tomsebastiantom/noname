@@ -1,6 +1,6 @@
 # Proposal: rewrite `skills/spec-driven-ui/SKILL.md`
 
-> **Status: draft for review — not applied.** This does not modify `skills/spec-driven-ui/SKILL.md`. It proposes concrete changes and includes a full redlined replacement text at the bottom, so this can be reviewed and then applied (or partially applied) in a follow-up pass.
+> **Status: applied 2026-08-07.** All five changes below were applied to `skills/spec-driven-ui/SKILL.md` and the "Host vs. catalog boundary" section was added to `skills/spec-driven-ui/reference.md`. This document is now a record of *why* those changes were made — see the live skill files for current wording. Next step: re-verify `SPEC-DRIVEN-UI-COMPLIANCE.md`'s findings against the finalized exception criteria before wiring `ACTION-PLAN.md` items 24–25 onto `MountAction`.
 >
 > **Inputs:** [`SPEC-DRIVEN-UI-COMPLIANCE.md`](./SPEC-DRIVEN-UI-COMPLIANCE.md) (where the current skill's rules are violated in practice), [`JSON-RENDER-REFERENCE-PATTERNS.md`](./JSON-RENDER-REFERENCE-PATTERNS.md) (what the upstream `@json-render` library's own docs/examples actually recommend), and the current [`skills/spec-driven-ui/SKILL.md`](../../skills/spec-driven-ui/SKILL.md).
 
