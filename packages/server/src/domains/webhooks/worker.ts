@@ -3,6 +3,7 @@ import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
+import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { WebhookEvents } from "./events";
 import type { WebhookInboundJobData } from "./ports";
@@ -11,7 +12,9 @@ const tracer = trace.getTracer("webhooks-worker");
 
 export function startWebhookInboundWorker(deps: {
   storage: WebhooksStorage;
-}): Worker<WebhookInboundJobData> {
+}): Worker<WebhookInboundJobData> | null {
+  if (!workersEnabled()) return null;
+
   return new Worker<WebhookInboundJobData>(
     BULLMQ_QUEUES.WEBHOOK_INBOUND,
     async (job) => {
@@ -53,7 +56,7 @@ export function startWebhookInboundWorker(deps: {
     },
     {
       connection: getRedisConnection(),
-      concurrency: 4,
+      concurrency: workerConcurrency("WEBHOOK_INBOUND_WORKER_CONCURRENCY", 4),
       removeOnComplete: { count: 500 },
       removeOnFail: { count: 200 },
     },

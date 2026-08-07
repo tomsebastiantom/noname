@@ -10,6 +10,45 @@ A running log of manual API/UI checks needed after architecture fixes and cleanu
 
 ---
 
+## 2026-08-07 — Separate worker process (`worker.ts`) + configurable worker concurrency
+
+Extracted `index.ts`'s domain-wiring into `bootstrap.ts`'s `createApp()`; added `worker.ts` (same domain graph, never calls `serve()`). Every `startXWorker` (agent, webhook inbound/outbound, notifications/email, tenant catalog, analytics) now checks `shared/worker-runtime.ts`'s `workersEnabled()` (`RUN_WORKERS` env, default `true`) and returns `null` before constructing a BullMQ `Worker`, and reads concurrency from a per-queue env var. Automated tests (`worker-runtime.test.ts`, `domains/worker-disable.test.ts`) cover the env-parsing logic and the `RUN_WORKERS=false` guard clause in isolation — none of them start a real BullMQ `Worker` against a real Redis, boot the actual `index.ts`/`worker.ts` processes, or exercise the "route mounted in a process that never binds a port" shape of `worker.ts`, so this is one of the more test-blind changes in this log.
+
+**API (server-side):**
+- [ ] Start the API normally (`RUN_WORKERS` unset) and confirm behavior is unchanged from before this change: HTTP routes work, and background jobs (e.g. trigger an agent task, send a notification, submit a webhook) still get processed — this is the default/most common path and must not regress.
+- [ ] Start the API with `RUN_WORKERS=false` and confirm: HTTP still serves correctly (routes, `/health`), but a job enqueued during this run (e.g. an agent task) sits `pending`/`queued` and does **not** get processed while only this process is running.
+- [ ] Separately start `pnpm --filter @noname/server dev:worker` (or `start:worker` against a build) with the same `DATABASE_URL`/`REDIS_URL`/etc. and confirm the queued job from the previous check gets picked up and completes — proves the worker process actually shares the same queues/DB as the API process.
+- [ ] Confirm `worker.ts` does **not** bind a port: `curl` its host:port (whatever `PORT` would resolve to) and confirm connection refused, while the API replica's port still responds normally.
+- [ ] Exercise each of the 6 job types end to end with the API/worker split running (`RUN_WORKERS=false` on API, `worker.ts` separate): agent task, webhook inbound receipt, webhook outbound delivery, email/SMS notification, tenant catalog build, analytics event ingest — confirm each completes and its status/side effects land correctly.
+- [ ] Set a per-queue concurrency override (e.g. `AGENT_WORKER_CONCURRENCY=1`) on the worker process and confirm via logs/timing that only one agent task processes at a time instead of the default 4 — confirms the env override actually takes effect, not just falls back silently.
+- [ ] Kill the worker process mid-job (e.g. mid agent-task execution) and confirm BullMQ's own retry/stalled-job handling picks it back up on restart — this behavior is unchanged by this refactor, but worth reconfirming now that the worker can be a distinctly separate, independently-restarted process rather than tied to an API replica's lifecycle.
+- [ ] Confirm `docker compose`/local dev (`pnpm dev`, single process, `RUN_WORKERS` unset) still works with zero config changes — this change must be opt-in, not something that breaks the default single-process setup.
+
+**UI (client-side):**
+- No client code was touched. The only user-visible risk is indirect: if `RUN_WORKERS=false` were set on an API replica with no paired worker process running (a deployment misconfiguration, not a code bug), background-dependent UI flows (agent task results, sent notifications, webhook-driven updates) would silently stop completing. Worth a quick sanity pass on the admin UI's agent-task and notifications screens against the split-process setup above to confirm they still show live status updates end to end, not just that the API responds.
+
+Decision record: [`2026-08-07/ACTION-PLAN.md`](./2026-08-07/ACTION-PLAN.md) #10.
+
+---
+
+## 2026-08-07 — Redis fan-out degrade alerting (`/health` + error-log heartbeat)
+
+New `packages/server/src/shared/redis-fanout-status.ts`, wired into all three existing Redis pub/sub fan-outs (`event-bus.ts`, `sse-manager.ts`, `collab-redis-relay.ts`): each now `console.error`s (was a silent `catch {}`) and self-registers so `/health` reports `{ redis: { degraded, subsystems } }`, plus a 5-minute repeat error-log while any subsystem stays down. Automated unit test (`redis-fanout-status.test.ts`) covers the registry/aggregation/heartbeat logic against fake timers and fake `isActive` functions — it does not cover a real Redis outage or a real log/alerting pipeline picking the line up.
+
+**API (server-side):**
+- [ ] Hit `GET /health` with Redis up: confirm `redis.degraded === false` and all three subsystem keys (`event-bus`, `sse`, `collab-relay`) are `true`.
+- [ ] Stop Redis, restart the server, hit `/health` again: confirm it's still HTTP 200 (not 5xx/liveness-failing) with `redis.degraded === true` and the specific subsystem(s) `false`.
+- [ ] With Redis down, tail server logs for ~10+ minutes: confirm the `[event-bus]`/`[sse-manager]`/`[collab-relay]` ERROR line appears once at startup and then the `[redis-fanout] degraded to single-instance mode: ...` heartbeat repeats every 5 minutes (not once and never again, not spamming every tick).
+- [ ] Bring Redis back up and restart the server (matches existing fallback design — none of the three modules auto-reconnect mid-process): confirm `/health` flips back to `degraded: false` and the heartbeat log stops on the next interval.
+- [ ] Confirm whatever real alerting/dashboard tool is used in this deploy (Datadog/Grafana/etc., not decided in-repo) can actually key off either the `/health` JSON body or the `[redis-fanout]`/`[event-bus]`/`[sse-manager]`/`[collab-relay]` log lines — this doc only verifies the signal exists, not that a pager rule is wired to it.
+
+**UI (client-side):**
+- No user-facing surface — this is an operator/observability-only change (health endpoint body + server logs); no client code was touched.
+
+Decision record: [`2026-08-07/ACTION-PLAN.md`](./2026-08-07/ACTION-PLAN.md) #8.
+
+---
+
 ## 2026-08-07 — Collab horizontal-scaling relay (Redis-backed shared room state)
 
 New `packages/server/src/domains/collab/collab-redis-relay.ts`, wired into both `richtext-yjs-room.ts` (Yjs) and `layout-room.ts` (Automerge), plus `initCollabRedisRelay()` added to server boot. Automated tests exist (`collab-redis-relay.test.ts`, `richtext-yjs-room.test.ts`, full monorepo typecheck/test run) but all use fakes (in-memory pub/sub, mocked WS, mocked relay module) — none of them run two real processes against a real Redis, so every item below still needs a human.

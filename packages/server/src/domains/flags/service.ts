@@ -1,7 +1,7 @@
 import { flushEvents } from "../../shared/aggregate-root";
 import { ConflictError } from "../../shared/domain-error";
 import { FeatureFlag } from "./entity";
-import { evaluateFlag, normalizeEvaluationContext, recordEvaluation } from "./evaluation";
+import { evaluateFlag, normalizeEvaluationContext, recordEvaluations } from "./evaluation";
 import { requireFlag } from "./flag-guards";
 import { normalizeTargeting, validateFlagDefaultValue, validateFlagKey } from "./flag-validation";
 import type { FlagService, FlagStorage } from "./ports";
@@ -86,15 +86,10 @@ export function createFlagService(storage: FlagStorage): FlagService {
       const flags = await storage.list(orgId, { status: "active" });
       const toEvaluate = flagKeys ? flags.filter((f) => flagKeys.includes(f.key)) : flags;
 
-      const results = await Promise.all(
-        toEvaluate.map(async (flag) => {
-          const result = evaluateFlag(flag, ctx);
-          await recordEvaluation(storage, flag, ctx, result);
-          return result;
-        }),
-      );
+      const evaluated = toEvaluate.map((flag) => ({ flag, ctx, result: evaluateFlag(flag, ctx) }));
+      await recordEvaluations(storage, evaluated);
 
-      return results;
+      return evaluated.map((e) => e.result);
     },
 
     async evaluateBatch(orgId, contexts, flagKeys) {

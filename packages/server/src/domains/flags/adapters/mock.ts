@@ -70,10 +70,16 @@ export function createInMemoryFlagStorage(): FlagStorage {
     },
 
     async recordEvaluation(record) {
-      const list = evaluations.get(record.flagId) || [];
-      const withId: EvaluationRecord = { ...record, id: crypto.randomUUID() };
-      list.push(withId);
-      evaluations.set(record.flagId, list);
+      await this.recordEvaluations([record]);
+    },
+
+    async recordEvaluations(records) {
+      for (const record of records) {
+        const list = evaluations.get(record.flagId) || [];
+        const withId: EvaluationRecord = { ...record, id: crypto.randomUUID() };
+        list.push(withId);
+        evaluations.set(record.flagId, list);
+      }
     },
 
     async listEvaluations(flagId, filters = {}) {

@@ -80,17 +80,24 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
     },
 
     async recordEvaluation(record) {
-      await db.insert(flagEvaluations).values({
-        flagId: record.flagId,
-        orgId: record.orgId,
-        contextHash: record.contextHash,
-        value: record.value as Record<string, unknown>,
-        matchedRule: record.matchedRule,
-        reason: record.reason,
-        schemaId: record.schemaId,
-        variantId: record.variantId,
-        evaluated_at: record.evaluatedAt,
-      });
+      await this.recordEvaluations([record]);
+    },
+
+    async recordEvaluations(records) {
+      if (records.length === 0) return;
+      await db.insert(flagEvaluations).values(
+        records.map((record) => ({
+          flagId: record.flagId,
+          orgId: record.orgId,
+          contextHash: record.contextHash,
+          value: record.value as Record<string, unknown>,
+          matchedRule: record.matchedRule,
+          reason: record.reason,
+          schemaId: record.schemaId,
+          variantId: record.variantId,
+          evaluated_at: record.evaluatedAt,
+        })),
+      );
     },
 
     async listEvaluations(flagId, filters = {}) {

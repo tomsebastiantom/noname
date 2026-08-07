@@ -77,13 +77,12 @@ export function evaluateFlag(flag: FlagDTO, ctx: FlagEvaluationContext): Evaluat
   };
 }
 
-export async function recordEvaluation(
-  storage: FlagStorage,
+function toEvaluationRecord(
   flag: FlagDTO,
   ctx: FlagEvaluationContext,
   result: EvaluationResult,
-): Promise<void> {
-  const record: Omit<EvaluationRecord, "id"> = {
+): Omit<EvaluationRecord, "id"> {
+  return {
     flagId: flag.id,
     orgId: flag.orgId,
     contextHash: ctx.contextHash,
@@ -94,7 +93,9 @@ export async function recordEvaluation(
     variantId: ctx.variantId,
     evaluatedAt: new Date(),
   };
-  await storage.recordEvaluation(record);
+}
+
+function publishEvaluated(flag: FlagDTO, ctx: FlagEvaluationContext, result: EvaluationResult): void {
   eventBus.publish(FlagEvents.EVALUATED, {
     flagId: flag.id,
     flagKey: flag.key,
@@ -105,6 +106,31 @@ export async function recordEvaluation(
     schemaId: ctx.schemaId,
     variantId: ctx.variantId,
   });
+}
+
+export async function recordEvaluation(
+  storage: FlagStorage,
+  flag: FlagDTO,
+  ctx: FlagEvaluationContext,
+  result: EvaluationResult,
+): Promise<void> {
+  await storage.recordEvaluation(toEvaluationRecord(flag, ctx, result));
+  publishEvaluated(flag, ctx, result);
+}
+
+/** Records every flag's evaluation in a single DB round-trip instead of one insert per flag —
+ * this is the hot per-request evaluation path, so flag count should not translate 1:1 into
+ * DB round-trips. Event-bus publish stays per-flag; it's in-process/Redis pub-sub, not a DB write. */
+export async function recordEvaluations(
+  storage: FlagStorage,
+  evaluated: { flag: FlagDTO; ctx: FlagEvaluationContext; result: EvaluationResult }[],
+): Promise<void> {
+  await storage.recordEvaluations(
+    evaluated.map(({ flag, ctx, result }) => toEvaluationRecord(flag, ctx, result)),
+  );
+  for (const { flag, ctx, result } of evaluated) {
+    publishEvaluated(flag, ctx, result);
+  }
 }
 
 function isScopedOut(flag: FlagDTO, ctx: FlagEvaluationContext): boolean {

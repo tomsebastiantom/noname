@@ -7,13 +7,14 @@ import { contentCollections, contentTeams, documents } from "../../documents/sch
 import { normalizeCollectionSlug } from "../../documents/shared/document-collection";
 import type { AuthorizationPort, AuthSubject, RelationTuple } from "../authorization-port";
 
+/** Revokes are independent Keto writes on different tuples — fan them out instead of awaiting
+ * one at a time, so removing a user/team from a large collection is O(1) round-trips in wall
+ * time rather than O(tuples) sequential HTTP calls to Keto. */
 async function revokeTuples(
   tupleWriter: Pick<AuthorizationPort, "revoke">,
   tuples: RelationTuple[],
 ): Promise<void> {
-  for (const tuple of tuples) {
-    await tupleWriter.revoke(tuple);
-  }
+  await Promise.all(tuples.map((tuple) => tupleWriter.revoke(tuple)));
 }
 
 async function revokeAllCollectionTuples(

@@ -29,6 +29,7 @@ function mockStorage(flag: FlagDTO): FlagStorage {
     update: vi.fn(),
     archive: vi.fn(),
     recordEvaluation: vi.fn(async () => {}),
+    recordEvaluations: vi.fn(async () => {}),
     listEvaluations: vi.fn(async () => []),
   };
 }
@@ -42,13 +43,13 @@ describe("flag evaluate context normalization", () => {
     const evaluations = await service.evaluate("org-1", {}, ["show_summer_sale"]);
 
     expect(evaluations).toHaveLength(1);
-    expect(storage.recordEvaluation).toHaveBeenCalledWith(
+    expect(storage.recordEvaluations).toHaveBeenCalledWith([
       expect.objectContaining({
         contextHash: "default",
         schemaId: null,
         variantId: null,
       }),
-    );
+    ]);
   });
 
   it("coerces empty schemaId to null for Postgres uuid columns", async () => {
@@ -64,12 +65,12 @@ describe("flag evaluate context normalization", () => {
       orgId: "org-1",
     });
 
-    expect(storage.recordEvaluation).toHaveBeenCalledWith(
+    expect(storage.recordEvaluations).toHaveBeenCalledWith([
       expect.objectContaining({
         contextHash: "seg-a",
         schemaId: null,
         variantId: null,
       }),
-    );
+    ]);
   });
 });

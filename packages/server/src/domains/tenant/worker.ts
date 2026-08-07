@@ -2,6 +2,7 @@ import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api"
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
+import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import { bundleCatalog } from "./adapters/bundler";
 import type { ManifestStore } from "./adapters/manifest-store";
 import type { CatalogBundleStorage } from "./adapters/r2";
@@ -12,7 +13,9 @@ const tracer = trace.getTracer("tenant-catalog-worker");
 export function startCatalogBuildWorker(
   storage: CatalogBundleStorage,
   manifestStore: ManifestStore,
-): Worker<CatalogBuildJobData> {
+): Worker<CatalogBuildJobData> | null {
+  if (!workersEnabled()) return null;
+
   const worker = new Worker<CatalogBuildJobData>(
     BULLMQ_QUEUES.CATALOG,
     async (job) => {
@@ -78,7 +81,7 @@ export function startCatalogBuildWorker(
     },
     {
       connection: getRedisConnection(),
-      concurrency: 2,
+      concurrency: workerConcurrency("CATALOG_WORKER_CONCURRENCY", 2),
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 100 },
     },

@@ -3,6 +3,7 @@ import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
+import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { SecretsService } from "../secrets/ports";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { WebhookEvents } from "./events";
@@ -15,7 +16,9 @@ const AUTO_DISABLE_FAILURES = 10;
 export function startWebhookOutboundWorker(deps: {
   storage: WebhooksStorage;
   secrets: Pick<SecretsService, "getOrgSecret">;
-}): Worker<WebhookOutboundJobData> {
+}): Worker<WebhookOutboundJobData> | null {
+  if (!workersEnabled()) return null;
+
   return new Worker<WebhookOutboundJobData>(
     BULLMQ_QUEUES.WEBHOOK_OUTBOUND,
     async (job) => {
@@ -115,7 +118,7 @@ export function startWebhookOutboundWorker(deps: {
     },
     {
       connection: getRedisConnection(),
-      concurrency: 8,
+      concurrency: workerConcurrency("WEBHOOK_OUTBOUND_WORKER_CONCURRENCY", 8),
       removeOnComplete: { count: 500 },
       removeOnFail: { count: 200 },
     },

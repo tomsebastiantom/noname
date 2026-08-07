@@ -1,6 +1,7 @@
 import type { SSEStreamingApi } from "hono/streaming";
 import Redis from "ioredis";
 import { getRedisConnection } from "./redis";
+import { registerRedisFanout } from "./redis-fanout-status";
 
 const CHANNEL = "noname:sse";
 
@@ -39,6 +40,7 @@ function broadcastLocal(orgId: OrgId, data: Record<string, unknown>): void {
 export function initSseManager(): void {
   if (initialized) return;
   initialized = true;
+  registerRedisFanout("sse", () => publisher !== null);
 
   try {
     publisher = new Redis(getRedisConnection());
@@ -54,8 +56,12 @@ export function initSseManager(): void {
         /* ignore malformed */
       }
     });
-  } catch {
+  } catch (err) {
     publisher = null;
+    console.error(
+      "[sse-manager] Redis unavailable — degraded to single-instance mode (SSE won't reach clients on other replicas)",
+      err,
+    );
   }
 }
 

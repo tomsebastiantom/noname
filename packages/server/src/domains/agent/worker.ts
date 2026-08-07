@@ -2,6 +2,7 @@ import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api"
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
+import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { AgentRegistryStorage } from "./adapters/registry-postgres";
 import { inferAgentFailurePhase } from "./agent-failure-phase";
 import { humanizeAgentTaskErrorFromUnknown } from "./agent-task-error";
@@ -38,7 +39,9 @@ export function startAgentWorker(
   storage: AgentTaskStorage,
   executor: AgentExecutor,
   deps: AgentWorkerDeps = {},
-): Worker<AgentJobData> {
+): Worker<AgentJobData> | null {
+  if (!workersEnabled()) return null;
+
   const worker = new Worker<AgentJobData>(
     BULLMQ_QUEUES.AGENT,
     async (job) => {
@@ -138,7 +141,7 @@ export function startAgentWorker(
     },
     {
       connection: getRedisConnection(),
-      concurrency: 4,
+      concurrency: workerConcurrency("AGENT_WORKER_CONCURRENCY", 4),
       removeOnComplete: { count: 100 },
       removeOnFail: { count: 100 },
     },

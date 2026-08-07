@@ -3,6 +3,7 @@ import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
+import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { SecretsService } from "../secrets/ports";
 import { getEmailSender } from "./adapters/email";
 import type { NotificationsStorage } from "./adapters/postgres";
@@ -14,7 +15,9 @@ const tracer = trace.getTracer("notifications-worker");
 export function startEmailOutboundWorker(deps: {
   storage: NotificationsStorage;
   secrets: Pick<SecretsService, "resolveCommsCredentials">;
-}): Worker<EmailOutboundJobData> {
+}): Worker<EmailOutboundJobData> | null {
+  if (!workersEnabled()) return null;
+
   return new Worker<EmailOutboundJobData>(
     BULLMQ_QUEUES.EMAIL_OUTBOUND,
     async (job) => {
@@ -112,7 +115,7 @@ export function startEmailOutboundWorker(deps: {
     },
     {
       connection: getRedisConnection(),
-      concurrency: 4,
+      concurrency: workerConcurrency("EMAIL_OUTBOUND_WORKER_CONCURRENCY", 4),
       removeOnComplete: { count: 500 },
       removeOnFail: { count: 200 },
     },

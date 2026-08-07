@@ -86,6 +86,8 @@ export interface FlagStorage {
   update(orgId: string, id: string, input: UpdateFlagInput): Promise<FlagDTO>;
   archive(orgId: string, id: string): Promise<FlagDTO>;
   recordEvaluation(record: Omit<EvaluationRecord, "id">): Promise<void>;
+  /** Bulk insert — used on the per-request evaluate() path so N flags cost one round-trip, not N. */
+  recordEvaluations(records: Omit<EvaluationRecord, "id">[]): Promise<void>;
   listEvaluations(flagId: string, filters?: EvaluationFilters): Promise<EvaluationRecord[]>;
 }
 

@@ -1,3 +1,4 @@
+import { mapWithConcurrency } from "../../shared/concurrency";
 import { ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
 import {
   type AssetDocumentService,
@@ -247,19 +248,26 @@ export function createAuthService(deps: {
       const projectId = zitadelProjectId();
       const roleMap = await teamRoleAssignments(orgId, projectId);
       const users = await listOrgUsers(orgId);
+      const teamUsers = users.filter((user) => roleMap.has(user.userId));
 
-      return Promise.all(
-        users
-          .filter((user) => roleMap.has(user.userId))
-          .map(async (user) => ({
-            userId: user.userId,
-            email: user.email,
-            displayName: user.displayName,
-            state: user.state,
-            role: roleMap.get(user.userId) ?? "editor",
-            mfaEnrolled: await userHasTotpFactor(orgId, user.userId),
-          })),
-      );
+      // One Zitadel call per user for the MFA column — Zitadel's search API has no
+      // "authentication factors for N users" batch endpoint, so this fans out with bounded
+      // concurrency rather than either a `for` loop (O(n) sequential latency) or an unbounded
+      // `Promise.all` (risks tripping Zitadel's per-org rate limit on large teams).
+      const mfaEnrolledByUserId = await mapWithConcurrency(teamUsers, 10, async (user) => [
+        user.userId,
+        await userHasTotpFactor(orgId, user.userId),
+      ] as const);
+      const mfaMap = new Map(mfaEnrolledByUserId);
+
+      return teamUsers.map((user) => ({
+        userId: user.userId,
+        email: user.email,
+        displayName: user.displayName,
+        state: user.state,
+        role: roleMap.get(user.userId) ?? "editor",
+        mfaEnrolled: mfaMap.get(user.userId) ?? false,
+      }));
     },
 
     async inviteTeamUser(orgId, input) {

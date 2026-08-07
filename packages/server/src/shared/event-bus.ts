@@ -1,6 +1,7 @@
 ﻿import Redis from "ioredis";
 import type { DomainEventName } from "../domain-events";
 import { getRedisConnection } from "./redis";
+import { registerRedisFanout } from "./redis-fanout-status";
 
 const CHANNEL = "noname:event-bus";
 
@@ -24,6 +25,7 @@ async function dispatchLocal(event: string, payload: unknown): Promise<void> {
 export function initEventBus(): void {
   if (initialized) return;
   initialized = true;
+  registerRedisFanout("event-bus", () => publisher !== null);
 
   try {
     publisher = new Redis(getRedisConnection());
@@ -39,8 +41,12 @@ export function initEventBus(): void {
         /* ignore malformed */
       }
     });
-  } catch {
+  } catch (err) {
     publisher = null;
+    console.error(
+      "[event-bus] Redis unavailable — degraded to single-instance mode (events won't reach other replicas)",
+      err,
+    );
   }
 }
 

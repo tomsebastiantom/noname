@@ -1,5 +1,6 @@
 import Redis from "ioredis";
 import { getRedisConnection } from "../../shared/redis";
+import { registerRedisFanout } from "../../shared/redis-fanout-status";
 
 const CHANNEL = "noname:collab-relay";
 
@@ -33,6 +34,7 @@ function dispatchLocal(kind: string, roomName: string, data: Uint8Array): void {
 export function initCollabRedisRelay(): void {
   if (initialized) return;
   initialized = true;
+  registerRedisFanout("collab-relay", () => publisher !== null);
 
   try {
     publisher = new Redis(getRedisConnection());
@@ -48,8 +50,12 @@ export function initCollabRedisRelay(): void {
         /* ignore malformed */
       }
     });
-  } catch {
+  } catch (err) {
     publisher = null;
+    console.error(
+      "[collab-relay] Redis unavailable — degraded to single-instance mode (collab rooms won't sync across replicas)",
+      err,
+    );
   }
 }
 
