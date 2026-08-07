@@ -1,7 +1,7 @@
 import { isRichTextDocument } from "@noname/documents";
 import { useState } from "react";
 import type { CatalogProps } from "../catalog-props";
-import { RichTextRenderer } from "../rich-text/RichTextRenderer";
+import { RichTextRenderer } from "../shared/RichTextRenderer";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
 

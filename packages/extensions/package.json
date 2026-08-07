@@ -7,7 +7,7 @@
     ".": "./src/index.ts",
     "./commerce": "./src/commerce/registry.ts",
     "./commerce/catalog-schemas": "./src/commerce/catalog-schemas.ts",
-    "./rich-text": "./src/rich-text/index.ts"
+    "./shared": "./src/shared/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

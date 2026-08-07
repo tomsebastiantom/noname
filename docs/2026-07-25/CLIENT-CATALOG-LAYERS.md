@@ -58,6 +58,8 @@ packages/extensions/src/      ← @noname/extensions
     └── registry.ts
 ```
 
+> **Not everything under `packages/extensions/src/` is a catalog extension.** `shared/` (formerly named `rich-text/` — renamed to avoid looking like a sibling extension to `commerce/`) holds plain React utilities with no `registry.ts`/`defineRegistry()` — e.g. `RichTextRenderer`. It's colocated in `packages/extensions` (rather than `packages/client`) because **`commerce/components.tsx` imports it directly** (in-package, to render product descriptions) — moving it into `packages/client` would make `commerce` depend on the client that consumes it, which is backwards. It also isn't a fit for `packages/documents` (which already has a React-free string-based rich-text renderer, `richtext-html.ts`, precisely because `packages/server` imports `@noname/documents` in a plain Node/no-React runtime) — adding React/JSX to that package would break the framework-agnostic boundary it deliberately maintains. `packages/client` gets `RichTextRenderer` via the public `@noname/extensions/shared` subpath. Only a folder with a `registry.ts` is a real extension per this doc's meaning of the term; `shared/` is a shared-utility exception, not a second kind of extension.
+
 ---
 
 ## Enabling extensions
