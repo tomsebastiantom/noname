@@ -182,7 +182,7 @@ export function EditorCanvas({
       nodeRect.left - canvasRect.left + root.scrollLeft + nodeRect.width / 2,
       nodeRect.top - canvasRect.top + root.scrollTop + 24,
     );
-  }, [onCollabPointerMove, previewSpec, selection]);
+  }, [onCollabPointerMove, selection]);
 
   useLayoutEffect(() => {
     if (!selection) {

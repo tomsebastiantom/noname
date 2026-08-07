@@ -30,7 +30,6 @@ export function mintCollabTicket(
   layoutDocumentId: string,
   options: MintCollabTicketOptions = {},
 ): { ticket: string; expiresIn: number } {
-  const peerKind = options.peerKind ?? "human";
   const displayName = options.displayName?.trim();
   if (!displayName) {
     throw new Error("displayName required for collab tickets");

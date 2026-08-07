@@ -175,7 +175,6 @@ export function registerCollabRoutes(routes: Hono, deps: CollabRoutesDeps): void
           return;
         }
 
-        const peerKind = ticket.peerKind ?? "human";
         if (!ticket.displayName?.trim()) {
           ws.close(4400, "displayName required");
           return;

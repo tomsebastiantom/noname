@@ -13,6 +13,7 @@
 | **[E3e-AGENT-FULL-COLLAB-PEER.md](./E3e-AGENT-FULL-COLLAB-PEER.md)** | Agent + human live editing — full collab peer |
 | **[COLLAB-SYNC-INCIDENT-FIXES.md](./COLLAB-SYNC-INCIDENT-FIXES.md)** | **2026-08-06 incident** — multi-tab ghost, agent push, spec sync (`change` not `update`) |
 | **[COLLAB-LOCAL-SMOKE-RESULTS.md](./COLLAB-LOCAL-SMOKE-RESULTS.md)** | **Local smoke results** — 7-step collab pass (same-user, two-user, RBAC) |
+| **[COLLAB-FEATURE-INVENTORY.md](./COLLAB-FEATURE-INVENTORY.md)** | **Feature inventory** — API + UI: live vs built vs not shipped (E3, D7, E3e) |
 | **[E3e-AGENT-COLLAB-REFERENCES.md](./E3e-AGENT-COLLAB-REFERENCES.md)** | OSS/product reference — how others implement agent cursors |
 | **[AGENT-CHAT-OBSERVABILITY.md](./AGENT-CHAT-OBSERVABILITY.md)** | Editor agent chat — background flow, logs, traces, debugging |
 | **[LITELLM-LOCAL-ORCHESTRATE.md](./LITELLM-LOCAL-ORCHESTRATE.md)** | Live orchestrate via aiplayground LiteLLM on :4000 |

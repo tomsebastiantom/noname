@@ -176,9 +176,12 @@ export type RejectAgentTaskResult = AgentTask & {
 };
 
 export async function rejectAgentTask(taskId: string): Promise<RejectAgentTaskResult> {
-  return apiFetchData<RejectAgentTaskResult>(`/api/agents/tasks/${encodeURIComponent(taskId)}/reject`, {
-    method: "PUT",
-  });
+  return apiFetchData<RejectAgentTaskResult>(
+    `/api/agents/tasks/${encodeURIComponent(taskId)}/reject`,
+    {
+      method: "PUT",
+    },
+  );
 }
 
 export function parseOrchestrateOutput(

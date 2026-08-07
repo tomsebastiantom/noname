@@ -1,7 +1,7 @@
 # Collab local smoke — results (7 steps)
 
 > **Date:** 2026-08-06  
-> **Environment:** local dev — API `:3000`, client `:5173`, edge `:8787` (WS direct to API in dev)  
+> **Environment:** local dev — API `:3000`, client `:5173`, edge `:8787` (browser WS goes **5173 → 8787 → 3000**)  
 > **Page:** home layout — `http://yogastore.localhost:5173/?edit=true`  
 > **Layout document ID:** `76f12abf-8bbb-4896-a99e-88ae8b466e11`  
 > **Tester:** Cursor browser + manual confirmation  
@@ -35,8 +35,36 @@ pnpm seed:demo                    # demo users + home layout
 | 5 | RBAC — editor vs admin Publish | **PASS** |
 | 6 | Presence clears after peer disconnect | **PASS** |
 | 7 | Simultaneous two-user Live + cursors | **DEFER** |
+| 8 | Collab WS through edge worker (`:8787`) | **PASS** |
 
-**Overall:** Core layout collab path is **green** for same-user multi-tab and sequential two-user sync. Step 7 needs two browser profiles or a working Node WS smoke script.
+**Overall:** Core layout collab path is **green** for same-user multi-tab and sequential two-user sync. Step 7 needs two browser profiles or a working Node WS smoke script. Step 8 confirms the **normal browser path** (5173 → edge → API) for collab WS.
+
+---
+
+## Step 8 — Collab WebSocket through edge worker (`:8787`)
+
+**Why the edge worker exists:** In production the browser only talks to the **storefront origin** (Cloudflare Worker). The worker resolves tenant from `Host`, validates JWT / collab ticket, adds HMAC headers, and **proxies the WS upgrade** to the Node API. Local dev mirrors that: rspack devServer proxies `/api` (including WS) to `:8787` — see `packages/client/rspack.config.mjs`.
+
+**Path (browser, normal dev):**
+
+```
+Browser ws://yogastore.localhost:5173/api/collab/layout/ws?collab_ticket=…
+  → rspack proxy (ws: true)
+  → edge worker :8787 (proxy-websocket.ts)
+  → Node API :3000 (LayoutCollabRoomManager)
+```
+
+**Only bypasses edge:** server-side Node clients (e.g. agent worker, smoke scripts) use `ws://127.0.0.1:3000/...` directly.
+
+**Steps verified (2026-08-06):**
+
+1. `pnpm --filter @noname/workers dev` — worker listening on `:8787`
+2. Login + mint ticket via `http://127.0.0.1:8787/api/...` with `Host: yogastore.localhost`
+3. WS connect to `ws://127.0.0.1:8787/api/collab/layout/ws?collab_ticket=…` → **OPEN** + CBOR sync messages
+4. Same via `ws://127.0.0.1:5173/api/collab/...` (rspack proxy) → **OPEN** + data
+5. Browser `?edit=true` on `:5173` — Live connected, editor loads
+
+**Result:** **PASS** — edge WS proxy is required for prod and **is** the normal local dev path; not a separate untested track.
 
 ---
 
@@ -182,7 +210,7 @@ These remain in [`COLLAB-PROD-SMOKE.md`](./COLLAB-PROD-SMOKE.md) for a full acce
 | Rich text Yjs two-tab + persist | Not run this session |
 | Agent task → Live bar via WS (no poll chip) | Not run this session |
 | Agent selection outline, no virtual cursor | Code landed; not re-smoked here |
-| Edge WS proxy (`:8787`) vs direct `:3000` | Dev uses direct API WS (intentional) |
+| Edge WS proxy (`:8787`) | **PASS** — normal browser path (5173 → 8787 → 3000) |
 
 ---
 

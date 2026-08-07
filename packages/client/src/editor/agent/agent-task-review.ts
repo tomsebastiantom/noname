@@ -1,9 +1,6 @@
 import type { OrchestrateOutput } from "../../auth/agents";
 
-function layoutArtifactForPage(
-  orchestrate: OrchestrateOutput,
-  layoutDocumentId: string,
-) {
+function layoutArtifactForPage(orchestrate: OrchestrateOutput, layoutDocumentId: string) {
   return orchestrate.artifacts.find(
     (artifact) => artifact.kind === "layout" && artifact.documentId === layoutDocumentId,
   );

@@ -3,9 +3,8 @@ import {
   richTextToTipTapJson,
   tipTapJsonToRichText,
 } from "@noname/documents";
-import { Editor } from "@tiptap/core";
+import { Editor, Extension } from "@tiptap/core";
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import Link from "@tiptap/extension-link";
 import { Table } from "@tiptap/extension-table";
 import TableCell from "@tiptap/extension-table-cell";
@@ -13,6 +12,7 @@ import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
+import { defaultSelectionBuilder, yCursorPlugin } from "@tiptap/y-tiptap";
 import { Window } from "happy-dom";
 import type * as awarenessProtocol from "y-protocols/awareness";
 import type * as Y from "yjs";
@@ -67,10 +67,17 @@ export class AgentRichTextYjsEditor {
       Collaboration.configure({ document: ydoc }),
     ];
     if (collab) {
+      collab.awareness.setLocalStateField("user", collab.user);
       extensions.push(
-        CollaborationCursor.configure({
-          provider: { awareness: collab.awareness },
-          user: collab.user,
+        Extension.create({
+          name: "collaborationCursor",
+          addProseMirrorPlugins() {
+            return [
+              yCursorPlugin(collab.awareness, {
+                selectionBuilder: defaultSelectionBuilder,
+              }),
+            ];
+          },
         }),
       );
     }

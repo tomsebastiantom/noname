@@ -264,9 +264,17 @@ async function publishHomeLayout(spec: Record<string, unknown>, contentRef: stri
 
 async function ensureCommercePageRouting(productId: string): Promise<void> {
   const productPath = "/products/demo-sneakers";
+  const productContentRef = `product:${productId}`;
+
+  // Home layout binds ProductCard to product $state fields — route contentRef must be product too.
+  // demo.ts seeds home → page:uuid (title/body only); that overrides layout contentRef and breaks price.
+  await api("PUT", "/api/documents/page/home", {
+    layoutRef: "home",
+    contentRef: productContentRef,
+  });
   await api("PUT", "/api/documents/page/product-demo", {
     layoutRef: "home",
-    contentRef: `product:${productId}`,
+    contentRef: productContentRef,
   });
 
   const { data: tree } = await api<{ data: { pages: Array<{ id: string; slug: Record<string, string>; pageId: string }> } | null }>(
@@ -325,20 +333,34 @@ async function main() {
   await publishHomeLayout(commerceSpec, contentRef);
   await ensureCommercePageRouting(productId);
 
-  const { data: schema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
+  const { data: productSchema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
     "GET",
     `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
 
-  const productProps = schema.layout?.elements?.product1?.props as
-    | { config?: { title?: unknown }; title?: unknown }
-    | undefined;
-  const resolvedTitle = productProps?.config?.title ?? productProps?.title;
-  if (!productProps || resolvedTitle !== "Blue Sneakers") {
-    throw new Error(
-      `Edge did not resolve product content — got title: ${String(resolvedTitle ?? "missing")}`,
-    );
-  }
+  const assertProductCard = (
+    layout: { elements?: Record<string, { props?: Record<string, unknown> }> } | undefined,
+    label: string,
+    url: string,
+  ) => {
+    const productProps = layout?.elements?.product1?.props as
+      | { config?: { title?: unknown; price?: unknown } }
+      | undefined;
+    const title = productProps?.config?.title;
+    const price = productProps?.config?.price;
+    if (title !== "Blue Sneakers" || typeof price !== "number") {
+      throw new Error(
+        `${label} ProductCard not resolved at ${url} — title: ${String(title ?? "missing")}, price: ${String(price ?? "missing")}`,
+      );
+    }
+  };
+
+  const { data: homeSchema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
+    "GET",
+    `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/")}`,
+  );
+  assertProductCard(homeSchema.layout, "Home", "/");
+  assertProductCard(productSchema.layout, "Product", "/products/demo-sneakers");
 
   console.log("Commerce extension demo seed complete.");
   console.log(`  Org:         ${DEMO_ORG_ID}`);

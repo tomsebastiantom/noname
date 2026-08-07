@@ -1,6 +1,6 @@
 import Collaboration from "@tiptap/extension-collaboration";
-import CollaborationCursor from "@tiptap/extension-collaboration-cursor";
 import { useEffect, useRef, useState } from "react";
+import { YTiptapCollaborationCursor } from "./y-tiptap-collaboration-cursor";
 import { IndexeddbPersistence } from "y-indexeddb";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -8,38 +8,45 @@ import { sessionUserEmail } from "../../auth/session";
 import { mintRichTextCollabTicket, richTextCollabWsBaseUrl } from "../../editor/collab/collab-api";
 import { peerPresenceColor } from "../../editor/collab/presence";
 
+export type RichTextCollabBinding = {
+  ydoc: Y.Doc;
+  provider: WebsocketProvider;
+  connected: boolean;
+};
+
 export function useRichTextCollab(input: {
   enabled: boolean;
   contentDocumentId: string | null | undefined;
   fieldKey: string;
   locale: string;
 }): {
-  ydoc: Y.Doc | null;
-  provider: WebsocketProvider | null;
+  binding: RichTextCollabBinding | null;
   connected: boolean;
   error: string | null;
+  synced: boolean;
+  /** Y.Doc synced with server — safe to mount TipTap with Collaboration extensions. */
+  ready: boolean;
 } {
+  const [binding, setBinding] = useState<RichTextCollabBinding | null>(null);
   const [connected, setConnected] = useState(false);
+  const [synced, setSynced] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const ydocRef = useRef<Y.Doc | null>(null);
   const providerRef = useRef<WebsocketProvider | null>(null);
   const persistenceRef = useRef<IndexeddbPersistence | null>(null);
-  const [ydoc, setYdoc] = useState<Y.Doc | null>(null);
-  const [provider, setProvider] = useState<WebsocketProvider | null>(null);
 
   useEffect(() => {
     if (!input.enabled || !input.contentDocumentId) {
+      setBinding(null);
       setConnected(false);
+      setSynced(false);
       setError(null);
-      setYdoc(null);
-      setProvider(null);
       return;
     }
 
     let cancelled = false;
     const localDoc = new Y.Doc();
     ydocRef.current = localDoc;
-    setYdoc(localDoc);
 
     const idbName = `noname-richtext:${input.contentDocumentId}:${input.fieldKey}:${input.locale}`;
     persistenceRef.current = new IndexeddbPersistence(idbName, localDoc);
@@ -63,27 +70,39 @@ export function useRichTextCollab(input: {
           },
         );
         providerRef.current = wsProvider;
-        setProvider(wsProvider);
 
         const onStatus = (event: { status: string }) => {
           if (cancelled) return;
-          setConnected(event.status === "connected");
-          if (event.status === "connected") {
+          const isConnected = event.status === "connected";
+          setConnected(isConnected);
+          if (isConnected) {
             setError(null);
           }
+          setBinding((prev) =>
+            prev
+              ? { ...prev, connected: isConnected }
+              : { ydoc: localDoc, provider: wsProvider, connected: isConnected },
+          );
         };
         wsProvider.on("status", onStatus);
         wsProvider.on("connection-error", () => {
           if (!cancelled) setError("Rich text collab connection failed");
         });
-
-        return () => {
-          wsProvider.off("status", onStatus);
+        const onSync = (isSynced: boolean) => {
+          if (!cancelled) setSynced(isSynced);
         };
+        wsProvider.on("sync", onSync);
+        if (wsProvider.synced) onSync(true);
+
+        if (!cancelled) {
+          setBinding({ ydoc: localDoc, provider: wsProvider, connected: false });
+        }
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : String(err));
           setConnected(false);
+          setSynced(false);
+          setBinding(null);
         }
       }
     })();
@@ -96,13 +115,14 @@ export function useRichTextCollab(input: {
       persistenceRef.current = null;
       ydocRef.current?.destroy();
       ydocRef.current = null;
-      setProvider(null);
-      setYdoc(null);
+      setBinding(null);
       setConnected(false);
+      setSynced(false);
     };
   }, [input.contentDocumentId, input.enabled, input.fieldKey, input.locale]);
 
-  return { ydoc, provider, connected, error };
+  const ready = binding !== null && synced;
+  return { binding, connected, error, synced, ready };
 }
 
 export function richTextCollabUser(peerSeed: string): { name: string; color: string } {
@@ -119,11 +139,12 @@ export function richTextCollabExtensions(input: {
   peerSeed: string;
 }) {
   const user = richTextCollabUser(input.peerSeed);
-  return [
-    Collaboration.configure({ document: input.ydoc }),
-    CollaborationCursor.configure({
-      provider: input.provider,
+  return {
+    collaboration: Collaboration.configure({ document: input.ydoc }),
+    /** After Collaboration — uses @tiptap/y-tiptap yCursorPlugin (not y-prosemirror). */
+    collaborationCursor: YTiptapCollaborationCursor.configure({
+      awareness: input.provider.awareness,
       user,
     }),
-  ];
+  };
 }

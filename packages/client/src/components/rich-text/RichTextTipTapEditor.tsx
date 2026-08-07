@@ -14,7 +14,7 @@ import TableCell from "@tiptap/extension-table-cell";
 import TableHeader from "@tiptap/extension-table-header";
 import TableRow from "@tiptap/extension-table-row";
 import Underline from "@tiptap/extension-underline";
-import { EditorContent, useEditor } from "@tiptap/react";
+import { type Editor, EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -39,7 +39,11 @@ import {
   EmbeddedVideoBlock,
 } from "./tiptap-extensions";
 import { PasteSanitize } from "./tiptap-paste-sanitize";
-import { richTextCollabExtensions, useRichTextCollab } from "./use-rich-text-collab";
+import {
+  type RichTextCollabBinding,
+  richTextCollabExtensions,
+  useRichTextCollab,
+} from "./use-rich-text-collab";
 
 function parseInitialDocument(raw: string): RichTextDocument {
   if (!raw.trim()) return emptyRichTextDocument();
@@ -64,40 +68,52 @@ function ToolbarButton({
   );
 }
 
-export function RichTextTipTapEditor({
-  label,
-  required,
-  value,
-  onChange,
-  referenceTarget,
-  mediaLabels,
-  constraints,
-  contentDocumentId,
-  fieldKey,
-  locale = "en-US",
-  onFocus,
-}: Readonly<{
+type RichTextEditorChromeProps = Readonly<{
   label: string;
   required?: boolean;
-  value: string;
-  onChange: (value: string) => void;
+  editor: Editor | null;
   referenceTarget?: string;
   mediaLabels: MediaFieldLabels;
   constraints?: Record<string, unknown>;
-  contentDocumentId?: string | null;
-  fieldKey?: string;
-  locale?: string;
   onFocus?: () => void;
-}>) {
-  const collabEnabled = Boolean(contentDocumentId && fieldKey);
-  const collab = useRichTextCollab({
-    enabled: collabEnabled,
-    contentDocumentId,
-    fieldKey: fieldKey ?? "",
-    locale,
-  });
-  const collabSeededRef = useRef(false);
-  const lastEmitted = useRef(value);
+  collabStatusNote?: string;
+}>;
+
+function buildBaseExtensions(disableUndo: boolean) {
+  return [
+    StarterKit.configure({
+      heading: { levels: [2, 3] },
+      link: false,
+      underline: false,
+      ...(disableUndo ? { undoRedo: false } : {}),
+    }),
+    Underline,
+    Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
+    Placeholder.configure({ placeholder: "Write content… paste from web or Word is supported." }),
+    Table.configure({ resizable: true }),
+    TableRow,
+    TableHeader,
+    TableCell,
+    EmbeddedAssetBlock,
+    EmbeddedEntryBlock,
+    EmbeddedVideoBlock,
+    EmbeddedAssetInline,
+    EmbeddedEntryInline,
+    PasteSanitize,
+  ];
+}
+
+/** Toolbar, pickers, and ProseMirror surface — editor instance comes from parent. */
+function RichTextEditorChrome({
+  label,
+  required,
+  editor,
+  referenceTarget,
+  mediaLabels,
+  constraints,
+  onFocus,
+  collabStatusNote,
+}: RichTextEditorChromeProps) {
   const [assetPickerOpen, setAssetPickerOpen] = useState(false);
   const [assetInlinePickerOpen, setAssetInlinePickerOpen] = useState(false);
   const [entryPickerOpen, setEntryPickerOpen] = useState(false);
@@ -107,87 +123,10 @@ export function RichTextTipTapEditor({
   const [entries, setEntries] = useState<ContentEntryRow[]>([]);
   const [entryType, setEntryType] = useState(referenceTarget ?? "");
   const [entrySchema, setEntrySchema] = useState<Awaited<ReturnType<typeof getContentType>>>(null);
-  const initialDoc = useMemo(() => parseInitialDocument(value), [value]);
   const toolbar = useMemo(
     () => richTextToolbarFlags(parseRichTextConstraints(constraints)),
     [constraints],
   );
-
-  const extensions = useMemo(() => {
-    const base = [
-      StarterKit.configure({
-        heading: { levels: [2, 3] },
-        ...(collabEnabled && collab.ydoc ? { undoRedo: false } : {}),
-      }),
-      Underline,
-      Link.configure({ openOnClick: false, autolink: true, linkOnPaste: true }),
-      Placeholder.configure({ placeholder: "Write content… paste from web or Word is supported." }),
-      Table.configure({ resizable: true }),
-      TableRow,
-      TableHeader,
-      TableCell,
-      EmbeddedAssetBlock,
-      EmbeddedEntryBlock,
-      EmbeddedVideoBlock,
-      EmbeddedAssetInline,
-      EmbeddedEntryInline,
-      PasteSanitize,
-    ];
-    if (collabEnabled && collab.ydoc && collab.provider) {
-      return [
-        ...base,
-        ...richTextCollabExtensions({
-          ydoc: collab.ydoc,
-          provider: collab.provider,
-          peerSeed: `${contentDocumentId}:${fieldKey}`,
-        }),
-      ];
-    }
-    return base;
-  }, [collab.provider, collab.ydoc, collabEnabled, contentDocumentId, fieldKey]);
-
-  const editor = useEditor(
-    {
-      extensions,
-      content: collabEnabled ? undefined : richTextToTipTapJson(initialDoc),
-      onUpdate: ({ editor: ed }) => {
-        const doc = tipTapJsonToRichText(ed.getJSON());
-        const serialized = serializeRichTextFieldValue(doc);
-        lastEmitted.current = serialized;
-        onChange(serialized);
-      },
-    },
-    [collabEnabled, collab.connected, collab.ydoc, extensions],
-  );
-
-  useEffect(() => {
-    collabSeededRef.current = false;
-    if (!collabEnabled || !editor || !collab.provider) return;
-    const seedIfEmpty = (synced: boolean) => {
-      if (!synced || collabSeededRef.current) return;
-      if (!editor.isEmpty) {
-        collabSeededRef.current = true;
-        return;
-      }
-      collabSeededRef.current = true;
-      editor.commands.setContent(richTextToTipTapJson(initialDoc), { emitUpdate: true });
-    };
-    collab.provider.on("sync", seedIfEmpty);
-    if (collab.provider.synced) seedIfEmpty(true);
-    return () => {
-      collab.provider?.off("sync", seedIfEmpty);
-    };
-  }, [collab.provider, collabEnabled, editor, initialDoc]);
-
-  useEffect(() => {
-    if (collabEnabled) return;
-    if (!editor) return;
-    if (value === lastEmitted.current) return;
-    lastEmitted.current = value;
-    editor.commands.setContent(richTextToTipTapJson(parseInitialDocument(value)), {
-      emitUpdate: false,
-    });
-  }, [editor, value, collabEnabled]);
 
   useEffect(() => {
     if (!assetPickerOpen && !assetInlinePickerOpen && !videoPickerOpen) return;
@@ -282,10 +221,8 @@ export function RichTextTipTapEditor({
       <Label>
         {label}
         {required ? " *" : ""}
-        {collabEnabled ? (
-          <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {collab.connected ? "Live collab" : collab.error ? "Collab offline" : "Connecting…"}
-          </span>
+        {collabStatusNote ? (
+          <span className="ml-2 text-xs font-normal text-muted-foreground">{collabStatusNote}</span>
         ) : null}
       </Label>
       <div
@@ -392,7 +329,7 @@ export function RichTextTipTapEditor({
             <ToolbarButton onClick={() => setVideoPickerOpen(true)}>Video</ToolbarButton>
           )}
         </div>
-        <EditorContent editor={editor} />
+        {editor ? <EditorContent editor={editor} /> : null}
       </div>
 
       {assetPickerOpen && (
@@ -449,6 +386,239 @@ export function RichTextTipTapEditor({
         />
       )}
     </div>
+  );
+}
+
+type RichTextFieldEditorProps = Readonly<{
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  referenceTarget?: string;
+  mediaLabels: MediaFieldLabels;
+  constraints?: Record<string, unknown>;
+  onFocus?: () => void;
+  collabStatusNote?: string;
+}>;
+
+/** Solo TipTap — stable extensions for the lifetime of this mount. */
+function RichTextSoloEditor({
+  label,
+  required,
+  value,
+  onChange,
+  referenceTarget,
+  mediaLabels,
+  constraints,
+  onFocus,
+  collabStatusNote,
+}: RichTextFieldEditorProps) {
+  const lastEmitted = useRef(value);
+  const initialDoc = useMemo(() => parseInitialDocument(value), [value]);
+  const extensions = useMemo(() => buildBaseExtensions(false), []);
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      extensions,
+      content: richTextToTipTapJson(initialDoc),
+      onUpdate: ({ editor: ed }) => {
+        const doc = tipTapJsonToRichText(ed.getJSON());
+        const serialized = serializeRichTextFieldValue(doc);
+        lastEmitted.current = serialized;
+        onChange(serialized);
+      },
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (!editor) return;
+    if (value === lastEmitted.current) return;
+    lastEmitted.current = value;
+    editor.commands.setContent(richTextToTipTapJson(parseInitialDocument(value)), {
+      emitUpdate: false,
+    });
+  }, [editor, value]);
+
+  return (
+    <RichTextEditorChrome
+      label={label}
+      required={required}
+      editor={editor}
+      referenceTarget={referenceTarget}
+      mediaLabels={mediaLabels}
+      constraints={constraints}
+      onFocus={onFocus}
+      collabStatusNote={collabStatusNote}
+    />
+  );
+}
+
+/** Yjs-backed TipTap — mount only after provider.synced; Collaboration extensions come first. */
+function RichTextCollabEditor({
+  label,
+  required,
+  value,
+  onChange,
+  referenceTarget,
+  mediaLabels,
+  constraints,
+  contentDocumentId,
+  fieldKey,
+  onFocus,
+  collabStatusNote,
+  binding,
+}: RichTextFieldEditorProps & {
+  contentDocumentId: string;
+  fieldKey: string;
+  binding: RichTextCollabBinding;
+}) {
+  const collabSeededRef = useRef(false);
+  const lastEmitted = useRef(value);
+  const initialDoc = useMemo(() => parseInitialDocument(value), [value]);
+  const collabExt = useMemo(
+    () =>
+      richTextCollabExtensions({
+        ydoc: binding.ydoc,
+        provider: binding.provider,
+        peerSeed: `${contentDocumentId}:${fieldKey}`,
+      }),
+    [binding, contentDocumentId, fieldKey],
+  );
+  const extensions = useMemo(
+    () => [
+      ...buildBaseExtensions(true),
+      collabExt.collaboration,
+      collabExt.collaborationCursor,
+    ],
+    [collabExt],
+  );
+  const editor = useEditor(
+    {
+      immediatelyRender: false,
+      extensions,
+      onUpdate: ({ editor: ed }) => {
+        const doc = tipTapJsonToRichText(ed.getJSON());
+        const serialized = serializeRichTextFieldValue(doc);
+        lastEmitted.current = serialized;
+        onChange(serialized);
+      },
+    },
+    [],
+  );
+
+  useEffect(() => {
+    collabSeededRef.current = false;
+    if (!editor) return;
+    const seedIfEmpty = (synced: boolean) => {
+      if (!synced || collabSeededRef.current) return;
+      if (!editor.isEmpty) {
+        collabSeededRef.current = true;
+        return;
+      }
+      collabSeededRef.current = true;
+      editor.commands.setContent(richTextToTipTapJson(initialDoc), { emitUpdate: true });
+    };
+    binding.provider.on("sync", seedIfEmpty);
+    if (binding.provider.synced) seedIfEmpty(true);
+    return () => {
+      binding.provider.off("sync", seedIfEmpty);
+    };
+  }, [binding, editor, initialDoc]);
+
+  return (
+    <RichTextEditorChrome
+      label={label}
+      required={required}
+      editor={editor}
+      referenceTarget={referenceTarget}
+      mediaLabels={mediaLabels}
+      constraints={constraints}
+      onFocus={onFocus}
+      collabStatusNote={collabStatusNote}
+    />
+  );
+}
+
+export function RichTextTipTapEditor({
+  label,
+  required,
+  value,
+  onChange,
+  referenceTarget,
+  mediaLabels,
+  constraints,
+  contentDocumentId,
+  fieldKey,
+  locale = "en-US",
+  onFocus,
+}: Readonly<{
+  label: string;
+  required?: boolean;
+  value: string;
+  onChange: (value: string) => void;
+  referenceTarget?: string;
+  mediaLabels: MediaFieldLabels;
+  constraints?: Record<string, unknown>;
+  contentDocumentId?: string | null;
+  fieldKey?: string;
+  locale?: string;
+  onFocus?: () => void;
+}>) {
+  const collabEnabled = Boolean(contentDocumentId && fieldKey);
+  const collab = useRichTextCollab({
+    enabled: collabEnabled,
+    contentDocumentId,
+    fieldKey: fieldKey ?? "",
+    locale,
+  });
+
+  const chromeProps = {
+    label,
+    required,
+    value,
+    onChange,
+    referenceTarget,
+    mediaLabels,
+    constraints,
+    onFocus,
+  };
+
+  if (!collabEnabled) {
+    return <RichTextSoloEditor {...chromeProps} />;
+  }
+
+  if (collab.error) {
+    return (
+      <RichTextSoloEditor {...chromeProps} collabStatusNote="Collab offline — editing locally" />
+    );
+  }
+
+  if (!collab.ready || !collab.binding) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Label>
+          {label}
+          {required ? " *" : ""}
+        </Label>
+        <div className="rounded-md border border-input bg-muted/20 px-3 py-6 text-sm text-muted-foreground">
+          Connecting to live editing…
+        </div>
+      </div>
+    );
+  }
+
+  const collabStatusNote = collab.connected ? "Live collab" : "Syncing…";
+
+  return (
+    <RichTextCollabEditor
+      key={`${contentDocumentId}:${fieldKey}:${collab.binding.provider.roomname}`}
+      {...chromeProps}
+      contentDocumentId={contentDocumentId as string}
+      fieldKey={fieldKey as string}
+      binding={collab.binding}
+      collabStatusNote={collabStatusNote}
+    />
   );
 }
 
