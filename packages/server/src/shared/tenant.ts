@@ -13,12 +13,15 @@ declare module "hono" {
   }
 }
 
-const secret = process.env.WORKER_SERVER_SECRET || "";
+function workerSecret(): string {
+  return process.env.WORKER_SERVER_SECRET || "";
+}
 
 function verifyHmac(tenantId: string, userId: string, role: string, providedHmac: string): boolean {
-  if (!secret) return false;
+  const configuredSecret = workerSecret();
+  if (!configuredSecret) return false;
   const payload = `${tenantId}:${userId}:${role}`;
-  const expected = createHmac("sha256", secret).update(payload).digest("base64");
+  const expected = createHmac("sha256", configuredSecret).update(payload).digest("base64");
   try {
     return timingSafeEqual(Buffer.from(expected), Buffer.from(providedHmac));
   } catch {
@@ -41,7 +44,7 @@ export const tenantMiddleware: MiddlewareHandler = async (c, next) => {
     if (!verifyHmac(tenantId, userId, role, hmac)) {
       return c.json({ error: "Invalid auth signature" }, 401);
     }
-  } else if (secret && c.req.path !== "/health") {
+  } else if (workerSecret() && c.req.path !== "/health") {
     console.warn("No HMAC on request — may bypass edge worker");
   }
 
