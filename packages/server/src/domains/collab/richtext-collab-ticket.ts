@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
 
 const TICKET_TTL_SEC = 60;
 const MAX_FIELD_KEY = 64;
@@ -16,7 +17,7 @@ export type RichTextCollabTicketPayload = {
 function ticketSecret(): string {
   const secret = process.env.WORKER_SERVER_SECRET?.trim();
   if (!secret) {
-    throw new Error("WORKER_SERVER_SECRET required for collab tickets");
+    throw new ServiceUnavailableError("WORKER_SERVER_SECRET required for collab tickets");
   }
   return secret;
 }
@@ -75,7 +76,7 @@ export function mintRichTextCollabTicket(
   const normalizedFieldKey = normalizeRichTextFieldKey(fieldKey);
   const normalizedLocale = normalizeRichTextLocale(locale);
   if (!normalizedFieldKey || !normalizedLocale) {
-    throw new Error("invalid rich text collab field or locale");
+    throw new ValidationError("field", "invalid rich text collab field or locale");
   }
 
   const exp = Math.floor(Date.now() / 1000) + TICKET_TTL_SEC;

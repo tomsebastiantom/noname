@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { StorageError } from "../../../shared/domain-error";
 import type { AgentTaskDTO, AgentTaskStorage, TaskAuditRecord } from "../ports";
 import { agentTasks } from "../schema";
 
@@ -37,7 +38,7 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
           updated_at: input.updatedAt,
         })
         .returning();
-      if (!row) throw new Error("Failed to create agent task");
+      if (!row) throw new StorageError("Failed to create agent task");
       return mapTask(row);
     },
 
@@ -106,7 +107,7 @@ export function createPostgresAgentTaskStorage(db: Database): AgentTaskStorage {
         .set(set)
         .where(and(eq(agentTasks.orgId, orgId), eq(agentTasks.id, id)))
         .returning();
-      if (!row) throw new Error("Failed to update agent task");
+      if (!row) throw new StorageError("Failed to update agent task");
       return mapTask(row);
     },
   };

@@ -1,4 +1,5 @@
 import { coerceScalarString } from "@noname/shared";
+import { ValidationError } from "../../../../shared/domain-error";
 import { documentIdFromRef } from "../../refs";
 
 export const AUTH_PROVIDER_CONTENT_TYPE = "auth_provider";
@@ -62,7 +63,10 @@ export function parseAuthProviderDisplayData(
 export function parseAuthProviderEntryData(data: Record<string, unknown>): AuthProviderEntryData {
   const display = parseAuthProviderDisplayData(data);
   if (!display) {
-    throw new Error("provider_key must be lowercase letters, numbers, and hyphens");
+    throw new ValidationError(
+      "provider_key",
+      "provider_key must be lowercase letters, numbers, and hyphens",
+    );
   }
 
   const clientId = coerceScalarString(data.client_id).trim();
@@ -72,12 +76,19 @@ export function parseAuthProviderEntryData(data: Record<string, unknown>): AuthP
   const userEndpoint = coerceScalarString(data.user_endpoint).trim();
 
   if (isBuiltinLoginProvider(display.providerKey)) {
-    throw new Error("Built-in providers must not include OAuth credentials in CMS entries");
+    throw new ValidationError(
+      "client_id",
+      "Built-in providers must not include OAuth credentials in CMS entries",
+    );
   }
 
-  if (!clientId || !clientSecret) throw new Error("client_id and client_secret are required");
+  if (!clientId || !clientSecret)
+    throw new ValidationError("client_id", "client_id and client_secret are required");
   if (!authorizationEndpoint || !tokenEndpoint || !userEndpoint) {
-    throw new Error("authorization_endpoint, token_endpoint, and user_endpoint are required");
+    throw new ValidationError(
+      "authorization_endpoint",
+      "authorization_endpoint, token_endpoint, and user_endpoint are required",
+    );
   }
 
   const scopesRaw = coerceScalarString(data.scopes, "openid email profile").trim();

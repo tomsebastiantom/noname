@@ -1,4 +1,5 @@
 import { diffToPatches, type Spec } from "@json-render/core";
+import { ValidationError } from "../../shared/domain-error";
 
 /** RFC 6902 operation stored in `document_ops.payload`. */
 export type JsonPatchOp = {
@@ -92,13 +93,13 @@ function applyOne(doc: Record<string, unknown>, op: JsonPatchOp): void {
       removeAtPointer(doc, op.path);
       break;
     default:
-      throw new Error(`Unsupported JSON Patch op: ${op.op}`);
+      throw new ValidationError("op", `Unsupported JSON Patch op: ${op.op}`);
   }
 }
 
 function decodePointer(path: string): string[] {
   if (!path.startsWith("/")) {
-    throw new Error(`Invalid JSON Pointer: ${path}`);
+    throw new ValidationError("path", `Invalid JSON Pointer: ${path}`);
   }
   if (path === "/") return [""];
   return path
@@ -112,7 +113,7 @@ function getParent(
   tokens: string[],
 ): { parent: Record<string, unknown> | unknown[]; key: string } {
   if (tokens.length === 0) {
-    throw new Error("Cannot resolve empty pointer");
+    throw new ValidationError("path", "Cannot resolve empty pointer");
   }
   let current: unknown = doc;
   for (let i = 0; i < tokens.length - 1; i++) {
@@ -125,25 +126,25 @@ function getParent(
   if (current && typeof current === "object") {
     return { parent: current as Record<string, unknown>, key };
   }
-  throw new Error(`Invalid pointer parent at ${tokens.join("/")}`);
+  throw new ValidationError("path", `Invalid pointer parent at ${tokens.join("/")}`);
 }
 
 function readToken(current: unknown, token: string): unknown {
   if (Array.isArray(current)) {
     const index = token === "-" ? current.length : Number(token);
     if (!Number.isInteger(index) || index < 0 || index >= current.length) {
-      throw new Error(`Array index out of bounds: ${token}`);
+      throw new ValidationError("path", `Array index out of bounds: ${token}`);
     }
     return current[index];
   }
   if (current && typeof current === "object") {
     const record = current as Record<string, unknown>;
     if (!(token in record)) {
-      throw new Error(`Missing key: ${token}`);
+      throw new ValidationError("path", `Missing key: ${token}`);
     }
     return record[token];
   }
-  throw new Error(`Cannot traverse into ${typeof current}`);
+  throw new ValidationError("path", `Cannot traverse into ${typeof current}`);
 }
 
 function setAtPointer(
@@ -154,16 +155,16 @@ function setAtPointer(
 ): void {
   const tokens = decodePointer(path);
   if (tokens.length === 1 && tokens[0] === "") {
-    throw new Error("Root replace is not supported");
+    throw new ValidationError("op", "Root replace is not supported");
   }
   const { parent, key } = getParent(doc, tokens);
   if (Array.isArray(parent)) {
     const index = key === "-" ? parent.length : Number(key);
     if (key !== "-" && (!Number.isInteger(index) || index < 0)) {
-      throw new Error(`Invalid array index: ${key}`);
+      throw new ValidationError("path", `Invalid array index: ${key}`);
     }
     if (mustExist && (key === "-" || index >= parent.length)) {
-      throw new Error(`Array index does not exist: ${key}`);
+      throw new ValidationError("path", `Array index does not exist: ${key}`);
     }
     if (key === "-") {
       parent.push(value);
@@ -174,7 +175,7 @@ function setAtPointer(
   }
   const record = parent as Record<string, unknown>;
   if (mustExist && !(key in record)) {
-    throw new Error(`Key does not exist: ${key}`);
+    throw new ValidationError("path", `Key does not exist: ${key}`);
   }
   record[key] = value;
 }
@@ -185,14 +186,14 @@ function removeAtPointer(doc: Record<string, unknown>, path: string): void {
   if (Array.isArray(parent)) {
     const index = Number(key);
     if (!Number.isInteger(index) || index < 0 || index >= parent.length) {
-      throw new Error(`Invalid array index: ${key}`);
+      throw new ValidationError("path", `Invalid array index: ${key}`);
     }
     parent.splice(index, 1);
     return;
   }
   const record = parent as Record<string, unknown>;
   if (!(key in record)) {
-    throw new Error(`Key does not exist: ${key}`);
+    throw new ValidationError("path", `Key does not exist: ${key}`);
   }
   delete record[key];
 }

@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from "../../../../shared/domain-error";
 import { zitadelIssuer } from "./issuer";
 import { jsonRequestBody } from "./json-body";
 import { v2Request } from "./management";
@@ -34,7 +35,7 @@ async function userV2Request<T>(
 
   const err = parsed as { message?: string };
   if (!res.ok) {
-    throw new Error(err.message ?? `ZITADEL ${path} failed (${res.status})`);
+    throw new ServiceUnavailableError(err.message ?? `ZITADEL ${path} failed (${res.status})`);
   }
 
   return parsed as T;
@@ -55,7 +56,7 @@ export async function startTotpRegistration(
   const uri = body.uri?.trim();
   const secret = body.secret?.trim();
   if (!uri || !secret) {
-    throw new Error("ZITADEL did not return TOTP registration details");
+    throw new ServiceUnavailableError("ZITADEL did not return TOTP registration details");
   }
 
   return { uri, secret };

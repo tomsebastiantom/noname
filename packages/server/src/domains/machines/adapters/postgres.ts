@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { StorageError } from "../../../shared/domain-error";
 import type {
   MachineDefinition,
   MachineInstanceDTO,
@@ -33,7 +34,7 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
           },
         })
         .returning();
-      if (!row) throw new Error("Failed to save machine definition");
+      if (!row) throw new StorageError("Failed to save machine definition");
       return mapDefinition(row);
     },
     async listDefinitions(orgId) {
@@ -49,7 +50,7 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
         .insert(machineInstances)
         .values({ orgId, machineName, currentState: initialState, context })
         .returning();
-      if (!row) throw new Error("Failed to create machine instance");
+      if (!row) throw new StorageError("Failed to create machine instance");
       return mapInstance(row);
     },
     async findInstance(orgId, id) {
@@ -71,7 +72,7 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
           and(eq(machineInstances.orgId, instance.orgId), eq(machineInstances.id, instance.id)),
         )
         .returning();
-      if (!row) throw new Error("Failed to update machine instance");
+      if (!row) throw new StorageError("Failed to update machine instance");
       return mapInstance(row);
     },
     async listInstances(orgId) {

@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { PermissionKey } from "@noname/auth";
 import { isPermissionKey } from "@noname/auth";
+import { ServiceUnavailableError } from "../../shared/domain-error";
 
 const PREFIX = "nag.";
 
@@ -31,7 +32,7 @@ function signPayload(payloadJson: string, secret: string): string {
 
 export function mintAgentToken(claims: AgentTokenClaims, secret: string): string {
   if (!secret) {
-    throw new Error("AGENT_TOKEN_SECRET is required to mint agent tokens");
+    throw new ServiceUnavailableError("AGENT_TOKEN_SECRET is required to mint agent tokens");
   }
   const payloadJson = JSON.stringify(claims);
   return `${PREFIX}${base64UrlEncode(payloadJson)}.${signPayload(payloadJson, secret)}`;

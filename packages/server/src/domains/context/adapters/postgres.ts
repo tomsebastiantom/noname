@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { StorageError } from "../../../shared/domain-error";
 import type { ContextSignal, ContextStorage, SegmentDTO } from "../ports";
 import { contextCache, segments } from "../schema";
 
@@ -11,7 +12,7 @@ export function createPostgresContextAdapter(db: Database): ContextStorage {
         .values({ orgId, hash, signals })
         .onConflictDoUpdate({ target: [segments.orgId, segments.hash], set: { signals } })
         .returning();
-      if (!row) throw new Error("Failed to save segment");
+      if (!row) throw new StorageError("Failed to save segment");
       return mapRow(row);
     },
     async findSegmentByHash(orgId, hash) {

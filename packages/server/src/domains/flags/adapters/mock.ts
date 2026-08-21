@@ -1,3 +1,4 @@
+import { NotFoundError } from "../../../shared/domain-error";
 import type { EvaluationRecord, FlagDTO, FlagStorage } from "../ports";
 
 export function createInMemoryFlagStorage(): FlagStorage {
@@ -50,7 +51,7 @@ export function createInMemoryFlagStorage(): FlagStorage {
 
     async update(orgId, id, input) {
       const existing = await this.findById(orgId, id);
-      if (!existing) throw new Error("Flag not found");
+      if (!existing) throw new NotFoundError("Flag", id);
       const updated: FlagDTO = {
         ...existing,
         description: input.description ?? existing.description,

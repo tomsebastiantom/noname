@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type { AssetBinaryStorage } from "./binary";
 
 // Cloudflare R2 is S3-compatible, so this adapter talks the S3 API. Point it
@@ -53,7 +54,7 @@ export function r2ConfigFromEnv(): R2Config | null {
 export function createR2AssetStorage(config?: R2Config): AssetBinaryStorage {
   const cfg = config ?? r2ConfigFromEnv();
   if (!cfg)
-    throw new Error(
+    throw new ServiceUnavailableError(
       "R2 asset storage requires R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY",
     );
   const store = cfg;

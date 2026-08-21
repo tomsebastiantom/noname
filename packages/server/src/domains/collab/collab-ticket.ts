@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
 
 const TICKET_TTL_SEC = 60;
 
@@ -19,7 +20,7 @@ export type MintCollabTicketOptions = {
 function ticketSecret(): string {
   const secret = process.env.WORKER_SERVER_SECRET?.trim();
   if (!secret) {
-    throw new Error("WORKER_SERVER_SECRET required for collab tickets");
+    throw new ServiceUnavailableError("WORKER_SERVER_SECRET required for collab tickets");
   }
   return secret;
 }
@@ -32,7 +33,7 @@ export function mintCollabTicket(
 ): { ticket: string; expiresIn: number } {
   const displayName = options.displayName?.trim();
   if (!displayName) {
-    throw new Error("displayName required for collab tickets");
+    throw new ValidationError("displayName", "displayName required for collab tickets");
   }
 
   const exp = Math.floor(Date.now() / 1000) + TICKET_TTL_SEC;

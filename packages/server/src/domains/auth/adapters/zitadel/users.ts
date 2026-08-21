@@ -1,5 +1,9 @@
 import { randomBytes } from "node:crypto";
-import { ConflictError, ValidationError } from "../../../../shared/domain-error";
+import {
+  ConflictError,
+  ServiceUnavailableError,
+  ValidationError,
+} from "../../../../shared/domain-error";
 import { getManagementToken, v2Request } from "./management";
 
 interface ZitadelUserRow {
@@ -110,7 +114,7 @@ export async function registerHumanUser(
   });
 
   if (!created.userId) {
-    throw new Error("ZITADEL did not return a user id");
+    throw new ServiceUnavailableError("ZITADEL did not return a user id");
   }
   return { userId: created.userId };
 }

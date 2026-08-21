@@ -1,5 +1,6 @@
 import { PERMISSIONS, type PermissionKey, writeAuditFromActor } from "@noname/auth";
 import type { Context, Hono } from "hono";
+import { ServiceUnavailableError, ValidationError } from "../../../shared/domain-error";
 import { getOrgId } from "../../../shared/org";
 import { created, ok } from "../../../shared/respond";
 import { requireHumanPermission } from "../../auth/guards";
@@ -35,14 +36,14 @@ async function listFiltersForActor(
   const layoutDocumentId = query.layoutDocumentId?.trim();
   if (layoutDocumentId) {
     if (layoutDocumentId.length > 128) {
-      throw new Error("layoutDocumentId too long");
+      throw new ValidationError("layoutDocumentId", "layoutDocumentId too long");
     }
     filters.targetLayoutDocumentId = layoutDocumentId;
   }
   if (query.limit) {
     const parsed = Number.parseInt(query.limit, 10);
     if (!Number.isFinite(parsed) || parsed < 1) {
-      throw new Error("invalid limit");
+      throw new ValidationError("limit", "invalid limit");
     }
     filters.limit = Math.min(parsed, 100);
   }
@@ -58,7 +59,7 @@ async function listFiltersForActor(
 export function registerAgentTaskRoutes(routes: Hono, deps: AgentRouteDeps): void {
   const { service, registryStorage, layoutPatchRevert } = deps;
   if (!registryStorage) {
-    throw new Error("Agent task routes require registryStorage");
+    throw new ServiceUnavailableError("Agent task routes require registryStorage");
   }
 
   routes.post("/tasks", async (c) => {

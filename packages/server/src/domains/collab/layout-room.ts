@@ -8,6 +8,7 @@ import {
 } from "@automerge/automerge-repo/slim";
 import type { WSContext } from "hono/ws";
 import type { Database } from "../../drizzle";
+import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import type { LayoutDocumentService } from "../documents/ports";
 import { validateSpec } from "../documents/services/layout-helpers";
 import {
@@ -221,7 +222,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
 
     const row = await deps.layout.get(orgId, layoutDocumentId);
     if (!row) {
-      throw new Error("Layout not found");
+      throw new NotFoundError("Layout", layoutDocumentId);
     }
     const spec = (row.data.spec ?? { root: "", elements: {} }) as Record<string, unknown>;
     validateSpec(spec);
@@ -413,7 +414,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     const peerKind = input.peerKind ?? "human";
     const displayName = input.displayName?.trim() || null;
     if (!displayName) {
-      throw new Error("collab peer requires displayName");
+      throw new ValidationError("displayName", "collab peer requires displayName");
     }
     if (peerKind === "agent") {
       evictStalePeersForUser(room, input.userId, input.peerId, peerKind);

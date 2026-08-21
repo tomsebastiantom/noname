@@ -1,4 +1,5 @@
 import { PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import { type R2Config, r2ConfigFromEnv } from "../../documents/contracts";
 
 export { type R2Config, r2ConfigFromEnv } from "../../documents/contracts";
@@ -11,7 +12,7 @@ export interface CatalogBundleStorage {
 export function createCatalogBundleStorage(config?: R2Config): CatalogBundleStorage {
   const cfg = config ?? r2ConfigFromEnv();
   if (!cfg) {
-    throw new Error(
+    throw new ServiceUnavailableError(
       "Catalog bundle storage requires R2 config. Set R2_BUCKET, R2_ENDPOINT, " +
         "R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.",
     );

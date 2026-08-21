@@ -6,6 +6,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
+import { ServiceUnavailableError } from "../../shared/domain-error";
 import { type R2Config, r2ConfigFromEnv } from "../documents/assets/r2";
 import {
   automergeStorageKeyMatchesPrefix,
@@ -51,7 +52,7 @@ async function bodyToUint8Array(body: unknown): Promise<Uint8Array> {
     }
     return new Uint8Array(Buffer.concat(chunks));
   }
-  throw new Error("unexpected R2 object body");
+  throw new ServiceUnavailableError("unexpected R2 object body");
 }
 
 export function createR2CollabAutomergeChunkStore(

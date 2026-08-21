@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-
 import { fetchUserinfo as fetchUserinfoFromIssuer } from "@noname/auth";
 import { ServiceUnavailableError, UnauthorizedError } from "../../../../shared/domain-error";
 import { zitadelIssuer } from "./issuer";
@@ -48,7 +47,7 @@ function loadLoginClientPat(): string {
     }
   }
 
-  throw new Error("ZITADEL login client PAT not found — run pnpm init:zitadel");
+  throw new ServiceUnavailableError("ZITADEL login client PAT not found — run pnpm init:zitadel");
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {

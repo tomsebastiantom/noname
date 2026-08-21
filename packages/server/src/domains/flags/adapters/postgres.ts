@@ -1,5 +1,6 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { StorageError } from "../../../shared/domain-error";
 import type { EvaluationRecord, FlagDTO, FlagStorage } from "../ports";
 import { flagEvaluations, flags } from "../schema";
 
@@ -19,7 +20,7 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
           variantId: input.variantId,
         })
         .returning();
-      if (!row) throw new Error("Failed to create flag");
+      if (!row) throw new StorageError("Failed to create flag");
       return mapFlag(row);
     },
 
@@ -71,7 +72,7 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
         })
         .where(and(eq(flags.orgId, orgId), eq(flags.id, id)))
         .returning();
-      if (!row) throw new Error("Failed to update flag");
+      if (!row) throw new StorageError("Failed to update flag");
       return mapFlag(row);
     },
 

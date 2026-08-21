@@ -1,3 +1,4 @@
+import { NotFoundError } from "../../shared/domain-error";
 import type { ContextService } from "../context/ports";
 import type {
   ContentDocumentService,
@@ -73,7 +74,7 @@ export function createEdgeService(
         const editorShellResolved = await layout.resolve(siteId, VISUAL_EDITOR_SHELL_REF, segment);
         const shellSpec = editorShellResolved?.spec ?? null;
         if (!shellSpec) {
-          throw new Error(`Editor shell layout "${VISUAL_EDITOR_SHELL_REF}" not found`);
+          throw new NotFoundError("Editor shell layout", VISUAL_EDITOR_SHELL_REF);
         }
 
         return {

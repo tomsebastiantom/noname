@@ -1,3 +1,5 @@
+import { ServiceUnavailableError } from "../../shared/domain-error";
+
 const DEFAULT_JAEGER_QUERY_URL = "http://localhost:16686";
 const DEFAULT_SERVICE = "noname-server";
 
@@ -140,7 +142,7 @@ export function flattenJaegerTrace(trace: JaegerTrace): TraceSpanRow[] {
 async function jaegerFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${jaegerQueryBase()}${path}`);
   if (!res.ok) {
-    throw new Error(`Jaeger query failed (${res.status})`);
+    throw new ServiceUnavailableError(`Jaeger query failed (${res.status})`);
   }
   return (await res.json()) as T;
 }

@@ -1,4 +1,5 @@
 import { type CommsProviderName, isCommsProviderName } from "@noname/shared";
+import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import { parseIntegrationId } from "./integration-id";
@@ -177,7 +178,7 @@ export function createIntegrationsService(deps: {
       integrationId: string,
     ): Promise<ConnectSessionResult> {
       if (!oauth?.isConfigured()) {
-        throw new Error("OAuth integrations are not configured on this server");
+        throw new ServiceUnavailableError("OAuth integrations are not configured on this server");
       }
       const id = parseIntegrationId(integrationId);
       return oauth.createConnectSession({
@@ -243,14 +244,14 @@ export function createIntegrationsService(deps: {
       input?: Record<string, unknown>,
     ): Promise<unknown> {
       if (!oauth?.isConfigured()) {
-        throw new Error("OAuth integrations are not configured");
+        throw new ServiceUnavailableError("OAuth integrations are not configured");
       }
 
       const id = parseIntegrationId(integrationId);
       const settings = await tenantSettings.get(orgId);
       const connectionId = readOAuthConnectionMap(settings.integrations)[id]?.connectionId;
       if (!connectionId) {
-        throw new Error(`No ${id} connection for org ${orgId}`);
+        throw new NotFoundError("Connection", id);
       }
 
       return oauth.triggerAction(id, connectionId, actionName, input);

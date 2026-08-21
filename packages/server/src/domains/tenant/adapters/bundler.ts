@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { ModuleFederationPlugin } from "@module-federation/enhanced/rspack";
 import { rspack } from "@rspack/core";
+import { ValidationError } from "../../../shared/domain-error";
 
 const MAX_SOURCE_BYTES = 100_000;
 const BUILD_TIMEOUT_MS = 120_000;
@@ -17,14 +18,14 @@ const FORBIDDEN_SOURCE = [
 
 export function validateComponentSource(source: string): void {
   if (!source.trim()) {
-    throw new Error("source must not be empty");
+    throw new ValidationError("source", "source must not be empty");
   }
   if (source.length > MAX_SOURCE_BYTES) {
-    throw new Error("source exceeds maximum size");
+    throw new ValidationError("source", "source exceeds maximum size");
   }
   for (const pattern of FORBIDDEN_SOURCE) {
     if (pattern.test(source)) {
-      throw new Error("source contains forbidden pattern");
+      throw new ValidationError("source", "source contains forbidden pattern");
     }
   }
 }

@@ -1,6 +1,7 @@
 import type { ClickHouseClient } from "@clickhouse/client";
 import { createClient } from "@clickhouse/client";
 import { coerceScalarString } from "@noname/shared";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type {
   AnalyticsEventDTO,
   AnalyticsStorage,
@@ -28,7 +29,9 @@ function getClickHouseCredentials(): { username: string; password: string } {
   const password = process.env.CLICKHOUSE_PASSWORD;
   if (process.env.NODE_ENV === "production") {
     if (!username || !password) {
-      throw new Error("CLICKHOUSE_USER and CLICKHOUSE_PASSWORD are required in production");
+      throw new ServiceUnavailableError(
+        "CLICKHOUSE_USER and CLICKHOUSE_PASSWORD are required in production",
+      );
     }
     return { username, password };
   }

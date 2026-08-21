@@ -1,7 +1,7 @@
 import { createSign } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { ConflictError } from "../../../../shared/domain-error";
+import { ConflictError, ServiceUnavailableError } from "../../../../shared/domain-error";
 import { zitadelIssuer } from "./issuer";
 import { jsonRequestBody } from "./json-body";
 
@@ -32,7 +32,7 @@ function loadServiceAccountKey(): ServiceAccountKey {
     }
   }
 
-  throw new Error(
+  throw new ServiceUnavailableError(
     "ZITADEL machine key not found — run pnpm init:zitadel or set ZITADEL_MACHINE_KEY_PATH",
   );
 }
@@ -81,7 +81,9 @@ async function getManagementToken(): Promise<string> {
     error_description?: string;
   };
   if (!res.ok || !body.access_token) {
-    throw new Error(`ZITADEL management token failed: ${body.error_description ?? res.status}`);
+    throw new ServiceUnavailableError(
+      `ZITADEL management token failed: ${body.error_description ?? res.status}`,
+    );
   }
 
   cachedToken = {
@@ -129,7 +131,7 @@ async function managementRequest<T>(
     err.message?.toLowerCase().includes("already");
 
   if (!res.ok && !alreadyExists) {
-    throw new Error(`ZITADEL ${path} → ${res.status}: ${err.message ?? text}`);
+    throw new ServiceUnavailableError(`ZITADEL ${path} → ${res.status}: ${err.message ?? text}`);
   }
 
   return parsed as T;
@@ -208,7 +210,7 @@ export async function upsertZitadelIdp(
     payload,
   );
   if (!created.id) {
-    throw new Error(`ZITADEL did not return a ${displayName} IdP id`);
+    throw new ServiceUnavailableError(`ZITADEL did not return a ${displayName} IdP id`);
   }
 
   await ensureIdpOnLoginPolicy(orgId, created.id);
@@ -256,7 +258,9 @@ export async function connectRequest<T>(
     err.message?.toLowerCase().includes("already");
 
   if (!res.ok && !alreadyExists) {
-    throw new Error(`ZITADEL connect ${path} → ${res.status}: ${err.message ?? text}`);
+    throw new ServiceUnavailableError(
+      `ZITADEL connect ${path} → ${res.status}: ${err.message ?? text}`,
+    );
   }
 
   return parsed as T;
@@ -295,7 +299,7 @@ export async function v2Request<T>(
     if (alreadyExists) {
       throw new ConflictError(err.message ?? "Resource already exists");
     }
-    throw new Error(`ZITADEL v2 ${path} → ${res.status}: ${err.message ?? text}`);
+    throw new ServiceUnavailableError(`ZITADEL v2 ${path} → ${res.status}: ${err.message ?? text}`);
   }
 
   return parsed as T;

@@ -1,10 +1,11 @@
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type { SecretStorePort } from "../ports";
 
 /** Reads platform keys from env when Vault is not configured (org BYOK unavailable). */
 export function createEnvFallbackSecretStore(): SecretStorePort {
   return {
     async putOrgSecret(): Promise<void> {
-      throw new Error("Vault not configured — cannot store org secrets");
+      throw new ServiceUnavailableError("Vault not configured — cannot store org secrets");
     },
 
     async getOrgSecret(): Promise<Record<string, string> | null> {

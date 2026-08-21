@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from "../../../../shared/domain-error";
 import type {
   AuthNamespace,
   AuthorizationCheckInput,
@@ -129,7 +130,7 @@ async function listDirectUsers(
   });
   const res = await fetchFn(`${readUrl}/relation-tuples?${params}`);
   if (!res.ok) {
-    throw new Error(`Keto list failed: ${res.status} ${await res.text()}`);
+    throw new ServiceUnavailableError(`Keto list failed: ${res.status} ${await res.text()}`);
   }
   const body = (await res.json()) as {
     relation_tuples?: { subject_id?: string; subject_set?: unknown }[];
@@ -165,7 +166,7 @@ export function createKetoAuthorizationAdapter(deps: {
         }),
       });
       if (!res.ok) {
-        throw new Error(`Keto check failed: ${res.status} ${await res.text()}`);
+        throw new ServiceUnavailableError(`Keto check failed: ${res.status} ${await res.text()}`);
       }
       const body = (await res.json()) as { allowed?: boolean };
       return body.allowed === true;
@@ -178,7 +179,7 @@ export function createKetoAuthorizationAdapter(deps: {
         body: JSON.stringify(tuplePayload(tuple)),
       });
       if (!res.ok) {
-        throw new Error(`Keto grant failed: ${res.status} ${await res.text()}`);
+        throw new ServiceUnavailableError(`Keto grant failed: ${res.status} ${await res.text()}`);
       }
     },
 
@@ -188,7 +189,7 @@ export function createKetoAuthorizationAdapter(deps: {
         method: "DELETE",
       });
       if (!res.ok) {
-        throw new Error(`Keto revoke failed: ${res.status} ${await res.text()}`);
+        throw new ServiceUnavailableError(`Keto revoke failed: ${res.status} ${await res.text()}`);
       }
     },
 
@@ -204,7 +205,7 @@ export function createKetoAuthorizationAdapter(deps: {
       const params = listQuery(filter);
       const res = await fetchFn(`${deps.readUrl}/relation-tuples?${params}`);
       if (!res.ok) {
-        throw new Error(`Keto list failed: ${res.status} ${await res.text()}`);
+        throw new ServiceUnavailableError(`Keto list failed: ${res.status} ${await res.text()}`);
       }
       const body = (await res.json()) as { relation_tuples?: Record<string, unknown>[] };
       const out: RelationTuple[] = [];

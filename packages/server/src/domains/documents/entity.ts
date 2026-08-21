@@ -1,5 +1,6 @@
 import { type WriteAudit, withWriteAudit } from "@noname/auth";
 import { AggregateRoot } from "../../shared/aggregate-root";
+import { ConflictError } from "../../shared/domain-error";
 import { ContentEvents, LayoutEvents } from "./events";
 
 // Content document — extends AggregateRoot so it can collect domain events.
@@ -116,7 +117,7 @@ export class LayoutDocument extends AggregateRoot {
 
   publish(audit?: WriteAudit): void {
     if (this.status === "archived") {
-      throw new Error("Cannot publish an archived layout");
+      throw new ConflictError("Cannot publish an archived layout");
     }
     this.status = "published";
     this.updatedAt = new Date();

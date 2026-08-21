@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type { GetOrgSecretInput, PutOrgSecretInput, SecretStorePort, VaultConfig } from "../ports";
 
 function orgPath(prefix: string, orgId: string, kind: string, provider: string): string {
@@ -42,7 +43,7 @@ export function createVaultSecretStore(config: VaultConfig): SecretStorePort {
       });
       if (!response?.ok) {
         const detail = response ? await response.text() : "Vault unreachable";
-        throw new Error(`Vault put failed (${path}): ${detail}`);
+        throw new ServiceUnavailableError(`Vault put failed (${path}): ${detail}`);
       }
     },
 
