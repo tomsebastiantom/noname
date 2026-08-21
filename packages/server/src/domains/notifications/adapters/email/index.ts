@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from "../../../../shared/domain-error";
 import type { CommsProviderName } from "../../../secrets/ports";
 import type { EmailSenderPort } from "../../ports";
 import { createBrevoEmailSender } from "./brevo";
@@ -34,7 +35,7 @@ export function getEmailSender(provider: CommsProviderName): EmailSenderPort {
       sender = createBrevoEmailSender();
       break;
     default:
-      throw new Error(`No email sender adapter for provider: ${provider}`);
+      throw new ServiceUnavailableError(`No email sender adapter for provider: ${provider}`);
   }
 
   senders[provider] = sender;

@@ -1,5 +1,6 @@
 import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { NotFoundError, StorageError } from "../../../shared/domain-error";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
@@ -27,7 +28,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           },
         })
         .returning();
-      if (!row) throw new Error("Failed to create content type");
+      if (!row) throw new StorageError("Failed to create content type");
       return mapContentType(row);
     },
     async findContentTypes(orgId) {
@@ -47,7 +48,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .set({ schema: schema as unknown as Record<string, unknown>, updated_at: new Date() })
         .where(and(eq(documentTypes.orgId, orgId), eq(documentTypes.name, name)))
         .returning();
-      if (!row) throw new Error(`Content type '${name}' not found`);
+      if (!row) throw new NotFoundError("Content type", name);
       return mapContentType(row);
     },
 
@@ -111,7 +112,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           .set({ data: merged, updated_at: new Date() })
           .where(eq(documents.id, existing.id))
           .returning();
-        if (!row) throw new Error("Failed to update tenant settings");
+        if (!row) throw new StorageError("Failed to update tenant settings");
         return toTenantSettings(row);
       }
       const [row] = await db
@@ -124,7 +125,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           status: "draft",
         })
         .returning();
-      if (!row) throw new Error("Failed to create tenant settings");
+      if (!row) throw new StorageError("Failed to create tenant settings");
       return toTenantSettings(row);
     },
 
@@ -148,7 +149,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
           collectionId: input.collectionId ?? null,
         })
         .returning();
-      if (!row) throw new Error("Failed to create document");
+      if (!row) throw new StorageError("Failed to create document");
       return mapDocument(row);
     },
     async listDocuments(orgId, filters = {}) {
@@ -193,12 +194,12 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (meta !== undefined) patch.meta = meta;
       if (collectionId !== undefined) patch.collectionId = collectionId;
       const [row] = await db.update(documents).set(patch).where(eq(documents.id, id)).returning();
-      if (!row) throw new Error("Failed to update document");
+      if (!row) throw new StorageError("Failed to update document");
       return mapDocument(row);
     },
     async publishDocument(id) {
       const existing = await findById(db, id);
-      if (!existing) throw new Error("Document not found");
+      if (!existing) throw new NotFoundError("Document", id);
 
       // Archive any currently-published sibling of the same (type, key, segment).
       await db
@@ -220,7 +221,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .set({ status: "published", updated_at: new Date() })
         .where(eq(documents.id, id))
         .returning();
-      if (!row) throw new Error("Failed to publish document");
+      if (!row) throw new StorageError("Failed to publish document");
       return mapDocument(row);
     },
     async archiveDocument(id) {
@@ -229,7 +230,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .set({ status: "archived", updated_at: new Date() })
         .where(eq(documents.id, id))
         .returning();
-      if (!row) throw new Error("Failed to archive document");
+      if (!row) throw new StorageError("Failed to archive document");
       return mapDocument(row);
     },
     async deleteDocument(id) {

@@ -1,3 +1,4 @@
+import { ServiceUnavailableError, ValidationError } from "../../../../shared/domain-error";
 import type { CommsCredentials } from "../../../secrets/ports";
 import type { EmailSenderPort, SendEmailInput } from "../../ports";
 
@@ -5,7 +6,7 @@ export function createResendEmailSender(): EmailSenderPort {
   return {
     async send(credentials: CommsCredentials, input: SendEmailInput & { from?: string }) {
       if (credentials.provider !== "resend") {
-        throw new Error(`Resend sender cannot send via ${credentials.provider}`);
+        throw new ServiceUnavailableError(`Resend sender cannot send via ${credentials.provider}`);
       }
 
       const from =
@@ -14,7 +15,7 @@ export function createResendEmailSender(): EmailSenderPort {
           ? `${credentials.fromName} <${credentials.fromEmail}>`
           : credentials.fromEmail);
       if (!from) {
-        throw new Error("from address required — set comms fromEmail in integrations");
+        throw new ValidationError("from", "address required — set comms fromEmail in integrations");
       }
 
       const response = await fetch("https://api.resend.com/emails", {
@@ -37,7 +38,7 @@ export function createResendEmailSender(): EmailSenderPort {
 
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`Resend send failed (${response.status}): ${detail}`);
+        throw new ServiceUnavailableError(`Resend send failed (${response.status}): ${detail}`);
       }
 
       const body = (await response.json()) as { id?: string };

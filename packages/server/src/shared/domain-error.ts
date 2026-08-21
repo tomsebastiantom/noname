@@ -44,3 +44,9 @@ export class ServiceUnavailableError extends DomainError {
     super(message, "SERVICE_UNAVAILABLE", 503, details);
   }
 }
+
+export class StorageError extends DomainError {
+  constructor(message: string, details?: Record<string, unknown>) {
+    super(message, "STORAGE_ERROR", 500, details);
+  }
+}

@@ -95,7 +95,11 @@ function toEvaluationRecord(
   };
 }
 
-function publishEvaluated(flag: FlagDTO, ctx: FlagEvaluationContext, result: EvaluationResult): void {
+function publishEvaluated(
+  flag: FlagDTO,
+  ctx: FlagEvaluationContext,
+  result: EvaluationResult,
+): void {
   eventBus.publish(FlagEvents.EVALUATED, {
     flagId: flag.id,
     flagKey: flag.key,

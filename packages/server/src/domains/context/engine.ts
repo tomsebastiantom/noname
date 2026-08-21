@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
-import type { ContextSignal, ContextStorage, SegmentDTO, ContextEngine } from "./ports";
 import { eventBus } from "../../shared/event-bus";
+import type { ContextEngine, ContextSignal, ContextStorage, SegmentDTO } from "./ports";
 import { extractSignals } from "./signal-extraction";
 
 // Deterministic, tenant-agnostic segment resolution.

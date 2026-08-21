@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { ValidationError } from "../../../shared/domain-error";
 import type { InboundWebhookAdapter } from "../ports";
 
 export function createGenericHmacAdapter(secret: string): InboundWebhookAdapter {
@@ -19,7 +20,7 @@ export function createGenericHmacAdapter(secret: string): InboundWebhookAdapter 
       const eventId = String(parsed.eventId ?? parsed.id ?? "");
       const eventType = String(parsed.eventType ?? parsed.type ?? "unknown");
       if (!eventId) {
-        throw new Error("Generic webhook payload requires eventId or id");
+        throw new ValidationError("eventId", "Generic webhook payload requires eventId or id");
       }
       return {
         externalEventId: eventId,

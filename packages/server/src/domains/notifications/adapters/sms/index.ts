@@ -1,3 +1,4 @@
+import { ServiceUnavailableError } from "../../../../shared/domain-error";
 import type { CommsProviderName } from "../../../secrets/ports";
 import type { SmsSenderPort } from "./ports";
 import { createTwilioSmsSender } from "./twilio";
@@ -14,7 +15,7 @@ export function getSmsSender(provider: CommsProviderName): SmsSenderPort {
       sender = createTwilioSmsSender();
       break;
     default:
-      throw new Error(`No SMS sender adapter for provider: ${provider}`);
+      throw new ServiceUnavailableError(`No SMS sender adapter for provider: ${provider}`);
   }
 
   senders[provider] = sender;

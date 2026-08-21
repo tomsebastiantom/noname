@@ -1,5 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { NotFoundError, StorageError } from "../../../shared/domain-error";
 import type {
   WebhookOutboundDeliveryDTO,
   WebhookReceiptDTO,
@@ -171,7 +172,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
             payload: input.payload,
           })
           .returning();
-        if (!row) throw new Error("Failed to insert webhook receipt");
+        if (!row) throw new StorageError("Failed to insert webhook receipt");
         return { row: mapReceipt(row), duplicate: false };
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -242,7 +243,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
           description: input.description,
         })
         .returning();
-      if (!row) throw new Error("Failed to insert webhook subscription");
+      if (!row) throw new StorageError("Failed to insert webhook subscription");
       return mapSubscription(row);
     },
 
@@ -260,7 +261,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
         .set(set)
         .where(and(eq(webhookSubscriptions.orgId, orgId), eq(webhookSubscriptions.id, id)))
         .returning();
-      if (!row) throw new Error("Webhook subscription not found");
+      if (!row) throw new NotFoundError("Webhook subscription", id);
       return mapSubscription(row);
     },
 
@@ -297,7 +298,7 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
           deliveredAt: input.deliveredAt ?? null,
         })
         .returning();
-      if (!row) throw new Error("Failed to insert outbound delivery");
+      if (!row) throw new StorageError("Failed to insert outbound delivery");
       return mapOutbound(row);
     },
 

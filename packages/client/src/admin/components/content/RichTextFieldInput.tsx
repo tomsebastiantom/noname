@@ -1,5 +1,11 @@
-import { RichTextTipTapEditor } from "../../../components/rich-text/RichTextTipTapEditor";
+import { lazy, Suspense } from "react";
 import type { MediaFieldLabels } from "./MediaFieldInput";
+
+const RichTextTipTapEditor = lazy(() =>
+  import("../../../components/rich-text/RichTextTipTapEditor").then((m) => ({
+    default: m.RichTextTipTapEditor,
+  })),
+);
 
 export function RichTextFieldInput({
   label,
@@ -35,18 +41,24 @@ export function RichTextFieldInput({
   };
 
   return (
-    <RichTextTipTapEditor
-      label={label}
-      required={required}
-      value={value}
-      onChange={onChange}
-      referenceTarget={referenceTarget}
-      mediaLabels={labels}
-      constraints={constraints}
-      contentDocumentId={contentDocumentId}
-      fieldKey={fieldKey}
-      locale={locale}
-      onFocus={onFocus}
-    />
+    <Suspense
+      fallback={
+        <div className="min-h-40 rounded-md border border-input bg-muted/30" aria-busy="true" />
+      }
+    >
+      <RichTextTipTapEditor
+        label={label}
+        required={required}
+        value={value}
+        onChange={onChange}
+        referenceTarget={referenceTarget}
+        mediaLabels={labels}
+        constraints={constraints}
+        contentDocumentId={contentDocumentId}
+        fieldKey={fieldKey}
+        locale={locale}
+        onFocus={onFocus}
+      />
+    </Suspense>
   );
 }

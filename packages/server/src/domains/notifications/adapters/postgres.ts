@@ -1,5 +1,6 @@
 import { and, desc, eq, inArray, isNull } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
+import { StorageError } from "../../../shared/domain-error";
 import type {
   CommsDeliveryDTO,
   CommsDeliveryEventDTO,
@@ -170,7 +171,7 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
           sentAt: input.sentAt ?? null,
         })
         .returning();
-      if (!row) throw new Error("Failed to insert comms delivery");
+      if (!row) throw new StorageError("Failed to insert comms delivery");
       return mapRow(row);
     },
 
@@ -275,7 +276,7 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
           rawPayload: input.rawPayload ?? {},
         })
         .returning();
-      if (!row) throw new Error("Failed to insert comms delivery event");
+      if (!row) throw new StorageError("Failed to insert comms delivery event");
       return {
         row: {
           id: row.id,
@@ -379,7 +380,7 @@ export function createNotificationsStorage(db: Database): NotificationsStorage {
           readAt: input.readAt ?? null,
         })
         .returning();
-      if (!row) throw new Error("Failed to insert inbox item");
+      if (!row) throw new StorageError("Failed to insert inbox item");
       return {
         id: row.id,
         orgId: row.orgId,

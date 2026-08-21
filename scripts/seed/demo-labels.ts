@@ -1,0 +1,713 @@
+import { DEFAULT_LOGIN_FORM_VIEWS } from "../../packages/client/src/core/login-form-labels";
+
+export const loginViewLabels = DEFAULT_LOGIN_FORM_VIEWS;
+
+export const adminShellNavConfig = {
+  navItems: [
+    { id: "home", href: "/admin" },
+    { id: "pages", href: "/admin/pages" },
+    { id: "content", href: "/admin/content" },
+    { id: "layout", href: "/admin/layout" },
+  ],
+  settingsItems: [
+    { id: "auth", href: "/admin/settings/auth" },
+    { id: "integrations", href: "/admin/settings/integrations" },
+    { id: "users", href: "/admin/settings/users" },
+    { id: "scope", href: "/admin/settings/scope" },
+    { id: "login", href: "/admin/settings/login" },
+    { id: "agents", href: "/admin/settings/agents" },
+  ],
+  observabilityItems: [
+    { id: "analytics", href: "/admin/settings/analytics" },
+    { id: "flags", href: "/admin/settings/flags" },
+    { id: "replay", href: "/admin/settings/replay" },
+  ],
+  accountSecurityHref: "/admin/settings/security",
+  storefrontHref: "/",
+};
+
+export const adminShellNavLabels = {
+  sidebarTitle: "Admin",
+  productName: "Noname",
+  settingsSectionLabel: "Settings",
+  observabilitySectionLabel: "Observability",
+  nav: {
+    home: "Overview",
+    pages: "Pages",
+    content: "Content",
+    layout: "Layouts",
+  },
+  settings: {
+    auth: "Auth settings",
+    integrations: "Integrations",
+    users: "Team members",
+    scope: "Content access",
+    login: "Login appearance",
+    agents: "Agents",
+  },
+  observability: {
+    analytics: "Analytics",
+    flags: "Feature flags",
+    replay: "Session replay",
+  },
+  accountSectionLabel: "Account",
+  accountSecurity: "Account security",
+  storefront: "← Site",
+  signOut: "Sign out",
+  signIn: "Sign in",
+};
+
+export const draftPublishLabels = {
+  saveLabel: "Save draft",
+  savingLabel: "Saving…",
+  publishLabel: "Save & publish",
+  publishingLabel: "Publishing…",
+};
+
+export const documentFolderLabels = {
+  folderLabel: "Folder",
+  folderPlaceholder: "Marketing",
+  folderNoneLabel: "No folder",
+  folderHint:
+    "One folder per document. Team access is granted on folders in Settings → Content access.",
+};
+
+export const documentShareLabels = {
+  shareTitle: "Share with",
+  shareHint: "Give a team member edit access to this document only.",
+  shareUserLabel: "Team member",
+  shareGrantLabel: "Share",
+  shareGrantingLabel: "Sharing…",
+  shareRevokeLabel: "Remove",
+  shareRevokingLabel: "Removing…",
+  shareGrantSuccessMessage: "Access granted.",
+  shareRevokeSuccessMessage: "Access removed.",
+  shareEmptyMessage: "Not shared with anyone directly yet.",
+  shareLoadingLabel: "Loading share list…",
+};
+
+export const documentPublisherShareLabels = {
+  publisherShareTitle: "Publish access",
+  publisherShareHint: "Grant publish permission on this document only.",
+  publisherShareUserLabel: "Team member",
+  publisherShareGrantLabel: "Grant publish",
+  publisherShareGrantingLabel: "Granting…",
+  publisherShareRevokeLabel: "Remove",
+  publisherShareRevokingLabel: "Removing…",
+  publisherShareGrantSuccessMessage: "Publish access granted.",
+  publisherShareRevokeSuccessMessage: "Publish access removed.",
+  publisherShareEmptyMessage: "No direct publish grants yet.",
+  publisherShareLoadingLabel: "Loading publish access…",
+};
+
+export const mediaFieldLabels = {
+  uploadFileLabel: "Upload file",
+  uploadingLabel: "Uploading…",
+  pickExistingLabel: "Pick existing",
+  loadingAssetsLabel: "Loading…",
+  clearLabel: "Clear",
+};
+
+export const referenceFieldLabels = {
+  entriesLoadingLabel: "Loading entries…",
+  emptyLabel: "No {type} entries yet.",
+  selectedPrefix: "Selected:",
+  missingTargetMessage: 'Reference field "{label}" is missing schema references (target content type).',
+};
+
+export const accountSecurityLabels = {
+  title: "Two-factor authentication",
+  description: "Use an authenticator app for an extra sign-in step after your password.",
+  signInRequiredDescription: "Sign in to manage your account security settings.",
+  signInLinkLabel: "Sign in →",
+  backToStorefrontLabel: "← Back to storefront",
+  enabledBadgeLabel: "Enabled",
+  enabledDescription: "Your account is protected with an authenticator app.",
+  checkingLabel: "Checking security settings…",
+  mfaRequiredAlert:
+    "Your store requires an authenticator app before you can use the admin dashboard.",
+  idleDescription: "Add an authenticator app for an extra sign-in step after your password.",
+  idleButtonLabel: "Set up authenticator app",
+  idleButtonPendingLabel: "Starting…",
+  setupDescription:
+    "Scan the QR code with Google Authenticator, Authy, or a similar app. Or enter the secret manually.",
+  qrAltText: "TOTP QR code",
+  verificationCodeLabel: "Verification code",
+  verificationCodePlaceholder: "123456",
+  confirmSetupLabel: "Confirm setup",
+  confirmSetupPendingLabel: "Verifying…",
+  enabledStepDescription:
+    "Sign-in may ask for a code from your authenticator app after your password.",
+  continueToAdminLabel: "Continue to admin →",
+};
+
+export const authSettingsLabels = {
+  saveLabel: "Save settings",
+  savingLabel: "Saving…",
+  loadingLabel: "Loading auth settings…",
+  successMessage: "Auth settings saved.",
+  socialProvidersLegend: "Social providers",
+  configuredBadgeLabel: "Configured in ZITADEL",
+  saveHelperText:
+    "Save registers providers in ZITADEL for this org and stores IdP references in platform settings. Secrets are never returned to the browser after save.",
+  authProvidersLinkText:
+    "Manage provider enable, button label, and icon in Content → auth_provider.",
+  allowPasswordLabel: "Allow email and password sign-in",
+  allowPasswordResetLabel: "Allow forgot-password reset emails",
+  allowSignUpLabel: "Allow customers to create accounts on /login",
+  adminSecurityLegend: "Admin security",
+  requireMfaLabel: "Require authenticator app (MFA) for admin access",
+  mfaHelperText:
+    "When enabled, team members must enroll at Account security before using /admin.",
+  loginAppearanceLinkText: "Edit login appearance — title, logo, and brand copy on /login.",
+  googleLabel: "Google",
+  githubLabel: "GitHub",
+  appleLabel: "Apple",
+  googleSecretPlaceholderNew: "From Google Cloud Console",
+  googleSecretPlaceholderExisting: "Leave blank to keep existing secret",
+  githubSecretPlaceholderNew: "From GitHub OAuth app",
+  githubSecretPlaceholderExisting: "Leave blank to keep existing secret",
+  appleKeyPlaceholderNew: "Paste contents of AuthKey_XXXX.p8",
+  appleKeyPlaceholderExisting: "Leave blank to keep existing key",
+  forbiddenLabel: "Auth settings require the store admin role.",
+};
+
+export const integrationsCommsDeliveriesLabels = {
+  loadingLabel: "Loading deliveries…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  emptyLabel: "No deliveries yet.",
+  refreshLabel: "Refresh",
+  retryLabel: "Retry",
+  retryingLabel: "Retrying…",
+  statusFilterLabel: "Status",
+  allStatusesLabel: "All",
+  columns: {
+    when: "When",
+    status: "Status",
+    to: "To",
+    subject: "Subject",
+    trigger: "Trigger",
+    attempts: "Attempts",
+    engagement: "Engagement",
+    actions: "Actions",
+  },
+};
+
+export const integrationsCommsInboxLabels = {
+  loadingLabel: "Loading inbox…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  emptyLabel: "No notifications yet.",
+  refreshLabel: "Refresh",
+  unreadOnlyLabel: "Unread",
+  allLabel: "All",
+  markReadLabel: "Mark read",
+  columns: {
+    when: "When",
+    title: "Message",
+    trigger: "Trigger",
+    status: "Status",
+    actions: "Actions",
+  },
+};
+
+export const accountNotificationsLabels = {
+  title: "Notifications",
+  description: "Order updates and account messages for your signed-in user.",
+  ...integrationsCommsInboxLabels,
+  forbiddenLabel: "Sign in to view your notifications.",
+};
+
+export const integrationsWebhooksLabels = {
+  loadingLabel: "Loading webhooks…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  emptyLabel: "No webhook subscriptions yet.",
+  refreshLabel: "Refresh",
+  urlLabel: "Endpoint URL",
+  eventTypesLabel: "Event types",
+  eventTypesHelper: "Comma-separated. Use * to receive all event types.",
+  descriptionLabel: "Description (optional)",
+  createLabel: "Add subscription",
+  creatingLabel: "Adding…",
+  deleteLabel: "Delete",
+  deletingLabel: "Deleting…",
+  enabledLabel: "Enabled",
+  disabledLabel: "Disabled",
+  signingSecretLabel: "Signing secret is generated automatically and stored in Vault.",
+  deliveriesTitle: "Outbound delivery log",
+  deliveriesEmptyLabel: "No outbound deliveries yet.",
+  retryLabel: "Retry",
+  retryingLabel: "Retrying…",
+  columns: {
+    url: "URL",
+    events: "Events",
+    status: "Status",
+    failures: "Failures",
+    actions: "Actions",
+    when: "When",
+    eventType: "Event",
+    attempts: "Attempts",
+    httpStatus: "HTTP",
+  },
+};
+
+export const integrationsCommsLabels = {
+  loadingLabel: "Loading comms settings…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  providerLabel: "Email provider",
+  apiKeyLabel: "API key (optional BYOK)",
+  apiKeyPlaceholderNew: "Paste Resend or Twilio key",
+  apiKeyPlaceholderExisting: "Leave blank to keep existing key",
+  configuredBadgeLabel: "Org key stored in Vault",
+  fromEmailLabel: "From email",
+  fromNameLabel: "From name",
+  mailgunDomainLabel: "Mailgun sending domain",
+  mailgunDomainPlaceholder: "mg.yourstore.com",
+  saveLabel: "Save comms settings",
+  savingLabel: "Saving…",
+  successMessage: "Comms settings saved.",
+};
+
+export const integrationsLlmLabels = {
+  loadingLabel: "Loading LLM settings…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  providerLabel: "LLM provider",
+  apiKeyLabel: "API key (optional BYOK)",
+  apiKeyPlaceholderNew: "Paste OpenAI or Anthropic key",
+  apiKeyPlaceholderExisting: "Leave blank to keep existing key",
+  configuredBadgeLabel: "Org key stored in Vault",
+  allowPlatformFallbackLabel: "Allow platform fallback key",
+  allowPlatformFallbackHelper:
+    "When enabled, use the platform OpenAI/Anthropic env key if no org key is set.",
+  saveLabel: "Save LLM settings",
+  savingLabel: "Saving…",
+  successMessage: "LLM settings saved.",
+};
+
+export const integrationsOAuthLabels = {
+  loadingLabel: "Loading external integrations…",
+  forbiddenLabel: "Integrations settings require the store admin role.",
+  connectLabel: "Connect",
+  connectingLabel: "Opening connect…",
+  connectedLabel: "Connected",
+  notConfiguredLabel: "External integrations are not available on this server yet.",
+  emptyLabel: "No external integrations are available for this organization yet.",
+  refreshLabel: "Refresh status",
+  connectionIdLabel: "Connection ID",
+  providerLabel: "Provider",
+};
+
+export const usersAdminLabels = {
+  loadingLabel: "Loading team members…",
+  inviteSectionTitle: "Invite team member",
+  inviteSectionDescription: "They receive an email to set their password.",
+  inviteLabel: "Send invite",
+  invitingLabel: "Sending invite…",
+  inviteSuccessMessage: "Invite sent — they will receive an email to set their password.",
+  roleUpdatedMessage: "Role updated.",
+  emptyTableMessage: "No team members yet.",
+  emailColumnHeader: "Email",
+  roleColumnHeader: "Role",
+  mfaColumnHeader: "MFA",
+  statusColumnHeader: "Status",
+  mfaEnabledLabel: "Enabled",
+  mfaOffLabel: "Off",
+  forbiddenLabel: "Team members require store admin or access manager role.",
+};
+
+export const sessionReplayAdminLabels = {
+  loadingLabel: "Loading replay sessions…",
+  empty: "No replay sessions yet. Browse the storefront with replay enabled to record sessions.",
+  sessionColumnHeader: "Session",
+  userColumnHeader: "User",
+  chunksColumnHeader: "Chunks",
+  lastSeenColumnHeader: "Last activity",
+  searchPlaceholder: "User id or email",
+  searchLabel: "Search",
+  clearSearchLabel: "Clear",
+  identifiedMidSessionLabel: "Identified mid-session",
+  previewTitle: "Session detail",
+  previewLoadingLabel: "Loading chunk…",
+  loadChunkLabel: "Load chunk",
+  playSessionLabel: "Play session",
+  playerLoadingLabel: "Loading replay…",
+  forbiddenLabel: "Session replay requires the replay viewer or store admin role.",
+  noChunksLabel: "No stored chunks for this session.",
+};
+
+export const analyticsEventsAdminLabels = {
+  loadingLabel: "Loading analytics…",
+  emptyEvents: "No events yet. Browse the storefront to generate analytics.",
+  emptyAggregations: "No aggregations yet.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "Analytics requires the analyst or store admin role.",
+  aggregationsTitle: "Events by type",
+  aggregationsDescription: "Counts grouped by event type for this org.",
+  eventsTitle: "Recent events",
+  eventsDescription: "Latest tracked events (up to 50).",
+  eventTypeColumnHeader: "Event type",
+  countColumnHeader: "Count",
+  timestampColumnHeader: "Time",
+  sourceColumnHeader: "Source",
+  sessionColumnHeader: "Session",
+  schemaColumnHeader: "Schema",
+};
+
+export const loginBrandingLabels = {
+  ...draftPublishLabels,
+  previewLoginLabel: "Preview login",
+  draftSavedMessage: "Login appearance saved as draft.",
+  publishedMessage: "Login appearance published.",
+  loadingLabel: "Loading login layout…",
+  forbiddenLabel: "Login appearance requires the store admin role.",
+};
+
+export const contentAdminLabels = {
+  ...draftPublishLabels,
+  ...mediaFieldLabels,
+  ...referenceFieldLabels,
+  ...documentFolderLabels,
+  ...documentShareLabels,
+  ...documentPublisherShareLabels,
+  deleteLabel: "Delete",
+  deletingLabel: "Deleting…",
+  createDraftLabel: "Create draft",
+  creatingLabel: "Creating…",
+  loadingLabel: "Loading content…",
+  entryCreatedMessage: "Entry created as draft.",
+  entrySavedMessage: "Entry saved as draft.",
+  entryPublishedMessage: "Entry published.",
+  entryDeletedMessage: "Entry deleted.",
+  deleteConfirmMessage: "Delete this entry? This cannot be undone.",
+  forbiddenLabel: "Content admin requires draft write access.",
+};
+
+export const layoutAdminLabels = {
+  ...draftPublishLabels,
+  ...documentFolderLabels,
+  ...documentShareLabels,
+  ...documentPublisherShareLabels,
+  loadingLabel: "Loading layouts…",
+  draftSavedMessage: "Layout saved as draft.",
+  publishedMessage: "Layout published. Site and login will use the new spec on next load.",
+  forbiddenLabel: "Layout admin requires draft write access.",
+  allLayoutsLinkLabel: "← All layouts",
+  contentRefLabel: "contentRef (optional)",
+  contentRefPlaceholder: "product:uuid or page:uuid — CMS merge on storefront",
+  contentRefHint: "Storefront templates only. Login/admin specs usually leave this empty.",
+  specJsonLabel: "json-render spec (JSON)",
+  templateMetaTemplateLabel: "Template:",
+  templateMetaSegmentLabel: "Segment:",
+  templateMetaStatusLabel: "Status:",
+  metaSeparator: "·",
+  emptyLayoutsMessage: "No layout templates yet. Seed with pnpm seed:demo.",
+  templateColumnHeader: "Template",
+  statusColumnHeader: "Status",
+  contentRefColumnHeader: "Content ref",
+  hasContentRefYes: "Yes",
+  templateNotFoundPrefix: "Template",
+  templateNotFoundSuffix: "not found.",
+};
+
+export const pageEntryAdminLabels = {
+  saveLabel: "Save",
+  savingLabel: "Saving…",
+  pageSavedMessage: "Page document saved.",
+  createLabel: "Create",
+  creatingLabel: "Creating…",
+  loadingLabel: "Loading pages…",
+  editUrlTreeLabel: "Edit URL tree →",
+  allPagesLinkLabel: "← All pages",
+  urlTreeLinkLabel: "URL tree",
+  pageKeyLabel: "Page key",
+  statusSeparator: " · ",
+  layoutRefLabel: "Layout template",
+  layoutRefPlaceholder: "home",
+  contentRefLabel: "Content ref",
+  contentRefPlaceholder: "page:uuid or product:uuid",
+  contentRefHint: "Optional. Format: type:id — merged into layout via $state on the edge.",
+  newPageTitle: "New page document",
+  newPageDescription: "Key used by page_tree entries (e.g. home, product-demo)",
+  newPageKeyLabel: "Page key",
+  newPageKeyPlaceholder: "about",
+  emptyListMessage: "No routing page documents yet.",
+  pageKeyColumnHeader: "Page key",
+  layoutColumnHeader: "Layout",
+  contentRefColumnHeader: "Content ref",
+  statusColumnHeader: "Status",
+  pageNotFoundPrefix: "Page",
+  pageNotFoundSuffix: "not found.",
+  forbiddenLabel: "Page admin requires draft write access.",
+};
+
+export const pageTreeAdminLabels = {
+  saveTreeLabel: "Save page tree",
+  savingTreeLabel: "Saving…",
+  treeSavedMessage: "Page tree saved.",
+  addEntryLabel: "Add entry",
+  removeEntryLabel: "Remove entry",
+  pageDocumentsLinkLabel: "← Page documents",
+  treeLoadingLabel: "Loading page tree…",
+  forbiddenLabel: "Page tree admin requires draft write access.",
+};
+
+export const featureFlagsAdminLabels = {
+  loadingLabel: "Loading flags…",
+  empty: "No flags yet.",
+  onLabel: "On",
+  offLabel: "Off",
+  togglingLabel: "Saving…",
+  forbiddenLabel: "Feature flags require the flags manager or store admin role.",
+};
+
+export const adminHomeLinkConfig = [
+  { id: "pages", href: "/admin/pages" },
+  { id: "auth_providers", href: "/admin/content/auth_provider" },
+  { id: "layout", href: "/admin/layout" },
+  { id: "users", href: "/admin/settings/users" },
+  { id: "scope", href: "/admin/settings/scope" },
+  { id: "analytics", href: "/admin/settings/analytics" },
+  { id: "flags", href: "/admin/settings/flags" },
+  { id: "replay", href: "/admin/settings/replay" },
+  { id: "auth", href: "/admin/settings/auth" },
+  { id: "integrations", href: "/admin/settings/integrations" },
+  { id: "account_security", href: "/admin/settings/security" },
+  { id: "login", href: "/admin/settings/login" },
+  { id: "agents", href: "/admin/settings/agents" },
+];
+
+export const adminHomeLinkLabels: Record<string, { label: string; description: string }> = {
+  pages: { label: "Pages", description: "URL tree and routing page documents" },
+  auth_providers: {
+    label: "Identity providers",
+    description: "Custom OAuth/OIDC providers (schema-driven CMS entries)",
+  },
+  layout: { label: "Layouts", description: "Edit json-render templates (home, login, …)" },
+  users: {
+    label: "Team members",
+    description: "Invite staff, assign roles (admin: any; access manager: all except admin), view MFA status",
+  },
+  scope: {
+    label: "Content access",
+    description: "Folders, teams, and who can edit scoped content",
+  },
+  analytics: {
+    label: "Analytics",
+    description: "Recent storefront events and counts by event type",
+  },
+  flags: {
+    label: "Feature flags",
+    description: "Toggle storefront features live (SSE + json-render)",
+  },
+  replay: {
+    label: "Session replay",
+    description: "Browse recorded browser sessions (replay viewer or admin)",
+  },
+  auth: {
+    label: "Auth settings",
+    description: "Social login (Google, GitHub, Apple) and password toggle",
+  },
+  account_security: {
+    label: "Account security",
+    description: "Set up authenticator app (two-factor sign-in)",
+  },
+  login: {
+    label: "Login appearance",
+    description: "Title, logo, and brand copy on /login",
+  },
+  agents: {
+    label: "Agents",
+    description: "Register delegated agents, mint tokens, and review completed tasks",
+  },
+};
+
+export const tracesAdminLabels = {
+  loadingLabel: "Loading traces…",
+  empty: "No traces recorded yet.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "You do not have permission to view traces.",
+  operationColumnHeader: "Operation",
+  durationColumnHeader: "Duration",
+  spansColumnHeader: "Spans",
+  statusColumnHeader: "Status",
+  timeColumnHeader: "Time",
+  traceIdColumnHeader: "Trace ID",
+  detailTitle: "Trace detail",
+  detailHint: "Select a trace to inspect its span waterfall.",
+  detailLoadingLabel: "Loading spans…",
+  detailEmptyLabel: "No spans recorded for this trace.",
+  okLabel: "OK",
+  errorLabel: "Error",
+  serviceColumnHeader: "Service",
+  spanTagsLabel: "Tags",
+  copyTraceIdLabel: "Copy trace ID",
+  copiedTraceIdLabel: "Copied",
+  openJaegerLabel: "Open in Jaeger",
+};
+
+export const scopeAdminLabels = {
+  loadingLabel: "Loading…",
+  folderLabel: "Folder",
+  folderPlaceholder: "e.g. legal",
+  folderSelectLabel: "Select folder…",
+  teamLabel: "Team",
+  teamPlaceholder: "e.g. content-team",
+  teamSelectLabel: "Select team…",
+  createFolderLabel: "Add folder",
+  creatingFolderLabel: "Adding…",
+  createTeamLabel: "Add team",
+  creatingTeamLabel: "Adding…",
+  bindingLabel: "Saving…",
+  editAccessLabel: "Edit",
+  publishAccessLabel: "Publish",
+  accessOnLabel: "On",
+  accessOffLabel: "Off",
+  bindingsListTitle: "Current access",
+  emptyBindingsMessage: "No rules yet — pick a folder and team below, then turn access on.",
+  deleteFolderLabel: "Delete folder",
+  deleteTeamLabel: "Delete team",
+  deletingLabel: "Deleting…",
+  deleteSuccessMessage: "Deleted.",
+  deleteFolderConfirm:
+    "Delete this folder? Documents in it will have no folder, and teams will lose access to it.",
+  deleteTeamConfirm:
+    "Delete this team? Members lose folder access granted through this team.",
+  userLabel: "Add people",
+  memberSearchPlaceholder: "Search by name or email…",
+  noMemberMatchesMessage: "No matching people.",
+  memberNoneSelectedLabel: "No one selected — pick from the list.",
+  memberSelectedLabel: "selected",
+  clearSelectionLabel: "Clear all",
+  membersListTitle: "People on this team",
+  emptyMembersMessage: "Nobody on this team yet — add someone below.",
+  memberNameColumnHeader: "Person",
+  orgRoleColumnHeader: "Org role",
+  onTeamColumnHeader: "On team as",
+  slotEditorLabel: "Add as editor",
+  slotPublisherLabel: "Add as publisher",
+  removeEditorLabel: "Remove editor",
+  removePublisherLabel: "Remove publisher",
+  grantOnePersonLabel: "Add 1 person to team",
+  grantManyPeopleLabel: "Add {count} people to team",
+  grantingLabel: "Saving…",
+  revokeLabel: "Remove from team",
+  revokingLabel: "Removing…",
+  grantSuccessMessage: "Saved.",
+  revokeSuccessMessage: "Removed.",
+  foldersSectionTitle: "Folders",
+  foldersSectionHint:
+    "Group content by area (Marketing, Legal, …). Each page or layout belongs to one folder.",
+  teamsSectionTitle: "Teams",
+  teamsSectionHint: "Named groups of people who work on content together.",
+  bindingsSectionTitle: "Folder access",
+  bindingsSectionHint:
+    "Connect a folder to a team or view agent folder access. Edit = draft in that folder. Publish = go live (teams only; agents never publish).",
+  agentLabel: "Agent",
+  agentBindingsListTitle: "Agent folder access",
+  emptyAgentBindingsMessage: "No agents have folder access yet — grant access on Settings → Agents.",
+  removeAgentBindingLabel: "Remove",
+  membershipSectionTitle: "Team members",
+  membershipSectionHint:
+    "Pick a team, then add org members. Org role (from Settings → Users) must allow editing or publishing. Editor = draft on folders this team can access; publisher = can go live too.",
+  emptyFoldersMessage: "No folders yet — create one above or pick a folder when editing content.",
+  emptyTeamsMessage: "No teams yet — create one above.",
+  helpText:
+    "1. Create folders and teams. 2. Connect a folder to a team (edit and/or publish). 3. Add people to the team.",
+  forbiddenLabel: "Content access requires store admin or access manager role.",
+};
+
+export const agentsAdminLabels = {
+  loadingLabel: "Loading agents…",
+  forbiddenLabel: "Agents require content draft access.",
+  registrySectionTitle: "Registered agents",
+  registrySectionDescription:
+    "Create agents that draft on your behalf. Permissions are capped to what you hold.",
+  slugLabel: "Slug",
+  labelLabel: "Display name",
+  registerLabel: "Register agent",
+  registeringLabel: "Registering…",
+  registerSuccessMessage: "Agent registered.",
+  deleteLabel: "Delete",
+  deleteConfirm: "Delete agent {slug}? This revokes all folder access.",
+  deleteSuccessMessage: "Agent deleted.",
+  mintTokenLabel: "Mint token",
+  mintingLabel: "Minting…",
+  mintSuccessMessage: "Copy this token now — it won't be shown again.",
+  tokenExpiresLabel: "Expires",
+  grantFolderLabel: "Grant folder editor access",
+  grantFolderSuccessMessage: "Folder access granted.",
+  folderSelectLabel: "Folder",
+  emptyRegistryMessage: "No agents yet — register one above.",
+  tasksSectionTitle: "Agent tasks",
+  tasksSectionDescription: "Review completed agent work before it goes live.",
+  emptyTasksMessage: "No agent tasks yet.",
+  approveLabel: "Approve",
+  rejectLabel: "Reject",
+  taskApprovedMessage: "Task approved.",
+  taskRejectedMessage: "Task rejected.",
+  slugColumnHeader: "Slug",
+  labelColumnHeader: "Name",
+  ownerColumnHeader: "Owner",
+  statusColumnHeader: "Status",
+  typeColumnHeader: "Type",
+  promptColumnHeader: "Prompt",
+  reviewedByColumnHeader: "Reviewed by",
+  tasksForbiddenLabel: "Task review requires store admin or ownership of the agent linked to the task.",
+  createTaskSectionTitle: "Run orchestrate task",
+  createTaskSectionDescription:
+    "Example: “Summarize last week’s signups and draft a hero layout.” The agent runs analytics → layout/content drafts; you approve before publish.",
+  taskPromptLabel: "Prompt",
+  taskAgentLabel: "Agent",
+  createTaskLabel: "Run task",
+  creatingTaskLabel: "Starting…",
+  createTaskSuccessMessage: "Task queued.",
+  viewTaskLabel: "View",
+  stepsSectionTitle: "Steps",
+  artifactsSectionTitle: "Artifacts",
+  runSummaryLabel: "Summary",
+  noArtifactsMessage: "No drafts were created.",
+  stepStatusOkLabel: "ok",
+  stepStatusDeniedLabel: "denied",
+  stepStatusErrorLabel: "error",
+  runningTaskLabel: "Task is running — refreshing every few seconds…",
+};
+
+export const accountCommunicationPrefsLabels = {
+  title: "Communication preferences",
+  description: "Choose how this store may contact you.",
+  signInRequiredDescription: "Sign in to manage your notification preferences.",
+  signInLinkLabel: "Sign in",
+  loadingLabel: "Loading preferences…",
+  saveLabel: "Save preferences",
+  savingLabel: "Saving…",
+  successMessage: "Preferences saved.",
+  inboxLinkLabel: "View notification inbox →",
+  channelsSectionTitle: "Channels",
+  categoriesSectionTitle: "Message types",
+  transactionalNote: "Order confirmations and security alerts are always delivered.",
+  channels: {
+    email: {
+      label: "Email",
+      helper: "Non-transactional email for this store.",
+    },
+    sms: {
+      label: "SMS",
+      helper: "Text messages when the store enables SMS on a notification.",
+    },
+    in_app: {
+      label: "In-app inbox",
+      helper: "Notifications in your account inbox.",
+    },
+  },
+  categories: {
+    marketing: {
+      label: "Marketing",
+      helper: "Promotions and newsletters. Off by default.",
+    },
+    operational: {
+      label: "Operational updates",
+      helper: "Agent tasks, account alerts, and store operational messages.",
+    },
+  },
+};

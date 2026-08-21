@@ -72,9 +72,8 @@ export async function createApp(): Promise<Hono> {
   const db = createDatabase(databaseUrl);
   const storage = createPostgresDocumentStorage(db);
 
-  let onAuthProviderPublished:
-    | ((orgId: string, type: string, id: string) => Promise<void>)
-    | null = null;
+  let onAuthProviderPublished: ((orgId: string, type: string, id: string) => Promise<void>) | null =
+    null;
 
   const authorization = createAuthorization();
 

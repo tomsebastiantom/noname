@@ -1,6 +1,7 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
@@ -34,17 +35,17 @@ export function startEmailOutboundWorker(deps: {
         try {
           const row = await deps.storage.findDelivery(orgId, deliveryId);
           if (!row) {
-            throw new Error(`Delivery not found: ${deliveryId}`);
+            throw new NotFoundError("Delivery", deliveryId);
           }
 
           const credentials = await deps.secrets.resolveCommsCredentials(orgId);
           if (!credentials) {
-            throw new Error("No comms credentials configured for org");
+            throw new ServiceUnavailableError("No comms credentials configured for org");
           }
 
           if (row.channel === "sms") {
             if (credentials.provider !== "twilio") {
-              throw new Error("SMS delivery requires Twilio credentials");
+              throw new ServiceUnavailableError("SMS delivery requires Twilio credentials");
             }
             const { getSmsSender } = await import("./adapters/sms");
             const smsSender = getSmsSender("twilio");

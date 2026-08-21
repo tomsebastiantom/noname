@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { ServiceUnavailableError } from "../../shared/domain-error";
 
 const TICKET_TTL_SEC = 60;
 
@@ -11,7 +12,7 @@ type StreamTicketPayload = {
 function ticketSecret(): string {
   const secret = process.env.WORKER_SERVER_SECRET?.trim();
   if (!secret) {
-    throw new Error("WORKER_SERVER_SECRET required for stream tickets");
+    throw new ServiceUnavailableError("WORKER_SERVER_SECRET required for stream tickets");
   }
   return secret;
 }

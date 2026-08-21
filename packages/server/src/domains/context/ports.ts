@@ -31,3 +31,9 @@ export interface ContextService {
   segmentForRequest(orgId: string, headers: Record<string, string>): Promise<SegmentDTO>;
   listSegments(orgId: string): Promise<SegmentDTO[]>;
 }
+
+export interface ContextEngine {
+  resolve(signals: ContextSignal[], tenantId?: string): Promise<SegmentDTO>;
+  segmentForRequest(tenantId: string, headers: Record<string, string>): Promise<SegmentDTO>;
+  listSegments(tenantId: string): Promise<SegmentDTO[]>;
+}

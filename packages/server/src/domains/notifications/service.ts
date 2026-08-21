@@ -1,19 +1,22 @@
 import type { Queue } from "bullmq";
-import { eventBus } from "../../shared/event-bus";
+import { ConflictError, NotFoundError } from "../../shared/domain-error";
 import { broadcast } from "../../shared/sse-manager";
 import type { ContentDocumentService, TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import type { NotificationsStorage } from "./adapters/postgres";
 import { toDeliveryDTO, toDeliveryEventDTO, toInboxItemDTO } from "./adapters/postgres";
-import { applyCommsWebhookEvent } from "./adapters/webhooks/apply-event";
-import { getCommsWebhookAdapter } from "./adapters/webhooks/registry";
-import { isCommsDeliveryWebhookEvent } from "./adapters/webhooks/types";
 import { loadPublishedNotificationEmail, renderNotificationEmail } from "./email-template";
-import { CommsEvents } from "./events";
 import {
   applyMarketingEmailCompliance,
   resolveCommunicationPreferencesUrl,
 } from "./marketing-compliance";
+import {
+  loadUserPreferences,
+  queueRenderedEmail,
+  queueRenderedSms,
+  resolveChannels,
+  resolveTemplateId,
+} from "./outbound";
 import type {
   ListDeliveriesQuery,
   NotificationsService,
@@ -22,191 +25,9 @@ import type {
   SendEmailResult,
   SendTemplatedEmailInput,
 } from "./ports";
-import {
-  DEFAULT_NOTIFICATION_PREFERENCES,
-  type NotificationPreferences,
-  shouldDeliverNotification,
-} from "./preferences";
+import { DEFAULT_NOTIFICATION_PREFERENCES, shouldDeliverNotification } from "./preferences";
+import { handleProviderWebhook, handleResendWebhook } from "./provider-webhooks";
 import type { EmailOutboundJobData } from "./queue";
-
-type CommsChannel = "email" | "sms" | "in_app";
-type CommsTriggerMap = Record<string, { templateId?: string; channels?: CommsChannel[] }>;
-
-function readTriggerMap(integrations: Record<string, unknown>): CommsTriggerMap {
-  const comms = integrations.comms;
-  if (!comms || typeof comms !== "object") return {};
-  const triggers = (comms as { triggers?: unknown }).triggers;
-  if (!triggers || typeof triggers !== "object" || Array.isArray(triggers)) return {};
-  return triggers as CommsTriggerMap;
-}
-
-async function resolveTemplateId(
-  tenantSettings: Pick<TenantSettingsService, "get"> | undefined,
-  orgId: string,
-  trigger: string,
-): Promise<string> {
-  if (tenantSettings) {
-    const settings = await tenantSettings.get(orgId);
-    const mapped = readTriggerMap(settings.integrations as Record<string, unknown>)[trigger]
-      ?.templateId;
-    if (mapped) return mapped;
-  }
-  return trigger;
-}
-
-function resolveChannels(
-  integrations: Record<string, unknown> | undefined,
-  trigger: string,
-): CommsChannel[] {
-  const mapped = integrations ? readTriggerMap(integrations)[trigger]?.channels : undefined;
-  if (mapped && mapped.length > 0) return mapped;
-  return ["email"];
-}
-
-async function loadUserPreferences(
-  storage: NotificationsStorage,
-  orgId: string,
-  userId: string,
-): Promise<NotificationPreferences> {
-  const row = await storage.getPreferences(orgId, userId);
-  return row.preferences;
-}
-
-async function queueRenderedSms(
-  deps: {
-    secrets: Pick<SecretsService, "resolveCommsCredentials">;
-    storage: NotificationsStorage;
-    queue: Queue<EmailOutboundJobData>;
-  },
-  orgId: string,
-  input: {
-    to: string;
-    body: string;
-    userId?: string;
-    trigger?: string;
-    templateId?: string;
-    idempotencyKey?: string;
-  },
-): Promise<SendEmailResult> {
-  const { secrets, storage, queue } = deps;
-
-  if (input.idempotencyKey) {
-    const existing = await storage.findDeliveryByIdempotency(orgId, input.idempotencyKey);
-    if (existing) {
-      return { deliveryId: existing.id, jobId: existing.id, duplicate: true };
-    }
-  }
-
-  const credentials = await secrets.resolveCommsCredentials(orgId);
-  if (credentials?.provider !== "twilio") {
-    throw new Error("SMS requires Twilio comms credentials for org");
-  }
-
-  const deliveryId = crypto.randomUUID();
-  await storage.insertDelivery({
-    id: deliveryId,
-    orgId,
-    userId: input.userId ?? null,
-    channel: "sms",
-    provider: "twilio",
-    toAddress: input.to,
-    subject: null,
-    status: "queued",
-    trigger: input.trigger ?? null,
-    templateId: input.templateId ?? null,
-    idempotencyKey: input.idempotencyKey ?? null,
-    bodyHtml: null,
-    bodyText: input.body,
-  });
-
-  const job = await queue.add(
-    "send",
-    {
-      deliveryId,
-      orgId,
-      to: input.to,
-      subject: "",
-      html: "",
-      text: input.body,
-      userId: input.userId,
-    },
-    input.idempotencyKey ? { jobId: `comms:${orgId}:${input.idempotencyKey}` } : undefined,
-  );
-
-  await eventBus.publish(CommsEvents.ENQUEUED, {
-    orgId,
-    deliveryId,
-    channel: "sms",
-    trigger: input.trigger,
-    templateId: input.templateId,
-  });
-
-  return { deliveryId, jobId: job.id ?? deliveryId };
-}
-
-async function queueRenderedEmail(
-  deps: {
-    secrets: Pick<SecretsService, "resolveCommsCredentials">;
-    storage: NotificationsStorage;
-    queue: Queue<EmailOutboundJobData>;
-  },
-  orgId: string,
-  input: SendEmailInput,
-): Promise<SendEmailResult> {
-  const { secrets, storage, queue } = deps;
-
-  if (input.idempotencyKey) {
-    const existing = await storage.findDeliveryByIdempotency(orgId, input.idempotencyKey);
-    if (existing) {
-      return { deliveryId: existing.id, jobId: existing.id, duplicate: true };
-    }
-  }
-
-  const credentials = await secrets.resolveCommsCredentials(orgId);
-  const provider = credentials?.provider ?? "resend";
-
-  const deliveryId = crypto.randomUUID();
-  await storage.insertDelivery({
-    id: deliveryId,
-    orgId,
-    userId: input.userId ?? null,
-    channel: "email",
-    provider,
-    toAddress: input.to,
-    subject: input.subject,
-    status: "queued",
-    trigger: input.trigger ?? null,
-    templateId: input.templateId ?? null,
-    idempotencyKey: input.idempotencyKey ?? null,
-    bodyHtml: input.html,
-    bodyText: input.text ?? null,
-  });
-
-  const job = await queue.add(
-    "send",
-    {
-      deliveryId,
-      orgId,
-      to: input.to,
-      subject: input.subject,
-      html: input.html,
-      text: input.text,
-      userId: input.userId,
-      headers: input.headers,
-    },
-    input.idempotencyKey ? { jobId: `comms:${orgId}:${input.idempotencyKey}` } : undefined,
-  );
-
-  await eventBus.publish(CommsEvents.ENQUEUED, {
-    orgId,
-    deliveryId,
-    channel: "email",
-    trigger: input.trigger,
-    templateId: input.templateId,
-  });
-
-  return { deliveryId, jobId: job.id ?? deliveryId };
-}
 
 export function createNotificationsService(deps: {
   secrets: Pick<SecretsService, "resolveCommsCredentials">;
@@ -231,7 +52,7 @@ export function createNotificationsService(deps: {
         input.locale ?? "en-US",
       );
       if (!template) {
-        throw new Error(`Notification email template not found: ${input.templateId}`);
+        throw new NotFoundError("Notification email template", input.templateId);
       }
 
       if (input.userId) {
@@ -290,7 +111,7 @@ export function createNotificationsService(deps: {
         input.locale ?? "en-US",
       );
       if (!template) {
-        throw new Error(`Notification template not found: ${templateId}`);
+        throw new NotFoundError("Notification template", templateId);
       }
 
       const preferences = input.userId
@@ -399,55 +220,27 @@ export function createNotificationsService(deps: {
       headers: Record<string, string | undefined>,
       options?: { webhookUrl?: string },
     ) {
-      const adapter = getCommsWebhookAdapter(provider);
-      if (!adapter) {
-        throw new Error(`Unknown comms webhook provider: ${provider}`);
-      }
-
-      const parsed = await adapter.parse({
-        rawBody,
-        headers,
-        webhookUrl: options?.webhookUrl,
-      });
-
-      if (!parsed) {
-        throw new Error(`Invalid ${provider} webhook signature or payload`);
-      }
-
-      if ("kind" in parsed && parsed.kind === "subscription_confirmation") {
-        await fetch(parsed.subscribeUrl, { method: "GET" });
-        return { received: true, matched: false, subscribed: true };
-      }
-
-      if (!isCommsDeliveryWebhookEvent(parsed)) {
-        throw new Error(`Invalid ${provider} webhook signature or payload`);
-      }
-
-      return applyCommsWebhookEvent(storage, parsed);
+      return handleProviderWebhook(storage, provider, rawBody, headers, options);
     },
 
     async handleResendWebhook(rawBody, headers) {
-      const secret = process.env.RESEND_WEBHOOK_SECRET?.trim();
-      if (!secret) {
-        throw new Error("Resend webhook not configured");
-      }
-      return this.handleProviderWebhook("resend", rawBody, headers);
+      return handleResendWebhook(storage, rawBody, headers);
     },
 
     async retryDelivery(orgId: string, deliveryId: string) {
       const row = await storage.findDelivery(orgId, deliveryId);
       if (!row) {
-        throw new Error(`Delivery not found: ${deliveryId}`);
+        throw new NotFoundError("Delivery", deliveryId);
       }
       if (row.status !== "failed") {
-        throw new Error(`Delivery is not failed: ${row.status}`);
+        throw new ConflictError(`Delivery is not failed: ${row.status}`);
       }
       if (row.channel === "sms") {
         if (!row.bodyText) {
-          throw new Error("SMS delivery has no stored body to retry");
+          throw new ConflictError("SMS delivery has no stored body to retry");
         }
       } else if (!row.bodyHtml || !row.subject) {
-        throw new Error("Delivery has no stored content to retry");
+        throw new ConflictError("Delivery has no stored content to retry");
       }
 
       await storage.updateDelivery(deliveryId, {

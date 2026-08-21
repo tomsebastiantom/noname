@@ -1,9 +1,21 @@
 packages:
   - "packages/*"
 allowBuilds:
-  cbor-extract: set this to true or false
-  esbuild: set this to true or false
-  msgpackr-extract: set this to true or false
-  protobufjs: set this to true or false
-  sharp: set this to true or false
-  workerd: set this to true or false
+  cbor-extract: true
+  esbuild: true
+  msgpackr-extract: true
+  protobufjs: true
+  sharp: true
+  workerd: true
+overrides:
+  tailwindcss: ^4.3.3
+  hono: ^4.13.1
+  undici: ^7.29.0
+  brace-expansion: ^2.1.4
+  js-yaml: ^4.3.1
+  fast-uri: ^3.1.5
+  adm-zip: ^0.6.0
+  esbuild: ^0.25.0
+  uuid: ^11.1.1
+  postcss: ^8.5.23
+  sharp: ^0.35.0

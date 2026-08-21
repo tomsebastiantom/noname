@@ -4,9 +4,12 @@
  */
 import { randomBytes } from "node:crypto";
 import type { StaffRole } from "@noname/auth";
-import { loginWithCredentials } from "../../packages/server/src/domains/auth/adapters/zitadel/client";
-import { upsertUserTeamRole } from "../../packages/server/src/domains/auth/adapters/zitadel/authorizations";
-import { findUserIdByEmail, registerHumanUser } from "../../packages/server/src/domains/auth/adapters/zitadel/users";
+import {
+  findUserIdByEmail,
+  loginWithCredentials,
+  registerHumanUser,
+  upsertUserTeamRole,
+} from "../../packages/server/src/seed";
 import { seedMarketingScopeDemo, seedOrgEditorAccess, subFromAccessToken } from "./keto-tuples";
 
 export { subFromAccessToken };

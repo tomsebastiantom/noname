@@ -1,3 +1,4 @@
+import { ServiceUnavailableError, ValidationError } from "../../../../shared/domain-error";
 import type { CommsCredentials } from "../../../secrets/ports";
 import type { EmailSenderPort, SendEmailInput } from "../../ports";
 
@@ -5,11 +6,13 @@ export function createSendGridEmailSender(): EmailSenderPort {
   return {
     async send(credentials: CommsCredentials, input: SendEmailInput & { from?: string }) {
       if (credentials.provider !== "sendgrid") {
-        throw new Error(`SendGrid sender cannot send via ${credentials.provider}`);
+        throw new ServiceUnavailableError(
+          `SendGrid sender cannot send via ${credentials.provider}`,
+        );
       }
 
       if (!credentials.fromEmail) {
-        throw new Error("from address required — set comms fromEmail in integrations");
+        throw new ValidationError("from", "address required — set comms fromEmail in integrations");
       }
 
       const from = input.from ?? credentials.fromEmail;
@@ -38,7 +41,7 @@ export function createSendGridEmailSender(): EmailSenderPort {
 
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`SendGrid send failed (${response.status}): ${detail}`);
+        throw new ServiceUnavailableError(`SendGrid send failed (${response.status}): ${detail}`);
       }
 
       return {

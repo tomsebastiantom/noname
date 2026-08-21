@@ -6,7 +6,10 @@ export interface ComponentCtx<P = Record<string, unknown>> {
   emit: (event: string) => void;
 }
 
-export function Hero({ props, emit }: ComponentCtx<{
+export function Hero({
+  props,
+  emit,
+}: ComponentCtx<{
   title: string;
   subtitle: string | null;
   image: string | null;
@@ -23,7 +26,9 @@ export function Hero({ props, emit }: ComponentCtx<{
         />
       )}
       <h1 style={{ fontSize: "2.5rem", margin: "24px 0 8px" }}>{props.title}</h1>
-      {props.subtitle && <p style={{ fontSize: "1.2rem", color: "#666", marginBottom: 24 }}>{props.subtitle}</p>}
+      {props.subtitle && (
+        <p style={{ fontSize: "1.2rem", color: "#666", marginBottom: 24 }}>{props.subtitle}</p>
+      )}
       {props.ctaLabel && (
         <button
           type="button"
@@ -37,20 +42,38 @@ export function Hero({ props, emit }: ComponentCtx<{
   );
 }
 
-export function ProductCard({ props, emit }: ComponentCtx<{
+export function ProductCard({
+  props,
+  emit,
+}: ComponentCtx<{
   title: string;
   price: number;
   image: string | null;
   description: string | null;
 }>) {
   return (
-    <div style={{ border: "1px solid #e0e0e0", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
+    <div
+      style={{
+        border: "1px solid #e0e0e0",
+        borderRadius: 8,
+        overflow: "hidden",
+        background: "#fff",
+      }}
+    >
       {props.image && (
-        <img src={props.image} alt={props.title} style={{ width: "100%", height: 200, objectFit: "cover" }} />
+        <img
+          src={props.image}
+          alt={props.title}
+          style={{ width: "100%", height: 200, objectFit: "cover" }}
+        />
       )}
       <div style={{ padding: 16 }}>
         <h3 style={{ margin: "0 0 8px" }}>{props.title}</h3>
-        {props.description && <p style={{ color: "#666", fontSize: "0.9rem", margin: "0 0 12px" }}>{props.description}</p>}
+        {props.description && (
+          <p style={{ color: "#666", fontSize: "0.9rem", margin: "0 0 12px" }}>
+            {props.description}
+          </p>
+        )}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span style={{ fontWeight: "bold", fontSize: "1.2rem" }}>${props.price.toFixed(2)}</span>
           <button
@@ -66,7 +89,10 @@ export function ProductCard({ props, emit }: ComponentCtx<{
   );
 }
 
-export function Grid({ props, children }: ComponentCtx<{
+export function Grid({
+  props,
+  children,
+}: ComponentCtx<{
   columns: number;
   gap: number;
 }>) {
@@ -84,7 +110,10 @@ export function Grid({ props, children }: ComponentCtx<{
   );
 }
 
-export function Stack({ props, children }: ComponentCtx<{
+export function Stack({
+  props,
+  children,
+}: ComponentCtx<{
   direction: "row" | "column";
   gap: number;
   align: "start" | "center" | "end" | "stretch";
@@ -103,7 +132,9 @@ export function Stack({ props, children }: ComponentCtx<{
   );
 }
 
-export function Text({ props }: ComponentCtx<{
+export function Text({
+  props,
+}: ComponentCtx<{
   value: string;
   variant: "h1" | "h2" | "h3" | "body" | "caption";
   align: "left" | "center" | "right";
@@ -119,15 +150,23 @@ export function Text({ props }: ComponentCtx<{
   const style = { ...styles[props.variant], textAlign: props.align } as React.CSSProperties;
 
   switch (props.variant) {
-    case "h1": return <h1 style={style}>{props.value}</h1>;
-    case "h2": return <h2 style={style}>{props.value}</h2>;
-    case "h3": return <h3 style={style}>{props.value}</h3>;
-    case "caption": return <p style={style}>{props.value}</p>;
-    default: return <p style={style}>{props.value}</p>;
+    case "h1":
+      return <h1 style={style}>{props.value}</h1>;
+    case "h2":
+      return <h2 style={style}>{props.value}</h2>;
+    case "h3":
+      return <h3 style={style}>{props.value}</h3>;
+    case "caption":
+      return <p style={style}>{props.value}</p>;
+    default:
+      return <p style={style}>{props.value}</p>;
   }
 }
 
-export function Button({ props, emit }: ComponentCtx<{
+export function Button({
+  props,
+  emit,
+}: ComponentCtx<{
   label: string;
   variant: "primary" | "secondary" | "outline";
   action: string | null;
@@ -155,7 +194,9 @@ export function Button({ props, emit }: ComponentCtx<{
   );
 }
 
-export function Image({ props }: ComponentCtx<{
+export function Image({
+  props,
+}: ComponentCtx<{
   src: string;
   alt: string;
   fit: "cover" | "contain" | "fill";

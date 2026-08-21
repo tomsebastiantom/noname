@@ -1,7 +1,7 @@
 import { Hono } from "hono";
-import type { Env, EdgeContext } from "../types";
 import { validateJwt } from "../auth";
-import { isBot, fetchSchema, personalizeSchema } from "../renderer";
+import { fetchSchema, isBot, personalizeSchema } from "../renderer";
+import type { EdgeContext, Env } from "../types";
 
 export function createApiRoutes() {
   const routes = new Hono<{ Bindings: Env; Variables: { ctx: EdgeContext } }>();
@@ -22,7 +22,13 @@ export function createApiRoutes() {
     // For personalized paths, resolve segment from context engine
     if (!c.req.query("segment")) {
       // Use cached or fallback segment
-      const _personalized = await personalizeSchema(ctx.tenantId, c.req.raw, c.env, ctx.userId, ctx.role);
+      const _personalized = await personalizeSchema(
+        ctx.tenantId,
+        c.req.raw,
+        c.env,
+        ctx.userId,
+        ctx.role,
+      );
       // Personalization returns segment hash — extract or use default
     }
 

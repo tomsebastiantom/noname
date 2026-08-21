@@ -1,5 +1,12 @@
 import { randomBytes } from "node:crypto";
 import type { Queue } from "bullmq";
+import {
+  ConflictError,
+  NotFoundError,
+  ServiceUnavailableError,
+  UnauthorizedError,
+  ValidationError,
+} from "../../shared/domain-error";
 import type { SecretsService } from "../secrets/ports";
 import { createGenericHmacAdapter } from "./adapters/generic-hmac";
 import type { WebhooksStorage } from "./adapters/postgres";
@@ -45,7 +52,7 @@ export function createWebhooksService(deps: {
     orgId: string,
     row: Awaited<ReturnType<WebhooksStorage["findSubscription"]>>,
   ) {
-    if (!row) throw new Error("Webhook subscription not found");
+    if (!row) throw new NotFoundError("Webhook subscription", orgId);
     const hasSigningSecret = await secrets.hasOrgSecret(orgId, "webhooks", row.id);
     return toSubscriptionDTO(row, hasSigningSecret);
   }
@@ -54,11 +61,11 @@ export function createWebhooksService(deps: {
     async handleInbound(provider, rawBody, headers) {
       const adapter = adapterForProvider(provider);
       if (!adapter) {
-        throw new Error(`Webhook provider not configured: ${provider}`);
+        throw new ServiceUnavailableError(`Webhook provider not configured: ${provider}`);
       }
 
       if (!adapter.verify(rawBody, headers)) {
-        throw new Error("Invalid webhook signature");
+        throw new UnauthorizedError("Invalid webhook signature");
       }
 
       const normalized = adapter.normalize(rawBody);
@@ -107,12 +114,12 @@ export function createWebhooksService(deps: {
     async upsertSubscription(orgId, subscriptionId, input, _actorId) {
       const url = input.url.trim();
       if (!url.startsWith("https://")) {
-        throw new Error("Webhook URL must use HTTPS");
+        throw new ValidationError("url", "Webhook URL must use HTTPS");
       }
 
       const eventTypes = input.eventTypes.map((value) => value.trim()).filter(Boolean);
       if (eventTypes.length === 0) {
-        throw new Error("At least one event type is required");
+        throw new ValidationError("eventTypes", "At least one event type is required");
       }
 
       const signingSecret = input.signingSecret?.trim() || randomBytes(32).toString("base64url");
@@ -120,7 +127,7 @@ export function createWebhooksService(deps: {
       if (subscriptionId) {
         const existing = await storage.findSubscription(orgId, subscriptionId);
         if (!existing) {
-          throw new Error("Webhook subscription not found");
+          throw new NotFoundError("Webhook subscription", subscriptionId ?? orgId);
         }
 
         const row = await storage.updateSubscription(orgId, subscriptionId, {
@@ -167,7 +174,7 @@ export function createWebhooksService(deps: {
     async deleteSubscription(orgId, subscriptionId) {
       const existing = await storage.findSubscription(orgId, subscriptionId);
       if (!existing) {
-        throw new Error("Webhook subscription not found");
+        throw new NotFoundError("Webhook subscription", subscriptionId ?? orgId);
       }
       await storage.deleteSubscription(orgId, subscriptionId);
     },
@@ -222,18 +229,18 @@ export function createWebhooksService(deps: {
     async retryOutboundDelivery(orgId, deliveryId) {
       const row = await storage.findOutboundDeliveryForOrg(orgId, deliveryId);
       if (!row) {
-        throw new Error(`Outbound delivery not found: ${deliveryId}`);
+        throw new NotFoundError("Outbound delivery", deliveryId);
       }
       if (row.status !== "failed") {
-        throw new Error(`Outbound delivery is not failed: ${row.status}`);
+        throw new ConflictError(`Outbound delivery is not failed: ${row.status}`);
       }
 
       const subscription = await storage.findSubscription(orgId, row.subscriptionId);
       if (!subscription) {
-        throw new Error("Webhook subscription not found for delivery");
+        throw new NotFoundError("Webhook subscription", row.subscriptionId);
       }
       if (!subscription.enabled) {
-        throw new Error("Webhook subscription is disabled");
+        throw new ConflictError("Webhook subscription is disabled");
       }
 
       const body = buildOutboundWebhookBody(row.eventType, row.eventId, row.payload);

@@ -8,7 +8,7 @@ import { randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { loginWithCredentials } from "../../packages/server/src/domains/auth/adapters/zitadel/client";
+import { loginWithCredentials } from "../../packages/server/src/seed";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";

@@ -1,10 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { startAnalyticsWorker } from "./analytics/worker";
 import { startAgentWorker } from "./agent/worker";
-import { startCatalogBuildWorker } from "./tenant/worker";
+import { startAnalyticsWorker } from "./analytics/worker";
 import { startEmailOutboundWorker } from "./notifications/worker";
-import { startWebhookInboundWorker } from "./webhooks/worker";
+import { startCatalogBuildWorker } from "./tenant/worker";
 import { startWebhookOutboundWorker } from "./webhooks/outbound-worker";
+import { startWebhookInboundWorker } from "./webhooks/worker";
 
 /**
  * `RUN_WORKERS=false` must short-circuit before any BullMQ `Worker` is constructed — that's
@@ -30,9 +30,7 @@ describe("background workers respect RUN_WORKERS=false", () => {
   });
 
   it("startWebhookOutboundWorker returns null", () => {
-    expect(
-      startWebhookOutboundWorker({ storage: {} as never, secrets: {} as never }),
-    ).toBeNull();
+    expect(startWebhookOutboundWorker({ storage: {} as never, secrets: {} as never })).toBeNull();
   });
 
   it("startEmailOutboundWorker returns null", () => {

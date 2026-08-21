@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { ValidationError } from "../../../shared/domain-error";
 import type { InboundWebhookAdapter } from "../ports";
 
 function parseStripeSignature(header: string): { timestamp: string; signatures: string[] } | null {
@@ -45,7 +46,7 @@ export function createStripeWebhookAdapter(secret: string): InboundWebhookAdapte
       const externalEventId = event.id ?? "";
       const eventType = event.type ?? "unknown";
       if (!externalEventId) {
-        throw new Error("Stripe event missing id");
+        throw new ValidationError("id", "Stripe event missing id");
       }
 
       const object = event.data?.object ?? {};

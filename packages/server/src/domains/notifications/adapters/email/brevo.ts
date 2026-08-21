@@ -1,3 +1,4 @@
+import { ServiceUnavailableError, ValidationError } from "../../../../shared/domain-error";
 import type { CommsCredentials } from "../../../secrets/ports";
 import type { EmailSenderPort, SendEmailInput } from "../../ports";
 
@@ -5,12 +6,12 @@ export function createBrevoEmailSender(): EmailSenderPort {
   return {
     async send(credentials: CommsCredentials, input: SendEmailInput & { from?: string }) {
       if (credentials.provider !== "brevo") {
-        throw new Error(`Brevo sender cannot send via ${credentials.provider}`);
+        throw new ServiceUnavailableError(`Brevo sender cannot send via ${credentials.provider}`);
       }
 
       const fromEmail = input.from ?? credentials.fromEmail;
       if (!fromEmail) {
-        throw new Error("from address required — set comms fromEmail in integrations");
+        throw new ValidationError("from", "address required — set comms fromEmail in integrations");
       }
 
       const response = await fetch("https://api.brevo.com/v3/smtp/email", {
@@ -37,7 +38,7 @@ export function createBrevoEmailSender(): EmailSenderPort {
 
       if (!response.ok) {
         const detail = await response.text();
-        throw new Error(`Brevo send failed (${response.status}): ${detail}`);
+        throw new ServiceUnavailableError(`Brevo send failed (${response.status}): ${detail}`);
       }
 
       const body = (await response.json()) as { messageId?: string };

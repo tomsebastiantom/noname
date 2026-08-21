@@ -29,9 +29,7 @@ startRedisFanoutMonitor();
 
 await createApp();
 
-console.log(
-  `Worker process started (pid ${process.pid}) — processing queues, no HTTP port bound`,
-);
+console.log(`Worker process started (pid ${process.pid}) — processing queues, no HTTP port bound`);
 
 function shutdown(signal: string): void {
   console.log(`[worker] received ${signal}, exiting`);

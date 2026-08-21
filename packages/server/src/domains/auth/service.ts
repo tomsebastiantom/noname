@@ -254,10 +254,11 @@ export function createAuthService(deps: {
       // "authentication factors for N users" batch endpoint, so this fans out with bounded
       // concurrency rather than either a `for` loop (O(n) sequential latency) or an unbounded
       // `Promise.all` (risks tripping Zitadel's per-org rate limit on large teams).
-      const mfaEnrolledByUserId = await mapWithConcurrency(teamUsers, 10, async (user) => [
-        user.userId,
-        await userHasTotpFactor(orgId, user.userId),
-      ] as const);
+      const mfaEnrolledByUserId = await mapWithConcurrency(
+        teamUsers,
+        10,
+        async (user) => [user.userId, await userHasTotpFactor(orgId, user.userId)] as const,
+      );
       const mfaMap = new Map(mfaEnrolledByUserId);
 
       return teamUsers.map((user) => ({

@@ -1,6 +1,7 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { ServiceUnavailableError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
@@ -38,7 +39,7 @@ export function startWebhookOutboundWorker(deps: {
           const secretRow = await deps.secrets.getOrgSecret(orgId, "webhooks", subscriptionId);
           const signingSecret = secretRow?.signingSecret?.trim();
           if (!signingSecret) {
-            throw new Error("Webhook signing secret not configured");
+            throw new ServiceUnavailableError("Webhook signing secret not configured");
           }
 
           const timestamp = Math.floor(Date.now() / 1000);
@@ -52,7 +53,9 @@ export function startWebhookOutboundWorker(deps: {
           });
 
           if (!response.ok) {
-            throw new Error(`Webhook delivery failed with HTTP ${response.status}`);
+            throw new ServiceUnavailableError(
+              `Webhook delivery failed with HTTP ${response.status}`,
+            );
           }
 
           await deps.storage.updateOutboundDelivery(deliveryId, {
