@@ -33,6 +33,7 @@ Rationale: [`docs/2026-07-31/SHARED-PACKAGES.md`](../../docs/2026-07-31/SHARED-P
 | `schema.ts` | `ContentFieldSchema`, `ContentTypeSchema` |
 | `refs.ts` | `DocumentRef`, `documentIdFromRef`, `parseDocumentRef`, `documentIdFromFieldValue` |
 | `locale.ts` | `DEFAULT_CONTENT_LOCALE`, `pickLocalizedValue`, `labelFromContentData` |
+| `catalog-props.ts` | `catalogProps`, `specProps`, `CatalogProps` — spec-driven-UI props contract |
 
 ---
 

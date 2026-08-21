@@ -1,24 +1,8 @@
 import { z } from "zod";
 
+export { type CatalogProps, catalogProps } from "@noname/documents";
+
 /** Layout spec props — config (behavior) + labels (all copy). See skills/spec-driven-ui/props-contract.md */
-export function catalogProps<TLabels extends z.ZodRawShape, TConfig extends z.ZodRawShape>(
-  labels: TLabels,
-  config: TConfig,
-) {
-  return z.object({
-    config: z.object(config),
-    labels: z.object(labels),
-  });
-}
-
-export type CatalogProps<
-  TConfig extends Record<string, unknown>,
-  TLabels extends Record<string, unknown>,
-> = {
-  config: TConfig;
-  labels: TLabels;
-};
-
 export const draftPublishLabelsSchema = z.object({
   saveLabel: z.string(),
   savingLabel: z.string(),

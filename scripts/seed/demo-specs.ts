@@ -1,3 +1,4 @@
+import { specProps as catalogProps } from "../../packages/documents/src/catalog-props";
 import { DEFAULT_LOGIN_FORM_MESSAGES } from "../../packages/client/src/core/login-form-labels";
 import {
   accountCommunicationPrefsLabels,
@@ -28,13 +29,6 @@ import {
   tracesAdminLabels,
   usersAdminLabels,
 } from "./demo-labels";
-
-function catalogProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
-  config: TConfig,
-  labels: TLabels,
-) {
-  return { config, labels };
-}
 
 export const loginSpec = {
   root: "page",
