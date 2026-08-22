@@ -1,4 +1,4 @@
-﻿# Product Principles & Positioning
+# Product Principles & Positioning
 
 ## The Core Thesis
 
@@ -20,7 +20,7 @@ An **open source AI-native platform** where everything is built in — not stitc
 | Component | What stores use today | Our server has it built in |
 |-----------|---------------------|---------------------------|
 | **Commerce** | Shopify / WooCommerce / BigCommerce | Cart, checkout, payments, products, inventory, subscriptions |
-| **CMS** | WordPress / Contentful / Strapi | Pages, products, media, blog. Visual drag-drop editor. |
+| **CMS** | WordPress / Contentful / Strapi | Pages, products, media, blog. **Visual inline editor (click-to-edit on live storefront)**. |
 | **Analytics** | Google Analytics / Mixpanel / Amplitude | Schema-attributed analytics. Every event knows which layout variant drove it. |
 | **Observability** | HotJar / FullStory / LogRocket | Heatmaps, session replays, funnel analysis, drop-off detection. Built into the dashboard. |
 | **A/B Testing** | VWO / Optimizely / Google Optimize | Multi-armed bandit. AI generates variants. Auto-promotes winners. Built-in flag system for progressive rollouts. |
@@ -91,7 +91,7 @@ First-time mobile from TikTok? Video-first, 1-tap checkout. Returning desktop cu
 Product descriptions from a photo. SEO metadata. AI agent runs A/B tests automatically. Inventory urgency signals. Related product suggestions. You decide what AI does and when.
 
 ### Edit Visually (When You Want Control)
-Drag-and-drop CMS that outputs valid JSON the AI understands. AI co-pilot for natural language edits. Role-based guardrails. No code required.
+**Click-to-edit on the live storefront** (`?edit=true`). Drag-drop canvas with component palette, layer tree, props panel. Code-split editor chunk (~50KB) loaded only for admins. AI co-pilot for natural language edits. Role-based guardrails. No code required.
 
 ### Sell Anything
 Digital, physical, services, subscriptions, bundles, donations. The commerce primitives change per vertical; the AI engine stays the same.
@@ -110,7 +110,7 @@ Your domain. Your Stripe account. Your customer data. Full export. No lock-in. O
 
 | Feature | Description |
 |---------|-------------|
-| CMS (Content Management) | Pages, products, media, blog. Visual drag-drop editor like WordPress. |
+| CMS (Content Management) | Pages, products, media, blog. **Visual inline editor (click-to-edit on live storefront)**. |
 | AI Storefront Generation | Natural language → complete store with products, pages, checkout |
 | Product Catalog | Add/edit products; AI generates descriptions, SEO, variants on request |
 | Cart & Checkout | Stripe-powered; optimized per order value and user context |
@@ -130,7 +130,7 @@ Your domain. Your Stripe account. Your customer data. Full export. No lock-in. O
 | Per-Visitor Personalization | Different storefront per visitor segment |
 | Edge ML Inference | Lightweight models at CDN edge for sub-50ms decisions |
 | JSON Diff Protocol | Only changed nodes sent to client (~200 bytes vs ~20KB). Uses json-render's built-in `diffToPatches()` (RFC 6902) — reuse, don't build. |
-| Visual CMS (v1) | Drag-drop editor + AI co-pilot → valid JSON |
+| Visual CMS (v1) | **Inline editor (click-to-edit)** + AI co-pilot → valid JSON |
 | i18n & Localization | Locale-aware schema generation, RTL, cultural adaptation |
 | Schema Telemetry | Every JSON node traceable; analytics knows which schema drove which conversion |
 | ML Feedback Loop (v1) | Events → feature store → model retrain → better schemas |
@@ -262,7 +262,7 @@ Every visitor interaction on every store trains the ML model. More stores → mo
 |----------|--------|-----------|
 | First vertical | Any store (dual-path) | Shopify integration for commerce stores. Standalone for everyone. Same server. |
 | Schema format | JSON (via json-render) | LLMs output JSON more reliably than code. Validatable before render. Edge-cacheable. Multi-platform. |
-| Renderer | Integrate json-render (open source) | 15k stars, Apache 2.0, Vercel-backed. Supports React, Vue, Svelte, RN, Flutter. Don't rebuild. |
+| Visual Editor | Custom inline editor (not GrapesJS) | Click-to-edit on live storefront. Drag-drop canvas, palette, layer tree, props panel. Code-split (~50KB). Loaded only for admins. |
 | Payment provider | Stripe Connect + Shopify Payments | Dual: Shopify mode uses merchant's existing payments. Standalone uses Stripe Connect. |
 | Edge provider | Cloudflare primary | Workers = fastest cold start; R2 = zero egress; Workers KV for segment caching |
 | AI provider | Multi (OpenAI + Claude + fine-tuned) | No vendor dependency; different models for different tasks |

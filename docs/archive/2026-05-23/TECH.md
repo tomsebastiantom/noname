@@ -1,4 +1,4 @@
-﻿# Technical Architecture
+# Technical Architecture
 ## How The Open Source AI Platform Actually Works
 
 > **Updated 2026-07-25.** Auth: **ZITADEL** + `@cfworker/jwt` at edge + HMAC to server. See `docs/2026-07-13/AUTH.md`.
@@ -173,10 +173,13 @@ This is NOT a Next.js app. It's NOT an SSR monolith. It's three independent depl
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  VISUAL CMS / BUILDER (GrapesJS-based)               │
+│                  VISUAL CMS / BUILDER (Custom Inline Editor)        │
 │                                                                      │
-│  Drag-drop editor → valid JSON. Shopify/Unbounce-like interface.    │
-│  Merchant tweaks what AI generated. No code required.               │
+│  Click-to-edit on live storefront (`?edit=true`). Drag-drop canvas  │
+│  with component palette, layer tree, props panel. Merchant edits    │
+│  the exact page visitors see. Same URL, same components, same       │
+│  catalog. Code-split editor chunk (~50KB) loaded only for admins.   │
+│  **NOT GrapesJS** — custom implementation supersedes it for v1.     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 

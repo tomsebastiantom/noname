@@ -1,30 +1,33 @@
-﻿# Development Roadmap
+# Development Roadmap
 ## Phases, Milestones & Deliverables
 
 ---
 
 > **Framing — "commerce" is an example vertical, not the product.** This roadmap uses commerce (storefronts, checkout, carts, orders) as a concrete illustration of the phases. The platform is **identity-agnostic**: the same engines and domains power booking, membership, SaaS, content, and any other use case. Commerce is the first vertical we validate against, not the platform's identity.
 
+> ⚠️ **NOTE: This roadmap (2026-05-23) is OUTDATED.** See [`docs/2026-08-21/CURRENT_STATUS.md`](../2026-08-21/CURRENT_STATUS.md) for actual implementation status as of 2026-08-21.
+> Key discrepancies: GrapesJS was NOT integrated — replaced by custom inline visual editor (substantially built). Commerce Engine (0.5) is 10% complete (client skeleton only). Phase 0 is ~65% complete overall.
+
 ## Phase 0: Foundation (Weeks 1-6)
 **Goal**: One open source server that generates a valid storefront, processes a checkout, and lets a merchant manage AI agents — working as both Shopify mode and standalone mode.
 
 ### Deliverables
 
-| # | Deliverable | Description | Week |
-|---|------------|-------------|------|
-| 0.1 | **Server Scaffold** | Node.js + Postgres + Redis. Single deployable codebase. Auth, multi-tenant, admin dashboard. | 1-2 |
-| 0.2 | **json-render Integration** | Set up json-render catalog with base commerce components (ProductCard, AddToCart, CheckoutButton, CartDrawer). Render existing JSON specs. | 1-2 |
-| 0.3 | **CMS Engine** | Content management: pages, products, media. Admin UI. GrapesJS visual editor integration. | 2-4 |
-| 0.4 | **AI Generation Pipeline v0.1** | LLM prompt → structured JSON output (compatible with json-render spec). Works for simple storefronts. | 2-4 |
-| 0.5 | **Commerce Engine** | Cart, checkout (Stripe Connect for standalone), order management. Shopify adapter for Shopify mode. | 3-5 |
-| 0.6 | **Context Engine v0.1** | Reads device type, locale, referrer → maps to segment → passes to AI | 4-6 |
-| 0.7 | **AI Agent Manager v0.1** | Task assignment, AI execution, review/approval workflow. First agent: "optimize this page." | 5-6 |
-| 0.8 | **Demo Store** | A fully working store: AI generates a storefront, visitor sees it, can buy a product | 5-6 |
+| # | Deliverable | Description | Week | **Actual (2026-08-21)** |
+|---|------------|-------------|------|-------------------------|
+| 0.1 | **Server Scaffold** | Node.js + Postgres + Redis. Single deployable codebase. Auth, multi-tenant, admin dashboard. | 1-2 | ✅ 100% |
+| 0.2 | **json-render Integration** | Set up json-render catalog with base commerce components (ProductCard, AddToCart, CheckoutButton, CartDrawer). Render existing JSON specs. | 1-2 | 🟡 70% — Only 2/10 commerce components |
+| 0.3 | **CMS Engine** | Content management: pages, products, media. Admin UI. **Custom inline visual editor** (not GrapesJS). | 2-4 | 🟡 85% — Inline editor substantially built |
+| 0.4 | **AI Generation Pipeline v0.1** | LLM prompt → structured JSON output (compatible with json-render spec). Works for simple storefronts. | 2-4 | 🟡 60% — Needs storefront prompts + catalog validation |
+| 0.5 | **Commerce Engine** | Cart, checkout (Stripe Connect for standalone), order management. Shopify adapter for Shopify mode. | 3-5 | ❌ **10%** — Client cart skeleton only, no server domain |
+| 0.6 | **Context Engine v0.1** | Reads device type, locale, referrer → maps to segment → passes to AI | 4-6 | 🟡 70% — Server done, client signals missing |
+| 0.7 | **AI Agent Manager v0.1** | Task assignment, AI execution, review/approval workflow. First agent: "optimize this page." | 5-6 | 🟡 80% — Framework complete, needs concrete task |
+| 0.8 | **Demo Store** | A fully working store: AI generates a storefront, visitor sees it, can buy a product | 5-6 | ❌ 0% — Blocked on 0.5 |
 
 ### Key Changes from Original Plan
 - **No custom JSON Schema spec** — adopt json-render's existing spec
 - **No custom renderer** — integrate json-render (open source, Vercel-backed)
-- **No custom visual CMS** — integrate GrapesJS (open source)
+- **No GrapesJS** — **replaced by custom inline visual editor** (Shopify Theme Editor style, substantially built in `packages/client/src/editor/`)
 - **Added**: AI Agent Manager (the core differentiator)
 - **Added**: Dual-path architecture (Shopify adapter + Stripe Connect standalone)
 - **Compressed**: 8 weeks → 6 weeks (reusing existing open source)

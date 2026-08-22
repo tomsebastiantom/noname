@@ -1,4 +1,4 @@
-﻿# Development Roadmap
+# Development Roadmap
 ## Phases, Milestones & Deliverables
 
 ---
@@ -14,7 +14,7 @@
 |---|------------|-------------|------|
 | 0.1 | **Server Scaffold** | Node.js + Postgres + Redis. Single deployable codebase. Auth, multi-tenant, admin dashboard. | 1-2 |
 | 0.2 | **json-render Integration** | Set up json-render catalog with base commerce components (ProductCard, AddToCart, CheckoutButton, CartDrawer). Render existing JSON specs. | 1-2 |
-| 0.3 | **CMS Engine** | Content management: pages, products, media. Admin UI. GrapesJS visual editor integration. | 2-4 |
+| 0.3 | **CMS Engine** | Content management: pages, products, media. Admin UI. **Custom inline visual editor** (not GrapesJS). | 2-4 |
 | 0.4 | **AI Generation Pipeline v0.1** | LLM prompt → structured JSON output (compatible with json-render spec). Works for simple storefronts. | 2-4 |
 | 0.5 | **Commerce Engine** | Cart, checkout (Stripe Connect for standalone), order management. Shopify adapter for Shopify mode. | 3-5 |
 | 0.6 | **Context Engine v0.1** | Reads device type, locale, referrer → maps to segment → passes to AI | 4-6 |
@@ -24,7 +24,7 @@
 ### Key Changes from Original Plan
 - **No custom JSON Schema spec** — adopt json-render's existing spec
 - **No custom renderer** — integrate json-render (open source, Vercel-backed)
-- **No custom visual CMS** — integrate GrapesJS (open source)
+- **No GrapesJS** — **replaced by custom inline visual editor** (Shopify Theme Editor style, substantially built in `packages/client/src/editor/`)
 - **Added**: AI Agent Manager (the core differentiator)
 - **Added**: Dual-path architecture (Shopify adapter + Stripe Connect standalone)
 - **Compressed**: 8 weeks → 6 weeks (reusing existing open source)
@@ -217,7 +217,7 @@ Flat subscription pricing (no GMV fee). Enterprise contracts additional.
 | Role | Phase | Why |
 |------|-------|-----|
 | **Founding Engineer (Full Stack + AI)** | Phase 0 | Build the server: commerce engine, AI pipeline, json-render integration |
-| **Founding Engineer (Full Stack + Frontend)** | Phase 0 | Build the CMS, admin UI, GrapesJS integration, Shopify app |
+| **Founding Engineer (Full Stack + Frontend)** | Phase 0 | Build the CMS, admin UI, **inline visual editor**, Shopify app |
 | **Product Designer** | Phase 1 | Design the AI agent workflow, onboarding flow, visual CMS |
 | **Growth / Marketing** | Phase 1 | Shopify App Store launch; merchant acquisition |
 | **Community Engineer** | Phase 2 | Open source community management; plugin system design |
@@ -231,7 +231,7 @@ Flat subscription pricing (no GMV fee). Enterprise contracts additional.
 | Decision | Options Considered | Decision | Rationale |
 |----------|-------------------|----------|-----------|
 | Build vs. integrate renderer | Build custom vs. integrate json-render vs. direct code gen | **Integrate json-render** | 15k stars, Apache 2.0, Vercel-backed. Supports 10+ platforms. Don't rebuild. |
-| Build vs. integrate visual editor | Build custom vs. GrapesJS vs. Builder.io | **Integrate GrapesJS** | Mature, open source, JSON output, extensible |
+| Build vs. integrate visual editor | Build custom vs. GrapesJS vs. Builder.io | **Build custom inline editor** | Shopify Theme Editor UX. Same components as visitor. Code-split. No separate canvas engine. |
 | Schema format | Custom JSON vs. json-render spec vs. JSX | **json-render spec** | Adopt existing standard. No custom format to build and maintain. |
 | First go-to-market | Shopify app only vs. standalone only vs. both | **Dual-path (both)** | Shopify app for distribution. Standalone for independence. Same server. |
 | AI control model | Fully autonomous vs. human-in-the-loop vs. managed agents | **Manageable agents** | Human-in-the-loop. Seller assigns, AI does, seller approves. Builds trust. |

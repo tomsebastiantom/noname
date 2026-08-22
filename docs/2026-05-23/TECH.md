@@ -1,4 +1,4 @@
-﻿# Technical Architecture
+# Technical Architecture
 ## How The Open Source AI Platform Actually Works
 
 ---
@@ -171,10 +171,13 @@ This is NOT a Next.js app. It's NOT an SSR monolith. It's three independent depl
                         │
                         ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  VISUAL CMS / BUILDER (GrapesJS-based)               │
+│                  VISUAL CMS / BUILDER (Custom Inline Editor)        │
 │                                                                      │
-│  Drag-drop editor → valid JSON. Shopify/Unbounce-like interface.    │
-│  Merchant tweaks what AI generated. No code required.               │
+│  Click-to-edit on live storefront (`?edit=true`). Drag-drop canvas  │
+│  with component palette, layer tree, props panel. Merchant edits    │
+│  the exact page visitors see. Same URL, same components, same       │
+│  catalog. Code-split editor chunk (~50KB) loaded only for admins.   │
+│  **NOT GrapesJS** — custom implementation supersedes it for v1.     │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -798,7 +801,7 @@ ML Feature Store → Model Retrain → Better schemas next time
 | **SEO Prerender** | @json-render/core + React 19 at edge | For product pages, collections, blog. Streams HTML, caches in Workers KV. |
 | **Client Rendering** | @json-render/core + @json-render/react + React 19 | Hydrates JSON specs to interactive React trees in browser. |
 | **Client Bundle Hosting** | Cloudflare R2 + CDN | Immutable JS bundle. Global delivery. Zero egress fees. |
-| **Visual Editor** | GrapesJS (open source) | Drag-drop → JSON. Custom commerce traits per catalog entry. |
+| **Visual Editor** | Custom inline editor (packages/client/src/editor/) | Click-to-edit on live storefront. Drag-drop canvas, component palette, layer tree, props panel. Code-split (~50KB). Loaded only for admins via `?edit=true`. Replaces GrapesJS for v1. |
 | **Edge Caching** | Cloudflare Workers KV | Prerendered HTML (SEO pages) + JSON specs (per segment) + content data. |
 | **Media** | Cloudflare R2 + Image CDN + Stream | Images: auto-format, resize. Video: HLS transcoding, adaptive bitrate. Zero egress. |
 | **AI Models** | OpenAI / Claude / fine-tuned | Multi-provider. Different models for layout vs content vs analysis. Abstracted LLM layer. |

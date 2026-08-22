@@ -1,4 +1,4 @@
-﻿# Stack: Everything We Use In Our System
+# Stack: Everything We Use In Our System
 
 ## Platform Identity: Agnostic
 
@@ -34,7 +34,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 | **XState v5** | State machine library for any flow | 29.6k stars. Built-in: actors, parallel states, history, delays, guards, actions, invoke. JSON definitions = AI-generatable. | MIT | npm package | 0 |
 | **BullMQ** | Job queue for async tasks (AI agents, analytics events, email, retries, Nango) | Redis-backed. Durable, retries, delays, dead-letter queue. Keeps async work off the request path. | MIT | npm package | 0 |
 | **Drizzle ORM** | Type-safe database access + migrations | Compile-time SQL validation. Auto-completion in IDE. Same API for Postgres and SQLite. Zod-compatible schemas. | Apache 2.0 | npm package | 0 |
-| **GrapesJS** | Visual drag-drop editor for merchants | 21k stars. Custom component system matches json-render catalog exactly. Outputs JSON that json-render renders. | MIT | npm package | 0 |
+| **Visual Editor** | Custom inline editor (`packages/client/src/editor/`) | Click-to-edit on live storefront (`?edit=true`). Drag-drop canvas, component palette, layer tree, props panel, save/publish. Code-split (~50KB). Loaded only for admins. Replaces GrapesJS for v1. | Internal | npm package (internal) | 0 |
 | **Cloudflare Workers** | Edge delivery - serve cached schemas in under 20ms | 300+ locations globally. Sub-50ms cold start. KV for segment-cached layouts. R2 for media storage. | - | ✅ Cloudflare | 0 |
 | **Cloudflare R2** | Image + file storage for products, pages, media | Zero egress fees. Global CDN. No surprise bandwidth bills. | - | ✅ Cloudflare | 0 |
 | **Cloudflare Stream** | Video hosting + transcoding for product videos, hero videos | Auto-transcodes to HLS. Adaptive bitrate. Built-in player. Thumbnails, captions. | - | ✅ Cloudflare | 0 |
@@ -79,7 +79,7 @@ The same architecture (json-render + XState + Content API + Nango + ClickHouse +
 | AI agent manager (Mastra + our tools) | Cloudflare (Workers, KV, R2, Stream) |
 | Feature flags (native flag domain) |
 | JSON-render catalog (components) | json-render core + react (rendering engine) |
-| GrapesJS commerce traits (editor components) | GrapesJS (drag-drop engine) |
+| GrapesJS commerce traits (editor components) | Custom inline editor (drag-drop engine) |
 | Admin dashboard (json-render spec) | Drizzle ORM + Studio (DB tooling) |
 | Content type builder (Zod type system) | BullMQ (job queues) |
 | Plugin system (extensible catalog) | Mastra (AI agent framework) |

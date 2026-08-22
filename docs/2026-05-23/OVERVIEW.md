@@ -1,4 +1,4 @@
-﻿# Platform Overview
+# Platform Overview
 ## Open Source AI Platform
 
 The platform is an **open source platform** with a CMS, AI-personalized experiences, manageable AI agents, an ML engine that collects data and runs experiments, and enterprise-grade optimization — all in one deployable codebase. It treats the user interface as data (JSON) rather than code, uses the open source json-render library (Vercel-backed, Apache 2.0) to map JSON to pixels, and wraps everything in a managed service that any store can afford.
@@ -130,7 +130,9 @@ Example tasks you can assign:
 
 ### 3. CMS (Content Management)
 - Pages, products, media, blog — all built in
-- Visual drag-drop editor (GrapesJS-based, open source)
+- **Visual inline editor (click-to-edit on live storefront, `?edit=true`)**
+- Drag-drop canvas with component palette, layer tree, props panel
+- Code-split editor chunk (~50KB) loaded only for admins
 - WordPress-like familiarity
 - AI writes content when you ask: "Write a product description for this photo"
 - All content is structured JSON — usable by both human visitors and AI agents
@@ -142,7 +144,7 @@ Most stores stitch together 7+ separate tools. Each has its own login, billing, 
 | Tool stores use today | What it costs | Replaced by |
 |----------------------|--------------|-------------|
 | Shopify / WooCommerce | $39-399/mo + 2.9% fees | Built-in commerce engine |
-| WordPress / Contentful | $0-399/mo | Built-in CMS + GrapesJS editor |
+| WordPress / Contentful | $0-399/mo | Built-in CMS + Inline visual editor |
 | Google Analytics / Mixpanel | $0-299/mo | Built-in schema-attributed analytics |
 | HotJar / FullStory | $39-199/mo | Built-in ML insights dashboard |
 | VWO / Optimizely | $399-999/mo | Built-in bandit + personalization |
@@ -235,9 +237,11 @@ Most stores stitch together 7+ separate tools. Each has its own login, billing, 
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                  VISUAL CMS (GrapesJS-based)                         │
-│  Drag-drop editor → valid JSON.                                      │
-│  Merchant tweaks what AI generated.                                 │
+│                  VISUAL CMS (Custom Inline Editor)                  │
+│  Click-to-edit on live storefront (`?edit=true`). Drag-drop canvas  │
+│  with component palette, layer tree, props panel. Merchant edits    │
+│  the exact page visitors see. Same URL, same components, same       │
+│  catalog. Code-split editor chunk (~50KB) loaded only for admins.   │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
