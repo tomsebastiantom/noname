@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @noname/browser-sdk build && NODE_ENV=development rspack serve",
-    "build": "NODE_ENV=production rspack build && test -f public/oidc.json && cp public/oidc.json dist/ || true",
+    "dev": "pnpm --filter @noname/browser-sdk build && rspack serve",
+    "build": "rspack build --node-env=production && node scripts/copy-oidc.mjs",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint",
     "format": "biome format --write"

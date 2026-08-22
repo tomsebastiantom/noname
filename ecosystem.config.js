@@ -5,10 +5,9 @@ module.exports = {
   apps: [
     {
       name: 'noname-server',
-      // Uses built dist/index.js (avoids tsx/esbuild spawn EPERM in sandbox)
-      // Build first: pnpm --filter @noname/server build
+      // Dev mode with hot reload (tsx watch) — code changes apply without rebuild
       script: 'node',
-      args: 'packages/server/dist/index.js',
+      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/server dev',
       cwd: 'C:\\Workspace\\noname',
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
@@ -33,8 +32,8 @@ module.exports = {
     },
     {
       name: 'noname-edge',
-      script: 'pnpm',
-      args: '--filter @noname/workers dev',
+      script: 'node',
+      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/workers dev',
       cwd: 'C:\\Workspace\\noname',
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
@@ -55,8 +54,8 @@ module.exports = {
     },
     {
       name: 'noname-client',
-      script: 'pnpm',
-      args: '--filter @noname/client dev',
+      script: 'node',
+      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/client dev',
       cwd: 'C:\\Workspace\\noname',
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
