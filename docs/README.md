@@ -3,6 +3,13 @@
 ## Current Status (Start Here)
 - **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Actual implementation status as of 2026-08-21. **Read this first.** Documents what's built, what's missing, and priority order to complete Phase 0.
 
+## Commerce Build-Out (2026-08-22 Research Set)
+- **[2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md](2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md)** — What's left to build: full feature matrix vs. Shopify/WooCommerce/commercetools/Medusa/Saleor/Vendure, server commerce domain spec, product/order schemas, priority order.
+- **[2026-08-22/COMPONENT_CATALOG_REQUIREMENTS.md](2026-08-22/COMPONENT_CATALOG_REQUIREMENTS.md)** — Complete spec for all ~15 commerce components (props schemas, actions, edit metadata, AI prompt context).
+- **[2026-08-22/CURRENT-UX-AUDIT.md](2026-08-22/CURRENT-UX-AUDIT.md)** — What a visitor actually sees on the live stack today (inspected via API): demo page only, commerce extension not yet enabled; post-build acceptance walk.
+- **[2026-08-22/DIFFERENTIATION-WITH-EXAMPLES.md](2026-08-22/DIFFERENTIATION-WITH-EXAMPLES.md)** — Each differentiator as a concrete visitor scenario + competitor contrast + schema sketch, plus parity floor and proof checklist.
+- **[2026-08-22/AI-AGENTIC-COMMERCE-FUTURE.md](2026-08-22/AI-AGENTIC-COMMERCE-FUTURE.md)** — Future plans: ACP/UCP/AP2 agentic commerce protocols, Shopify/Amazon/Google moves, agent-staff roadmap phases B–E, model strategy and cost discipline.
+
 ## Architecture & Technical
 - **[2026-05-23/TECH.md](2026-05-23/TECH.md)** — Technical architecture (updated to reflect inline editor)
 - **[2026-05-23/STACK.md](2026-05-23/STACK.md)** — Complete technology stack reference
