@@ -49,7 +49,7 @@ export class LayoutCollabWsAdapter extends WebSocketClientAdapter {
     }
   }
 
-  /** automerge-repo asserts peerId+socket; repo shutdown can clear them first. */
+  /** automerge-repo asserts peerId+socket before closing; skip if never connected. */
   disconnect(): void {
     if (!this.peerId || !this.socket) return;
     try {

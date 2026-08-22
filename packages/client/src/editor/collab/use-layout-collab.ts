@@ -1,13 +1,13 @@
-import { type DocHandle, type PeerId, Repo } from "@automerge/automerge-repo/slim";
+import type { DocHandle } from "@automerge/automerge-repo/slim";
 import type { Spec } from "@json-render/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionUserId } from "../../auth/session";
-import { createAutomergeIndexedDbStorage } from "../../platform/persistence";
 import { type AutomergeSpecDoc, applyLocalSpecToDraft } from "./automerge-spec";
 import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { layoutCollabWsUrl, mintLayoutCollabTicket } from "./collab-api";
 import { collabHumanDisplayName } from "./collab-display-name";
 import type { LayoutAgentActivity } from "./collab-peer-display";
+import { getLayoutCollabRepo } from "./layout-collab-repo";
 import { resolveLayoutCollabDocumentId } from "./layout-collab-document-id";
 import { LayoutCollabWsAdapter } from "./layout-collab-ws-adapter";
 import {
@@ -69,7 +69,6 @@ export function useLayoutCollab({
   const [agentTaskActivity, setAgentTaskActivity] = useState<LayoutAgentActivity | null>(null);
   const handleRef = useRef<DocHandle<Spec> | null>(null);
   const adapterRef = useRef<LayoutCollabWsAdapter | null>(null);
-  const repoRef = useRef<Repo | null>(null);
   const lastSpecRef = useRef<Spec | null>(null);
   const pendingLocalSpecRef = useRef<Spec | null>(null);
   const applyingRemoteRef = useRef(false);
@@ -120,16 +119,15 @@ export function useLayoutCollab({
       }, delayMs);
     };
 
-    const teardownSession = async () => {
+    const teardownSession = () => {
       handleRef.current = null;
-      const repo = repoRef.current;
       const adapter = adapterRef.current;
-      repoRef.current = null;
       adapterRef.current = null;
-      if (repo) {
-        await repo.shutdown();
+      if (adapter) {
+        // Detach from the shared repo. disconnect() emits peer-disconnected,
+        // clearing the server peer mapping so the next adapter can claim it.
+        getLayoutCollabRepo().networkSubsystem.removeNetworkAdapter(adapter);
       }
-      adapter?.disconnect();
     };
 
     const sendJoinPresence = (adapter: LayoutCollabWsAdapter) => {
@@ -150,7 +148,7 @@ export function useLayoutCollab({
     const connectSession = async () => {
       if (cancelled) return;
       sentJoinPresence = false;
-      await teardownSession();
+      teardownSession();
       if (cancelled) return;
 
       try {
@@ -196,16 +194,12 @@ export function useLayoutCollab({
           sendJoinPresence(adapter);
         };
 
-        const repo = new Repo({
-          network: [adapter],
-          storage: createAutomergeIndexedDbStorage("layout-collab"),
-          peerId: `layout-client-${crypto.randomUUID()}` as PeerId,
-        });
-        repoRef.current = repo;
+        const repo = getLayoutCollabRepo();
+        repo.networkSubsystem.addNetworkAdapter(adapter);
         const documentId = resolveLayoutCollabDocumentId(layoutDocumentId);
         const handle = await awaitCollabDocHandle<Spec>(repo, documentId);
         if (cancelled) {
-          await teardownSession();
+          teardownSession();
           return;
         }
 
@@ -263,7 +257,7 @@ export function useLayoutCollab({
     return () => {
       cancelled = true;
       clearReconnectTimer();
-      void teardownSession();
+      teardownSession();
       setConnected(false);
       setSelfPeerId(null);
       setPeers([]);
