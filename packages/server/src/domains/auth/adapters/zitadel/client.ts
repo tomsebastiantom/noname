@@ -149,7 +149,7 @@ async function exchangeCode(input: {
   redirectUri: string;
   code: string;
   codeVerifier: string;
-}): Promise<{ access_token: string; expires_in?: number }> {
+}): Promise<{ access_token: string; expires_in?: number; id_token?: string }> {
   const res = await fetch(`${zitadelIssuer()}/oauth/v2/token`, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -170,7 +170,59 @@ async function exchangeCode(input: {
   if (!res.ok || !body.access_token) {
     throw new UnauthorizedError(body.error_description ?? "Token exchange failed");
   }
-  return { access_token: body.access_token, expires_in: body.expires_in };
+  return { access_token: body.access_token, expires_in: body.expires_in, id_token: body.id_token };
+}
+
+/** Human identity claims live in the ID token, never the access token — decode locally, no userinfo round trip. */
+export function identityFromIdToken(idToken: string | undefined): {
+  email: string | null;
+  displayName: string | null;
+} {
+  if (!idToken) return { email: null, displayName: null };
+  try {
+    const payloadPart = idToken.split(".")[1];
+    if (!payloadPart) return { email: null, displayName: null };
+    let base64 = payloadPart.replace(/-/g, "+").replace(/_/g, "/");
+    while (base64.length % 4 !== 0) base64 += "=";
+    const payload = JSON.parse(Buffer.from(base64, "base64").toString("utf8")) as Record<
+      string,
+      unknown
+    >;
+    const email =
+      typeof payload.email === "string" && payload.email.trim() ? payload.email.trim() : null;
+    const name =
+      typeof payload.name === "string" && payload.name.trim()
+        ? payload.name.trim()
+        : typeof payload.preferred_username === "string" && payload.preferred_username.trim()
+          ? payload.preferred_username.trim()
+          : null;
+    return { email, displayName: name ?? email };
+  } catch {
+    return { email: null, displayName: null };
+  }
+}
+
+/** Human identity claims live in the ID token for most OIDC providers; ZITADEL omits them
+ *  (tokens carry only sub + urn:zitadel:* claims), so fall back to userinfo once per login. */
+export async function resolveLoginIdentity(
+  accessToken: string,
+  idToken: string | undefined,
+): Promise<{ email: string | null; displayName: string | null }> {
+  const fromIdToken = identityFromIdToken(idToken);
+  if (fromIdToken.displayName) return fromIdToken;
+  try {
+    const info = await fetchUserinfo(accessToken);
+    const email = typeof info.email === "string" && info.email.trim() ? info.email.trim() : null;
+    const name =
+      typeof info.name === "string" && info.name.trim()
+        ? info.name.trim()
+        : typeof info.preferred_username === "string" && info.preferred_username.trim()
+          ? info.preferred_username.trim()
+          : null;
+    return { email, displayName: name ?? email };
+  } catch {
+    return fromIdToken;
+  }
 }
 
 /** OIDC userinfo — includes project roles when not present in access token JWT. */
@@ -187,6 +239,8 @@ export interface LoginSuccess {
   status: "success";
   accessToken: string;
   expiresIn: number;
+  email: string | null;
+  displayName: string | null;
 }
 
 export interface LoginMfaRequired {
@@ -280,6 +334,7 @@ export async function loginWithCredentials(input: {
       status: "success",
       accessToken: tokens.access_token,
       expiresIn: tokens.expires_in ?? 3600,
+      ...(await resolveLoginIdentity(tokens.access_token, tokens.id_token)),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
@@ -304,7 +359,12 @@ export async function completeLoginWithTotp(input: {
   clientId: string;
   redirectUri: string;
   codeVerifier: string;
-}): Promise<{ accessToken: string; expiresIn: number }> {
+}): Promise<{
+  accessToken: string;
+  expiresIn: number;
+  email: string | null;
+  displayName: string | null;
+}> {
   const pat = loadLoginClientPat();
   const verified = await verifyTotpOnSession(
     input.sessionId,
@@ -319,7 +379,11 @@ export async function completeLoginWithTotp(input: {
     code,
     codeVerifier: input.codeVerifier,
   });
-  return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
+  return {
+    accessToken: tokens.access_token,
+    expiresIn: tokens.expires_in ?? 3600,
+    ...(await resolveLoginIdentity(tokens.access_token, tokens.id_token)),
+  };
 }
 
 export async function buildOAuthAuthorizeUrl(input: {
@@ -347,7 +411,16 @@ export async function exchangeAuthorizationCode(input: {
   redirectUri: string;
   code: string;
   codeVerifier: string;
-}): Promise<{ accessToken: string; expiresIn: number }> {
+}): Promise<{
+  accessToken: string;
+  expiresIn: number;
+  email: string | null;
+  displayName: string | null;
+}> {
   const tokens = await exchangeCode(input);
-  return { accessToken: tokens.access_token, expiresIn: tokens.expires_in ?? 3600 };
+  return {
+    accessToken: tokens.access_token,
+    expiresIn: tokens.expires_in ?? 3600,
+    ...(await resolveLoginIdentity(tokens.access_token, tokens.id_token)),
+  };
 }

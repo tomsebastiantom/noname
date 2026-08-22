@@ -2,7 +2,7 @@ import { apiFetchData, apiFetchVoid } from "../lib/api";
 import { loadOidcConfig } from "./config";
 import { createCodeVerifier } from "./oauth";
 import { requireStoreSlug } from "./org";
-import { setSessionToken } from "./session";
+import { setSessionIdentity, setSessionToken } from "./session";
 
 async function loadOidcOrThrow() {
   const oidc = await loadOidcConfig();
@@ -64,6 +64,8 @@ export async function loginWithPassword(
     sessionId?: string;
     sessionToken?: string;
     authRequestId?: string;
+    email?: string | null;
+    displayName?: string | null;
   }>(`/api/auth/${storeSlug}/login`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -90,6 +92,7 @@ export async function loginWithPassword(
   }
 
   setSessionToken(data.accessToken, data.expiresIn ?? 3600);
+  setSessionIdentity({ email: data.email ?? null, displayName: data.displayName ?? null });
   return null;
 }
 
@@ -100,28 +103,31 @@ export async function verifyMfaAndLogin(
 ): Promise<void> {
   const oidc = await loadOidcOrThrow();
 
-  const data = await apiFetchData<{ accessToken?: string; expiresIn?: number }>(
-    `/api/auth/${storeSlug}/mfa/verify`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sessionId: state.sessionId,
-        sessionToken: state.sessionToken,
-        authRequestId: state.authRequestId,
-        totpCode,
-        codeVerifier: state.codeVerifier,
-        clientId: oidc.clientId,
-        redirectUri: oidc.redirectUri,
-      }),
-    },
-  );
+  const data = await apiFetchData<{
+    accessToken?: string;
+    expiresIn?: number;
+    email?: string | null;
+    displayName?: string | null;
+  }>(`/api/auth/${storeSlug}/mfa/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      sessionId: state.sessionId,
+      sessionToken: state.sessionToken,
+      authRequestId: state.authRequestId,
+      totpCode,
+      codeVerifier: state.codeVerifier,
+      clientId: oidc.clientId,
+      redirectUri: oidc.redirectUri,
+    }),
+  });
 
   if (!data.accessToken) {
     throw new Error("No access token returned");
   }
 
   setSessionToken(data.accessToken, data.expiresIn ?? 3600);
+  setSessionIdentity({ email: data.email ?? null, displayName: data.displayName ?? null });
 }
 
 export async function startTotpEnrollment(): Promise<{ uri: string; secret: string }> {

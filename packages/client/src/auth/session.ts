@@ -1,4 +1,6 @@
 const STORAGE_TOKEN = "noname:access_token";
+const STORAGE_EMAIL = "noname:email";
+const STORAGE_DISPLAY_NAME = "noname:display_name";
 const COOKIE_NAME = "access_token";
 
 function setTokenCookie(token: string, maxAgeSec: number): void {
@@ -16,12 +18,35 @@ export function setSessionToken(token: string, maxAgeSec: number): void {
   setTokenCookie(token, maxAgeSec);
 }
 
+export function setSessionIdentity(identity: {
+  email?: string | null;
+  displayName?: string | null;
+}): void {
+  if (identity.email) sessionStorage.setItem(STORAGE_EMAIL, identity.email);
+  if (identity.displayName) sessionStorage.setItem(STORAGE_DISPLAY_NAME, identity.displayName);
+}
+
+export function sessionStoredEmail(): string | null {
+  return sessionStorage.getItem(STORAGE_EMAIL);
+}
+
+export function sessionStoredDisplayName(): string | null {
+  return (
+    sessionStorage.getItem(STORAGE_DISPLAY_NAME) ??
+    (sessionStorage.getItem(STORAGE_EMAIL)
+      ? (sessionStorage.getItem(STORAGE_EMAIL) ?? "").split("@")[0] || null
+      : null)
+  );
+}
+
 export function getAccessToken(): string | null {
   return sessionStorage.getItem(STORAGE_TOKEN);
 }
 
 export function clearSession(): void {
   sessionStorage.removeItem(STORAGE_TOKEN);
+  sessionStorage.removeItem(STORAGE_EMAIL);
+  sessionStorage.removeItem(STORAGE_DISPLAY_NAME);
   clearTokenCookie();
 }
 

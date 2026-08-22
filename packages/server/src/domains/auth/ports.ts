@@ -10,6 +10,9 @@ export interface LoginCredentials {
 export interface LoginResult {
   accessToken: string;
   expiresIn: number;
+  /** Human identity from the ID token — for collab presence labels (access tokens carry no claims). */
+  email: string | null;
+  displayName: string | null;
 }
 
 export interface LoginResponse {
@@ -19,6 +22,9 @@ export interface LoginResponse {
   sessionId?: string;
   sessionToken?: string;
   authRequestId?: string;
+  /** Identity claims from the ID token — used for collab presence labels. */
+  email?: string | null;
+  displayName?: string | null;
 }
 
 export interface PasswordResetRequestInput {

@@ -68,9 +68,9 @@ Agents **today** authenticate with **platform HMAC tokens** minted by `POST /api
 
 #### R6 — Machine users / service accounts
 
-- [ ] **R6.1** `pnpm init:zitadel` completes — writes `ZITADEL_CLIENT_ID`, `ZITADEL_DEMO_ORG_ID`, machine key, login PAT
+- [x] **R6.1** `pnpm init:zitadel` completes — writes `ZITADEL_CLIENT_ID`, `ZITADEL_DEMO_ORG_ID`, machine key, login PAT — **Tested 2026-08-22** (see [smoke results](../2026-08-22/BROWSER-AGENT-COLLAB-SMOKE-RESULTS.md))
 - [ ] **R6.2** Backend Management API works — e.g. invite user at `/admin/settings/users` (uses `getManagementToken()`)
-- [ ] **R6.3** Embedded login works — `POST /api/auth/yogastore/login` (uses login PAT)
+- [x] **R6.3** Embedded login works — `POST /api/auth/yogastore/login` (uses login PAT) — **Tested 2026-08-22** (browser login as admin + marketing via seeded form)
 - [ ] **R6.4** Document: `noname-backend-sa` is **platform** M2M, not per-agent — acceptable for R6 platform ops
 - [ ] **R6.5** (Optional spike) Create a **test machine user** in ZITADEL console/API for one registered agent; confirm JWT `sub` usable as Keto subject — only if pursuing IdP-native agent identity
 
@@ -113,8 +113,8 @@ MASTRA_ORCHESTRATE_MOCK=false
 # 4. Agents admin → orchestrate job — expect ≥3 tools, model ≠ mock-orchestrate
 ```
 
-- [ ] **V4.1** Vault LLM key present for yogastore org
-- [ ] **V4.2** One completed task with ≥3 tools in one job
+- [x] **V4.1** Vault LLM key present for yogastore org — **Met 2026-08-22 via env-fallback** (OpenRouter key, `OPENAI_BASE_URL=https://openrouter.ai/api/v1`); Vault storage path still untested
+- [x] **V4.2** One completed task with ≥3 tools in one job — **Tested 2026-08-22**: `listFolderDocuments` → `readDocument` → `patchLayoutDraft`, model `openai/stealth/ox-alpha`, edit persisted (see [smoke results](../2026-08-22/BROWSER-AGENT-COLLAB-SMOKE-RESULTS.md))
 - [ ] **V4.3** Tick [`AGENT-PHASE-2-MASTRA-SPEC.md`](../2026-08-03/AGENT-PHASE-2-MASTRA-SPEC.md) §7 live criterion
 - [ ] **V4.4** Update [`E2E-OPS-BATCH-VALIDATION.md`](../2026-08-04/E2E-OPS-BATCH-VALIDATION.md) validation batch
 

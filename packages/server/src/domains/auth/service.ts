@@ -102,6 +102,8 @@ export function createAuthService(deps: {
       return {
         accessToken: result.accessToken,
         expiresIn: result.expiresIn,
+        email: result.email,
+        displayName: result.displayName,
       };
     },
 

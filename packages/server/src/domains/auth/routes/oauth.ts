@@ -48,6 +48,8 @@ export function registerAuthOAuthRoutes(routes: Hono, deps: AuthRouteDeps): void
     return ok(c, {
       accessToken: result.accessToken,
       expiresIn: result.expiresIn,
+      email: result.email,
+      displayName: result.displayName,
     });
   });
 }

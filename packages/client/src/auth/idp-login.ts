@@ -7,7 +7,7 @@ import {
   readOAuthState,
   saveOAuthState,
 } from "./oauth";
-import { setSessionToken } from "./session";
+import { setSessionIdentity, setSessionToken } from "./session";
 
 export async function startIdpLogin(
   storeSlug: string,
@@ -71,12 +71,23 @@ export async function completeOAuthCallback(code: string): Promise<string> {
     throw new Error(body.error ?? `Sign-in failed (${res.status})`);
   }
 
-  const body = (await res.json()) as { data?: { accessToken?: string; expiresIn?: number } };
+  const body = (await res.json()) as {
+    data?: {
+      accessToken?: string;
+      expiresIn?: number;
+      email?: string | null;
+      displayName?: string | null;
+    };
+  };
   if (!body.data?.accessToken) {
     throw new Error("No access token returned");
   }
 
   setSessionToken(body.data.accessToken, body.data.expiresIn ?? 3600);
+  setSessionIdentity({
+    email: body.data.email ?? null,
+    displayName: body.data.displayName ?? null,
+  });
   clearOAuthState();
   return saved.state.returnUrl;
 }

@@ -34,6 +34,8 @@ export function registerAuthLoginRoutes(routes: Hono, deps: AuthRouteDeps): void
     return ok(c, {
       accessToken: result.accessToken,
       expiresIn: result.expiresIn,
+      email: result.email,
+      displayName: result.displayName,
     });
   });
 
@@ -46,6 +48,8 @@ export function registerAuthLoginRoutes(routes: Hono, deps: AuthRouteDeps): void
     return ok(c, {
       accessToken: result.accessToken,
       expiresIn: result.expiresIn,
+      email: result.email,
+      displayName: result.displayName,
     });
   });
 }

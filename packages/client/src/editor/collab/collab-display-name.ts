@@ -1,4 +1,4 @@
-import { getAccessToken, sessionUserEmail } from "../../auth/session";
+import { getAccessToken, sessionStoredDisplayName, sessionUserEmail } from "../../auth/session";
 import { COLLAB_HUMAN_FALLBACK } from "./collab-peer-display";
 
 function decodeJwtPayload(token: string): Record<string, unknown> | null {
@@ -18,6 +18,10 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
 
 /** Human label for layout/rich-text collab presence (never raw Zitadel sub). */
 export function collabHumanDisplayName(): string {
+  // Identity saved at login (from OIDC userinfo) — access-token JWTs carry no email/name.
+  const stored = sessionStoredDisplayName();
+  if (stored) return stored;
+
   const email = sessionUserEmail();
   if (email) {
     const local = email.split("@")[0]?.trim();
