@@ -1,4 +1,11 @@
-import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import {
+  type CSSProperties,
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import { EDITOR_LAYOUT_LIMITS } from "../../editor-layout-prefs";
 import { useEditorPrefs } from "../../hooks/use-editor-prefs";
 import type { EditorShellLabels } from "../../schemas/components";
@@ -294,8 +301,13 @@ export function EditorLayout({
       {leftPanelOpen ? (
         <>
           <aside
-            className="editor-layout-panel border-r border-border"
-            style={{ width: prefs.paletteWidth }}
+            className="editor-layout-panel editor-layout-panel--side editor-layout-panel--left border-r border-border"
+            style={
+              {
+                "--editor-panel-w": `min(${prefs.paletteWidth}px, 38vw)`,
+                "--editor-panel-min": `${EDITOR_LAYOUT_LIMITS.paletteMin}px`,
+              } as CSSProperties
+            }
           >
             {leftPanelBody}
           </aside>
@@ -307,7 +319,10 @@ export function EditorLayout({
         </>
       ) : null}
 
-      <div className="editor-layout-canvas flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div
+        className="editor-layout-canvas flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+        style={{ "--editor-canvas-min": `${EDITOR_LAYOUT_LIMITS.canvasMin}px` } as CSSProperties}
+      >
         {canvas}
       </div>
 
@@ -319,8 +334,13 @@ export function EditorLayout({
             onPointerDown={startResize("props")}
           />
           <aside
-            className="editor-layout-panel border-l border-border"
-            style={{ width: prefs.propsWidth }}
+            className="editor-layout-panel editor-layout-panel--side editor-layout-panel--right border-l border-border"
+            style={
+              {
+                "--editor-panel-w": `min(${prefs.propsWidth}px, 38vw)`,
+                "--editor-panel-min": `${EDITOR_LAYOUT_LIMITS.propsMin}px`,
+              } as CSSProperties
+            }
           >
             <PanelHeader
               title={
@@ -333,7 +353,7 @@ export function EditorLayout({
               className={
                 prefs.agentOpen
                   ? "editor-layout-panel-body editor-layout-panel-body--agent"
-                  : "editor-layout-panel-body"
+                  : "editor-layout-panel-body overflow-y-auto"
               }
             >
               {prefs.agentOpen ? agentPanel : panel}

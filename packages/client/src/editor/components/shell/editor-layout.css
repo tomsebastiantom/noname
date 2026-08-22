@@ -6,11 +6,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  flex-shrink: 0;
+  flex-shrink: 1;
   align-self: stretch;
   overflow: hidden;
   background: hsl(var(--muted) / 0.2);
 }
+
+/* Narrow viewport: panels float above the full-width canvas instead of squeezing it. */
 
 .editor-layout-panel-header {
   display: flex;
@@ -39,13 +41,58 @@
   flex-direction: column;
 }
 
+.editor-layout-panel--left {
+  width: var(--editor-panel-w);
+  min-width: var(--editor-panel-min);
+  border-right: 1px solid hsl(var(--border));
+}
+
+.editor-layout-panel--right {
+  width: var(--editor-panel-w);
+  min-width: var(--editor-panel-min);
+  border-left: 1px solid hsl(var(--border));
+}
+
 .editor-layout-canvas {
   display: flex;
   min-height: 0;
-  min-width: 0;
+  min-width: var(--editor-canvas-min);
   flex: 1;
   flex-direction: column;
   overflow: hidden;
+}
+
+/* Narrow viewport: panels float above the full-width canvas instead of squeezing it.
+   Pure CSS (no JS measurement needed — the editor spans the whole viewport). */
+@media (max-width: 899px) {
+  .editor-layout-panel--side {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 30;
+    flex-shrink: 0;
+    width: min(var(--editor-panel-w), 80%);
+    min-width: 0;
+    /* opaque: the translucent docked tint lets the canvas bleed through when floating */
+    background: hsl(var(--background));
+    box-shadow: 0 12px 32px rgb(0 0 0 / 0.28);
+  }
+
+  .editor-layout-panel--left {
+    left: 2rem;
+  }
+
+  .editor-layout-panel--right {
+    right: 2rem;
+  }
+
+  .editor-layout-resizer {
+    display: none;
+  }
+
+  .editor-layout-canvas {
+    min-width: 0;
+  }
 }
 
 .editor-chrome-rail {
