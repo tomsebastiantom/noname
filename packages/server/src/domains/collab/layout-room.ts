@@ -1,11 +1,5 @@
-import * as Automerge from "@automerge/automerge";
-import {
-  type AnyDocumentId,
-  type DocHandle,
-  interpretAsDocumentId,
-  type PeerId,
-  Repo,
-} from "@automerge/automerge-repo/slim";
+﻿import * as Automerge from "@automerge/automerge";
+import { type DocHandle, type PeerId, Repo } from "@automerge/automerge-repo/slim";
 import type { WSContext } from "hono/ws";
 import type { Database } from "../../drizzle";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
@@ -20,6 +14,7 @@ import {
 import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { createCollabAutomergeChunkStore } from "./collab-automerge-chunk-store";
 import { onCollabRelayMessage, publishCollabRelay } from "./collab-redis-relay";
+import { resolveLayoutCollabDocumentId } from "./layout-collab-document-id";
 import { PostgresAutomergeStorageAdapter } from "./postgres-automerge-storage";
 import {
   type CollabAgentTaskServerMessage,
@@ -36,8 +31,8 @@ const WS_OPEN = 1;
 
 /**
  * Cross-replica relay kind for layout Automerge snapshots. Automerge merges are commutative and
- * idempotent, so — unlike the layout room's own peer-to-peer sync protocol (join/peer handshake
- * over `LayoutCollabNetworkAdapter`) — replicas don't need to negotiate a peer session with each
+ * idempotent, so â€” unlike the layout room's own peer-to-peer sync protocol (join/peer handshake
+ * over `LayoutCollabNetworkAdapter`) â€” replicas don't need to negotiate a peer session with each
  * other at all: each replica just publishes its full local `Automerge.save()` snapshot on every
  * local change, and any other replica with local peers for that room merges it straight in.
  * Merging an already-known snapshot is a no-op (no new ops to apply), so this naturally
@@ -86,7 +81,7 @@ type Room = {
   /** Last spec known to match Postgres; detects external HTTP writes (e.g. agent). */
   baselineSpec: Record<string, unknown>;
   reimporting: boolean;
-  /** True while merging a snapshot relayed from another replica — suppresses re-publishing it. */
+  /** True while merging a snapshot relayed from another replica â€” suppresses re-publishing it. */
   applyingRelay: boolean;
 };
 
@@ -114,6 +109,7 @@ export type LayoutCollabRoomManagerDeps = {
 
 export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps) {
   const rooms = new Map<string, Room>();
+  const roomLoads = new Map<string, Promise<Room>>();
 
   function roomKey(orgId: string, layoutDocumentId: string): string {
     return `${orgId}:${layoutDocumentId}`;
@@ -219,7 +215,16 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     const key = roomKey(orgId, layoutDocumentId);
     const existing = rooms.get(key);
     if (existing) return existing;
+    const inflight = roomLoads.get(key);
+    if (inflight) return inflight;
+    const promise = createRoom(orgId, layoutDocumentId, key).finally(() => {
+      roomLoads.delete(key);
+    });
+    roomLoads.set(key, promise);
+    return promise;
+  }
 
+  async function createRoom(orgId: string, layoutDocumentId: string, key: string): Promise<Room> {
     const row = await deps.layout.get(orgId, layoutDocumentId);
     if (!row) {
       throw new NotFoundError("Layout", layoutDocumentId);
@@ -236,7 +241,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
       storage: new PostgresAutomergeStorageAdapter(chunkStore, orgId, layoutDocumentId),
     });
 
-    const documentId = interpretAsDocumentId(layoutDocumentId as AnyDocumentId);
+    const documentId = resolveLayoutCollabDocumentId(layoutDocumentId);
     let handle = await awaitCollabDocHandle<Record<string, unknown>>(repo, documentId);
     if (!handle.isReady()) {
       const binary = Automerge.save(specToAutomergeDoc(spec));
@@ -270,7 +275,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     return room;
   }
 
-  // Registered once per process — merges layout snapshots relayed from other replicas into this
+  // Registered once per process â€” merges layout snapshots relayed from other replicas into this
   // replica's local room, if one exists (no local room means no local peers to relay to; that
   // replica's own room already has the change and will persist it on its own debounce timer).
   onCollabRelayMessage(RELAY_KIND_LAYOUT_SNAPSHOT, ({ roomName, data }) => {
@@ -361,7 +366,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     }
   }
 
-  /** Drop closed human/agent sockets for the same user — live tabs stay connected. */
+  /** Drop closed human/agent sockets for the same user â€” live tabs stay connected. */
   function evictDeadPeersForUser(
     room: Room,
     userId: string,

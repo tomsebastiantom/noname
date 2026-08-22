@@ -1,9 +1,4 @@
-import {
-  type AnyDocumentId,
-  type DocHandle,
-  interpretAsDocumentId,
-  Repo,
-} from "@automerge/automerge-repo/slim";
+import { type DocHandle, Repo } from "@automerge/automerge-repo/slim";
 import {
   type AutomergeSpecDoc,
   applyLocalSpecToDraft,
@@ -11,6 +6,7 @@ import {
 } from "../../collab/automerge-spec";
 import { awaitCollabDocHandle } from "../../collab/await-collab-doc-handle";
 import { mintCollabTicket } from "../../collab/collab-ticket";
+import { resolveLayoutCollabDocumentId } from "../../collab/layout-collab-document-id";
 import { LayoutCollabWsClient, layoutCollabWsUrl } from "../../collab/layout-collab-ws-client";
 import { serializeCollabPresenceClientMessage } from "../../collab/presence";
 import { validateSpec } from "../../documents/services/layout-helpers";
@@ -216,7 +212,7 @@ export class AgentLayoutCollabSession {
     const repo = new Repo({ network: [adapter] });
     this.repo = repo;
 
-    const documentId = interpretAsDocumentId(layoutDocumentId as AnyDocumentId);
+    const documentId = resolveLayoutCollabDocumentId(layoutDocumentId);
     const handle = await awaitCollabDocHandle<Record<string, unknown>>(repo, documentId);
     this.handle = handle;
 

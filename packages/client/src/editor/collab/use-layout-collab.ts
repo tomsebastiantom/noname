@@ -1,10 +1,4 @@
-import {
-  type AnyDocumentId,
-  type DocHandle,
-  interpretAsDocumentId,
-  type PeerId,
-  Repo,
-} from "@automerge/automerge-repo/slim";
+import { type DocHandle, type PeerId, Repo } from "@automerge/automerge-repo/slim";
 import type { Spec } from "@json-render/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionUserId } from "../../auth/session";
@@ -14,6 +8,7 @@ import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { layoutCollabWsUrl, mintLayoutCollabTicket } from "./collab-api";
 import { collabHumanDisplayName } from "./collab-display-name";
 import type { LayoutAgentActivity } from "./collab-peer-display";
+import { resolveLayoutCollabDocumentId } from "./layout-collab-document-id";
 import { LayoutCollabWsAdapter } from "./layout-collab-ws-adapter";
 import {
   type CollabPeerPresence,
@@ -207,7 +202,7 @@ export function useLayoutCollab({
           peerId: `layout-client-${crypto.randomUUID()}` as PeerId,
         });
         repoRef.current = repo;
-        const documentId = interpretAsDocumentId(layoutDocumentId as AnyDocumentId);
+        const documentId = resolveLayoutCollabDocumentId(layoutDocumentId);
         const handle = await awaitCollabDocHandle<Spec>(repo, documentId);
         if (cancelled) {
           await teardownSession();
@@ -297,7 +292,7 @@ export function useLayoutCollab({
 
   const applyLocalSpec = useCallback((next: Spec) => {
     const handle = handleRef.current;
-    if (applyingRemoteRef.current || !handle) {
+    if (applyingRemoteRef.current || !handle || !handle.isReady()) {
       pendingLocalSpecRef.current = next;
       return;
     }
