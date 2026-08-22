@@ -75,15 +75,17 @@
     min-width: 0;
     /* opaque: the translucent docked tint lets the canvas bleed through when floating */
     background: hsl(var(--background));
-    box-shadow: 0 12px 32px rgb(0 0 0 / 0.28);
+    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
   }
 
+  /* Left panel still clears the persistent 2rem rail; right panel docks flush to the edge
+     (there is no right rail while the panel is open) so the canvas is never revealed. */
   .editor-layout-panel--left {
     left: 2rem;
   }
 
   .editor-layout-panel--right {
-    right: 2rem;
+    right: 0;
   }
 
   .editor-layout-resizer {
