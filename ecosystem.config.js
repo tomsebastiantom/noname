@@ -1,0 +1,75 @@
+// Load .env so process.env variables are available (same as server index.ts)
+require('dotenv').config({ path: 'C:\\Workspace\\noname\\.env' });
+
+module.exports = {
+  apps: [
+    {
+      name: 'noname-server',
+      // Uses built dist/index.js (avoids tsx/esbuild spawn EPERM in sandbox)
+      // Build first: pnpm --filter @noname/server build
+      script: 'node',
+      args: 'packages/server/dist/index.js',
+      cwd: 'C:\\Workspace\\noname',
+      env: {
+        DSH_PERMISSION_MODE: 'danger-full-access',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        REQUIRE_EDGE_HMAC: 'false',
+        WORKER_SERVER_SECRET: 'MpafgdbDKihG1zkRl7onvjBFcPyJLtmH',
+        ZITADEL_ISSUER: 'http://localhost:8080',
+        DATABASE_URL: 'postgres://noname:noname_dev@localhost:5432/app',
+        REDIS_URL: 'redis://localhost:6379',
+        CLICKHOUSE_URL: 'http://localhost:8123',
+        KETO_GRPC_INSECURE: 'true',
+        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
+        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 3000,
+      max_restarts: 10,
+      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.log',
+      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.out',
+      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.err',
+    },
+    {
+      name: 'noname-edge',
+      script: 'pnpm',
+      args: '--filter @noname/workers dev',
+      cwd: 'C:\\Workspace\\noname',
+      env: {
+        DSH_PERMISSION_MODE: 'danger-full-access',
+        WORKER_SERVER_SECRET: 'MpafgdbDKihG1zkRl7onvjBFcPyJLtmH',
+        ZITADEL_ISSUER: 'http://localhost:8080',
+        ZITADEL_CLIENT_ID: '387316757292908554',
+        ZITADEL_PROJECT_ID: '387316756252721162',
+        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
+        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 3000,
+      max_restarts: 10,
+      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.log',
+      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.out',
+      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.err',
+    },
+    {
+      name: 'noname-client',
+      script: 'pnpm',
+      args: '--filter @noname/client dev',
+      cwd: 'C:\\Workspace\\noname',
+      env: {
+        DSH_PERMISSION_MODE: 'danger-full-access',
+        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
+        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+      },
+      watch: false,
+      autorestart: true,
+      restart_delay: 3000,
+      max_restarts: 10,
+      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.log',
+      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.out',
+      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.err',
+    },
+  ],
+};
