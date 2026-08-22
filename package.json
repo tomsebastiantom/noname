@@ -31,10 +31,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.3",
-    "vitest": "^4.1.10",
+    "@types/node": "^26.0.0",
     "@vitest/coverage-v8": "^4.1.10",
-    "tsx": "^4.0.0",
     "dotenv": "^17.2.3",
-    "@types/node": "^26.0.0"
+    "tsx": "^4.0.0",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "pm2": "^7.0.3"
   }
 }
