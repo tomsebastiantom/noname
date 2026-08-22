@@ -3,7 +3,7 @@
   "mcp": {
     "playwright": {
       "type": "local",
-      "command": ["npx", "@playwright/mcp@latest"],
+      "command": ["node", "C:\\Workspace\\noname\\node_modules\\@playwright\\mcp\\cli.js", "--browser", "chrome"],
       "enabled": true,
       "timeout": 30000
     }

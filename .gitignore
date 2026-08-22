@@ -3,7 +3,8 @@ node_modules/
 .pnp
 .pnp.js
 .tools
-
+.playwright-mcp
+.repro
 # Build outputs
 dist/
 build/
