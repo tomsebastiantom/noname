@@ -1,314 +1,323 @@
-.editor-layout {
-  position: relative;
-}
-
-.editor-layout-panel {
-  display: flex;
-  flex-direction: column;
-  min-height: 0;
-  flex-shrink: 1;
-  align-self: stretch;
-  overflow: hidden;
-  background: hsl(var(--muted) / 0.2);
-}
-
-/* Narrow viewport: panels float above the full-width canvas instead of squeezing it. */
-
-.editor-layout-panel-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  shrink: 0;
-}
-
-.editor-layout-panel-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
-
-.editor-layout-panel-body {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.editor-layout-panel--left {
-  width: var(--editor-panel-w);
-  min-width: var(--editor-panel-min);
-  border-right: 1px solid hsl(var(--border));
-}
-
-.editor-layout-panel--right {
-  width: var(--editor-panel-w);
-  min-width: var(--editor-panel-min);
-  border-left: 1px solid hsl(var(--border));
-}
-
-.editor-layout-canvas {
-  display: flex;
-  min-height: 0;
-  min-width: var(--editor-canvas-min);
-  flex: 1;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-/* Narrow viewport: panels float above the full-width canvas instead of squeezing it.
-   Pure CSS (no JS measurement needed — the editor spans the whole viewport). */
-@media (max-width: 899px) {
-  .editor-layout-panel--side {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    z-index: 30;
-    flex-shrink: 0;
-    width: min(var(--editor-panel-w), 80%);
-    min-width: 0;
-    /* opaque: the translucent docked tint lets the canvas bleed through when floating */
-    background: hsl(var(--background));
-    box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+@layer components {
+  .editor-layout {
+    position: relative;
   }
 
-  /* Left panel still clears the persistent 2rem rail; right panel docks flush to the edge
-     (there is no right rail while the panel is open) so the canvas is never revealed. */
+  .editor-layout-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    flex-shrink: 1;
+    align-self: stretch;
+    overflow: hidden;
+    background: hsl(var(--muted) / 0.2);
+  }
+
+  /* Narrow viewport: panels float above the full-width canvas instead of squeezing it. */
+
+  .editor-layout-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    flex-shrink: 0;
+  }
+
+  .editor-layout-panel-title {
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .editor-layout-panel-body {
+    flex: 1;
+    min-height: 0;
+    /* A vertical scroll container. Because this sits in `@layer components`, Tailwind
+       utilities in `@layer utilities` can intentionally override it (e.g. `overflow-y-auto`).
+       Keep it a BLOCK (not `display:flex`): a flex container with `overflow-y:auto` clips its
+       growing flex item instead of scrolling it. The agent/stacked bodies re-enable flex on
+       their own variants (they need a flex column layout). */
+    overflow: hidden auto;
+  }
+
   .editor-layout-panel--left {
-    left: 2rem;
+    width: var(--editor-panel-w);
+    min-width: var(--editor-panel-min);
+    border-right: 1px solid hsl(var(--border));
   }
 
   .editor-layout-panel--right {
-    right: 0;
-  }
-
-  .editor-layout-resizer {
-    display: none;
+    width: var(--editor-panel-w);
+    min-width: var(--editor-panel-min);
+    border-left: 1px solid hsl(var(--border));
   }
 
   .editor-layout-canvas {
-    min-width: 0;
+    display: flex;
+    min-height: 0;
+    min-width: var(--editor-canvas-min);
+    flex: 1;
+    flex-direction: column;
+    overflow: hidden;
   }
-}
 
-.editor-chrome-rail {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  min-height: 2rem;
-  padding: 0 0.5rem 0 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--muted) / 0.35);
-}
+  /* Narrow viewport: panels float above the full-width canvas instead of squeezing it.
+     Pure CSS (no JS measurement needed — the editor spans the whole viewport). */
+  @media (max-width: 899px) {
+    .editor-layout-panel--side {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      z-index: 30;
+      flex-shrink: 0;
+      width: min(var(--editor-panel-w), 80%);
+      min-width: 0;
+      /* opaque: the translucent docked tint lets the canvas bleed through when floating */
+      background: hsl(var(--background));
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+    }
 
-.editor-chrome-rail-expand {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  padding: 0.25rem 0.35rem;
-  border-radius: 0.25rem;
-}
+    /* Left panel still clears the persistent 2rem rail; right panel docks flush to the edge
+       (there is no right rail while the panel is open) so the canvas is never revealed. */
+    .editor-layout-panel--left {
+      left: 2rem;
+    }
 
-.editor-chrome-rail-expand:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.6);
-}
+    .editor-layout-panel--right {
+      right: 0;
+    }
 
-.editor-chrome-rail-activity {
-  font-size: 0.65rem;
-  font-weight: 400;
-  letter-spacing: normal;
-  text-transform: none;
-  color: hsl(var(--muted-foreground));
-}
+    .editor-layout-resizer {
+      display: none;
+    }
 
-.editor-chrome-rail-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
+    .editor-layout-canvas {
+      min-width: 0;
+    }
+  }
 
-.editor-chrome-rail-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 9999px;
-}
+  .editor-chrome-rail {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    min-height: 2rem;
+    padding: 0 0.5rem 0 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.35);
+  }
 
-.editor-chrome-rail-dot--dirty {
-  background: hsl(var(--amber-500));
-}
+  .editor-chrome-rail-expand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    padding: 0.25rem 0.35rem;
+    border-radius: 0.25rem;
+  }
 
-.editor-chrome-rail-dot--error {
-  background: hsl(var(--destructive));
-}
+  .editor-chrome-rail-expand:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted) / 0.6);
+  }
 
-.editor-left-panel {
-  background: hsl(var(--muted) / 0.1);
-}
+  .editor-chrome-rail-activity {
+    font-size: 0.65rem;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: hsl(var(--muted-foreground));
+  }
 
-.editor-layers-dock-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.35rem 0.5rem 0.35rem 0.75rem;
-  border-bottom: 1px solid hsl(var(--border));
-  background: hsl(var(--background));
-  shrink: 0;
-}
+  .editor-chrome-rail-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
 
-.editor-layers-dock-title {
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-}
+  .editor-chrome-rail-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 9999px;
+  }
 
-.editor-panel-show-bar {
-  display: block;
-  width: 100%;
-  padding: 0.4rem 0.75rem;
-  border-top: 1px solid hsl(var(--border));
-  background: hsl(var(--muted) / 0.35);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  text-align: left;
-  color: hsl(var(--muted-foreground));
-}
+  .editor-chrome-rail-dot--dirty {
+    background: hsl(var(--amber-500));
+  }
 
-.editor-panel-show-bar:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.55);
-}
+  .editor-chrome-rail-dot--error {
+    background: hsl(var(--destructive));
+  }
 
-.editor-layout-rail--dual {
-  gap: 0.35rem;
-  padding: 0.5rem 0;
-}
+  .editor-left-panel {
+    background: hsl(var(--muted) / 0.1);
+  }
 
-.editor-sidebar-scroll {
-  overscroll-behavior: contain;
-}
+  .editor-layers-dock-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+    border-bottom: 1px solid hsl(var(--border));
+    background: hsl(var(--background));
+    flex-shrink: 0;
+  }
 
-.editor-props-panel {
-  overscroll-behavior: contain;
-}
+  .editor-layers-dock-title {
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+  }
 
-.editor-layout-resizer {
-  width: 5px;
-  margin: 0 -2px;
-  cursor: col-resize;
-  flex-shrink: 0;
-  position: relative;
-  z-index: 10;
-  touch-action: none;
-  display: block;
-}
+  .editor-panel-show-bar {
+    display: block;
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    border-top: 1px solid hsl(var(--border));
+    background: hsl(var(--muted) / 0.35);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    text-align: left;
+    color: hsl(var(--muted-foreground));
+  }
 
-.editor-layout-resizer::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  left: 2px;
-  width: 1px;
-  background: hsl(var(--border));
-  transition: background-color 0.12s ease, width 0.12s ease, left 0.12s ease;
-}
+  .editor-panel-show-bar:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted) / 0.55);
+  }
 
-.editor-layout-resizer:hover::after,
-.editor-layout-resizer[data-active="true"]::after {
-  left: 1px;
-  width: 3px;
-  background: hsl(var(--primary) / 0.65);
-}
+  .editor-layout-rail--dual {
+    gap: 0.35rem;
+    padding: 0.5rem 0;
+  }
 
-.editor-layout-rail {
-  display: flex;
-  width: 2rem;
-  flex-shrink: 0;
-  flex-direction: column;
-  align-items: center;
-  border-color: hsl(var(--border));
-  background: hsl(var(--muted) / 0.35);
-  padding: 0.5rem 0;
-}
+  .editor-sidebar-scroll {
+    overscroll-behavior: contain;
+  }
 
-.editor-layout-rail--persistent {
-  position: relative;
-  z-index: 15;
-  min-width: 2rem;
-  background: hsl(var(--background));
-  box-shadow: inset -1px 0 0 hsl(var(--border));
-}
+  .editor-props-panel {
+    overscroll-behavior: contain;
+  }
 
-.editor-layout-rail--right.editor-layout-rail--persistent {
-  box-shadow: inset 1px 0 0 hsl(var(--border));
-}
+  .editor-layout-resizer {
+    width: 5px;
+    margin: 0 -2px;
+    cursor: col-resize;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 10;
+    touch-action: none;
+    display: block;
+  }
 
-.editor-layout-rail--left {
-  border-right: 1px solid hsl(var(--border));
-}
+  .editor-layout-resizer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    left: 2px;
+    width: 1px;
+    background: hsl(var(--border));
+    transition: background-color 0.12s ease, width 0.12s ease, left 0.12s ease;
+  }
 
-.editor-layout-rail--right {
-  border-left: 1px solid hsl(var(--border));
-}
+  .editor-layout-resizer:hover::after,
+  .editor-layout-resizer[data-active="true"]::after {
+    left: 1px;
+    width: 3px;
+    background: hsl(var(--primary) / 0.65);
+  }
 
-.editor-layout-rail-button {
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  font-size: 0.65rem;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: hsl(var(--muted-foreground));
-  padding: 0.75rem 0.25rem;
-  border-radius: 0.25rem;
-  line-height: 1.2;
-}
+  .editor-layout-rail {
+    display: flex;
+    width: 2rem;
+    flex-shrink: 0;
+    flex-direction: column;
+    align-items: center;
+    border-color: hsl(var(--border));
+    background: hsl(var(--muted) / 0.35);
+    padding: 0.5rem 0;
+  }
 
-.editor-layout-rail-button:hover {
-  color: hsl(var(--foreground));
-  background: hsl(var(--muted) / 0.6);
-}
+  .editor-layout-rail--persistent {
+    position: relative;
+    z-index: 15;
+    min-width: 2rem;
+    background: hsl(var(--background));
+    box-shadow: inset -1px 0 0 hsl(var(--border));
+  }
 
-.editor-layout-rail-button[data-active="true"] {
-  color: hsl(var(--foreground));
-  background: hsl(var(--primary) / 0.14);
-}
+  .editor-layout-rail--right.editor-layout-rail--persistent {
+    box-shadow: inset 1px 0 0 hsl(var(--border));
+  }
 
-.editor-layout-panel-body--stacked {
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
+  .editor-layout-rail--left {
+    border-right: 1px solid hsl(var(--border));
+  }
 
-.editor-layout-panel-body--agent {
-  padding: 0;
-  background: hsl(var(--background));
-}
+  .editor-layout-rail--right {
+    border-left: 1px solid hsl(var(--border));
+  }
 
-.editor-layout--dragging {
-  cursor: col-resize;
-  user-select: none;
-}
+  .editor-layout-rail-button {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 0.65rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: hsl(var(--muted-foreground));
+    padding: 0.75rem 0.25rem;
+    border-radius: 0.25rem;
+    line-height: 1.2;
+  }
 
-.editor-layout--dragging * {
-  cursor: col-resize !important;
+  .editor-layout-rail-button:hover {
+    color: hsl(var(--foreground));
+    background: hsl(var(--muted) / 0.6);
+  }
+
+  .editor-layout-rail-button[data-active="true"] {
+    color: hsl(var(--foreground));
+    background: hsl(var(--primary) / 0.14);
+  }
+
+  .editor-layout-panel-body--stacked {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .editor-layout-panel-body--agent {
+    /* Re-enable flex column: the base body is a block scroll container, but the
+       agent panel needs a flex column so `flex: 1` fills and the composer stays pinned. */
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    background: hsl(var(--background));
+  }
+
+  .editor-layout--dragging {
+    cursor: col-resize;
+    user-select: none;
+  }
+
+  .editor-layout--dragging * {
+    cursor: col-resize !important;
+  }
 }
