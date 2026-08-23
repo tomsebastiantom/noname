@@ -3,6 +3,9 @@
 ## Current Status (Start Here)
 - **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Actual implementation status as of 2026-08-21. **Read this first.** Documents what's built, what's missing, and priority order to complete Phase 0.
 
+## Incident & Fix Reports
+- **[2026-08-23/EDGE-STOREFRONT-FIXES.md](2026-08-23/EDGE-STOREFRONT-FIXES.md)** — Why all anonymous storefront edge calls 400'd (unsigned internal HMAC call), the half-finished flags SSE ticket migration, and the new public `GET /api/flags/public` metadata endpoint (Flagsmith/Unleash pattern).
+
 ## Commerce Build-Out (2026-08-22 Research Set)
 - **[2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md](2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md)** — What's left to build: full feature matrix vs. Shopify/WooCommerce/commercetools/Medusa/Saleor/Vendure, server commerce domain spec, product/order schemas, priority order.
 - **[2026-08-22/COMPONENT_CATALOG_REQUIREMENTS.md](2026-08-22/COMPONENT_CATALOG_REQUIREMENTS.md)** — Complete spec for all ~15 commerce components (props schemas, actions, edit metadata, AI prompt context).
