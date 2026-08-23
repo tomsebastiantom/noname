@@ -516,7 +516,7 @@ export function EditorCanvas({
       role="application"
       tabIndex={-1}
       aria-label={shellLabels.canvasAriaLabel}
-      className={`editor-canvas editor-canvas--${canvasPreview} relative min-h-0 flex-1 overflow-y-auto bg-background p-4`}
+      className={`editor-canvas editor-canvas--${canvasPreview} relative min-h-0 flex-1 overflow-y-auto`}
       style={
         previewMaxWidth
           ? { maxWidth: previewMaxWidth, marginInline: "auto", width: "100%" }
