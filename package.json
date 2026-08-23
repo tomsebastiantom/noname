@@ -16,15 +16,7 @@
     "seed:demo": "tsx scripts/seed/demo.ts",
     "seed:demo:commerce": "tsx scripts/seed/demo-commerce.ts",
     "deploy:client-r2": "tsx scripts/deploy/client-r2.ts",
-    "init:zitadel": "tsx scripts/init/zitadel-oidc.ts",
-    "start:all": "pm2 start ecosystem.config.js",
-    "start:all:logs": "pm2 logs",
-    "start:all:status": "pm2 status",
-    "start:all:monit": "pm2 monit",
-    "start:all:restart": "pm2 restart ecosystem.config.js",
-    "start:all:delete": "pm2 delete ecosystem.config.js",
-    "stop:all": "pm2 delete ecosystem.config.js || echo 'No pm2 processes'",
-    "stop:all:kill": ". .\\.tools\\stop-all.ps1"
+    "init:zitadel": "tsx scripts/init/zitadel-oidc.ts"
   },
   "engines": {
     "node": ">=20"
@@ -37,8 +29,5 @@
     "dotenv": "^17.2.3",
     "tsx": "^4.0.0",
     "vitest": "^4.1.10"
-  },
-  "dependencies": {
-    "pm2": "^7.0.3"
   }
 }
