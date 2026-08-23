@@ -102,6 +102,9 @@ export default {
       template: "./index.html",
     }),
   ],
+  experiments: {
+    outputModule: true,
+  },
   optimization: {
     splitChunks: {
       chunks: "all",
