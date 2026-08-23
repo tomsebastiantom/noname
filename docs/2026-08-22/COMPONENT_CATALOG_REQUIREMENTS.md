@@ -874,19 +874,27 @@ These render without commerce context (news sites, portfolios, B2B landing pages
 
 > Overlap note: `StoreHeader`'s cart trigger and `PredictiveSearch`'s product results consume commerce context via props/adapters but the components themselves stay domain-neutral — same pattern as `ProductGrid` consuming product data through json-render bindings.
 
-### UI Primitive Base (shadcn Inventory Check)
+### UI Primitive Base (shadcn Inventory Check — updated 2026-08-22 late)
 
-The client currently carries only **8 shadcn/ui primitives** in `packages/client/src/components/ui/`: `alert`, `badge`, `button`, `card`, `input`, `label`, `separator`, `table`. That covers admin panels, not a storefront catalog. Since these are copy-in shadcn components, expanding is low-cost; map additions to catalog needs rather than importing all:
+Two layers supply UI primitives:
 
-| Needed primitive(s) | Unlocks |
-|---------------------|---------|
-| `accordion` | `FaqAccordion`, specs tables in `ProductInfo` |
-| `dialog`, `sheet` | `CartDrawer`, `QuickView`, `SizeGuide`, mobile filter drawers |
-| `carousel` | `MediaShowcase`, `ProductSlider`, `SocialProof` carousels |
-| `command` (+ `popover`) | `PredictiveSearch`, command palettes |
-| `checkbox`, `radio-group`, `select`, `switch`, `slider` | `FilterGroups`, `QuantitySelector`, forms |
-| `sonner`/`toast` | `NoticeToasts` |
-| `tabs`, `avatar`, `skeleton`, `tooltip` | `ProductInfo` tabs, reviews avatars, loading states, `TrustBadges` tooltips |
+1. **Catalog level (added 2026-08-22)**: `@json-render/shadcn@0.20.0` is installed and merged into the storefront catalog via `packages/client/src/component-schemas.ts` (`shadcnComponentDefinitions`; `catalog.ts` builds from the merge). This contributes **36 ready-made component schemas** — Card, Stack, Grid, Separator, Tabs, Accordion, Collapsible, Dialog, Drawer, Carousel, Table, Heading, Text, Image, Avatar, Badge, Alert, Progress, Skeleton, Spinner, Tooltip, Popover, Input, Textarea, Select, Checkbox, Radio, Switch, Slider, Button, Link, DropdownMenu, Toggle, ToggleGroup, ButtonGroup, Pagination — so AI-generated layouts can reference them today. (`@json-render/core|react|react-email` bumped 0.19.0 → 0.20.0 in the same change.)
+2. **Local level**: `packages/client/src/components/ui/` carries 8 hand-rolled shadcn primitives (`alert`, `badge`, `button`, `card`, `input`, `label`, `separator`, `table`) used by admin/editor chrome.
+
+Mapping to catalog components (✅ = schema already available via `@json-render/shadcn`; remaining work is the React renderer + commerce wrapper, not new primitives):
+
+| Catalog component | Primitive coverage |
+|-------------------|--------------------|
+| `FaqAccordion`, ProductInfo spec tables | ✅ `Accordion` / `Collapsible` |
+| `CartDrawer`, `QuickView`, `SizeGuide`, mobile filter drawers | ✅ `Drawer` / `Dialog` |
+| `MediaShowcase`, `ProductSlider`, `SocialProof` carousels | ✅ `Carousel` |
+| `FilterGroups`, `QuantitySelector`, checkout forms | ✅ `Checkbox`, `Radio`, `Select`, `Switch`, `Slider`, `Input`, `Textarea` |
+| Commerce `Pagination` | ✅ composes the `Pagination` primitive |
+| Free-shipping progress bars | ✅ `Progress` |
+| Review avatars / loading skeletons / `TrustBadges` tooltips / PDP tabs | ✅ `Avatar`, `Skeleton`, `Spinner`, `Tooltip`, `Tabs` |
+| `NoticeToasts` | ❌ no toast primitive in the set yet — add `sonner` when this lands |
+
+> ⚠️ **Name-collision check**: `Stack`, `Grid`, `Text`, `Button`, `Image` exist in both `baseComponentSchemas` and `shadcnComponentDefinitions`; because `component-schemas.ts` spreads shadcn last, the shadcn variants silently win. Confirm that override is intended before wiring renderers, or drop/rename the base duplicates.
 
 ### Removal Criteria (Prune Later, Not Now)
 
