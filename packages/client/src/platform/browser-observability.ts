@@ -66,9 +66,15 @@ function installFlagBridge(): void {
 async function loadLayoutFlagKeys(_orgId: string): Promise<void> {
   try {
     const flags =
-      await apiFetchData<Array<{ key: string; schemaId: string | null; variantId: string | null }>>(
-        "/api/flags",
-      );
+      await apiFetchData<
+        Array<{
+          key: string;
+          type?: string;
+          status?: string;
+          schemaId: string | null;
+          variantId: string | null;
+        }>
+      >("/api/flags/public");
     const keys = new Set<string>();
     for (const flag of flags) {
       if (flag.schemaId || flag.variantId) {

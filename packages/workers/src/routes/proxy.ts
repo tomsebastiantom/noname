@@ -34,6 +34,10 @@ function isNotificationsStreamWithTicket(url: URL): boolean {
   return url.pathname === "/api/notifications/stream" && url.searchParams.has("stream_ticket");
 }
 
+function isFlagsStreamWithTicket(url: URL): boolean {
+  return url.pathname === "/api/flags/stream" && url.searchParams.has("stream_ticket");
+}
+
 async function resolveJwt(
   req: Request,
   env: Env,
@@ -50,12 +54,14 @@ export function createApiProxyRoutes() {
     const incoming = new URL(c.req.url);
     const pathname = incoming.pathname;
     const search = stripOrgFromSearch(pathname, incoming.search);
-    const target = `${c.env.API_ORIGIN}${pathname}${search}`;
     const isPublic = routeIsPublic(c.req.method, pathname);
+    const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
     const streamTicketBypass = isNotificationsStreamWithTicket(incoming);
     const collabTicketBypass = isCollabWsWithTicket(incoming);
+    const flagsTicketBypass = isFlagsStreamWithTicket(incoming);
     const editMode = isEditModeUrl(incoming);
-    const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
+    const apiOrigin = c.env.API_ORIGIN;
+    const target = `${apiOrigin}${pathname}${search}`;
 
     let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
@@ -66,7 +72,7 @@ export function createApiProxyRoutes() {
       if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
-    } else if (!isPublic && !streamTicketBypass && !collabTicketBypass) {
+    } else if (!isPublic && !streamTicketBypass && !collabTicketBypass && !flagsTicketBypass) {
       const auth = await resolveJwt(c.req.raw, c.env);
       if (auth instanceof Response) return auth;
       jwt = auth;
@@ -81,7 +87,13 @@ export function createApiProxyRoutes() {
       c.req.header("x-org-id") ?? undefined,
     );
 
-    if (!orgId && !isResolveSlugPath(pathname)) {
+    if (
+      !orgId &&
+      !isResolveSlugPath(pathname) &&
+      !streamTicketBypass &&
+      !collabTicketBypass &&
+      !flagsTicketBypass
+    ) {
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 

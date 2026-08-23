@@ -7,8 +7,8 @@ import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { layoutCollabWsUrl, mintLayoutCollabTicket } from "./collab-api";
 import { collabHumanDisplayName } from "./collab-display-name";
 import type { LayoutAgentActivity } from "./collab-peer-display";
-import { getLayoutCollabRepo } from "./layout-collab-repo";
 import { resolveLayoutCollabDocumentId } from "./layout-collab-document-id";
+import { getLayoutCollabRepo } from "./layout-collab-repo";
 import { LayoutCollabWsAdapter } from "./layout-collab-ws-adapter";
 import {
   type CollabPeerPresence,

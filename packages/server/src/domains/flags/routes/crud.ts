@@ -18,6 +18,27 @@ export function registerFlagCrudRoutes(routes: Hono, deps: FlagRouteDeps): void 
     return created(c, flag);
   });
 
+  /**
+   * Public storefront metadata for any visitor — every ACTIVE flag with safe
+   * fields only (no targeting rules, defaults, or descriptions; those remain
+   * behind FLAGS_WRITE below). Values themselves come from /evaluate and SSE.
+   * Must be registered before "/:id".
+   */
+  routes.get("/public", async (c) => {
+    const orgId = getOrgId(c);
+    const flags = await service.list(orgId, { status: "active" });
+    return ok(
+      c,
+      flags.map((flag) => ({
+        key: flag.key,
+        type: flag.type,
+        status: flag.status,
+        schemaId: flag.schemaId,
+        variantId: flag.variantId,
+      })),
+    );
+  });
+
   routes.get("/", async (c) => {
     const denied = await denyUnless(c, PERMISSIONS.FLAGS_WRITE);
     if (denied) return denied;

@@ -36,7 +36,7 @@ export function appendWebSocketRequestHeaders(from: Headers, to: Headers): void 
   }
 }
 
-/** Proxy WS upgrade to Node API — do not use fetchWithTimeout (long-lived). */
+/** Proxy WS upgrade to Node API — use ws:// target for upgrade handshake. */
 export async function proxyWebSocketToOrigin(
   targetUrl: string,
   incomingHeaders: Headers,
@@ -48,6 +48,8 @@ export async function proxyWebSocketToOrigin(
     headers.set(key, value);
   }
 
+  // Best practice: pass through upgrade headers; let server handle WS handshake.
+  // Using GET (standard for WebSocket upgrade); do not apply timeout (long-lived connection).
   return fetch(targetUrl, {
     method: "GET",
     headers,

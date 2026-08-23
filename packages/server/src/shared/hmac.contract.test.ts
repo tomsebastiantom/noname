@@ -1,14 +1,15 @@
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it } from "vitest";
-import { getOrgId, getRole, getUserId, orgMiddleware } from "../../server/src/shared/org";
-import { tenantMiddleware } from "../../server/src/shared/tenant";
-import { hmacHeaders } from "./hmac";
+import { hmacHeaders } from "../../../workers/src/hmac";
+import { getOrgId, getRole, getUserId, orgMiddleware } from "./org";
+import { tenantMiddleware } from "./tenant";
 
 /**
  * Contract test: edge worker signing (packages/workers/src/hmac.ts) must stay
  * byte-compatible with server verification (packages/server/src/shared/{org,tenant}.ts).
  * If either side changes payload format, algorithm, encoding, or header names,
- * this test fails.
+ * this test fails. Lives on the server side because verification middleware and
+ * node types live here; the signer is imported straight from the workers source.
  */
 
 const SECRET = "contract-test-secret";
@@ -18,7 +19,6 @@ const ROLE = "admin";
 
 beforeEach(() => {
   process.env.WORKER_SERVER_SECRET = SECRET;
-  delete process.env.REQUIRE_EDGE_HMAC;
 });
 
 function buildOrgApp() {
@@ -80,13 +80,20 @@ describe("worker sign -> server verify (org middleware)", () => {
 });
 
 describe("worker sign -> server verify (tenant middleware)", () => {
+  function retargetToTenant(headers: Record<string, string>): Record<string, string> {
+    const orgId = headers["x-org-id"];
+    if (!orgId) throw new Error("hmacHeaders did not return x-org-id");
+    delete headers["x-org-id"];
+    return { ...headers, "x-tenant-id": orgId };
+  }
+
   it("accepts the same signature format against tenant routes", async () => {
     const headers = await hmacHeaders(ORG, USER, ROLE, {
       WORKER_SERVER_SECRET: SECRET,
     } as never);
-    headers["x-tenant-id"] = headers["x-org-id"];
-    delete headers["x-org-id"];
-    const res = await buildTenantApp().request("/ping", { headers });
+    const res = await buildTenantApp().request("/ping", {
+      headers: retargetToTenant(headers),
+    });
     expect(res.status).toBe(200);
   });
 
@@ -94,10 +101,9 @@ describe("worker sign -> server verify (tenant middleware)", () => {
     const headers = await hmacHeaders(ORG, USER, ROLE, {
       WORKER_SERVER_SECRET: SECRET,
     } as never);
-    headers["x-tenant-id"] = headers["x-org-id"];
-    delete headers["x-org-id"];
-    headers["x-role"] = "superadmin";
-    const res = await buildTenantApp().request("/ping", { headers });
+    const retargeted = retargetToTenant(headers);
+    retargeted["x-role"] = "superadmin";
+    const res = await buildTenantApp().request("/ping", { headers: retargeted });
     expect(res.status).toBe(401);
   });
 });

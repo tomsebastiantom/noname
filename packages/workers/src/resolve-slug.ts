@@ -1,6 +1,7 @@
 import { fetchWithTimeout } from "@noname/auth";
 import { storeSlugFromHost } from "@noname/shared";
 import { getCached, setCache, slugCacheKey } from "./cache";
+import { hmacHeaders } from "./hmac";
 import type { Env } from "./types";
 
 const SLUG_CACHE_TTL = 300;
@@ -15,8 +16,11 @@ export async function resolveSiteId(env: Env, siteId: string): Promise<string | 
   const cached = await getCached<{ orgId: string }>(env, slugCacheKey(slug));
   if (cached?.orgId) return cached.orgId;
 
+  // Upstream orgMiddleware rejects unsigned calls when WORKER_SERVER_SECRET is set —
+  // internal edge→API service calls must carry the same HMAC the proxy adds.
   const res = await fetchWithTimeout(
     `${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`,
+    { headers: await hmacHeaders("", "", "", env) },
   );
   if (!res.ok) return null;
 

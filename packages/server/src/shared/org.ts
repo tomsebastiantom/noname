@@ -19,8 +19,6 @@ function workerSecret(): string {
   return process.env.WORKER_SERVER_SECRET || secret;
 }
 
-
-
 function verifyHmac(orgId: string, userId: string, role: string, providedHmac: string): boolean {
   const configuredSecret = workerSecret();
   if (!configuredSecret) return false;

@@ -13,6 +13,16 @@ describe("edge public routes", () => {
     expect(isPublicGet("GET", "/api/flags/stream")).toBe(true);
   });
 
+  it("allows anonymous flag metadata but keeps admin list authed", () => {
+    expect(isPublicGet("GET", "/api/flags/public")).toBe(true);
+    expect(isPublicGet("GET", "/api/flags")).toBe(false);
+  });
+
+  it("allows anonymous flag SSE ticket minting", () => {
+    expect(isPublicPost("POST", "/api/flags/stream/ticket")).toBe(true);
+    expect(isPublicPost("POST", "/api/flags/stream/ticket/extra")).toBe(false);
+  });
+
   it("still requires JWT for analytics reads", () => {
     expect(isPublicGet("GET", "/api/analytics/events")).toBe(false);
     expect(isPublicPost("POST", "/api/analytics/segment-events")).toBe(false);

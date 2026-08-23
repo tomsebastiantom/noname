@@ -51,7 +51,9 @@ describe("stripe adapter", () => {
 });
 
 describe("createWebhooksService", () => {
-  it("returns duplicate for same external event id", async () => {
+  // Dynamic import pulls the BullMQ/ioredis-heavy service module — needs more
+  // than the 5s default when the full suite runs in parallel.
+  it("returns duplicate for same external event id", { timeout: 30_000 }, async () => {
     const { createWebhooksService } = await import("./service");
 
     const insertReceipt = vi
@@ -142,7 +144,7 @@ describe("signOutboundWebhook", () => {
 });
 
 describe("deliverOutbound", () => {
-  it("queues one delivery per matching subscription", async () => {
+  it("queues one delivery per matching subscription", { timeout: 30_000 }, async () => {
     const { createWebhooksService } = await import("./service");
 
     const insertOutboundDelivery = vi.fn(async (input) => ({
@@ -336,7 +338,7 @@ describe("registerWebhookOutboundRouter", () => {
 });
 
 describe("retryOutboundDelivery", () => {
-  it("requeues failed delivery", async () => {
+  it("requeues failed delivery", { timeout: 30_000 }, async () => {
     const { createWebhooksService } = await import("./service");
 
     const findOutboundDeliveryForOrg = vi.fn(async () => ({

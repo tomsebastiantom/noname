@@ -77,11 +77,30 @@ export function createFlagsModule(
     }
   }
 
-  function connectSSE(): void {
+  /** `/api/flags/evaluate` → `/api/flags` — SSE endpoints live next to evaluate. */
+  function streamBase(): string {
+    return endpoint.replace(/\/[^/]*$/, "");
+  }
+
+  async function connectSSE(): Promise<void> {
     if (typeof EventSource === "undefined") return;
 
     try {
-      es = new EventSource("/api/flags/stream");
+      // EventSource cannot send headers — mint a short-lived signed ticket first.
+      const res = await fetch(`${streamBase()}/stream/ticket`, {
+        method: "POST",
+        headers: getHeaders(),
+      });
+      if (!res.ok) {
+        throw new Error(`stream ticket unavailable (${res.status})`);
+      }
+      const body = (await res.json()) as { data?: { ticket?: string }; ticket?: string };
+      const ticket = body.data?.ticket ?? body.ticket;
+      if (!ticket) {
+        throw new Error("stream ticket missing");
+      }
+
+      es = new EventSource(`${streamBase()}/stream?stream_ticket=${encodeURIComponent(ticket)}`);
 
       es.onmessage = (event) => {
         try {
@@ -101,7 +120,8 @@ export function createFlagsModule(
         setTimeout(connectSSE, 5000);
       };
     } catch {
-      // SSE not available — fall back to cache
+      // Ticket minting failed — retry on the same backoff as SSE errors.
+      setTimeout(connectSSE, 5000);
     }
   }
 
@@ -151,7 +171,7 @@ export function createFlagsModule(
   // Initial bulk fetch — blocking
   evaluate().then(() => {
     ready = true;
-    connectSSE();
+    void connectSSE();
   });
 
   return mod;
