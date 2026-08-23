@@ -47,7 +47,7 @@ export function isStateBinding(value: unknown): boolean {
   );
 }
 
-/** Dot path under props — e.g. labels.title or config.image */
+/** Dot path under props — flat, e.g. title, image, or views.login.title */
 export function getPropPath(obj: Record<string, unknown>, path: string): unknown {
   const parts = path.split(".");
   let cur: unknown = obj;
@@ -105,21 +105,10 @@ export function mergeLiteralPropsIntoPreview(preview: Spec, stored: Spec, elemen
   const storedProps = storedEl.props as Record<string, unknown>;
   const previewProps = { ...(target.props as Record<string, unknown>) };
 
-  for (const bucket of ["config", "labels"] as const) {
-    const storedBucket = storedProps[bucket];
-    if (!storedBucket || typeof storedBucket !== "object" || Array.isArray(storedBucket)) continue;
-    const previewBucket = (
-      previewProps[bucket] && typeof previewProps[bucket] === "object"
-        ? { ...(previewProps[bucket] as Record<string, unknown>) }
-        : {}
-    ) as Record<string, unknown>;
-
-    for (const [key, val] of Object.entries(storedBucket as Record<string, unknown>)) {
-      if (!isStateBinding(val)) {
-        previewBucket[key] = val;
-      }
+  for (const [key, val] of Object.entries(storedProps)) {
+    if (!isStateBinding(val)) {
+      previewProps[key] = val;
     }
-    previewProps[bucket] = previewBucket;
   }
 
   target.props = previewProps;
@@ -416,25 +405,20 @@ export function mergeContentDraftIntoPreview(
     const previewEl = outEls[id];
     if (!previewEl) continue;
 
-    const storedConfig = (storedEl.props as { config?: Record<string, unknown> } | undefined)
-      ?.config;
-    if (!storedConfig) continue;
+    const storedProps = storedEl.props as Record<string, unknown> | undefined;
+    if (!storedProps) continue;
 
     const previewProps = { ...(previewEl.props as Record<string, unknown>) };
-    const previewConfig = {
-      ...((previewProps.config as Record<string, unknown> | undefined) ?? {}),
-    };
     let changed = false;
 
-    for (const [key, val] of Object.entries(storedConfig)) {
+    for (const [key, val] of Object.entries(storedProps)) {
       if (!isStateBinding(val) || !(key in contentValues)) continue;
       const raw = contentValues[key] ?? "";
-      previewConfig[key] = contentBindingValue(key, raw);
+      previewProps[key] = contentBindingValue(key, raw);
       changed = true;
     }
 
     if (changed) {
-      previewProps.config = previewConfig;
       outEls[id] = { ...previewEl, props: previewProps };
     }
   }
@@ -443,14 +427,11 @@ export function mergeContentDraftIntoPreview(
 }
 
 export function patchBlockProps(
-  props: { config: Record<string, unknown>; labels: Record<string, unknown> },
+  props: Record<string, unknown>,
   fieldPath: string,
   value: unknown,
-): { config: Record<string, unknown>; labels: Record<string, unknown> } {
-  return setPropPath(props as Record<string, unknown>, fieldPath, value) as {
-    config: Record<string, unknown>;
-    labels: Record<string, unknown>;
-  };
+): Record<string, unknown> {
+  return setPropPath(props, fieldPath, value);
 }
 
 /** Preview-only: show staged block before Save draft commits it to the layout. */
@@ -472,19 +453,18 @@ export function mergePendingAddIntoPreview(
   const parent = elements[parentId];
   if (!parent) return preview;
 
-  const config = { ...pending.props.config };
-  const labels = { ...pending.props.labels };
+  const props = { ...pending.props };
 
-  for (const [key, val] of Object.entries(config)) {
+  for (const [key, val] of Object.entries(props)) {
     if (isStateBinding(val) && key in contentValues) {
       const raw = contentValues[key] ?? "";
-      config[key] = contentBindingValue(key, raw);
+      props[key] = contentBindingValue(key, raw);
     }
   }
 
   elements[pending.tempElementId] = {
     type: pending.componentType,
-    props: { config, labels },
+    props,
   };
 
   parent.children = [...(parent.children ?? [])];
@@ -499,7 +479,7 @@ export function addComponentToSpec(
   spec: Spec,
   componentType: string,
   meta: {
-    defaultProps: { config: Record<string, unknown>; labels: Record<string, unknown> };
+    defaultProps: Record<string, unknown>;
     preferredParentType?: string;
   },
   options?: { parentId?: string; insertIndex?: number },
@@ -520,10 +500,7 @@ export function addComponentToSpec(
   const elementId = `${componentType.toLowerCase()}-${Date.now().toString(36)}`;
   elements[elementId] = {
     type: componentType,
-    props: {
-      config: { ...meta.defaultProps.config },
-      labels: { ...meta.defaultProps.labels },
-    },
+    props: { ...meta.defaultProps },
   };
   parent.children = [...(parent.children ?? [])];
   const insertAt = options?.insertIndex ?? parent.children.length;

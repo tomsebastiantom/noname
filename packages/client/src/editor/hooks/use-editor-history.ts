@@ -20,10 +20,7 @@ function cloneSnapshot(snapshot: EditorHistorySnapshot): EditorHistorySnapshot {
     pendingAdd: snapshot.pendingAdd
       ? {
           ...snapshot.pendingAdd,
-          props: {
-            config: { ...snapshot.pendingAdd.props.config },
-            labels: { ...snapshot.pendingAdd.props.labels },
-          },
+          props: { ...snapshot.pendingAdd.props },
         }
       : null,
     selection: snapshot.selection ? { ...snapshot.selection } : null,

@@ -6,7 +6,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import type { CatalogProps } from "../../schemas/shared";
 import { ACCOUNT_INBOX_STATE } from "../login-state";
 import { useCatalogSubmit } from "../use-catalog-submit";
 import { CommsInboxPanel, type CommsInboxPanelLabels } from "./CommsInboxPanel";
@@ -17,10 +16,8 @@ type AccountNotificationsLabels = CommsInboxPanelLabels & {
   forbiddenLabel: string;
 };
 
-export function AccountNotificationsInbox({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, AccountNotificationsLabels>>) {
-  const { labels } = props;
+export function AccountNotificationsInbox({ props }: ComponentCtx<AccountNotificationsLabels>) {
+  const labels = props;
   const loggedIn = isLoggedIn();
   const { executeAction, error, clearError } = useCatalogSubmit();
 

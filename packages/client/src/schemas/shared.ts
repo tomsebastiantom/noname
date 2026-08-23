@@ -1,8 +1,6 @@
 import { z } from "zod";
 
-export { type CatalogProps, catalogProps } from "@noname/documents";
-
-/** Layout spec props — config (behavior) + labels (all copy). See skills/spec-driven-ui/props-contract.md */
+/** Layout spec props — flat props only (all copy and behavior at the top level). See skills/spec-driven-ui/props-contract.md */
 export const draftPublishLabelsSchema = z.object({
   saveLabel: z.string(),
   savingLabel: z.string(),

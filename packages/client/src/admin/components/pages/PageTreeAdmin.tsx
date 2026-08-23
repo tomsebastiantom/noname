@@ -16,7 +16,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { type PageTreeEntry, ROUTING_DEFAULT_LOCALE } from "../../routing-entries";
 
 function emptyEntry(): PageTreeEntry {
@@ -44,7 +43,7 @@ type PageTreeLabels = {
   forbiddenLabel: string;
 };
 
-type PageTreeAdminProps = ComponentCtx<CatalogProps<PageTreeConfig, PageTreeLabels>>;
+type PageTreeAdminProps = ComponentCtx<PageTreeConfig & PageTreeLabels>;
 
 function PageTreeFields({
   initialEntries,
@@ -180,9 +179,9 @@ function PageTreeFields({
 }
 
 export function PageTreeAdmin({ props }: PageTreeAdminProps) {
-  const { config, labels } = props;
+  const labels = props;
   const canAccessPages = useAdminRouteAccess("pages");
-  const locale = config.locale || ROUTING_DEFAULT_LOCALE;
+  const locale = props.locale || ROUTING_DEFAULT_LOCALE;
 
   const treePages = useStateValue(ADMIN_STATE.routing.treePages) as PageTreeEntry[] | undefined;
   const treeStatus = useStateValue(ADMIN_STATE.routing.treeStatus) as string | null | undefined;

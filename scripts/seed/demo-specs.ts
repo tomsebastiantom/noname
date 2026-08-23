@@ -1,4 +1,4 @@
-import { specProps as catalogProps } from "../../packages/documents/src/catalog-props";
+import { specProps } from "../../packages/documents/src/catalog-props";
 import { DEFAULT_LOGIN_FORM_MESSAGES } from "../../packages/client/src/core/login-form-labels";
 import {
   accountCommunicationPrefsLabels,
@@ -35,7 +35,7 @@ export const loginSpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: catalogProps(
+      props: specProps(
         { layout: "centered" },
         { brandTitle: "Noname", brandSubtitle: "Platform demo" },
       ),
@@ -43,7 +43,7 @@ export const loginSpec = {
     },
     form: {
       type: "LoginForm",
-      props: catalogProps(
+      props: specProps(
         {
           redirectPath: "/",
           logoUrl: null,
@@ -65,25 +65,25 @@ export const demoSpec = {
   root: "main",
   elements: {
     main: {
-      type: "Stack",
-      props: catalogProps({ direction: "column", gap: 24, align: "stretch" }, {}),
+      type: "StackBase",
+      props: specProps({ direction: "column", gap: 24, align: "stretch" }, {}),
       children: ["header", "promo", "intro", "actions"],
     },
     promo: {
-      type: "Text",
+      type: "TextBase",
       visible: { $state: "/flags/show_summer_sale" },
-      props: catalogProps(
+      props: specProps(
         { variant: "h3", align: "center" },
         { content: "Summer sale — 20% off yoga mats this week!" },
       ),
     },
     header: {
-      type: "Text",
-      props: catalogProps({ variant: "h1", align: "center" }, { content: "Welcome to Noname" }),
+      type: "TextBase",
+      props: specProps({ variant: "h1", align: "center" }, { content: "Welcome to Noname" }),
     },
     intro: {
-      type: "Text",
-      props: catalogProps(
+      type: "TextBase",
+      props: specProps(
         { variant: "body", align: "center" },
         {
           content:
@@ -92,13 +92,13 @@ export const demoSpec = {
       ),
     },
     actions: {
-      type: "Stack",
-      props: catalogProps({ direction: "row", gap: 12, align: "center" }, {}),
+      type: "StackBase",
+      props: specProps({ direction: "row", gap: 12, align: "center" }, {}),
       children: ["cta"],
     },
     cta: {
-      type: "Button",
-      props: catalogProps({ variant: "primary", action: null }, { text: "Get started" }),
+      type: "ButtonBase",
+      props: specProps({ variant: "primary", action: null }, { label: "Get started" }),
     },
   },
 };
@@ -111,8 +111,8 @@ function adminPanelSpec(
     root: "panel",
     elements: {
       panel: {
-        type: "Stack",
-        props: catalogProps({ direction: "column", gap: 16, align: "stretch" }, {}),
+        type: "StackBase",
+        props: specProps({ direction: "column", gap: 16, align: "stretch" }, {}),
         children,
       },
       ...elements,
@@ -125,7 +125,7 @@ export const adminShellSpec = {
   elements: {
     shell: {
       type: "AdminShell",
-      props: catalogProps(adminShellNavConfig, {
+      props: specProps(adminShellNavConfig, {
         title: "Admin",
         ...adminShellNavLabels,
       }),
@@ -140,7 +140,7 @@ export const visualEditorShellSpec = {
   elements: {
     shell: {
       type: "VisualEditorShell",
-      props: catalogProps(
+      props: specProps(
         { templateName: "", pageContentRef: null },
         {
           title: "Edit page",
@@ -209,7 +209,7 @@ export const visualEditorShellSpec = {
           loadingLayoutHint: "Loading layout for edit…",
           loadingEditorHint: "Loading editor…",
           labelsMissingHint:
-            "Editor chrome labels missing — seed or publish the visual_editor layout (VisualEditorShell.props.labels).",
+            "Editor chrome labels missing — seed or publish the visual_editor layout (VisualEditorShell.props).",
           closePanelLabel: "Close",
           leftPanelsAriaLabel: "Left panels",
           rightPanelsAriaLabel: "Right panels",
@@ -321,22 +321,22 @@ export const visualEditorShellSpec = {
     },
     palette: {
       type: "EditorPalette",
-      props: catalogProps({}, {}),
+      props: specProps({}, {}),
       children: [],
     },
     layers: {
       type: "EditorLayerTree",
-      props: catalogProps({}, {}),
+      props: specProps({}, {}),
       children: [],
     },
     canvas: {
       type: "EditorCanvas",
-      props: catalogProps({}, {}),
+      props: specProps({}, {}),
       children: [],
     },
     panel: {
       type: "EditorPropsPanel",
-      props: catalogProps({}, {}),
+      props: specProps({}, {}),
       children: [],
     },
   },
@@ -348,7 +348,7 @@ function panelProps(
   description: string | null,
   labels: Record<string, unknown>,
 ): Record<string, unknown> {
-  return catalogProps(config, { title, description, ...labels });
+  return specProps(config, { title, description, ...labels });
 }
 
 export const adminDashboardSpec = adminPanelSpec(["authSettings"], {
@@ -368,7 +368,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
   {
     sectionLlm: {
       type: "AdminCollapsibleSection",
-      props: catalogProps(
+      props: specProps(
         { defaultOpen: true },
         {
           title: "AI & LLM",
@@ -379,7 +379,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     sectionComms: {
       type: "AdminCollapsibleSection",
-      props: catalogProps(
+      props: specProps(
         { defaultOpen: false },
         {
           title: "Email & delivery",
@@ -390,7 +390,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     sectionInbox: {
       type: "AdminCollapsibleSection",
-      props: catalogProps(
+      props: specProps(
         { defaultOpen: false },
         {
           title: "In-app inbox",
@@ -401,7 +401,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     sectionWebhooks: {
       type: "AdminCollapsibleSection",
-      props: catalogProps(
+      props: specProps(
         { defaultOpen: false },
         {
           title: "Webhooks",
@@ -412,7 +412,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     sectionOAuth: {
       type: "AdminCollapsibleSection",
-      props: catalogProps(
+      props: specProps(
         { defaultOpen: false },
         {
           title: "External OAuth",
@@ -423,7 +423,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadIntegrationsLlm: {
       type: "MountAction",
-      props: catalogProps({ action: "loadIntegrationsLlm" }, {}),
+      props: specProps({ action: "loadIntegrationsLlm" }, {}),
     },
     integrationsLlm: {
       type: "IntegrationsLlmForm",
@@ -436,7 +436,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadIntegrationsComms: {
       type: "MountAction",
-      props: catalogProps({ action: "loadIntegrationsComms" }, {}),
+      props: specProps({ action: "loadIntegrationsComms" }, {}),
     },
     integrationsComms: {
       type: "IntegrationsCommsForm",
@@ -449,7 +449,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadCommsDeliveries: {
       type: "MountAction",
-      props: catalogProps({ action: "loadCommsDeliveries" }, {}),
+      props: specProps({ action: "loadCommsDeliveries" }, {}),
     },
     commsDeliveries: {
       type: "CommsDeliveriesAdmin",
@@ -462,7 +462,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadCommsInbox: {
       type: "MountAction",
-      props: catalogProps({ action: "loadCommsInbox" }, {}),
+      props: specProps({ action: "loadCommsInbox" }, {}),
     },
     commsInbox: {
       type: "CommsInboxAdmin",
@@ -475,7 +475,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadWebhookSubscriptions: {
       type: "MountAction",
-      props: catalogProps({ action: "loadWebhookSubscriptions" }, {}),
+      props: specProps({ action: "loadWebhookSubscriptions" }, {}),
     },
     webhookSubscriptions: {
       type: "WebhookSubscriptionsAdmin",
@@ -488,7 +488,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
     },
     loadIntegrationsOAuth: {
       type: "MountAction",
-      props: catalogProps({ action: "loadIntegrationsOAuth" }, {}),
+      props: specProps({ action: "loadIntegrationsOAuth" }, {}),
     },
     integrationsOAuth: {
       type: "IntegrationsOAuthForm",
@@ -505,7 +505,7 @@ export const adminIntegrationsSpec = adminPanelSpec(
 export const adminFlagsSpec = adminPanelSpec(["loadFlags", "flagsAdmin"], {
   loadFlags: {
     type: "MountAction",
-    props: catalogProps({ action: "listFlags" }, {}),
+    props: specProps({ action: "listFlags" }, {}),
   },
   flagsAdmin: {
     type: "FeatureFlagsAdmin",
@@ -521,7 +521,7 @@ export const adminFlagsSpec = adminPanelSpec(["loadFlags", "flagsAdmin"], {
 export const adminReplaySpec = adminPanelSpec(["loadReplay", "replayAdmin"], {
   loadReplay: {
     type: "MountAction",
-    props: catalogProps({ action: "listReplaySessions" }, {}),
+    props: specProps({ action: "listReplaySessions" }, {}),
   },
   replayAdmin: {
     type: "SessionReplayAdmin",
@@ -537,7 +537,7 @@ export const adminReplaySpec = adminPanelSpec(["loadReplay", "replayAdmin"], {
 export const adminTracesSpec = adminPanelSpec(["loadTraces", "tracesAdmin"], {
   loadTraces: {
     type: "MountAction",
-    props: catalogProps({ action: "loadTracesAdmin" }, {}),
+    props: specProps({ action: "loadTracesAdmin" }, {}),
   },
   tracesAdmin: {
     type: "TracesAdmin",
@@ -553,7 +553,7 @@ export const adminTracesSpec = adminPanelSpec(["loadTraces", "tracesAdmin"], {
 export const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdmin"], {
   loadAnalytics: {
     type: "MountAction",
-    props: catalogProps({ action: "loadAnalyticsAdmin" }, {}),
+    props: specProps({ action: "loadAnalyticsAdmin" }, {}),
   },
   analyticsAdmin: {
     type: "AnalyticsEventsAdmin",
@@ -569,7 +569,7 @@ export const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdm
 export const adminScopeSpec = adminPanelSpec(["loadScope", "scopeAdmin"], {
   loadScope: {
     type: "MountAction",
-    props: catalogProps({ action: "loadScopeAdmin" }, {}),
+    props: specProps({ action: "loadScopeAdmin" }, {}),
   },
   scopeAdmin: {
     type: "ScopeAdminForm",
@@ -585,7 +585,7 @@ export const adminScopeSpec = adminPanelSpec(["loadScope", "scopeAdmin"], {
 export const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
   loadTeam: {
     type: "MountAction",
-    props: catalogProps({ action: "listTeamUsers" }, {}),
+    props: specProps({ action: "listTeamUsers" }, {}),
   },
   usersAdmin: {
     type: "UsersAdminForm",
@@ -601,7 +601,7 @@ export const adminUsersSpec = adminPanelSpec(["loadTeam", "usersAdmin"], {
 export const adminAgentsSpec = adminPanelSpec(["loadAgents", "agentsAdmin"], {
   loadAgents: {
     type: "MountAction",
-    props: catalogProps({ action: "loadAgentsAdmin" }, {}),
+    props: specProps({ action: "loadAgentsAdmin" }, {}),
   },
   agentsAdmin: {
     type: "AgentsAdminForm",
@@ -629,7 +629,7 @@ export const adminLoginBrandingSpec = adminPanelSpec(["loginBranding"], {
 export const adminAccountSecuritySpec = adminPanelSpec(["loadSession", "securityAdmin"], {
   loadSession: {
     type: "MountAction",
-    props: catalogProps({ action: "loadAccountSecuritySession" }, {}),
+    props: specProps({ action: "loadAccountSecuritySession" }, {}),
   },
   securityAdmin: {
     type: "AccountSecurityForm",
@@ -647,7 +647,7 @@ export const accountSecuritySpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: catalogProps(
+      props: specProps(
         { layout: "centered" },
         { brandTitle: "Account security", brandSubtitle: "Protect your account" },
       ),
@@ -655,7 +655,7 @@ export const accountSecuritySpec = {
     },
     loadSession: {
       type: "MountAction",
-      props: catalogProps({ action: "loadAccountSecuritySession" }, {}),
+      props: specProps({ action: "loadAccountSecuritySession" }, {}),
     },
     security: {
       type: "AccountSecurityForm",
@@ -674,7 +674,7 @@ export const accountCommunicationPrefsSpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: catalogProps(
+      props: specProps(
         { layout: "centered" },
         { brandTitle: "Preferences", brandSubtitle: "How we contact you" },
       ),
@@ -682,11 +682,11 @@ export const accountCommunicationPrefsSpec = {
     },
     loadPrefs: {
       type: "MountAction",
-      props: catalogProps({ action: "loadNotificationPreferences" }, {}),
+      props: specProps({ action: "loadNotificationPreferences" }, {}),
     },
     prefs: {
       type: "AccountNotificationPrefsForm",
-      props: catalogProps({}, accountCommunicationPrefsLabels),
+      props: specProps({}, accountCommunicationPrefsLabels),
     },
   },
 };
@@ -696,7 +696,7 @@ export const accountNotificationsSpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: catalogProps(
+      props: specProps(
         { layout: "centered" },
         { brandTitle: "Notifications", brandSubtitle: "Your account messages" },
       ),
@@ -704,11 +704,11 @@ export const accountNotificationsSpec = {
     },
     loadInbox: {
       type: "MountAction",
-      props: catalogProps({ action: "loadAccountInbox" }, {}),
+      props: specProps({ action: "loadAccountInbox" }, {}),
     },
     inbox: {
       type: "AccountNotificationsInbox",
-      props: catalogProps({}, accountNotificationsLabels),
+      props: specProps({}, accountNotificationsLabels),
     },
   },
 };
@@ -740,12 +740,12 @@ export const adminLayoutSpec = adminPanelSpec(["layoutAdmin"], {
 export const adminHomeSpec = adminPanelSpec(["home"], {
   home: {
     type: "AdminHome",
-    props: catalogProps(
+    props: specProps(
       { links: adminHomeLinkConfig },
       {
         title: "Dashboard",
         description: "Manage content, layouts, and auth without re-seeding.",
-        links: adminHomeLinkLabels,
+        linksConfig: adminHomeLinkLabels,
       },
     ),
   },
@@ -754,7 +754,7 @@ export const adminHomeSpec = adminPanelSpec(["home"], {
 export const adminPagesSpec = adminPanelSpec(["loadPages", "pagesAdmin"], {
   loadPages: {
     type: "MountAction",
-    props: catalogProps({ action: "listRoutingPages" }, {}),
+    props: specProps({ action: "listRoutingPages" }, {}),
   },
   pagesAdmin: {
     type: "PageEntryAdmin",

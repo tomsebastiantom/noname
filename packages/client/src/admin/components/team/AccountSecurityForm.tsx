@@ -20,7 +20,6 @@ import {
   type AccountSecuritySessionState,
 } from "../../../core/login-state";
 import { useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type Step = "idle" | "setup" | "enabled";
 
@@ -347,9 +346,9 @@ function AccountSecurityEnrollment({
 
 export function AccountSecurityForm({
   props,
-}: Readonly<ComponentCtx<CatalogProps<AccountSecurityConfig, AccountSecurityLabels>>>) {
-  const { config, labels } = props;
-  const isAdmin = config?.variant === "admin";
+}: Readonly<ComponentCtx<AccountSecurityConfig & AccountSecurityLabels>>) {
+  const labels = props;
+  const isAdmin = props.variant === "admin";
 
   if (!isLoggedIn()) {
     return <SignInRequiredCard isAdmin={isAdmin} labels={labels} />;

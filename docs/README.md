@@ -5,6 +5,7 @@
 
 ## Incident & Fix Reports
 - **[2026-08-23/EDGE-STOREFRONT-FIXES.md](2026-08-23/EDGE-STOREFRONT-FIXES.md)** — Why all anonymous storefront edge calls 400'd (unsigned internal HMAC call), the half-finished flags SSE ticket migration, and the new public `GET /api/flags/public` metadata endpoint (Flagsmith/Unleash pattern).
+- **[2026-08-23/SHARED-SECRET-STRATEGY.md](2026-08-23/SHARED-SECRET-STRATEGY.md)** — Research + recommended approach for keeping `WORKER_SERVER_SECRET` in sync between edge and server (canonical shared env file + sync/check scripts; OSS comparison). Fix later.
 
 ## Commerce Build-Out (2026-08-22 Research Set)
 - **[2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md](2026-08-22/COMMERCE_ENGINE_GAP_ANALYSIS.md)** — What's left to build: full feature matrix vs. Shopify/WooCommerce/commercetools/Medusa/Saleor/Vendure, server commerce domain spec, product/order schemas, priority order.

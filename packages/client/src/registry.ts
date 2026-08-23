@@ -1,16 +1,24 @@
 import { defineRegistry } from "@json-render/react";
 import { catalog } from "./catalog";
-import { Button, Grid, Hero, Image, ProductCard, Stack, Text as TextComponent } from "./components";
+import {
+  ButtonBase,
+  GridBase,
+  Hero,
+  ImageBase,
+  ProductCard,
+  StackBase,
+  TextBase,
+} from "./components";
 
 export const { registry, handlers, executeAction } = defineRegistry(catalog, {
   components: {
     Hero,
     ProductCard,
-    Grid,
-    Stack,
-    Text: TextComponent,
-    Button,
-    Image,
+    GridBase,
+    StackBase,
+    TextBase,
+    ButtonBase,
+    ImageBase,
   },
   actions: {
     addToCart: async (params, _setState, _state) => {

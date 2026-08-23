@@ -1,43 +1,45 @@
 # Catalog props contract
 
-**Status:** Target architecture — migrate existing flat props when touching a component.  
+**Status:** Target architecture — flat props everywhere. No `config`/`labels` split.  
 **Rule:** Layout spec is the **only** source for copy and static behavior. No user-visible string literals in components (except host shell loading/errors).
 
 ---
 
 ## Top-level shape (every component)
 
-Every node in a layout spec uses **exactly two** prop buckets:
+Every node in a layout spec uses **flat props** — all copy and behavior at the top level:
 
 ```json
 {
   "type": "MyPanel",
   "props": {
-    "config": { },
-    "labels": { }
+    "title": "Feature flags",
+    "description": "Toggle flags for this org.",
+    "saveLabel": "Save draft",
+    "empty": "No flags yet."
   }
 }
 ```
 
-| Bucket | Contains | Does not contain |
-|--------|----------|------------------|
-| **`config`** | Behavior, layout, URLs, enums, numbers, booleans, actions, ids, structure | User-visible copy |
-| **`labels`** | **All** user-visible strings | Behavior knobs |
+| Field | Contains |
+|-------|----------|
+| Copy fields | **All** user-visible strings (`title`, `saveLabel`, `empty`, …) |
+| Behavior fields | Behavior, layout, URLs, enums, numbers, booleans, actions, ids, structure |
 
-**No top-level `title`, `description`, `saveLabel`, `label`, or `value`.** Panel headings live in `labels` (see below).
+**No nested `config` or `labels` buckets.** `title`, `description`, `saveLabel`, `label`, `value` live at the top level.
 
 **Runtime data** (user lists, flag values, replay rows, auth toggles from API) → **`$state` + actions only** — never in props.
 
 ---
 
-## `labels` — copy naming
+## Copy naming
 
 ### Single-screen panels (admin, AuthLayout)
 
-Put panel chrome in flat `labels` keys:
+Flat keys at the top level:
 
 ```json
-"labels": {
+"props": {
   "title": "Feature flags",
   "description": "Toggle flags for this org.",
   "saveLabel": "Save draft",
@@ -51,7 +53,7 @@ Put panel chrome in flat `labels` keys:
 Nest by view — **no** duplicate top-level title:
 
 ```json
-"labels": {
+"props": {
   "views": {
     "login": {
       "title": "Welcome back",
@@ -73,18 +75,16 @@ Nest by view — **no** duplicate top-level title:
 }
 ```
 
-Component reads: `props.labels.views[view].title`.
+Component reads: `props.views[view].title`.
 
-### Keyed to `config` (nav, providers, links)
+### Keyed structure + display names (nav, links)
 
-Structure in `config`, display names in `labels` under the **same key**:
+Structure array and display-name record are **both** top-level props:
 
 ```json
-"config": {
+"props": {
   "activeNav": "flags",
-  "navItems": [{ "id": "flags", "href": "/admin/flags" }]
-},
-"labels": {
+  "navItems": [{ "id": "flags", "href": "/admin/flags" }],
   "nav": {
     "flags": "Feature flags",
     "replay": "Session replay"
@@ -92,9 +92,9 @@ Structure in `config`, display names in `labels` under the **same key**:
 }
 ```
 
-### Flat form chrome (no config key)
+### Naming patterns
 
-Use descriptive camelCase in `labels`:
+Use descriptive camelCase at the top level:
 
 | Pattern | Example |
 |---------|---------|
@@ -108,47 +108,53 @@ Use descriptive camelCase in `labels`:
 
 ### Primitives
 
-| Component | `labels` | `config` |
-|-----------|----------|----------|
-| **Button** | `text` | `variant`, `action` |
-| **Text** | `content` | `variant`, `align` |
-| **Image** | `alt` | `src`, `fit`, `width`, `height` |
-| **Grid / Stack** | `{}` | layout fields (`columns`, `gap`, `direction`, …) |
-| **MountAction** | `{}` | `action`, `params` |
+| Component | Props |
+|-----------|-------|
+| **Button** | `label`, `variant`, `action` |
+| **Text** | `value`, `variant`, `align` |
+| **Image** | `src`, `alt`, `fit`, `width`, `height` |
+| **Grid** | `columns`, `gap` |
+| **Stack** | `direction`, `gap`, `align` |
+| **MountAction** | `action`, `params` |
 
 ---
 
-## `config` — behavior naming
+## Behavior naming
 
 | Kind | Examples |
 |------|----------|
 | Enums | `variant`, `layout`, `direction`, `align`, `fit` |
 | Paths / URLs | `redirectPath`, `logoUrl`, `src`, `href` |
 | Booleans | `showPasswordToggle` |
-| Arrays (facts) | `providers`, `columns` |
+| Arrays (facts) | `providerList`, `links`, `navItems` |
 | Scope | `locale`, `segment`, `activeNav` |
 | Actions | `action`, `params` |
-| Structure | `navItems: [{ id, href }]` — labels in `labels.nav[id]` |
 
 ---
 
 ## Zod (when implementing schemas)
 
-Target helper — `catalogProps(labelsShape, configShape)`:
+Use a **flat** `z.object` — never `catalogProps`/split:
 
 ```typescript
-export function catalogProps<TLabels extends z.ZodRawShape, TConfig extends z.ZodRawShape>(
-  labels: TLabels,
-  config: TConfig,
-) {
-  return z.object({
-    config: z.object(config),
-    labels: z.object(labels),
-  });
-}
+props: z.object({
+  title: z.string(),
+  description: z.string().nullable(),
+  saveLabel: z.string(),
+  empty: z.string(),
+  defaultOpen: z.boolean().default(false),
+}),
 ```
 
-Reuse label bundles (`draftPublishLabelsSchema`, `mediaFieldLabelsSchema`) **inside** the `labels` object shape, not as flat merges on the root.
+Reuse label bundles (`draftPublishLabelsSchema`, `mediaFieldLabelsSchema`) by **spreading `.shape`** directly into the flat object:
+
+```typescript
+props: z.object({
+  ...panelLabels,
+  ...mediaFieldLabelsSchema.shape,
+  locale: z.string(),
+}),
+```
 
 ---
 
@@ -156,44 +162,30 @@ Reuse label bundles (`draftPublishLabelsSchema`, `mediaFieldLabelsSchema`) **ins
 
 ```tsx
 // Single-screen admin
-<h1>{props.labels.title}</h1>
-<p>{props.labels.description}</p>
-<Button>{pending ? props.labels.savingLabel : props.labels.saveLabel}</Button>
+<h1>{props.title}</h1>
+<p>{props.description}</p>
+<Button>{pending ? props.savingLabel : props.saveLabel}</Button>
 
 // Multi-view login
-const viewLabels = props.labels.views[view];
+const viewLabels = props.views[view];
 <h1>{viewLabels.title}</h1>
 
 // Primitive
-<Button>{props.labels.text}</Button>
+<Button>{props.label}</Button>
 ```
 
 **Wrong:** hardcoded `"Save & publish"` in TSX, or `LOGIN_VIEW_TITLES` as fallback when spec should own copy.  
-**Wrong:** top-level `props.title` / `props.saveLabel` (legacy — migrate away).
-
----
-
-## Migration map (legacy → target)
-
-| Legacy (flat props) | Target |
-|---------------------|--------|
-| `title`, `description` | `labels.title`, `labels.description` |
-| `subtitle` | `labels.description` or `labels.views.login.description` |
-| `saveLabel`, `*Label`, `*Message` | same keys under `labels` |
-| `label` (Button) | `labels.text` |
-| `value` (Text) | `labels.content` |
-| `brandTitle`, `brandSubtitle` | `labels.brandTitle`, `labels.brandSubtitle` |
-| `redirectPath`, `providers`, … | `config.*` |
+**Wrong:** `props.labels.title` / `props.config.action` — the `config`/`labels` split is removed.
 
 ---
 
 ## Checklist (new or touched component)
 
 ```
-- [ ] Props schema: catalogProps(labelsShape, configShape) — config + labels only
-- [ ] All copy read from props.labels — no TSX literals
-- [ ] Multi-view copy under labels.views.{view}
-- [ ] Nav/providers: config structure + labels.{nav|providers}[id]
+- [ ] Props schema: flat z.object — no catalogProps / config+labels split
+- [ ] All copy read from top-level props — no TSX literals
+- [ ] Multi-view copy under props.views.{view}
+- [ ] Nav/links: structure array + display-name record as sibling top-level props
 - [ ] Seed / layout JSON updated to match
 - [ ] Runtime lists/settings from $state or actions — not props
 ```

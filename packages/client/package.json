@@ -18,7 +18,7 @@
     "@json-render/core": "^0.20.0",
     "@json-render/react": "^0.20.0",
     "@json-render/react-email": "^0.20.0",
-    "@json-render/shadcn":"0.20.0",
+    "@json-render/shadcn": "0.20.0",
     "@module-federation/runtime": "^2.7.0",
     "@noname/auth": "workspace:*",
     "@noname/browser-sdk": "workspace:*",

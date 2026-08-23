@@ -23,7 +23,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type WebhookSubscriptionsLabels = {
   title: string;
@@ -202,9 +201,8 @@ function OutboundDeliveriesTable({
   );
 }
 
-export function WebhookSubscriptionsAdmin({
-  props: { labels },
-}: ComponentCtx<CatalogProps<Record<string, never>, WebhookSubscriptionsLabels>>) {
+export function WebhookSubscriptionsAdmin({ props }: ComponentCtx<WebhookSubscriptionsLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("integrations");
   const { executeAction } = useCatalogSubmit();
   useMountAction("loadWebhookSubscriptions", {});

@@ -18,9 +18,10 @@ import type { EditFieldDef, EditSelection, PendingBlockAdd } from "../../lib/typ
 import type { EditorShellLabels } from "../../schemas/components";
 import { EditorFieldControl } from "./EditorFieldControl";
 
-function cmsStateKey(fieldPath: string): string | null {
-  const match = /^config\.(.+)$/.exec(fieldPath);
-  return match?.[1] ?? null;
+function cmsStateKey(value: unknown): string | null {
+  if (typeof value !== "object" || value === null) return null;
+  const key = (value as { $state?: unknown }).$state;
+  return typeof key === "string" ? key : null;
 }
 
 export type ContentDraftEditor = {
@@ -252,7 +253,7 @@ export function PropsPanel({
       {meta.fields.map((field) => {
         const storedRaw = getPropPath(propsSource, field.path);
         const cmsBound = isStateBinding(storedRaw);
-        const stateKey = cmsBound ? cmsStateKey(field.path) : null;
+        const stateKey = cmsBound ? cmsStateKey(storedRaw) : null;
 
         if (cmsBound && stateKey) {
           return (

@@ -31,7 +31,7 @@ export function createPatchLayoutDraftTool(
   return createTool({
     id: "patchLayoutDraft",
     description:
-      "Patch the layout spec on the current page. Works while the human has the editor open (live collab), including published layouts. Pass the full updated spec. Text block copy lives at elements[id].props.labels.content.",
+      "Patch the layout spec on the current page. Works while the human has the editor open (live collab), including published layouts. Pass the full updated spec. TextBase block copy lives at elements[id].props.content.",
     inputSchema: z.object({
       layoutDocumentId: z.string().trim().min(1).max(128),
       spec: z.record(z.string(), z.unknown()),

@@ -43,10 +43,9 @@ import {
 import { CatalogUiShell } from "./platform/catalog-ui-shell";
 import { registry as platformRegistry } from "./platform/registry";
 import { isLoginTemplate, resolveRoute } from "./platform-routes";
-import type { CatalogProps } from "./schemas/shared";
 
 type LayoutRenderAs = "standalone" | "shell" | "panel" | "editor";
-type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
+type AdminShellProps = Record<string, unknown>;
 
 interface EdgeSchemaResponse {
   siteId?: string;

@@ -5,7 +5,7 @@
  */
 import "dotenv/config";
 import { config as loadEnv } from "dotenv";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -60,11 +60,26 @@ const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
 let seedAdminToken: string | null = null;
 
+function signHmac(payload: string): string {
+  const secret = process.env.WORKER_SERVER_SECRET || "";
+  if (!secret) return "";
+  return createHmac("sha256", secret).update(payload).digest("base64");
+}
+
 function orgHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-org-id": demoOrgId,
   };
+  const userId = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  const role = "admin";
+  const payload = `${demoOrgId}:${userId}:${role}`;
+  const hmac = signHmac(payload);
+  if (hmac) {
+    headers["x-user-id"] = userId;
+    headers["x-role"] = role;
+    headers["x-auth-hmac"] = hmac;
+  }
   if (seedAdminToken) {
     headers.Authorization = `Bearer ${seedAdminToken}`;
   }
@@ -502,9 +517,10 @@ async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
   const form = new FormData();
   form.append("file", new Blob([bytes], { type: "image/svg+xml" }), fileName);
 
-  const headers: Record<string, string> = { "x-org-id": demoOrgId };
-  if (seedAdminToken) {
-    headers.Authorization = `Bearer ${seedAdminToken}`;
+  const fullHeaders = orgHeaders();
+  const headers: Record<string, string> = {};
+  for (const [k, v] of Object.entries(fullHeaders)) {
+    if (k !== "Content-Type") headers[k] = v;
   }
 
   const res = await fetch(`${API_BASE}/api/documents/assets/upload`, {

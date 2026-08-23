@@ -1,6 +1,8 @@
 import { defineCatalog } from "@json-render/core";
 import { defineRegistry } from "@json-render/react";
 import { schema } from "@json-render/react/schema";
+import { shadcnComponents } from "@json-render/shadcn";
+import { shadcnComponentDefinitions } from "@json-render/shadcn/catalog";
 import { SaveBar } from "./components/shell/SaveBar";
 import {
   EditorCanvasSlot,
@@ -22,7 +24,7 @@ export { VisualEditorShell } from "./components/shell/VisualEditorShell";
 import { editorActionHandlers } from "./actions";
 
 const editorCatalog = defineCatalog(schema, {
-  components: editorComponentSchemas,
+  components: { ...editorComponentSchemas, ...shadcnComponentDefinitions },
   actions: editorActionSchemas,
 });
 
@@ -38,7 +40,7 @@ const editorComponentMap = {
 export const { registry: editorRegistry, handlers: editorHandlers } = defineRegistry(
   editorCatalog,
   {
-    components: editorComponentMap,
+    components: { ...editorComponentMap, ...shadcnComponents },
     actions: editorActionHandlers as never,
   },
 );

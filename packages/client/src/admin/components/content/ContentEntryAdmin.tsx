@@ -14,7 +14,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import {
   CONTENT_DEFAULT_LOCALE,
   type ContentEntryRow,
@@ -57,7 +56,7 @@ type ContentEntryLabels = ContentEntryFormLabels & {
   forbiddenLabel: string;
 };
 
-type ContentEntryAdminProps = ComponentCtx<CatalogProps<ContentEntryConfig, ContentEntryLabels>>;
+type ContentEntryAdminProps = ComponentCtx<ContentEntryConfig & ContentEntryLabels>;
 
 type EntriesLoaded = Extract<ContentAdminLoaded, { mode: "entries" }>;
 
@@ -240,9 +239,9 @@ function ContentEntryEntriesPanel({
 }
 
 export function ContentEntryAdmin({ props }: ContentEntryAdminProps) {
-  const { config, labels } = props;
+  const labels = props;
   const canAccessContent = useAdminRouteAccess("content");
-  const locale = config.locale || CONTENT_DEFAULT_LOCALE;
+  const locale = props.locale || CONTENT_DEFAULT_LOCALE;
   const contentType = contentTypeFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ contentType, locale }), [contentType, locale]);
   useMountAction("loadContentAdmin", loadParams);

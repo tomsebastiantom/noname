@@ -55,6 +55,17 @@ function defaultForZodField(schema: z.ZodType, _key: string): unknown {
   return null;
 }
 
+function defaultForNestedField(schema: z.ZodType): unknown {
+  const { inner, defaultValue } = unwrapZod(schema);
+  if (defaultValue !== undefined) return defaultValue;
+
+  const type = zodDef(inner).type;
+  if (type === "object") return defaultsFromZodShape(zodDef(inner).shape ?? {});
+  if (type === "array") return [];
+  if (type === "record") return {};
+  return defaultForZodField(schema, "");
+}
+
 function fieldTypeForZod(schema: z.ZodType, key: string): EditFieldType | null {
   const { inner } = unwrapZod(schema);
   const type = zodDef(inner).type;
@@ -97,22 +108,18 @@ export function defaultsFromZodShape(
   const out: Record<string, unknown> = { ...seeds };
   for (const [key, fieldSchema] of Object.entries(shape)) {
     if (key in out) continue;
-    if (isSkippableField(fieldSchema)) continue;
-    out[key] = defaultForZodField(fieldSchema, key);
+    out[key] = defaultForNestedField(fieldSchema);
   }
   return out;
 }
 
-export function fieldsFromZodShape(
-  bucket: "config" | "labels",
-  shape: Record<string, z.ZodType>,
-): EditFieldDef[] {
+export function fieldsFromZodShape(shape: Record<string, z.ZodType>): EditFieldDef[] {
   const fields: EditFieldDef[] = [];
   for (const [key, fieldSchema] of Object.entries(shape)) {
     if (isSkippableField(fieldSchema)) continue;
     const type = fieldTypeForZod(fieldSchema, key);
     if (!type) continue;
-    const path = `${bucket}.${key}`;
+    const path = key;
     if (isHiddenEditorField(path)) continue;
     const field: EditFieldDef = {
       path,
@@ -137,9 +144,13 @@ export function parseCatalogPropsSchema(propsSchema: z.ZodType): {
   labelsShape: Record<string, z.ZodType>;
 } | null {
   const root = objectShape(propsSchema);
-  if (!root?.config || !root.labels) return null;
-  const configShape = objectShape(root.config);
-  const labelsShape = objectShape(root.labels);
-  if (!configShape || !labelsShape) return null;
-  return { configShape, labelsShape };
+  if (!root) return null;
+  // Flat props (no split): return full shape for both; split props: split by config/labels
+  if (root.config && root.labels) {
+    const configShape = objectShape(root.config);
+    const labelsShape = objectShape(root.labels);
+    if (!configShape || !labelsShape) return null;
+    return { configShape, labelsShape };
+  }
+  return { configShape: root, labelsShape: root };
 }

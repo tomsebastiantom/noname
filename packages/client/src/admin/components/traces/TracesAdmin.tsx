@@ -13,11 +13,8 @@ import {
 } from "../../../components/ui/card";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 import type { TraceSpanRow, TraceSummaryRow } from "../../traces";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
-
-type TracesAdminConfig = Record<string, never>;
 
 type TracesAdminLabels = {
   title: string;
@@ -95,10 +92,8 @@ function SpanWaterfall({
   );
 }
 
-export function TracesAdmin({
-  props,
-}: Readonly<ComponentCtx<CatalogProps<TracesAdminConfig, TracesAdminLabels>>>) {
-  const { labels } = props;
+export function TracesAdmin({ props }: Readonly<ComponentCtx<TracesAdminLabels>>) {
+  const labels = props;
   const canViewTraces = useAdminRouteAccess("traces");
   const { execute } = useActions();
   const [copied, setCopied] = useState(false);

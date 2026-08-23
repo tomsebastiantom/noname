@@ -18,10 +18,7 @@ import { Label } from "../../../components/ui/label";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
-
-type UsersAdminConfig = Record<string, never>;
 
 type UsersAdminLabels = {
   title: string;
@@ -43,10 +40,8 @@ type UsersAdminLabels = {
   forbiddenLabel: string;
 };
 
-export function UsersAdminForm({
-  props,
-}: ComponentCtx<CatalogProps<UsersAdminConfig, UsersAdminLabels>>) {
-  const { labels } = props;
+export function UsersAdminForm({ props }: ComponentCtx<UsersAdminLabels>) {
+  const labels = props;
   const canManageUsers = useAdminRouteAccess("users");
   const catalog = useCatalogSubmit();
   const { submit, pending, error, success, reset } = catalog;

@@ -18,7 +18,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type IntegrationsLlmLabels = {
   title: string;
@@ -131,10 +130,8 @@ function IntegrationsLlmFields({
   );
 }
 
-export function IntegrationsLlmForm({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, IntegrationsLlmLabels>>) {
-  const { labels } = props;
+export function IntegrationsLlmForm({ props }: ComponentCtx<IntegrationsLlmLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("integrations");
 
   useMountAction("loadIntegrationsLlm");

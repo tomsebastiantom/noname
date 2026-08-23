@@ -7,13 +7,12 @@ import {
 } from "@json-render/react";
 import { useDeferredValue, useMemo } from "react";
 import { AdminShell } from "../admin/components/shell/AdminShell";
-import type { CatalogProps } from "../schemas/shared";
 import { mergeAdminShellWithPanelChrome } from "./admin-layout";
 import { navigateApp } from "./app-navigation";
 import { CatalogUiShell } from "./catalog-ui-shell";
 import { handlers as createHandlers } from "./registry";
 
-type AdminShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
+type AdminShellProps = Record<string, unknown>;
 
 function AdminPanelContent({
   panelSpec,

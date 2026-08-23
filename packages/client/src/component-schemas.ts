@@ -1,5 +1,5 @@
-import { z } from "zod";
 import { shadcnComponentDefinitions } from "@json-render/shadcn/catalog";
+import { z } from "zod";
 
 const baseComponentSchemas = {
   Hero: {
@@ -23,7 +23,7 @@ const baseComponentSchemas = {
     slots: [],
     description: "Product card with image, title, price, and description",
   },
-  Grid: {
+  GridBase: {
     props: z.object({
       columns: z.number().min(1).max(6).default(3),
       gap: z.number().min(0).default(16),
@@ -31,7 +31,7 @@ const baseComponentSchemas = {
     slots: ["default"],
     description: "CSS Grid container for layout",
   },
-  Stack: {
+  StackBase: {
     props: z.object({
       direction: z.enum(["row", "column"]).default("column"),
       gap: z.number().min(0).default(16),
@@ -40,16 +40,16 @@ const baseComponentSchemas = {
     slots: ["default"],
     description: "Flexbox stack container",
   },
-  Text: {
+  TextBase: {
     props: z.object({
-      value: z.string(),
+      content: z.string(),
       variant: z.enum(["h1", "h2", "h3", "body", "caption"]).default("body"),
       align: z.enum(["left", "center", "right"]).default("left"),
     }),
     slots: [],
     description: "Text block with variant styles",
   },
-  Button: {
+  ButtonBase: {
     props: z.object({
       label: z.string(),
       variant: z.enum(["primary", "secondary", "outline"]).default("primary"),
@@ -58,7 +58,7 @@ const baseComponentSchemas = {
     slots: [],
     description: "Clickable button that dispatches an action",
   },
-  Image: {
+  ImageBase: {
     props: z.object({
       src: z.string(),
       alt: z.string().default(""),
@@ -72,6 +72,7 @@ const baseComponentSchemas = {
 };
 
 export const componentSchemas = {
-  ...baseComponentSchemas,
+  // Our base schemas are canonical — spread after shadcn so they win name conflicts.
   ...shadcnComponentDefinitions,
+  ...baseComponentSchemas,
 };

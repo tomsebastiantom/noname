@@ -16,9 +16,7 @@ export function parseShellFromSpec(spec: Spec | null | undefined): {
   if (!spec?.root) return { labels: null, valid: false };
   const shell = spec.elements?.[spec.root];
   if (shell?.type !== "VisualEditorShell") return { labels: null, valid: false };
-  const parsed = editorShellLabelsSchema.safeParse(
-    (shell.props as { labels?: unknown } | undefined)?.labels,
-  );
+  const parsed = editorShellLabelsSchema.safeParse(shell.props);
   return { labels: parsed.success ? parsed.data : null, valid: true };
 }
 

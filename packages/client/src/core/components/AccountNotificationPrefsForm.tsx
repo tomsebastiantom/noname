@@ -12,7 +12,6 @@ import {
   CardTitle,
 } from "../../components/ui/card";
 import { Label } from "../../components/ui/label";
-import type { CatalogProps } from "../../schemas/shared";
 import {
   ACCOUNT_NOTIFICATION_PREFS_STATE,
   type AccountNotificationPrefsState,
@@ -87,10 +86,20 @@ function applyLoadedPrefs(loaded: NotificationPreferences) {
 
 export function AccountNotificationPrefsForm({
   props,
-}: ComponentCtx<CatalogProps<Record<string, never>, AccountNotificationPrefsLabels>>) {
-  const { labels } = props;
+}: ComponentCtx<AccountNotificationPrefsLabels>) {
+  const labels = props;
   const loggedIn = isLoggedIn();
   const { submit, pending, error, success, clearSuccess } = useCatalogSubmit();
+
+  const channelFields = labels.channels ?? {
+    email: { label: "", helper: "" },
+    sms: { label: "", helper: "" },
+    in_app: { label: "", helper: "" },
+  };
+  const categoryFields = labels.categories ?? {
+    marketing: { label: "", helper: "" },
+    operational: { label: "", helper: "" },
+  };
 
   useMountAction("loadNotificationPreferences");
 
@@ -181,19 +190,19 @@ export function AccountNotificationPrefsForm({
                 id="pref-channel-email"
                 checked={channels.email}
                 onChange={(email) => setChannels((prev) => ({ ...prev, email }))}
-                field={labels.channels.email}
+                field={channelFields.email}
               />
               <PrefToggle
                 id="pref-channel-sms"
                 checked={channels.sms}
                 onChange={(sms) => setChannels((prev) => ({ ...prev, sms }))}
-                field={labels.channels.sms}
+                field={channelFields.sms}
               />
               <PrefToggle
                 id="pref-channel-in-app"
                 checked={channels.in_app}
                 onChange={(in_app) => setChannels((prev) => ({ ...prev, in_app }))}
-                field={labels.channels.in_app}
+                field={channelFields.in_app}
               />
             </div>
 
@@ -204,13 +213,13 @@ export function AccountNotificationPrefsForm({
                 id="pref-category-marketing"
                 checked={categories.marketing}
                 onChange={(marketing) => setCategories((prev) => ({ ...prev, marketing }))}
-                field={labels.categories.marketing}
+                field={categoryFields.marketing}
               />
               <PrefToggle
                 id="pref-category-operational"
                 checked={categories.operational}
                 onChange={(operational) => setCategories((prev) => ({ ...prev, operational }))}
-                field={labels.categories.operational}
+                field={categoryFields.operational}
               />
             </div>
 

@@ -18,11 +18,8 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { type RoutingPageView, routingPageKeyFromPath } from "../../routing-entries";
 import { DataTable } from "../shared/DataTable";
-
-type PageEntryConfig = Record<string, never>;
 
 type PageEntryLabels = {
   title: string;
@@ -57,7 +54,7 @@ type PageEntryLabels = {
   forbiddenLabel: string;
 };
 
-type PageEntryAdminProps = ComponentCtx<CatalogProps<PageEntryConfig, PageEntryLabels>>;
+type PageEntryAdminProps = ComponentCtx<PageEntryLabels>;
 
 function PageEntryDetailFields({
   page,
@@ -158,7 +155,7 @@ function PageEntryDetailFields({
 }
 
 export function PageEntryAdmin({ props }: PageEntryAdminProps) {
-  const { labels } = props;
+  const labels = props;
   const canAccessPages = useAdminRouteAccess("pages");
   const pageKey = routingPageKeyFromPath(window.location.pathname);
   const createCatalog = useCatalogSubmit();

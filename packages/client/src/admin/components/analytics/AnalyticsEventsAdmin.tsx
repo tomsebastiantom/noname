@@ -11,7 +11,6 @@ import {
 } from "../../../components/ui/card";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 import type { AnalyticsAggregationRow, AnalyticsEventRow } from "../../analytics";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
 
@@ -39,8 +38,6 @@ function AnalyticsTableBody<T>({
   return <DataTable columns={columns} rows={rows} rowKey={rowKey} />;
 }
 
-type AnalyticsEventsConfig = Record<string, never>;
-
 type AnalyticsEventsLabels = {
   title: string;
   description: string | null;
@@ -62,10 +59,8 @@ type AnalyticsEventsLabels = {
   schemaColumnHeader: string;
 };
 
-export function AnalyticsEventsAdmin({
-  props,
-}: Readonly<ComponentCtx<CatalogProps<AnalyticsEventsConfig, AnalyticsEventsLabels>>>) {
-  const { labels } = props;
+export function AnalyticsEventsAdmin({ props }: Readonly<ComponentCtx<AnalyticsEventsLabels>>) {
+  const labels = props;
   const canViewAnalytics = useAdminRouteAccess("analytics");
   const { execute } = useActions();
 

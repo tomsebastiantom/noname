@@ -19,7 +19,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type IntegrationsCommsLabels = {
   title: string;
@@ -165,10 +164,8 @@ function IntegrationsCommsFields({
   );
 }
 
-export function IntegrationsCommsForm({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, IntegrationsCommsLabels>>) {
-  const { labels } = props;
+export function IntegrationsCommsForm({ props }: ComponentCtx<IntegrationsCommsLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("integrations");
 
   useMountAction("loadIntegrationsComms");

@@ -1,9 +1,8 @@
 import type { Spec } from "@json-render/core";
-import type { CatalogProps } from "../schemas/shared";
 
-const SKIP_PANEL_CHROME = new Set(["MountAction", "Stack"]);
+const SKIP_PANEL_CHROME = new Set(["MountAction", "StackBase"]);
 
-type ShellProps = CatalogProps<Record<string, unknown>, Record<string, unknown>>;
+type ShellProps = Record<string, unknown>;
 
 /** Read AdminShell props from a shell layout spec. */
 export function adminShellPropsFromSpec(spec: Spec): ShellProps | null {
@@ -37,10 +36,9 @@ export function panelChromeFromSpec(
       }
       return null;
     }
-    const labels = (el.props as { labels?: { title?: string; description?: string | null } })
-      ?.labels;
-    if (labels?.title) {
-      return { title: labels.title, description: labels.description ?? null };
+    const props = (el.props ?? {}) as { title?: string; description?: string | null };
+    if (props.title) {
+      return { title: props.title, description: props.description ?? null };
     }
     return null;
   }
@@ -57,10 +55,7 @@ export function mergeAdminShellWithPanelChrome(
   if (!chrome) return shellProps;
   return {
     ...shellProps,
-    labels: {
-      ...(shellProps.labels as Record<string, unknown>),
-      title: chrome.title,
-      ...(chrome.description === undefined ? {} : { description: chrome.description }),
-    },
+    title: chrome.title,
+    ...(chrome.description === undefined ? {} : { description: chrome.description }),
   };
 }

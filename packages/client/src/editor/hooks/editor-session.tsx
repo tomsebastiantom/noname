@@ -146,10 +146,7 @@ export function mergeShellRuntimeConfig(
   const shell = spec.elements[root];
   if (!shell) return spec;
 
-  const props = (shell.props ?? {}) as {
-    config?: Record<string, unknown>;
-    labels?: Record<string, unknown>;
-  };
+  const props = (shell.props ?? {}) as Record<string, unknown>;
 
   return {
     ...spec,
@@ -159,11 +156,8 @@ export function mergeShellRuntimeConfig(
         ...shell,
         props: {
           ...props,
-          config: {
-            ...props.config,
-            templateName: config.templateName,
-            pageContentRef: config.pageContentRef,
-          },
+          templateName: config.templateName,
+          pageContentRef: config.pageContentRef,
         },
       },
     },

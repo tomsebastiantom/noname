@@ -1,7 +1,6 @@
 import type { Spec } from "@json-render/core";
 import { Children } from "react";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 import { collabHumanDisplayName } from "../../collab/collab-display-name";
 import {
   useEditorSession,
@@ -89,9 +88,8 @@ function EditorTopChrome() {
 export function VisualEditorShell({
   props,
   children,
-}: ComponentCtx<CatalogProps<VisualEditorShellConfig, Record<string, unknown>>>) {
-  const session = useEditorSession();
-  const labels = editorShellLabelsSchema.parse(props.labels ?? session.shellLabels);
+}: ComponentCtx<VisualEditorShellConfig & Record<string, unknown>>) {
+  const labels = editorShellLabelsSchema.parse(props);
 
   const [palette, layers, canvas, panel] = Children.toArray(children);
 

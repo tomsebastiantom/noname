@@ -1,4 +1,4 @@
-import { useActions, useStateValue } from "@json-render/react";
+﻿import { useActions, useStateValue } from "@json-render/react";
 import { storeSlugFromHost } from "@noname/shared";
 import { type FormEvent, useMemo, useState } from "react";
 import { Alert, AlertDescription } from "../../components/ui/alert";
@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "../../components/ui/card";
-import type { CatalogProps } from "../../schemas/shared";
 import type { CoreActionName } from "../actions";
 import type { LoginViewFields } from "../login-form-labels";
 import { LOGIN_STATE, type LoginAuthConfigState } from "../login-state";
@@ -29,15 +28,13 @@ import {
 import { useMountAction } from "./MountAction";
 import type { ComponentCtx } from "./types";
 
-type LoginFormConfig = {
+export function LoginForm({
+  props,
+}: ComponentCtx<{
   redirectPath: string | null;
   logoUrl: string | null;
   showPasswordToggle: boolean;
-  providers: AuthProvider[];
-};
-
-type LoginFormLabels = {
-  views: LoginViewFields;
+  providerList: string[];
   footerText: string | null;
   providers: Record<string, string>;
   messages: {
@@ -46,10 +43,18 @@ type LoginFormLabels = {
     passwordUpdated: string;
     invalidHost: string;
   };
-};
-
-export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, LoginFormLabels>>) {
-  const { config, labels } = props;
+  views: LoginViewFields;
+}>) {
+  const {
+    redirectPath,
+    logoUrl,
+    showPasswordToggle,
+    providerList,
+    footerText,
+    providers,
+    messages,
+    views,
+  } = props;
   const { execute } = useActions();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,12 +75,12 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
 
   const enabledProviders = useMemo(() => {
     const serverProviders = authConfig?.providers ?? [];
-    const fromSpec = (config.providers ?? []) as string[];
+    const fromSpec = providerList;
     if (fromSpec.length === 0) return serverProviders;
     return serverProviders.filter(
       (p) => fromSpec.includes(p as AuthProvider) || p.startsWith("custom:"),
     );
-  }, [authConfig?.providers, config.providers]);
+  }, [authConfig?.providers, providerList]);
 
   const allowPassword = authConfig?.allowPassword !== false;
   const allowSignUp = authConfig?.allowSignUp === true;
@@ -87,18 +92,18 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
   const [view, setView] = useState<LoginView>(() => viewFromSearch(search));
 
   const redirectFromQuery = safeRedirect(search.get("redirect"));
-  const redirectPath = redirectFromQuery ?? config.redirectPath ?? "/";
+  const finalRedirectPath = redirectFromQuery ?? redirectPath ?? "/";
 
   const resetUserId = search.get("userID") ?? "";
   const resetCode = search.get("code") ?? "";
 
   const mergedProviderLabels = useMemo(() => {
     const merged: Record<string, string> = { ...providerLabels };
-    for (const [key, value] of Object.entries(labels.providers ?? {})) {
+    for (const [key, value] of Object.entries(providers ?? {})) {
       if (value) merged[key] = value;
     }
     return merged;
-  }, [providerLabels, labels.providers]);
+  }, [providerLabels, providers]);
 
   const showSocial = enabledProviders.length > 0 && view === "login";
   const showPasswordForm = allowPassword && (view === "login" || view === "signup");
@@ -119,7 +124,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
   async function onLoginSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!storeSlug) return;
-    await runAction("login", { email, password, redirectPath });
+    await runAction("login", { email, password, redirectPath: finalRedirectPath });
   }
 
   async function onForgotSubmit(e: FormEvent<HTMLFormElement>) {
@@ -129,7 +134,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
     setError(null);
     try {
       await runAction("requestPasswordReset", { email });
-      setInfo(labels.messages.passwordResetSent);
+      setInfo(messages.passwordResetSent);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -148,9 +153,13 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
         verificationCode: resetCode,
         newPassword,
       });
-      setInfo(labels.messages.passwordUpdated);
+      setInfo(messages.passwordUpdated);
       setView("login");
-      window.history.replaceState({}, "", `/login?redirect=${encodeURIComponent(redirectPath)}`);
+      window.history.replaceState(
+        {},
+        "",
+        `/login?redirect=${encodeURIComponent(finalRedirectPath)}`,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -173,27 +182,29 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
   async function onMfaSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!storeSlug) return;
-    await runAction("verifyMfa", { totpCode, redirectPath });
+    await runAction("verifyMfa", { totpCode, redirectPath: finalRedirectPath });
   }
 
   if (!storeSlug) {
     return (
       <Alert variant="destructive">
-        <AlertDescription>{labels.messages.invalidHost}</AlertDescription>
+        <AlertDescription>{messages.invalidHost}</AlertDescription>
       </Alert>
     );
   }
 
-  const viewLabels = labels.views[view];
-  const title = viewLabels.title;
-  const subtitle = viewLabels.description;
+  const viewLabels = views[view] as {
+    title: string;
+    description: string | null;
+    fields?: Record<string, unknown>;
+  };
+  const title = viewLabels?.title ?? "";
+  const subtitle = viewLabels?.description ?? null;
 
   return (
     <Card className="w-full border shadow-sm">
       <CardHeader className="space-y-3 text-center">
-        {config.logoUrl && (
-          <img src={config.logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />
-        )}
+        {logoUrl && <img src={logoUrl} alt="" className="mx-auto h-10 w-auto object-contain" />}
         <div className="space-y-1">
           <CardTitle className="text-2xl">{title}</CardTitle>
           {subtitle && <CardDescription>{subtitle}</CardDescription>}
@@ -205,16 +216,16 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
             email={email}
             password={password}
             showPassword={showPassword}
-            showPasswordToggle={config.showPasswordToggle}
+            showPasswordToggle={showPasswordToggle}
             showSocial={showSocial}
             allowPasswordReset={allowPasswordReset}
             allowSignUp={allowSignUp}
             enabledProviders={enabledProviders}
-            redirectPath={redirectPath}
+            redirectPath={finalRedirectPath}
             providerLabels={mergedProviderLabels}
             providerIcons={providerIcons}
-            footerText={labels.footerText}
-            fields={labels.views.login.fields}
+            footerText={footerText}
+            fields={views.login.fields}
             state={alertState}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
@@ -228,7 +239,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
         {view === "forgot" && allowPasswordReset && (
           <LoginForgotView
             email={email}
-            fields={labels.views.forgot.fields}
+            fields={views.forgot.fields}
             state={alertState}
             onEmailChange={setEmail}
             onSubmit={onForgotSubmit}
@@ -239,7 +250,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
         {view === "reset" && allowPasswordReset && resetUserId && (
           <LoginResetView
             newPassword={newPassword}
-            fields={labels.views.reset.fields}
+            fields={views.reset.fields}
             state={alertState}
             onPasswordChange={setNewPassword}
             onSubmit={onResetSubmit}
@@ -252,7 +263,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
             password={password}
             givenName={givenName}
             familyName={familyName}
-            fields={labels.views.signup.fields}
+            fields={views.signup.fields}
             state={alertState}
             onEmailChange={setEmail}
             onPasswordChange={setPassword}
@@ -266,7 +277,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
         {view === "mfa" && (
           <LoginMfaView
             totpCode={totpCode}
-            fields={labels.views.mfa.fields}
+            fields={views.mfa.fields}
             state={alertState}
             onTotpChange={setTotpCode}
             onSubmit={onMfaSubmit}
@@ -279,7 +290,7 @@ export function LoginForm({ props }: ComponentCtx<CatalogProps<LoginFormConfig, 
 
         {view === "login" && !showPasswordForm && !showSocial && (
           <Alert>
-            <AlertDescription>{labels.messages.noSignInMethods}</AlertDescription>
+            <AlertDescription>{messages.noSignInMethods}</AlertDescription>
           </Alert>
         )}
 

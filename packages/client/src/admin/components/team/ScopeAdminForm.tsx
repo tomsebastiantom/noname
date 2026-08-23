@@ -14,18 +14,15 @@ import type { CoreActionName } from "../../../core/actions";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { flattenFoldersForSelect } from "../../folder-tree";
 import { BindingsSection } from "./scope/bindings-section";
 import { FoldersSection } from "./scope/folders-section";
-import type { ScopeAdminConfig, ScopeAdminLabels } from "./scope/labels";
+import type { ScopeAdminLabels } from "./scope/labels";
 import { MembershipSection } from "./scope/membership-section";
 import { TeamsSection } from "./scope/teams-section";
 
-export function ScopeAdminForm({
-  props,
-}: ComponentCtx<CatalogProps<ScopeAdminConfig, ScopeAdminLabels>>) {
-  const { labels } = props;
+export function ScopeAdminForm({ props }: ComponentCtx<ScopeAdminLabels>) {
+  const labels = props;
   const canManageScope = useAdminRouteAccess("scope");
   const catalog = useCatalogSubmit();
   const { submit, run, executeAction, pending, error, success, reset } = catalog;

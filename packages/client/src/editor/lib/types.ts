@@ -22,8 +22,8 @@ export type EditFieldDef = {
 export type EditComponentMeta = {
   label: string;
   fields: EditFieldDef[];
-  /** Default props for palette "Add" — config + labels per props-contract */
-  defaultProps?: { config: Record<string, unknown>; labels: Record<string, unknown> };
+  /** Default props for palette "Add" — flat props per props-contract */
+  defaultProps?: Record<string, unknown>;
   /** Insert under this parent element type when adding (first match in tree) */
   preferredParentType?: string;
 };
@@ -39,7 +39,7 @@ export type PendingBlockAdd = {
   tempElementId: string;
   parentId?: string;
   insertIndex?: number;
-  props: { config: Record<string, unknown>; labels: Record<string, unknown> };
+  props: Record<string, unknown>;
 };
 
 export type LayoutDraft = {

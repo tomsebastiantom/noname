@@ -1,4 +1,4 @@
-export { type CatalogProps, catalogProps, specProps } from "./catalog-props";
+export { specProps } from "./catalog-props";
 export {
   buildContentSearchText,
   contentSearchExcerpt,

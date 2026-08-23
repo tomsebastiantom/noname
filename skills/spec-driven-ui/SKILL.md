@@ -5,7 +5,7 @@ description: >-
   edge schema → json-render Renderer). Use for any spec-driven surface: login,
   public storefront, extensions, admin panels, catalog components, actions,
   layout seeds, content types, and visual editor — not hand-written React routes.
-  Catalog props: config + labels only — read props-contract.md before
+  Catalog props: flat props only — read props-contract.md before
   schemas/seeds/components.
 ---
 
@@ -21,7 +21,7 @@ URL → templateFromPath → layout document → GET /api/edge/schema → <Rende
 
 **Skill files:** [reference.md](reference.md) · [props-contract.md](props-contract.md) · [examples.md](examples.md). Skills describe **how to build** — discover repo paths in the project, not here.
 
-**Props (required):** Every catalog component uses **`config` + `labels` only** — all copy in `labels`, no top-level `title`/`saveLabel`/`label`.
+**Props (required):** Every catalog component uses **flat props** — all copy and behavior at the top level. No `config`/`labels` split.
 
 ---
 
@@ -44,7 +44,7 @@ URL → templateFromPath → layout document → GET /api/edge/schema → <Rende
 
 ```
 catalog-schemas     # Zod component props + action params
-components          # render props.labels / $state; MountAction, forms, shells
+components          # render flat props / $state; MountAction, forms, shells
 actions             # (params, setState, state) handlers
 registry            # component + action map → json-render defineRegistry
 runtime shell       # JSONUIProvider + sync handlers + Renderer
@@ -146,7 +146,7 @@ Use watchers to replace `useEffect` load triggers where the spec owns lifecycle.
 
 | Concern | Prefer in layout spec | Still in custom component |
 |---------|----------------------|---------------------------|
-| Copy (titles, labels) | Layout **props** → `labels` bucket | — |
+| Copy (titles, labels) | Layout **props** (top-level fields) | — |
 | Tab/nav highlight | `$state` + `$cond` on props | — |
 | Load list on mount | `MountAction` in layout spec or `useMountAction()` | `useEffect` + `execute` in panel (avoid) |
 | Form field state | `$bindState` | Local `useState` (complex editors) |
@@ -329,7 +329,7 @@ Implementation: shared `useCatalogSubmit` hook.
 ## Build checklist (copy and track)
 
 ```
-- [ ] 0. Props — config + labels only ([props-contract.md](props-contract.md))
+- [ ] 0. Props — flat, no config+labels split ([props-contract.md](props-contract.md))
 - [ ] 0b. Content type (if CMS) — [reference.md § Content types](reference.md#content-types)
 - [ ] 1. Schema — catalog (component props + action params)
 - [ ] 2. Component — register in matching catalog registry
@@ -354,7 +354,7 @@ Add Zod props for the component and params for any new actions.
 - **Operator tools**: admin catalog components + admin registry
 - **Storefront widgets**: extension pack
 - **Editable draft:** [Editable draft panels](#editable-draft-panels). **Otherwise:** `execute({ action, params })`
-- Copy in layout **`props.labels`** or CMS/`$state` — not hardcoded in TSX ([props-contract.md](props-contract.md))
+- Copy in layout **props** (flat) or CMS/`$state` — not hardcoded in TSX ([props-contract.md](props-contract.md))
 
 ### 3. Action handler
 
@@ -385,16 +385,19 @@ Store json-render tree as a **layout** template (Postgres / seed):
     "shell": {
       "type": "AdminShell",
       "props": {
-        "config": { "activeNav": "…" },
-        "labels": { "title": "…", "nav": { "home": "Dashboard" } }
+        "activeNav": "…",
+        "title": "…",
+        "nav": { "home": "Dashboard" }
       },
       "children": ["panel"]
     },
     "panel": {
       "type": "MyPanel",
       "props": {
-        "config": { "locale": "en" },
-        "labels": { "title": "…", "description": "…", "saveLabel": "Save draft" }
+        "locale": "en",
+        "title": "…",
+        "description": "…",
+        "saveLabel": "Save draft"
       }
     }
   }
@@ -411,20 +414,20 @@ Prefer reusing `admin_dashboard` / `admin_content` / `login` / `home`.
 
 ### 6. Where copy lives
 
-**No user-visible text in React.** Components render `props.labels` and resolved CMS/`$state` — they do not own copy. Full rules: [props-contract.md](props-contract.md).
+**No user-visible text in React.** Components render **flat props** and resolved CMS/`$state` — they do not own copy. Full rules: [props-contract.md](props-contract.md).
 
 | UI kind | Text source | Example |
 |---------|-------------|---------|
-| Admin / login chrome | Layout **`props.labels`** | `labels.title`, `labels.saveLabel`, `labels.views.login.title` |
+| Admin / login chrome | Layout **props** (flat) | `props.title`, `props.saveLabel`, `props.views.login.title` |
 | Storefront body | CMS **content** → `$state` | Product title, hero text (commerce examples) |
 | Auth behavior (enabled providers) | API + **`$state`** | Which buttons show — not button copy |
-| Locale / language | Per-locale layout docs or `labels` in spec (v1) | No TSX changes |
+| Locale / language | Per-locale layout docs or props in spec (v1) | No TSX changes |
 | Side effects | **Actions** via `useActions().execute` | `execute({ action: "publishLayoutEntry", params: { id } })` |
 | Admin list/detail data | **$state** (load actions write, components read) | `useStateValue("/admin/team/users")` |
 
 **Wrong:** `"Save & publish"` hardcoded in a layout admin component  
-**Wrong:** top-level `props.publishLabel` (legacy flat props)  
-**Right:** `props.labels.publishLabel` from layout JSON
+**Wrong:** `props.labels.publishLabel` / `props.config.*` (removed split format)  
+**Right:** `props.publishLabel` from flat layout props
 
 ---
 
@@ -451,8 +454,8 @@ pnpm test          # if actions/schemas changed
 ```
 - [ ] No new hand-written route pages for org UI (editor's ?edit=true is the one named exception — see above)
 - [ ] No fetch() inside a component registered in admin/editor/platform registry — host/page/hook-level fetch is fine (see boundary above)
-- [ ] Copy in props.labels or layout seed — not TSX literals
-- [ ] New catalog components: catalogProps(config, labels) — no top-level flat props
+- [ ] Copy in flat props or layout seed — not TSX literals
+- [ ] New catalog components: flat `z.object` props — no catalogProps / config+labels split
 - [ ] Mount load: MountAction or useMountAction — never [execute] in a useEffect dep array
 - [ ] Editor code does not import admin/* (re-exports, types, or components)
 - [ ] Registry composition uses typed object literals — no `as never`/`as any` at defineRegistry boundaries

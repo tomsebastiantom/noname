@@ -18,7 +18,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { parseCollectionId } from "../../document-folder";
 import { layoutTemplateFromPath, parseSpecJson } from "../../layout-entries";
 import { DataTable } from "../shared/DataTable";
@@ -58,7 +57,7 @@ type LayoutEntryLabels = {
   forbiddenLabel: string;
 } & DocumentAccessLabels;
 
-type LayoutEntryAdminProps = ComponentCtx<CatalogProps<LayoutEntryConfig, LayoutEntryLabels>>;
+type LayoutEntryAdminProps = ComponentCtx<LayoutEntryConfig & LayoutEntryLabels>;
 
 type LayoutDetailLoaded = Extract<LayoutAdminLoaded, { mode: "detail" }>;
 
@@ -222,9 +221,9 @@ function LayoutEntryDetailFields({
 }
 
 export function LayoutEntryAdmin({ props }: LayoutEntryAdminProps) {
-  const { config, labels } = props;
+  const labels = props;
   const canAccessLayout = useAdminRouteAccess("layout");
-  const segment = config.segment || "default";
+  const segment = props.segment || "default";
   const templateName = layoutTemplateFromPath(window.location.pathname);
   const loadParams = useMemo(() => ({ templateName, segment }), [templateName, segment]);
   useMountAction("loadLayoutAdmin", loadParams);

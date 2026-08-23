@@ -5,11 +5,11 @@ describe("revertAgentTaskLayoutPatches", () => {
   it("restores revertSpec from layout artifacts on reject", async () => {
     const previousSpec = {
       root: "intro",
-      elements: { intro: { type: "Text", props: { labels: { content: "Before" } } } },
+      elements: { intro: { type: "TextBase", props: { content: "Before" } } },
     };
     const nextSpec = {
       root: "intro",
-      elements: { intro: { type: "Text", props: { labels: { content: "After" } } } },
+      elements: { intro: { type: "TextBase", props: { content: "After" } } },
     };
 
     const applySpec = vi.fn().mockResolvedValue(nextSpec);

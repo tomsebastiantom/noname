@@ -14,9 +14,9 @@ import {
 const commerceSpec: Spec = {
   root: "main",
   elements: {
-    main: { type: "Stack", props: {}, children: ["hero", "intro", "products"] },
+    main: { type: "StackBase", props: {}, children: ["hero", "intro", "products"] },
     hero: { type: "Hero", props: {} },
-    intro: { type: "Text", props: {} },
+    intro: { type: "TextBase", props: {} },
     products: { type: "ProductGrid", props: {} },
   },
 };
@@ -66,7 +66,7 @@ describe("reorderChildrenListOps", () => {
           children?: { push: (id: string) => void };
         }
       >;
-      elements.banner = { type: "Text", props: {} };
+      elements.banner = { type: "TextBase", props: {} };
       elements.main!.children!.push("banner");
     });
     const merged = Automerge.merge(alice, bob);
@@ -79,11 +79,11 @@ describe("reorderChildrenListOps", () => {
 const twoColumnSpec: Spec = {
   root: "main",
   elements: {
-    main: { type: "Stack", props: {}, children: ["col-a", "col-b"] },
-    "col-a": { type: "Stack", props: {}, children: ["hero"] },
-    "col-b": { type: "Stack", props: {}, children: ["intro", "products"] },
+    main: { type: "StackBase", props: {}, children: ["col-a", "col-b"] },
+    "col-a": { type: "StackBase", props: {}, children: ["hero"] },
+    "col-b": { type: "StackBase", props: {}, children: ["intro", "products"] },
     hero: { type: "Hero", props: {} },
-    intro: { type: "Text", props: {} },
+    intro: { type: "TextBase", props: {} },
     products: { type: "ProductGrid", props: {} },
   },
 };
@@ -143,12 +143,12 @@ describe("applyLocalSpecToDraft", () => {
     const prev: Spec = {
       root: "main",
       elements: {
-        main: { type: "Stack", props: {}, children: ["promo"] },
+        main: { type: "StackBase", props: {}, children: ["promo"] },
         promo: {
-          type: "Text",
+          type: "TextBase",
           props: {
-            config: { variant: "h3" },
-            labels: { content: "Summer sale — 20% off yoga mats this week!" },
+            variant: "h3",
+            content: "Summer sale — 20% off yoga mats this week!",
           },
         },
       },
@@ -161,7 +161,7 @@ describe("applyLocalSpecToDraft", () => {
           ...prev.elements!.promo!,
           props: {
             ...prev.elements!.promo!.props,
-            labels: { content: "Winter Sale — 20% off yoga mats v this week!" },
+            content: "Winter Sale — 20% off yoga mats v this week!",
           },
         },
       },
@@ -169,9 +169,7 @@ describe("applyLocalSpecToDraft", () => {
     const doc = Automerge.change(specToAutomergeDoc(prev), (draft) => {
       applyLocalSpecToDraft(draft, prev, next);
     });
-    const labels = (
-      automergeDocToSpec(doc).elements!.promo!.props as { labels: { content: string } }
-    ).labels;
-    expect(labels.content).toBe("Winter Sale — 20% off yoga mats v this week!");
+    const props = automergeDocToSpec(doc).elements!.promo!.props as { content: string };
+    expect(props.content).toBe("Winter Sale — 20% off yoga mats v this week!");
   });
 });

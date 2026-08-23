@@ -22,7 +22,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { flattenFoldersForSelect } from "../../folder-tree";
 import { DataTable } from "../shared/DataTable";
 import type { AgentsAdminLabels } from "./agents-admin-labels";
@@ -32,10 +31,8 @@ import { RegistryCard } from "./registry-card";
 import { taskColumns } from "./task-columns";
 import { TaskDetail } from "./task-detail";
 
-export function AgentsAdminForm({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, AgentsAdminLabels>>) {
-  const { labels } = props;
+export function AgentsAdminForm({ props }: ComponentCtx<AgentsAdminLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("agents");
   const catalog = useCatalogSubmit();
   const { submit, error, success } = catalog;

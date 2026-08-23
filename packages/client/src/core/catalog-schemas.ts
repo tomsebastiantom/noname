@@ -1,161 +1,125 @@
 import { z } from "zod";
-import { catalogProps } from "../schemas/shared";
 import { loginFormMessagesSchema, loginViewFieldsSchema } from "./login-form-labels";
 
 /** Platform core — layout, auth shell, and mount hooks. Every extension uses these. */
 export const coreComponentSchemas = {
-  Grid: {
-    props: catalogProps(
-      {},
-      {
-        columns: z.number().min(1).max(6).default(3),
-        gap: z.number().min(0).default(16),
-      },
-    ),
+  GridBase: {
+    props: z.object({
+      columns: z.number().min(1).max(6).default(3),
+      gap: z.number().min(0).default(16),
+    }),
     slots: ["default"],
     description: "CSS Grid container for layout",
   },
-  Stack: {
-    props: catalogProps(
-      {},
-      {
-        direction: z.enum(["row", "column"]).default("column"),
-        gap: z.number().min(0).default(16),
-        align: z.enum(["start", "center", "end", "stretch"]).default("stretch"),
-      },
-    ),
+  StackBase: {
+    props: z.object({
+      direction: z.enum(["row", "column"]).default("column"),
+      gap: z.number().min(0).default(16),
+      align: z.enum(["start", "center", "end", "stretch"]).default("stretch"),
+    }),
     slots: ["default"],
     description: "Flexbox stack container",
   },
-  Text: {
-    props: catalogProps(
-      {
-        content: z.string(),
-      },
-      {
-        variant: z.enum(["h1", "h2", "h3", "body", "caption"]).default("body"),
-        align: z.enum(["left", "center", "right"]).default("left"),
-      },
-    ),
+  TextBase: {
+    props: z.object({
+      content: z.string(),
+      variant: z.enum(["h1", "h2", "h3", "body", "caption"]).default("body"),
+      align: z.enum(["left", "center", "right"]).default("left"),
+    }),
     description: "Text block with variant styles",
   },
-  Button: {
-    props: catalogProps(
-      {
-        text: z.string(),
-      },
-      {
-        variant: z.enum(["primary", "secondary", "outline"]).default("primary"),
-        action: z.string().nullable(),
-      },
-    ),
+  ButtonBase: {
+    props: z.object({
+      label: z.string(),
+      variant: z.enum(["primary", "secondary", "outline"]).default("primary"),
+      action: z.string().nullable(),
+    }),
     description: "Clickable button that dispatches an action",
   },
-  Image: {
-    props: catalogProps(
-      {
-        alt: z.string().default(""),
-      },
-      {
-        src: z.string(),
-        fit: z.enum(["cover", "contain", "fill"]).default("cover"),
-        width: z.number().nullable(),
-        height: z.number().nullable(),
-      },
-    ),
+  ImageBase: {
+    props: z.object({
+      src: z.string(),
+      alt: z.string().default(""),
+      fit: z.enum(["cover", "contain", "fill"]).default("cover"),
+      width: z.number().nullable(),
+      height: z.number().nullable(),
+    }),
     description: "Responsive image with object-fit",
   },
   LoginForm: {
-    props: catalogProps(
-      {
-        views: loginViewFieldsSchema,
-        footerText: z.string().nullable().default(null),
-        providers: z.record(z.string(), z.string()).default({}),
-        messages: loginFormMessagesSchema,
-      },
-      {
-        redirectPath: z.string().nullable(),
-        logoUrl: z.string().url().nullable().default(null),
-        showPasswordToggle: z.boolean().default(true),
-        providers: z.array(z.enum(["google", "github", "apple"])).default([]),
-      },
-    ),
+    props: z.object({
+      views: loginViewFieldsSchema,
+      footerText: z.string().nullable().default(null),
+      providers: z.record(z.string(), z.string()).default({}),
+      messages: loginFormMessagesSchema,
+      redirectPath: z.string().nullable(),
+      logoUrl: z.string().url().nullable().default(null),
+      showPasswordToggle: z.boolean().default(true),
+      providerList: z.array(z.enum(["google", "github", "apple"])).default([]),
+    }),
     description: "Email/password sign-in form (ZITADEL behind the scenes)",
   },
   AuthLayout: {
-    props: catalogProps(
-      {
-        brandTitle: z.string().nullable().default(null),
-        brandSubtitle: z.string().nullable().default(null),
-      },
-      {
-        layout: z.enum(["centered", "split"]).default("centered"),
-      },
-    ),
+    props: z.object({
+      brandTitle: z.string().nullable().default(null),
+      brandSubtitle: z.string().nullable().default(null),
+      layout: z.enum(["centered", "split"]).default("centered"),
+    }),
     slots: ["default"],
     description: "Login page chrome — centered card or split brand panel",
   },
   MountAction: {
-    props: catalogProps(
-      {},
-      {
-        action: z.string().min(1),
-        params: z.record(z.string(), z.unknown()).nullable().optional(),
-      },
-    ),
+    props: z.object({
+      action: z.string().min(1),
+      params: z.record(z.string(), z.unknown()).nullable().optional(),
+    }),
     description: "Run a catalog action on mount (layout-declared data load)",
   },
   AccountNotificationsInbox: {
-    props: catalogProps(
-      {
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      loadingLabel: z.string(),
+      forbiddenLabel: z.string(),
+      emptyLabel: z.string(),
+      refreshLabel: z.string(),
+      unreadOnlyLabel: z.string(),
+      allLabel: z.string(),
+      markReadLabel: z.string(),
+      columns: z.object({
+        when: z.string(),
         title: z.string(),
-        description: z.string().nullable(),
-        loadingLabel: z.string(),
-        forbiddenLabel: z.string(),
-        emptyLabel: z.string(),
-        refreshLabel: z.string(),
-        unreadOnlyLabel: z.string(),
-        allLabel: z.string(),
-        markReadLabel: z.string(),
-        columns: z.object({
-          when: z.string(),
-          title: z.string(),
-          trigger: z.string(),
-          status: z.string(),
-          actions: z.string(),
-        }),
-      },
-      {},
-    ),
+        trigger: z.string(),
+        status: z.string(),
+        actions: z.string(),
+      }),
+    }),
     description: "Signed-in customer notification inbox at /account/notifications",
   },
   AccountNotificationPrefsForm: {
-    props: catalogProps(
-      {
-        title: z.string(),
-        description: z.string().nullable(),
-        signInRequiredDescription: z.string(),
-        signInLinkLabel: z.string(),
-        loadingLabel: z.string(),
-        saveLabel: z.string(),
-        savingLabel: z.string(),
-        successMessage: z.string(),
-        inboxLinkLabel: z.string(),
-        channelsSectionTitle: z.string(),
-        categoriesSectionTitle: z.string(),
-        transactionalNote: z.string(),
-        channels: z.object({
-          email: z.object({ label: z.string(), helper: z.string() }),
-          sms: z.object({ label: z.string(), helper: z.string() }),
-          in_app: z.object({ label: z.string(), helper: z.string() }),
-        }),
-        categories: z.object({
-          marketing: z.object({ label: z.string(), helper: z.string() }),
-          operational: z.object({ label: z.string(), helper: z.string() }),
-        }),
-      },
-      {},
-    ),
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      signInRequiredDescription: z.string(),
+      signInLinkLabel: z.string(),
+      loadingLabel: z.string(),
+      saveLabel: z.string(),
+      savingLabel: z.string(),
+      successMessage: z.string(),
+      inboxLinkLabel: z.string(),
+      channelsSectionTitle: z.string(),
+      categoriesSectionTitle: z.string(),
+      transactionalNote: z.string(),
+      channels: z.object({
+        email: z.object({ label: z.string(), helper: z.string() }),
+        sms: z.object({ label: z.string(), helper: z.string() }),
+        in_app: z.object({ label: z.string(), helper: z.string() }),
+      }),
+      categories: z.object({
+        marketing: z.object({ label: z.string(), helper: z.string() }),
+        operational: z.object({ label: z.string(), helper: z.string() }),
+      }),
+    }),
     description: "Per-user communication channel preferences at /account/communication-preferences",
   },
 };

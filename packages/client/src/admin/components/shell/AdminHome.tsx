@@ -8,7 +8,6 @@ import {
 import type { ComponentCtx } from "../../../core/components/types";
 import { navigateApp } from "../../../platform/app-navigation";
 import { isPlatformPath } from "../../../platform-routes";
-import type { CatalogProps } from "../../../schemas/shared";
 
 function adminHomeLinkProps(href: string): { href: string; onClick?: (e: MouseEvent) => void } {
   const spa =
@@ -37,25 +36,22 @@ function adminHomeLinkVisible(
   return canAccessAdminRoute(session, routeId);
 }
 
-type AdminHomeConfig = {
-  links: { id: string; href: string }[];
-};
-
-type AdminHomeLabels = {
+type AdminHomeProps = {
   title: string;
   description: string | null;
-  links: Record<string, { label: string; description: string }>;
+  links: { id: string; href: string }[];
+  linksConfig: Record<string, { label: string; description: string }>;
 };
 
-export function AdminHome({ props }: ComponentCtx<CatalogProps<AdminHomeConfig, AdminHomeLabels>>) {
-  const { config, labels } = props;
+export function AdminHome({ props }: ComponentCtx<AdminHomeProps>) {
+  const labels = props;
   const { loading, session } = useAdminSession();
 
-  const links = config.links
+  const links = props.links
     .map((link) => ({
       href: link.href,
-      label: labels.links[link.id]?.label ?? link.id,
-      description: labels.links[link.id]?.description ?? "",
+      label: props.linksConfig[link.id]?.label ?? link.id,
+      description: props.linksConfig[link.id]?.description ?? "",
     }))
     .filter((link) => adminHomeLinkVisible(link.href, loading, session));
 

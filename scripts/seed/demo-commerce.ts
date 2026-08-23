@@ -4,7 +4,7 @@
  * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
 import "dotenv/config";
-import { randomBytes } from "node:crypto";
+import { randomBytes, createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -38,24 +38,24 @@ const productContentType = {
   ],
 };
 
-function catalogProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
+function specProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
   config: TConfig,
   labels: TLabels,
 ) {
-  return { config, labels };
+  return { ...config, ...labels };
 }
 
 const commerceSpec = {
   root: "main",
   elements: {
     main: {
-      type: "Stack",
-      props: catalogProps({ direction: "column", gap: 24, align: "stretch" }, {}),
+      type: "StackBase",
+      props: specProps({ direction: "column", gap: 24, align: "stretch" }, {}),
       children: ["hero", "intro", "products"],
     },
     hero: {
       type: "Hero",
-      props: catalogProps(
+      props: specProps(
         { image: null, ctaAction: null },
         {
           title: "Welcome to Noname",
@@ -66,20 +66,20 @@ const commerceSpec = {
       ),
     },
     intro: {
-      type: "Text",
-      props: catalogProps(
+      type: "TextBase",
+      props: specProps(
         { variant: "body", align: "center" },
         { content: "Click blocks in ?edit=true to change layout copy. Product fields edit in Content admin." },
       ),
     },
     products: {
-      type: "Grid",
-      props: catalogProps({ columns: 2, gap: 16 }, {}),
+      type: "GridBase",
+      props: specProps({ columns: 2, gap: 16 }, {}),
       children: ["product1"],
     },
     product1: {
       type: "ProductCard",
-      props: catalogProps(
+      props: specProps(
         {
           productId: { $state: "productId" },
           title: { $state: "title" },
@@ -110,11 +110,27 @@ interface ContentEntryRow {
   status: string;
 }
 
+function signHmac(payload: string): string {
+  const secret = process.env.WORKER_SERVER_SECRET || "";
+  if (!secret) return "";
+  return createHmac("sha256", secret).update(payload).digest("base64");
+}
+
 function orgHeaders(): Record<string, string> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "x-org-id": DEMO_ORG_ID,
   };
+  // Sign request with HMAC when WORKER_SERVER_SECRET is set (matches server middleware)
+  const userId = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  const role = "admin";
+  const payload = `${DEMO_ORG_ID}:${userId}:${role}`;
+  const hmac = signHmac(payload);
+  if (hmac) {
+    headers["x-user-id"] = userId;
+    headers["x-role"] = role;
+    headers["x-auth-hmac"] = hmac;
+  }
   if (seedAdminToken) {
     headers.Authorization = `Bearer ${seedAdminToken}`;
   }
@@ -344,10 +360,10 @@ async function main() {
     url: string,
   ) => {
     const productProps = layout?.elements?.product1?.props as
-      | { config?: { title?: unknown; price?: unknown } }
+      | { title?: unknown; price?: unknown }
       | undefined;
-    const title = productProps?.config?.title;
-    const price = productProps?.config?.price;
+    const title = productProps?.title;
+    const price = productProps?.price;
     if (title !== "Blue Sneakers" || typeof price !== "number") {
       throw new Error(
         `${label} ProductCard not resolved at ${url} — title: ${String(title ?? "missing")}, price: ${String(price ?? "missing")}`,

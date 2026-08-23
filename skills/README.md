@@ -11,7 +11,7 @@ skills/
 ├── README.md
 └── spec-driven-ui/
     ├── SKILL.md           ← start here (workflow)
-    ├── props-contract.md  ← config + labels invariant
+    ├── props-contract.md  ← flat props invariant (no config+labels split)
     ├── reference.md       ← pipeline, data model, patterns
     └── examples.md        ← pattern recipes (generic)
 ```

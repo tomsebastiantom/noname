@@ -42,8 +42,7 @@ export function resolveDropParentId(spec: Spec, target: EventTarget | null): str
 
 function stackIsRow(spec: Spec, parentId: string): boolean {
   const el = getElement(spec, parentId);
-  const direction = (el?.props as { config?: { direction?: string } } | undefined)?.config
-    ?.direction;
+  const direction = (el?.props as { direction?: string } | undefined)?.direction;
   return direction === "row" || direction === "row-reverse";
 }
 
@@ -64,7 +63,7 @@ export function resolveInsertIndex(
   const children = parent?.children ?? [];
   if (children.length === 0) return 0;
 
-  const horizontal = parent?.type === "Grid" || stackIsRow(spec, parentId);
+  const horizontal = parent?.type === "GridBase" || stackIsRow(spec, parentId);
 
   for (let i = 0; i < children.length; i++) {
     const childNode = domNodeForKey(root, children[i]!);
@@ -115,7 +114,7 @@ export function dropIndicatorRect(
 
   const parentEl = getElement(spec, placement.parentId);
   const children = parentEl?.children ?? [];
-  const horizontal = parentEl?.type === "Grid" || stackIsRow(spec, placement.parentId);
+  const horizontal = parentEl?.type === "GridBase" || stackIsRow(spec, placement.parentId);
 
   const toLocal = (rect: DOMRect) => ({
     top: rect.top - canvasRect.top + root.scrollTop,
@@ -225,7 +224,7 @@ export function dropGhostRect(
 
   const parentEl = getElement(spec, placement.parentId);
   const children = parentEl?.children ?? [];
-  const horizontal = parentEl?.type === "Grid" || stackIsRow(spec, placement.parentId);
+  const horizontal = parentEl?.type === "GridBase" || stackIsRow(spec, placement.parentId);
 
   const toLocal = (rect: DOMRect) => ({
     top: rect.top - canvasRect.top + root.scrollTop,

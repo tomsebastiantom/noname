@@ -12,20 +12,14 @@ export { LoginForm } from "./components/LoginForm";
 export { MountAction } from "./components/MountAction";
 export type { ComponentCtx } from "./components/types";
 
-export function Grid({
-  props,
-  children,
-}: ComponentCtx<{
-  config: { columns: number; gap: number };
-  labels: Record<string, never>;
-}>) {
-  const { config } = props;
+export function GridBase({ props, children }: ComponentCtx<{ columns: number; gap: number }>) {
+  const { columns, gap } = props;
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(${config.columns}, 1fr)`,
-        gap: config.gap,
+        gridTemplateColumns: `repeat(${columns}, 1fr)`,
+        gap: gap,
         padding: 24,
       }}
     >
@@ -34,25 +28,22 @@ export function Grid({
   );
 }
 
-export function Stack({
+export function StackBase({
   props,
   children,
 }: ComponentCtx<{
-  config: {
-    direction: "row" | "column";
-    gap: number;
-    align: "start" | "center" | "end" | "stretch";
-  };
-  labels: Record<string, never>;
+  direction: "row" | "column";
+  gap: number;
+  align: "start" | "center" | "end" | "stretch";
 }>) {
-  const { config } = props;
+  const { direction, gap, align } = props;
   return (
     <div
       style={{
         display: "flex",
-        flexDirection: config.direction,
-        gap: config.gap,
-        alignItems: config.align,
+        flexDirection: direction,
+        gap: gap,
+        alignItems: align,
       }}
     >
       {children}
@@ -60,16 +51,14 @@ export function Stack({
   );
 }
 
-export function Text({
+export function TextBase({
   props,
 }: ComponentCtx<{
-  config: {
-    variant: "h1" | "h2" | "h3" | "body" | "caption";
-    align: "left" | "center" | "right";
-  };
-  labels: { content: string };
+  content: string;
+  variant: "h1" | "h2" | "h3" | "body" | "caption";
+  align: "left" | "center" | "right";
 }>) {
-  const { config, labels } = props;
+  const { content, variant, align } = props;
   const styles: Record<string, React.CSSProperties> = {
     h1: { fontSize: "2rem", fontWeight: 700, margin: "0 0 16px" },
     h2: { fontSize: "1.5rem", fontWeight: 600, margin: "0 0 12px" },
@@ -78,31 +67,29 @@ export function Text({
     caption: { fontSize: "0.85rem", color: "#888" },
   };
 
-  const style = { ...styles[config.variant], textAlign: config.align } as React.CSSProperties;
+  const style = { ...styles[variant], textAlign: align } as React.CSSProperties;
 
-  switch (config.variant) {
+  switch (variant) {
     case "h1":
-      return <h1 style={style}>{labels.content}</h1>;
+      return <h1 style={style}>{content}</h1>;
     case "h2":
-      return <h2 style={style}>{labels.content}</h2>;
+      return <h2 style={style}>{content}</h2>;
     case "h3":
-      return <h3 style={style}>{labels.content}</h3>;
+      return <h3 style={style}>{content}</h3>;
     default:
-      return <p style={style}>{labels.content}</p>;
+      return <p style={style}>{content}</p>;
   }
 }
 
-export function Button({
+export function ButtonBase({
   props,
   emit,
 }: ComponentCtx<{
-  config: {
-    variant: "primary" | "secondary" | "outline";
-    action: string | null;
-  };
-  labels: { text: string };
+  label: string;
+  variant: "primary" | "secondary" | "outline";
+  action: string | null;
 }>) {
-  const { config, labels } = props;
+  const { label, variant, action } = props;
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: { background: "#000", color: "#fff", border: "none" },
     secondary: { background: "#666", color: "#fff", border: "none" },
@@ -117,35 +104,33 @@ export function Button({
         fontSize: "1rem",
         borderRadius: 6,
         cursor: "pointer",
-        ...variantStyles[config.variant],
+        ...variantStyles[variant],
       }}
-      onClick={() => config.action && emit?.(config.action)}
+      onClick={() => action && emit?.(action)}
     >
-      {labels.text}
+      {label}
     </button>
   );
 }
 
-export function Image({
+export function ImageBase({
   props,
 }: ComponentCtx<{
-  config: {
-    src: string;
-    fit: "cover" | "contain" | "fill";
-    width: number | null;
-    height: number | null;
-  };
-  labels: { alt: string };
+  src: string;
+  alt: string;
+  fit: "cover" | "contain" | "fill";
+  width: number | null;
+  height: number | null;
 }>) {
-  const { config, labels } = props;
+  const { src, alt, fit, width, height } = props;
   return (
     <img
-      src={config.src}
-      alt={labels.alt}
+      src={src}
+      alt={alt}
       style={{
-        width: config.width ?? "100%",
-        height: config.height ?? "auto",
-        objectFit: config.fit,
+        width: width ?? "100%",
+        height: height ?? "auto",
+        objectFit: fit,
       }}
     />
   );
@@ -153,11 +138,11 @@ export function Image({
 
 /** json-render component map for layout primitives, auth shell, and mount hooks. */
 export const coreComponents = {
-  Grid,
-  Stack,
-  Text,
-  Button,
-  Image,
+  GridBase,
+  StackBase,
+  TextBase,
+  ButtonBase,
+  ImageBase,
   LoginForm,
   AuthLayout,
   AccountNotificationsInbox,

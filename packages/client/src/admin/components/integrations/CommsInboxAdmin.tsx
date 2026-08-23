@@ -11,16 +11,13 @@ import { CommsInboxPanel } from "../../../core/components/CommsInboxPanel";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type CommsInboxLabels = CommsInboxPanelLabels & {
   forbiddenLabel: string;
 };
 
-export function CommsInboxAdmin({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, CommsInboxLabels>>) {
-  const { labels } = props;
+export function CommsInboxAdmin({ props }: ComponentCtx<CommsInboxLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("integrations");
   const { executeAction, error, clearError } = useCatalogSubmit();
 

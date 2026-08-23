@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { catalogProps, mediaFieldLabelsSchema } from "../../schemas/shared";
+import { mediaFieldLabelsSchema } from "../../schemas/shared";
 
 const editorShellChromeLabels = {
   title: z.string().min(1),
@@ -187,24 +187,27 @@ const editorShellConfig = {
  */
 export const editorComponentSchemas = {
   VisualEditorShell: {
-    props: catalogProps(editorShellLabelsShape, editorShellConfig),
+    props: z.object({
+      ...editorShellLabelsShape,
+      ...editorShellConfig,
+    }),
     slots: ["palette", "layers", "canvas", "panel"],
     description: "Storefront page visual editor chrome with four zones",
   },
   EditorPalette: {
-    props: catalogProps({}, {}),
+    props: z.object({}),
     description: "Catalog block palette (session-backed slot)",
   },
   EditorLayerTree: {
-    props: catalogProps({}, {}),
+    props: z.object({}),
     description: "Layout layer tree (session-backed slot)",
   },
   EditorCanvas: {
-    props: catalogProps({}, {}),
+    props: z.object({}),
     description: "Live page canvas (session-backed slot)",
   },
   EditorPropsPanel: {
-    props: catalogProps({}, {}),
+    props: z.object({}),
     description: "Block properties panel (session-backed slot)",
   },
 };

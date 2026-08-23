@@ -21,29 +21,29 @@ export type EditorComponentOverride = {
 
 /** Editor-only hints — schemas remain the source of truth for fields and types. */
 export const EDITOR_COMPONENT_OVERRIDES: Record<string, EditorComponentOverride> = {
-  Text: {
+  TextBase: {
     label: "Text block",
-    preferredParentType: "Stack",
+    preferredParentType: "StackBase",
     seedLabels: { content: "New text block" },
   },
-  Button: {
-    preferredParentType: "Stack",
-    seedLabels: { text: "Click me" },
+  ButtonBase: {
+    preferredParentType: "StackBase",
+    seedLabels: { label: "Click me" },
   },
-  Image: {
-    preferredParentType: "Stack",
+  ImageBase: {
+    preferredParentType: "StackBase",
     seedConfig: { src: "https://placehold.co/800x400" },
   },
-  Grid: {
-    preferredParentType: "Stack",
+  GridBase: {
+    preferredParentType: "StackBase",
   },
   Hero: {
     label: "Hero banner",
-    preferredParentType: "Stack",
+    preferredParentType: "StackBase",
     seedLabels: { title: "New hero" },
   },
   ProductCard: {
-    preferredParentType: "Grid",
+    preferredParentType: "GridBase",
     configStateBindings: {
       productId: "productId",
       title: "title",

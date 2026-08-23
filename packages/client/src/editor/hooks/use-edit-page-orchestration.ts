@@ -229,10 +229,7 @@ export function useEditPageOrchestration({
         tempElementId,
         parentId,
         insertIndex,
-        props: {
-          config: { ...defaults.defaultProps.config },
-          labels: { ...defaults.defaultProps.labels },
-        },
+        props: { ...defaults.defaultProps },
       });
       setSelection({ elementId: tempElementId, componentType });
       setSaveSuccess(null);
@@ -588,8 +585,7 @@ export function useEditPageOrchestration({
     if (shellLabels?.labelsMissingHint) return shellLabels.labelsMissingHint;
     if (!shellSpec?.root) return "Editor shell layout missing.";
     const shell = shellSpec.elements[shellSpec.root];
-    const hint = (shell?.props as { labels?: { labelsMissingHint?: string } } | undefined)?.labels
-      ?.labelsMissingHint;
+    const hint = (shell?.props as { labelsMissingHint?: string } | undefined)?.labelsMissingHint;
     return hint ?? "Editor shell layout missing or labels invalid.";
   }, [shellLabels, shellSpec]);
 

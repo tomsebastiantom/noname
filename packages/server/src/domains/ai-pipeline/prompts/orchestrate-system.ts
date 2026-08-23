@@ -37,7 +37,7 @@ export function orchestrateSystemPrompt(context: {
     : "";
 
   const editWorkflow = context.layoutSpecJson
-    ? "- Literal text swaps: your FIRST tool call must be patchLayoutDraft(layout id, full updated spec). Copy the spec above, change the text, and patch. Do not call readDocument or listFolderDocuments.\n- Text components store copy at elements.<id>.props.labels.content (not props.content)."
+    ? "- Literal text swaps: your FIRST tool call must be patchLayoutDraft(layout id, full updated spec). Copy the spec above, change the text, and patch. Do not call readDocument or listFolderDocuments.\n- TextBase components store copy at elements.<id>.props.content."
     : "- Literal text swaps: readDocument(layout id) → patchLayoutDraft with the updated spec. Never ask to fork a draft for simple text on the open page.";
 
   return `${agentLine}

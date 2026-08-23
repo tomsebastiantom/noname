@@ -10,7 +10,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { specToJson } from "../../layout-entries";
 import { applyLoginBranding, type LoginBrandingValues } from "../../login-branding";
 
@@ -32,7 +31,7 @@ type LoginBrandingLabels = {
   forbiddenLabel: string;
 };
 
-type LoginBrandingFormProps = ComponentCtx<CatalogProps<LoginBrandingConfig, LoginBrandingLabels>>;
+type LoginBrandingFormProps = ComponentCtx<LoginBrandingConfig & LoginBrandingLabels>;
 
 function LoginBrandingFields({
   loaded,
@@ -190,9 +189,9 @@ function LoginBrandingFields({
 }
 
 export function LoginBrandingForm({ props }: LoginBrandingFormProps) {
-  const { config, labels } = props;
+  const labels = props;
   const canManageAuth = useAdminRouteAccess("login");
-  const segment = config.segment || "default";
+  const segment = props.segment || "default";
   const loadParams = useMemo(() => ({ segment }), [segment]);
   useMountAction("loadLoginBranding", loadParams);
 

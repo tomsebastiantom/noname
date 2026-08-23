@@ -22,10 +22,7 @@ const DEFAULTS: LoginBrandingValues = {
 
 type SpecElement = {
   type?: string;
-  props?: {
-    config?: Record<string, unknown>;
-    labels?: Record<string, unknown>;
-  };
+  props?: Record<string, unknown>;
   children?: string[];
 };
 
@@ -49,7 +46,7 @@ function str(value: unknown): string {
 function loginViews(
   props: SpecElement["props"],
 ): Record<string, { title?: string; description?: string | null }> {
-  const views = props?.labels?.views;
+  const views = props?.views;
   if (views && typeof views === "object" && !Array.isArray(views)) {
     return views as Record<string, { title?: string; description?: string | null }>;
   }
@@ -60,20 +57,18 @@ export function extractLoginBranding(spec: Record<string, unknown>): LoginBrandi
   const layout = spec as LayoutSpec;
   const auth = findByType(layout, "AuthLayout");
   const form = findByType(layout, "LoginForm");
-  const authLabels = auth?.props?.labels ?? {};
-  const authConfig = auth?.props?.config ?? {};
-  const formLabels = form?.props?.labels ?? {};
-  const formConfig = form?.props?.config ?? {};
-  const loginView = loginViews(form?.props).login ?? {};
+  const authProps = auth?.props ?? {};
+  const formProps = form?.props ?? {};
+  const loginView = loginViews(formProps).login ?? {};
 
   return {
-    layout: authConfig.layout === "split" ? "split" : "centered",
-    brandTitle: str(authLabels.brandTitle),
-    brandSubtitle: str(authLabels.brandSubtitle),
+    layout: authProps.layout === "split" ? "split" : "centered",
+    brandTitle: str(authProps.brandTitle),
+    brandSubtitle: str(authProps.brandSubtitle),
     title: str(loginView.title) || DEFAULTS.title,
     subtitle: str(loginView.description),
-    logoUrl: str(formConfig.logoUrl),
-    footerText: str(formLabels.footerText),
+    logoUrl: str(formProps.logoUrl),
+    footerText: str(formProps.footerText),
   };
 }
 
@@ -86,9 +81,9 @@ export function applyLoginBranding(
   const form = findByType(next, "LoginForm");
 
   if (auth?.props) {
-    auth.props.config = { ...(auth.props.config ?? {}), layout: values.layout };
-    auth.props.labels = {
-      ...(auth.props.labels ?? {}),
+    auth.props = {
+      ...auth.props,
+      layout: values.layout,
       brandTitle: values.brandTitle.trim() || null,
       brandSubtitle: values.brandSubtitle.trim() || null,
     };
@@ -96,12 +91,9 @@ export function applyLoginBranding(
 
   if (form?.props) {
     const views = loginViews(form.props);
-    form.props.config = {
-      ...(form.props.config ?? {}),
+    form.props = {
+      ...form.props,
       logoUrl: values.logoUrl.trim() || null,
-    };
-    form.props.labels = {
-      ...(form.props.labels ?? {}),
       footerText: values.footerText.trim() || null,
       views: {
         ...views,

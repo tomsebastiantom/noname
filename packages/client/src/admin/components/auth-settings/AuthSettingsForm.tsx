@@ -16,14 +16,11 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import { AuthAppleProviderSection } from "./apple-provider-section";
 import { AuthCredentialProviderSection } from "./credential-provider-section";
 import { cmsProviderEnabled, cmsProviderName } from "./form-utils";
 import { AuthSettingsMfaSection } from "./mfa-section";
 import { AuthSettingsPasswordSection } from "./password-section";
-
-type AuthSettingsConfig = Record<string, never>;
 
 type AuthSettingsLabels = {
   title: string;
@@ -55,7 +52,7 @@ type AuthSettingsLabels = {
   forbiddenLabel: string;
 };
 
-type AuthSettingsFormProps = ComponentCtx<CatalogProps<AuthSettingsConfig, AuthSettingsLabels>>;
+type AuthSettingsFormProps = ComponentCtx<AuthSettingsLabels>;
 
 function AuthSettingsFields({
   loaded,
@@ -276,7 +273,7 @@ function AuthSettingsFields({
 }
 
 export function AuthSettingsForm({ props }: AuthSettingsFormProps) {
-  const { labels } = props;
+  const labels = props;
   const canManageAuth = useAdminRouteAccess("auth");
   useMountAction("loadAuthSettings");
 

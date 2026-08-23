@@ -15,7 +15,6 @@ import { ADMIN_STATE } from "../../../core/admin-state";
 import { useMountAction } from "../../../core/components/MountAction";
 import type { ComponentCtx } from "../../../core/components/types";
 import { useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type CommsDeliveriesLabels = {
   title: string;
@@ -138,10 +137,8 @@ function DeliveriesTable({
   );
 }
 
-export function CommsDeliveriesAdmin({
-  props,
-}: ComponentCtx<CatalogProps<Record<string, never>, CommsDeliveriesLabels>>) {
-  const { labels } = props;
+export function CommsDeliveriesAdmin({ props }: ComponentCtx<CommsDeliveriesLabels>) {
+  const labels = props;
   const canAccess = useAdminRouteAccess("integrations");
   const { executeAction } = useCatalogSubmit();
 

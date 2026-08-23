@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 
 type AdminCollapsibleSectionConfig = {
   defaultOpen: boolean;
@@ -14,12 +13,12 @@ type AdminCollapsibleSectionLabels = {
 export function AdminCollapsibleSection({
   props,
   children,
-}: ComponentCtx<CatalogProps<AdminCollapsibleSectionConfig, AdminCollapsibleSectionLabels>>) {
-  const { config, labels } = props;
+}: ComponentCtx<AdminCollapsibleSectionConfig & AdminCollapsibleSectionLabels>) {
+  const labels = props;
 
   return (
     <details
-      open={config.defaultOpen}
+      open={props.defaultOpen}
       className="group rounded-lg border bg-card text-card-foreground"
     >
       <summary className="cursor-pointer list-none px-4 py-3 marker:content-none [&::-webkit-details-marker]:hidden">

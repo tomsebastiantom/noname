@@ -89,7 +89,7 @@ export function ProductCard({
   );
 }
 
-export function Grid({
+export function GridBase({
   props,
   children,
 }: ComponentCtx<{
@@ -110,7 +110,7 @@ export function Grid({
   );
 }
 
-export function Stack({
+export function StackBase({
   props,
   children,
 }: ComponentCtx<{
@@ -132,10 +132,10 @@ export function Stack({
   );
 }
 
-export function Text({
+export function TextBase({
   props,
 }: ComponentCtx<{
-  value: string;
+  content: string;
   variant: "h1" | "h2" | "h3" | "body" | "caption";
   align: "left" | "center" | "right";
 }>) {
@@ -151,19 +151,19 @@ export function Text({
 
   switch (props.variant) {
     case "h1":
-      return <h1 style={style}>{props.value}</h1>;
+      return <h1 style={style}>{props.content}</h1>;
     case "h2":
-      return <h2 style={style}>{props.value}</h2>;
+      return <h2 style={style}>{props.content}</h2>;
     case "h3":
-      return <h3 style={style}>{props.value}</h3>;
+      return <h3 style={style}>{props.content}</h3>;
     case "caption":
-      return <p style={style}>{props.value}</p>;
+      return <p style={style}>{props.content}</p>;
     default:
-      return <p style={style}>{props.value}</p>;
+      return <p style={style}>{props.content}</p>;
   }
 }
 
-export function Button({
+export function ButtonBase({
   props,
   emit,
 }: ComponentCtx<{
@@ -194,7 +194,7 @@ export function Button({
   );
 }
 
-export function Image({
+export function ImageBase({
   props,
 }: ComponentCtx<{
   src: string;

@@ -8,32 +8,29 @@ const loginSpec = {
   elements: {
     page: {
       type: "AuthLayout",
-      props: {
-        config: { layout: "centered" },
-        labels: { brandTitle: "Noname", brandSubtitle: "Platform" },
-      },
+      props: { layout: "centered", brandTitle: "Noname", brandSubtitle: "Platform" },
       children: ["form"],
     },
     form: {
       type: "LoginForm",
       props: {
-        config: { logoUrl: null, redirectPath: null, showPasswordToggle: true, providers: [] },
-        labels: {
-          views: {
-            login: DEFAULT_LOGIN_FORM_VIEWS.login,
-            forgot: DEFAULT_LOGIN_FORM_VIEWS.forgot,
-            reset: DEFAULT_LOGIN_FORM_VIEWS.reset,
-            signup: DEFAULT_LOGIN_FORM_VIEWS.signup,
-            mfa: DEFAULT_LOGIN_FORM_VIEWS.mfa,
-          },
-          footerText: null,
-          providers: {},
-          messages: {
-            noSignInMethods: "No sign-in methods",
-            passwordResetSent: "Reset sent",
-            passwordUpdated: "Password updated",
-            invalidHost: "Invalid host",
-          },
+        logoUrl: null,
+        redirectPath: null,
+        showPasswordToggle: true,
+        providers: [],
+        views: {
+          login: DEFAULT_LOGIN_FORM_VIEWS.login,
+          forgot: DEFAULT_LOGIN_FORM_VIEWS.forgot,
+          reset: DEFAULT_LOGIN_FORM_VIEWS.reset,
+          signup: DEFAULT_LOGIN_FORM_VIEWS.signup,
+          mfa: DEFAULT_LOGIN_FORM_VIEWS.mfa,
+        },
+        footerText: null,
+        messages: {
+          noSignInMethods: "No sign-in methods",
+          passwordResetSent: "Reset sent",
+          passwordUpdated: "Password updated",
+          invalidHost: "Invalid host",
         },
       },
     },
@@ -64,20 +61,17 @@ describe("login branding helpers", () => {
       footerText: "Need help?",
     });
 
-    const elements = updated.elements as Record<
-      string,
-      { props: { config: Record<string, unknown>; labels: Record<string, unknown> } }
-    >;
-    const formLabels = elements.form?.props.labels as {
+    const elements = updated.elements as Record<string, { props: Record<string, unknown> }>;
+    const formProps = elements.form?.props as {
       views: { login: { title: string; fields: { email: string } } };
       footerText: string;
     };
 
-    expect(elements.page?.props.config.layout).toBe("split");
-    expect(elements.page?.props.labels.brandTitle).toBe("Yoga Store");
-    expect(formLabels.views.login.title).toBe("Hello");
-    expect(formLabels.views.login.fields.email).toBe("Email");
-    expect(elements.form?.props.config.logoUrl).toBe("https://example.com/logo.svg");
-    expect(formLabels.footerText).toBe("Need help?");
+    expect(elements.page?.props.layout).toBe("split");
+    expect(elements.page?.props.brandTitle).toBe("Yoga Store");
+    expect(formProps.views.login.title).toBe("Hello");
+    expect(formProps.views.login.fields.email).toBe("Email");
+    expect(elements.form?.props.logoUrl).toBe("https://example.com/logo.svg");
+    expect(formProps.footerText).toBe("Need help?");
   });
 });

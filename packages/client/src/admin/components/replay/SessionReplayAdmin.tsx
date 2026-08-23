@@ -13,12 +13,9 @@ import {
 import { Input } from "../../../components/ui/input";
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
-import type { CatalogProps } from "../../../schemas/shared";
 import type { ReplaySessionSummary } from "../../session-replay";
 import { DataTable, type DataTableColumn } from "../shared/DataTable";
 import { ReplayPlayer } from "./ReplayPlayer";
-
-type SessionReplayConfig = Record<string, never>;
 
 type SessionReplayLabels = {
   title: string;
@@ -48,10 +45,8 @@ function formatSessionUser(row: ReplaySessionSummary): string {
   return "—";
 }
 
-export function SessionReplayAdmin({
-  props,
-}: ComponentCtx<CatalogProps<SessionReplayConfig, SessionReplayLabels>>) {
-  const { labels } = props;
+export function SessionReplayAdmin({ props }: ComponentCtx<SessionReplayLabels>) {
+  const labels = props;
   const canViewReplay = useAdminRouteAccess("replay");
   const { execute } = useActions();
   const sessions =

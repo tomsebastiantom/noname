@@ -1,6 +1,6 @@
 # Spec-Driven UI — Reference
 
-**Catalog props:** [props-contract.md](props-contract.md) — `config` + `labels` only; all copy in `labels`.
+**Catalog props:** [props-contract.md](props-contract.md) — flat props only (no `config`/`labels` split); all copy at the top level.
 
 ---
 
@@ -36,7 +36,7 @@ Add a new template only when an existing one cannot host the screen.
 | What | Storage | Client |
 |------|---------|--------|
 | Page structure | **Layout** document | Spec tree |
-| Login/admin copy | Layout **`props.labels`** | Not hardcoded in React |
+| Login/admin copy | Layout **props** (flat) | Not hardcoded in React |
 | Public site body | **Content** document | `$state` + resolve |
 | Editor UI prefs (per user) | **`editor_prefs`** content | Client prefs module |
 | Visual editor chrome | **`visual_editor`** layout labels | Label schema + layout seed |
@@ -52,11 +52,11 @@ Add a new template only when an existing one cannot host the screen.
 | Layer | Responsibility |
 |-------|----------------|
 | **Catalog schema** | Zod props per component + params per action |
-| **Components** | Render `props.labels` / `$state`; call `execute` or submit helpers |
+| **Components** | Render flat props / `$state`; call `execute` or submit helpers |
 | **Action handlers** | `(params, setState, state)` — fetch, then `setState` |
 | **Registry** | Map component + action names to implementations |
 | **Runtime shell** | Sync `handlers` on `JSONUIProvider` before first render |
-| **Layout document** | json-render tree — copy in `props.labels`, structure in spec |
+| **Layout document** | json-render tree — copy + structure as flat props |
 | **Host** | Template routing, auth gate, load spec + catalog |
 
 **Extension pack:** same four pieces (schema, components, actions, registry) + manifest entry — no new route.
@@ -166,7 +166,7 @@ Storefront builder: `?edit=true` on public URLs (JWT with draft permission). **N
 
 | Concern | Source |
 |---------|--------|
-| Chrome copy | `visual_editor` layout → shell component `props.labels` |
+| Chrome copy | `visual_editor` layout → shell component flat props |
 | Label keys | Component label schema (Zod) + layout seed |
 | Panel prefs | `editor_prefs` content type |
 | Page blocks | Layout draft API |
@@ -188,8 +188,8 @@ After new label keys: update label schema **and** layout seed. Editor layer must
 | `useEffect(..., [execute])` for mount load | `MountAction` or `useMountAction` |
 | `useEffect([loaded])` to sync draft | `key={loaded.loadedAt}` |
 | Hand-rolled save try/catch in drafts | `useCatalogSubmit` |
-| `"Save & publish"` in TSX | `props.labels.publishLabel` in layout |
-| Flat `title`, `saveLabel` at props root | `labels.title`, `labels.saveLabel` — [props-contract.md](props-contract.md) |
+| `"Save & publish"` in TSX | `props.publishLabel` in layout |
+| `props.labels.title` / `props.config.action` (removed split) | `props.title` / `props.action` — [props-contract.md](props-contract.md) |
 | Per-org config in `.env` | Tenant settings or layout |
 | Separate admin SPA | Same Renderer + catalog |
 

@@ -12,7 +12,7 @@ Pattern recipes. Copy the **shape**, not domain-specific field names.
 
 ```
 AdminShell (activeNav: "auth")
-  └── AuthSettingsForm (labels from layout props)
+  └── AuthSettingsForm (flat props from layout)
         └── useMountAction("loadAuthSettings") → $state loaded + loadedAt
         └── AuthSettingsFields key={loaded.loadedAt}
               └── useCatalogSubmit().submit({ action: "saveAuthConfig", params: { … } })
@@ -21,7 +21,7 @@ AdminShell (activeNav: "auth")
 
 **Route:** `/admin/settings/auth` → existing `admin_dashboard` template.
 
-**Build:** catalog schema (props + action params) → component + registry → load handler writes `$state` with `loadedAt` → layout JSON with labels → action handler for save.
+**Build:** catalog schema (props + action params) → component + registry → load handler writes `$state` with `loadedAt` → flat layout props → action handler for save.
 
 ---
 
@@ -52,11 +52,11 @@ AdminShell (activeNav: "content")
 **Layout template:** `login`
 
 ```
-LoginForm (props.config + props.labels from layout spec)
+LoginForm (flat props from layout spec)
   └── execute({ action: "login", params: { email, password, redirectPath } })
 ```
 
-Copy in layout **`props.labels`**. Which providers show comes from API → `$state`; button **text** still from spec `labels.providers.*`.
+Copy in layout **flat props**. Which providers show comes from API → `$state`; button **text** still from spec `props.providers.*`.
 
 ---
 
@@ -105,19 +105,17 @@ Use **`useCatalogSubmit` + `loadedAt`/`key`** for [editable draft panels](SKILL.
 
 ### Catalog schema
 
-`config` + `labels` only ([props-contract.md](props-contract.md)):
+Flat `z.object` only ([props-contract.md](props-contract.md)):
 
 ```typescript
 MySettingsPanel: {
-  props: catalogProps(
-    {
-      title: z.string(),
-      description: z.string().nullable(),
-      saveLabel: z.string(),
-      publishLabel: z.string(),
-    },
-    { locale: z.string().default("en") },
-  ),
+  props: z.object({
+    title: z.string(),
+    description: z.string().nullable(),
+    saveLabel: z.string(),
+    publishLabel: z.string(),
+    locale: z.string().default("en"),
+  }),
 },
 ```
 
@@ -130,21 +128,20 @@ MySettingsPanel: {
     shell: {
       type: "AdminShell",
       props: {
-        config: { activeNav: "my" },
-        labels: { title: "My settings", nav: { my: "My settings" } },
+        activeNav: "my",
+        title: "My settings",
+        nav: { my: "My settings" },
       },
       children: ["panel"],
     },
     panel: {
       type: "MySettingsPanel",
       props: {
-        config: { locale: "en" },
-        labels: {
-          title: "My settings",
-          description: null,
-          saveLabel: "Save draft",
-          publishLabel: "Save & publish",
-        },
+        locale: "en",
+        title: "My settings",
+        description: null,
+        saveLabel: "Save draft",
+        publishLabel: "Save & publish",
       },
     },
   },
@@ -162,14 +159,14 @@ function MySettingsFields({ loaded, props, loadError }) {
     await submit({
       action: "saveMySettings",
       params: { enabled },
-      successMessage: props.labels.savedMessage,
+      successMessage: props.savedMessage,
     });
   }
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); void handleSave(); }}>
       <Button type="submit" disabled={pending}>
-        {pending ? props.labels.savingLabel : props.labels.saveLabel}
+        {pending ? props.savingLabel : props.saveLabel}
       </Button>
     </form>
   );

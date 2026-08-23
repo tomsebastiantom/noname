@@ -14,7 +14,6 @@ import {
 import { ADMIN_STATE } from "../../../core/admin-state";
 import type { ComponentCtx } from "../../../core/components/types";
 import { mergeCatalogError, useCatalogSubmit } from "../../../core/use-catalog-submit";
-import type { CatalogProps } from "../../../schemas/shared";
 import type { FlagRow } from "../../flags";
 
 function flagValue(flag: FlagRow): unknown {
@@ -47,8 +46,6 @@ function booleanToggleLabel(
   return `Turn ${labels.onLabel.toLowerCase()}`;
 }
 
-type FeatureFlagsConfig = Record<string, never>;
-
 type FeatureFlagsLabels = {
   title: string;
   description: string | null;
@@ -60,10 +57,8 @@ type FeatureFlagsLabels = {
   forbiddenLabel: string;
 };
 
-export function FeatureFlagsAdmin({
-  props,
-}: ComponentCtx<CatalogProps<FeatureFlagsConfig, FeatureFlagsLabels>>) {
-  const { labels } = props;
+export function FeatureFlagsAdmin({ props }: ComponentCtx<FeatureFlagsLabels>) {
+  const labels = props;
   const canWriteFlags = useAdminRouteAccess("flags");
   const catalog = useCatalogSubmit();
   const { submit, error } = catalog;

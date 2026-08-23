@@ -5,7 +5,6 @@ import {
   type EditorComponentOverride,
   PALETTE_EXCLUDED_TYPES,
 } from "./editor-overrides";
-import { isHiddenEditorField } from "./field-filter";
 import {
   defaultsFromZodShape,
   fieldsFromZodShape,
@@ -45,14 +44,11 @@ function buildEditMeta(
   const parsed = parseCatalogPropsSchema(entry.props);
   if (!parsed) return null;
 
-  const config = defaultsFromZodShape(parsed.configShape, override?.seedConfig);
-  const labels = defaultsFromZodShape(parsed.labelsShape, override?.seedLabels);
+  const seeds = { ...override?.seedConfig, ...override?.seedLabels };
+  const config = defaultsFromZodShape(parsed.configShape, seeds);
+  const labels = defaultsFromZodShape(parsed.labelsShape, seeds);
 
-  const fields = [
-    ...fieldsFromZodShape("labels", parsed.labelsShape),
-    ...fieldsFromZodShape("config", parsed.configShape),
-  ].filter((field) => {
-    if (isHiddenEditorField(field.path)) return false;
+  const fields = fieldsFromZodShape(parsed.labelsShape).filter((field) => {
     if (override?.hiddenFields?.includes(field.path)) return false;
     return true;
   });
@@ -63,8 +59,9 @@ function buildEditMeta(
     label: override?.label ?? componentType,
     preferredParentType: override?.preferredParentType,
     defaultProps: {
-      config: applyConfigStateBindings(config, override?.configStateBindings),
-      labels,
+      ...config,
+      ...labels,
+      ...applyConfigStateBindings(config, override?.configStateBindings),
     },
     fields,
   };
