@@ -1,14 +1,19 @@
-// Load .env so process.env variables are available (same as server index.ts)
-require('dotenv').config({ path: 'C:\\Workspace\\noname\\.env' });
+// Portable PM2 ecosystem config — no Windows-specific cmd/pnpm shims,
+// no .vbs wrappers, works identically on Linux/mac/Windows.
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
+const path = require('path');
+
+// Direct entry points avoid the pnpm .cmd shim chain that allocates a
+// visible console on Windows. The dev commands below are the same ones
+// defined in package.json scripts; no rebuild artifacts needed for dev.
 
 module.exports = {
   apps: [
     {
       name: 'noname-server',
-      // Dev mode with hot reload (tsx watch) — code changes apply without rebuild
       script: 'node',
-      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/server dev',
-      cwd: 'C:\\Workspace\\noname',
+      args: path.join('packages', 'server', 'node_modules', 'tsx', 'dist', 'cli.mjs') + ' watch src/index.ts',
+      cwd: __dirname,
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
         OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
@@ -19,56 +24,56 @@ module.exports = {
         REDIS_URL: 'redis://localhost:6379',
         CLICKHOUSE_URL: 'http://localhost:8123',
         KETO_GRPC_INSECURE: 'true',
-        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
-        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+        NPM_CONFIG_CACHE: path.join(__dirname, '.tools', 'npm-cache'),
+        NPM_CONFIG_PREFIX: path.join(__dirname, '.tools', 'npm-global'),
       },
       watch: false,
       autorestart: true,
-      restart_delay: 3000,
       max_restarts: 10,
-      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.log',
-      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.out',
-      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-server.err',
+      restart_delay: 3000,
+      log_file: path.join(__dirname, '.tools', 'pm2', 'noname-server.log'),
+      out_file: path.join(__dirname, '.tools', 'pm2', 'noname-server.out'),
+      error_file: path.join(__dirname, '.tools', 'pm2', 'noname-server.err'),
     },
     {
       name: 'noname-edge',
       script: 'node',
-      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/workers dev',
-      cwd: 'C:\\Workspace\\noname',
+      args: path.join('node_modules', 'wrangler', 'bin', 'wrangler.js') + ' dev src/index.ts',
+      cwd: path.join(__dirname, 'packages', 'workers'),
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
         WORKER_SERVER_SECRET: 'MpafgdbDKihG1zkRl7onvjBFcPyJLtmH',
         ZITADEL_ISSUER: 'http://localhost:8080',
         ZITADEL_CLIENT_ID: '387316757292908554',
         ZITADEL_PROJECT_ID: '387316756252721162',
-        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
-        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+        NPM_CONFIG_CACHE: path.join(__dirname, '.tools', 'npm-cache'),
+        NPM_CONFIG_PREFIX: path.join(__dirname, '.tools', 'npm-global'),
       },
       watch: false,
       autorestart: true,
-      restart_delay: 3000,
-      max_restarts: 10,
-      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.log',
-      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.out',
-      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-edge.err',
+      max_restarts: 5,
+      restart_delay: 15000,
+      log_file: path.join(__dirname, '.tools', 'pm2', 'noname-edge.log'),
+      out_file: path.join(__dirname, '.tools', 'pm2', 'noname-edge.out'),
+      error_file: path.join(__dirname, '.tools', 'pm2', 'noname-edge.err'),
     },
     {
       name: 'noname-client',
       script: 'node',
-      args: 'C:\\Users\\TomSebastian\\AppData\\Roaming\\NPM\\node_modules\\pnpm\\bin\\pnpm.cjs --filter @noname/client dev',
-      cwd: 'C:\\Workspace\\noname',
+      args: path.join('node_modules', '@rspack', 'cli', 'bin', 'rspack.js') + ' serve',
+      cwd: path.join(__dirname, 'packages', 'client'),
       env: {
         DSH_PERMISSION_MODE: 'danger-full-access',
-        NPM_CONFIG_CACHE: 'C:\\Workspace\\noname\\.tools\\npm-cache',
-        NPM_CONFIG_PREFIX: 'C:\\Workspace\\noname\\.tools\\npm-global',
+        NPM_CONFIG_CACHE: path.join(__dirname, '.tools', 'npm-cache'),
+        NPM_CONFIG_PREFIX: path.join(__dirname, '.tools', 'npm-global'),
       },
       watch: false,
       autorestart: true,
-      restart_delay: 3000,
       max_restarts: 10,
-      log_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.log',
-      out_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.out',
-      error_file: 'C:\\Workspace\\noname\\.tools\\pm2\\noname-client.err',
+      restart_delay: 3000,
+      log_file: path.join(__dirname, '.tools', 'pm2', 'noname-client.log'),
+      out_file: path.join(__dirname, '.tools', 'pm2', 'noname-client.out'),
+      error_file: path.join(__dirname, '.tools', 'pm2', 'noname-client.err'),
     },
   ],
 };
