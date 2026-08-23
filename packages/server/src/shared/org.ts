@@ -19,10 +19,7 @@ function workerSecret(): string {
   return process.env.WORKER_SERVER_SECRET || secret;
 }
 
-/** Local dev opt-out only — ignored in production. */
-function devHmacBypassAllowed(): boolean {
-  return process.env.NODE_ENV !== "production" && process.env.REQUIRE_EDGE_HMAC === "false";
-}
+
 
 function verifyHmac(orgId: string, userId: string, role: string, providedHmac: string): boolean {
   const configuredSecret = workerSecret();
@@ -52,10 +49,8 @@ export const orgMiddleware: MiddlewareHandler = async (c, next) => {
     if (!verifyHmac(orgId, userId, role, hmac)) {
       return c.json({ error: "Invalid auth signature" }, 401);
     }
-  } else if (configuredSecret && !devHmacBypassAllowed()) {
-    return c.json({ error: "Request must come through edge worker" }, 401);
   } else if (configuredSecret) {
-    console.warn("No HMAC on request — dev bypass (REQUIRE_EDGE_HMAC=false)");
+    return c.json({ error: "Request must come through edge worker" }, 401);
   }
 
   c.set(ORG_ID_KEY, orgId);
