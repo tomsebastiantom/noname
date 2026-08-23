@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 port = 8787
 
 [vars]
-API_ORIGIN = "http://localhost:3000"
+API_ORIGIN = "http://127.0.0.1:3000"
 ZITADEL_ISSUER = "http://localhost:8080"
 # ZITADEL_CLIENT_ID / ZITADEL_PROJECT_ID — updated by pnpm init:zitadel
 ZITADEL_CLIENT_ID = "387316757292908554"
