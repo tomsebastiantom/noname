@@ -24,6 +24,7 @@ Two visitors hit `/products/pro-yoga-mat` in the same minute:
 | **Dynamic Yield** | Content/offer swap within fixed templates; layout structure frozen |
 | **Shopify** | One Liquid theme for everyone; "personalization" = apps injecting sections client-side |
 | **Optimizely/VWO** | Routes between human-authored variants (max ~2-5, built weeks in advance) |
+| **Microsoft Brand Agents** | Adds a conversational AI assistant on the merchant site (Shopify-only); the conversation adapts, the page structure stays fixed |
 
 ### What We Output
 Same URL, two generated specs (sketches):
@@ -124,7 +125,7 @@ Already built (unique among all platforms surveyed):
 - Remote cursors, presence, agent-as-collaborator with approve/reject/undo
 - Editor loads only for admins (`?edit=true`), same URL/components/catalog as visitors
 
-Webflow/Shopyfi theme editor: single-editor locks. Figma: design-only, not the live store. **Nobody else edits the production storefront collaboratively with an AI participant.**
+Webflow/Shopify theme editor: single-editor locks. Figma: design-only, not the live store. **Nobody else edits the production storefront collaboratively with an AI participant.**
 
 ---
 

@@ -65,7 +65,7 @@ From `packages/client/src/main.tsx` and editor sources, these flows are wired to
 
 1. **Enable + wire commerce extension** into tenant manifests (plumbing exists).
 2. **Server commerce domain** — products, cart persistence, checkout, orders (0%).
-3. **Commerce components** — 2 of ~15 exist; none rendered on live pages yet.
+3. **Commerce components** — 2 of 50 planned exist (15 core + 21 commerce expansion in the commerce extension, 12 domain-neutral site sections); none rendered on live pages yet.
 4. **Seed/demo content** — replace test artifacts with a believable yoga store.
 5. **Checkout destination** — `/checkout` route + Stripe session creation.
 

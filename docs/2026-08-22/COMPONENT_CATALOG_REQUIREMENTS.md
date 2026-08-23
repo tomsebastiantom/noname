@@ -15,7 +15,7 @@ The commerce component catalog is the **bridge between AI-generated JSON schemas
 
 ---
 
-## Currently Implemented (2/12+ Components)
+## Currently Implemented (2 of 50 Planned Components)
 
 | Component | File | Schema | Actions | Edit Metadata |
 |-----------|------|--------|---------|---------------|
@@ -799,6 +799,101 @@ ShippingEstimator: {
 
 ---
 
+## Catalog Expansion — Platform & Library Survey (2026-08-22 Re-Verification)
+
+The 15 components above cover the *transactional spine* only. A survey of what popular platforms actually ship in their storefront component libraries shows that is roughly one-third of a credible catalog. Survey basis:
+
+| Source | What it ships | Takeaway |
+|--------|--------------|----------|
+| **WooCommerce core blocks** | ~25 blocks incl. Product Search, All Products/Product Collection, Featured Product/Category, Hand-Picked, Best Sellers, Filter by Price/Stock/Attribute/Rating, Active Filters, Mini-Cart + drawer, Cart, Checkout, All Reviews, Reviews by Product/Category, Customer Account | Filtering, merchandising grids, and reviews are first-class, not app-level |
+| **Shopify Dawn / OS 2.0 sections** | ~25 section types incl. announcement bar, image banner, slideshow, video, collage, multicolumn, featured collection/product, collection list, collapsible FAQ, newsletter signup + header/footer/mega-menu groups | Most Dawn sections are *domain-neutral merchandising/content* sections, not commerce logic |
+| **Saleor "Paper" storefront** | Dynamic menus + breadcrumbs, region picker/locale routing, login/register/reset + guest checkout, order confirmation route, account dashboard w/ address book/order history/password change | Post-purchase and account surfaces are part of the storefront, not the admin |
+| **Medusa DTC starter** | Multi-region w/ country detection, variant selection, cart + promotion codes, multi-step checkout, customer accounts w/ order history + addresses | Checkout flow + account surfaces are baseline storefront scope |
+| **Baymard-style CRO patterns** | Sticky ATC, free-shipping progress, back-in-stock notify, size guides, quick view | Conversion-hygiene components expected on any serious PDP |
+
+### Catalog Split Rule
+
+Not everything below belongs to the commerce extension. A component goes to the **Site catalog** if it renders identically on a blog, portfolio, or content site (no product/cart/order context required). Only components that read commerce context (product, variant, cart, order, customer) stay in the **commerce catalog**. This matches the platform's extension model: `coreComponents` already owns layout atoms (`Grid`, `Stack`, `Text`, `Button`, `Image`) in `packages/client/src/core/components.tsx`; domain-neutral *sections* get a Site catalog alongside `packages/extensions/src/commerce/`.
+
+**Backlog totals**: 15 core (above) + 21 commerce expansion + 12 site catalog = **48 to build, 50 planned total incl. Hero + ProductCard**. Expansion entries are specified briefly; each receives the full §1–15 treatment when its phase starts. The list is intentionally kept maximal — prune later against the removal criteria at the end of this section.
+
+### Expansion A — Commerce: Listing & Merchandising (6)
+
+| Component | Purpose | Priority |
+|-----------|---------|----------|
+| `FilterGroups` | Price range/slider, attribute swatches, rating, stock toggles + active-filter chips (composable inside CollectionPage/SearchResults) | High |
+| `ProductSlider` | Horizontal scroll/swipe row of ProductCards (featured collections) | High |
+| `CollectionList` | Grid of collection cards w/ images + counts | High |
+| `FeaturedProductSpotlight` | Single-product hero section w/ CTA + media | High |
+| `QuickView` | Card-hover modal preview + quick add | Medium |
+| `RecentlyViewed` | Session-scoped product row | Medium |
+
+### Expansion B — Commerce: PDP Enhancement (6)
+
+| Component | Purpose | Priority |
+|-----------|---------|----------|
+| `ProductGallery` | Standalone gallery (zoom, thumbnails/dots/swipe) extracted from ProductInfo so AI can compose layouts freely | High |
+| `ReviewsList` | Ratings summary + breakdown bars + paginated review list | High |
+| `ReviewForm` | Merchant-approved UGC review capture | Medium |
+| `BackInStockNotify` | "Notify me" for out-of-stock variants | Medium |
+| `BundleAdd` | Frequently-bought-together multi-add with combined price/savings | Medium |
+| `SizeGuide` | Modal size/measurement chart (table or image) | Low |
+
+### Expansion C — Commerce: Cart, Checkout & Account (9)
+
+| Component | Purpose | Priority |
+|-----------|---------|----------|
+| `CheckoutFlow` | Full-page multi-step checkout: contact → shipping → payment → review (URL-driven steps). Post-MVP: Phase 0 demo redirects to Stripe-hosted checkout | Critical |
+| `AddressForm` | Internationalized address fields w/ validation + autocomplete | Critical |
+| `ShippingMethodSelector` | Rate options w/ price + delivery estimate | High |
+| `PaymentMethodSelector` | Gateway/wallet selection incl. saved instruments | High |
+| `OrderConfirmation` | Thank-you page: order recap, account-create prompt, next steps | High |
+| `OrdersPanel` | Account order history w/ status + reorder; guest order-lookup variant | High |
+| `AccountPanel` | Profile, address book, password change | Medium |
+| `WishlistToggle` | Heart/save control on cards + PDP (guest state merges on login) | Medium |
+| `WishlistGrid` | Saved-items grid w/ move-to-cart | Medium |
+
+### Expansion D — Site Catalog (Domain-Neutral, 12)
+
+These render without commerce context (news sites, portfolios, B2B landing pages) — same components a yoga store and a magazine both need. Target home: a Site catalog next to the commerce extension; not `packages/extensions/src/commerce/`.
+
+| Component | Purpose | Priority |
+|-----------|---------|----------|
+| `StoreHeader` | Logo + mega-menu nav + search trigger + cart/account slots; sticky variant. Slots stay empty on non-commerce sites | Critical |
+| `AnnouncementBar` | Top promo strip (dismissable, scheduled messages) | High |
+| `StoreFooter` | Link columns, newsletter slot, payment badges slot, socials | High |
+| `Breadcrumbs` | Trail for any hierarchical page; SEO microdata | Medium |
+| `PredictiveSearch` | Typeahead over products/categories/content — commerce results arrive via injected adapter | High |
+| `LocaleSelector` | Country/currency/language picker | Medium |
+| `NewsletterSignup` | Email capture w/ consent + integration hook | High |
+| `FaqAccordion` | Schema-driven Q&A accordion w/ FAQ structured data | High |
+| `MediaShowcase` | Slideshow/video merchandising section | High |
+| `MediaCollage` | Mixed image/video/card collage tiles | Low |
+| `SocialTestimonials` | Static testimonials/logo cloud (vs. dynamic `SocialProof`) | Medium |
+| `NoticeToasts` | Global store notices (add-to-cart, errors, flags) | Medium |
+
+> Overlap note: `StoreHeader`'s cart trigger and `PredictiveSearch`'s product results consume commerce context via props/adapters but the components themselves stay domain-neutral — same pattern as `ProductGrid` consuming product data through json-render bindings.
+
+### UI Primitive Base (shadcn Inventory Check)
+
+The client currently carries only **8 shadcn/ui primitives** in `packages/client/src/components/ui/`: `alert`, `badge`, `button`, `card`, `input`, `label`, `separator`, `table`. That covers admin panels, not a storefront catalog. Since these are copy-in shadcn components, expanding is low-cost; map additions to catalog needs rather than importing all:
+
+| Needed primitive(s) | Unlocks |
+|---------------------|---------|
+| `accordion` | `FaqAccordion`, specs tables in `ProductInfo` |
+| `dialog`, `sheet` | `CartDrawer`, `QuickView`, `SizeGuide`, mobile filter drawers |
+| `carousel` | `MediaShowcase`, `ProductSlider`, `SocialProof` carousels |
+| `command` (+ `popover`) | `PredictiveSearch`, command palettes |
+| `checkbox`, `radio-group`, `select`, `switch`, `slider` | `FilterGroups`, `QuantitySelector`, forms |
+| `sonner`/`toast` | `NoticeToasts` |
+| `tabs`, `avatar`, `skeleton`, `tooltip` | `ProductInfo` tabs, reviews avatars, loading states, `TrustBadges` tooltips |
+
+### Removal Criteria (Prune Later, Not Now)
+
+Keep the backlog maximal now; drop an item later only when it fails **all** of: (1) no precedent in WooCommerce/Dawn/Saleor/Medusa surface inventory, (2) not reachable by AI composition from existing components, (3) no attribution/experiment value, (4) not required by the demo acceptance walk in CURRENT-UX-AUDIT.md.
+
+---
+
 ## Implementation Checklist
 
 ### Phase 1: Core Commerce Components (Week 2-3)
@@ -821,6 +916,16 @@ ShippingEstimator: {
 - [ ] `SocialProof` — reviews, live viewers, recent purchases
 - [ ] `RelatedProducts` — AI recommendations
 - [ ] `ShippingEstimator` — rate calculation
+
+### Phase 4+: Expansion Waves (Post-Core, Prune Against Removal Criteria)
+Commerce catalog:
+- Wave 1 (merchandising parity): `FilterGroups`, `ProductSlider`, `CollectionList`, `FeaturedProductSpotlight`, `ProductGallery`, `ReviewsList`
+- Wave 2 (checkout completion, needs server domain): `CheckoutFlow`, `AddressForm`, `ShippingMethodSelector`, `PaymentMethodSelector`, `OrderConfirmation`, `OrdersPanel`, `AccountPanel`
+- Wave 3 (retention & CRO): `WishlistToggle`, `WishlistGrid`, `ReviewForm`, `BackInStockNotify`, `BundleAdd`, `RecentlyViewed`, `QuickView`, `SizeGuide`
+
+Site catalog (domain-neutral — separate extension/home):
+- Wave S1: `StoreHeader`, `AnnouncementBar`, `StoreFooter`, `PredictiveSearch`, `NewsletterSignup`, `FaqAccordion`, `MediaShowcase`, `NoticeToasts`
+- Wave S2: `Breadcrumbs`, `LocaleSelector`, `SocialTestimonials`, `MediaCollage`
 
 ---
 

@@ -14,7 +14,7 @@
 - `addToCart` / `checkout` actions (client-side only) ✅
 - `cart` XState machine (definition only, no server persistence) ✅
 
-**Missing**: ~10 more commerce components, entire server domain (`packages/server/src/domains/commerce/`), Stripe Connect integration, Shopify adapter, multi-currency, tax, shipping, order management.
+**Missing**: 48 more components across two catalogs (50 planned total incl. Hero + ProductCard): 15 transactional-core + 21 commerce-expansion in the commerce extension, plus 12 domain-neutral site-catalog sections (header/footer/announcement/search/FAQ/media) that belong in a Site catalog, not commerce — full breakdown in `COMPONENT_CATALOG_REQUIREMENTS.md`. Also missing: entire server domain (`packages/server/src/domains/commerce/`), Stripe Connect integration, Shopify adapter, multi-currency, tax, shipping, order management.
 
 ---
 
@@ -88,6 +88,8 @@ Based on deep research of leading platforms (Shopify, WooCommerce, BigCommerce, 
 | ML optimization loop | ❌ | ❌ | ❌ | Custom | Custom | Custom | Custom | ✅ **Our Differentiator** |
 | Manageable AI agents | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ **Our Differentiator** |
 
+> **Market update (Aug 2026)**: commercetools shipped an AI Hub plus a standalone agentic-commerce product, **AgenticLift** (Jan 2026), letting AI agents read product data and transact on top of existing enterprise stacks. This validates the agentic thesis but remains enterprise middleware — none of the surveyed platforms ship per-visitor layout generation, merchant-managed agent staff, or schema-level attribution.
+
 ---
 
 ## What We Have vs. What We Need
@@ -136,7 +138,9 @@ packages/server/src/domains/commerce/
 └── index.ts                    # CommerceDomainDeps, createCommerceDomain
 ```
 
-### Missing Commerce Catalog Components (~10 More Needed)
+### Missing Commerce Catalog Components (Core 15 of 48)
+
+The table lists only the transactional core. The full backlog adds 21 commerce-expansion components (filters, sliders, galleries, checkout flow, account panels) plus 12 domain-neutral site sections (header, footer, announcement bar, search, FAQ, media) that belong in a **Site catalog**, not commerce — see "Catalog Expansion" in `COMPONENT_CATALOG_REQUIREMENTS.md`.
 
 | Component | Priority | Description |
 |-----------|----------|-------------|

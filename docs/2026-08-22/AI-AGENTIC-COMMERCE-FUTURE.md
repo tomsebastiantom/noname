@@ -4,28 +4,29 @@
 
 ---
 
-## Part 1: What Changed in the Industry (2025 Research)
+## Part 1: What Changed in the Industry (2025–2026 Research)
 
 The commerce industry crossed a threshold: **AI is no longer a feature inside stores — AI is becoming a shopping channel that sits outside stores.** Three protocol-level standards plus platform moves define the new battlefield:
 
 ### 1.1 The Agentic Commerce Protocols
 
-| Protocol | Backers | What it does | Status |
-|----------|---------|--------------|--------|
-| **ACP (Agentic Commerce Protocol)** | OpenAI + Stripe | "Buy it in ChatGPT" — merchants expose products + delegated checkout inside ChatGPT conversations. Merchant of record stays the seller; Stripe handles payment tokenization via Shared Payment Tokens. | Live with Etsy/Shopify sellers |
-| **UCP (Universal Commerce Protocol)** | Google | Open standard for "agent-ready websites" — products, carts, checkout, warranties as discoverable agent-negotiable entities across any assistant (Gemini, third-party agents). | Announced; spec public |
-| **AP2 (Agent Payments Protocol)** | Google + Coinbase + Mastercard + 60+ | Cryptographic "mandates" proving a human authorized an agent's purchase (intent cart mandates, cart payment mandates) — solves non-repudiation for agent-initiated payments. | Spec phase, broad coalition |
+| Protocol | Backers | What it does | Status (verified 2026-08) |
+|----------|---------|--------------|---------------------------|
+| **UCP (Universal Commerce Protocol)** | Google + Shopify (open source) | The consolidating standard for agent-ready stores: products, carts, checkout, discounts, fulfillment exposed as discoverable, negotiable capabilities at `/.well-known/ucp`. Shopify's Catalog API is its discovery layer; ECP (Embedded Commerce Protocol, born from Checkout Kit) renders the merchant's own checkout inside agent surfaces. | Spec public (`v2026-01-11`, ucp.dev); Tech Council includes Amazon, Meta, Microsoft, Salesforce, Stripe, Etsy, Target, Wayfair; Shopify Spring '26 opened it to every developer |
+| **ACP (Agentic Commerce Protocol)** | OpenAI + Stripe (+ PayPal) | Delegated checkout with Shared Payment Tokens; merchant of record stays the seller. Its flagship deployment, ChatGPT Instant Checkout, was **shut down March 2026** after near-zero merchant adoption (~12–30 Shopify stores ever live); ChatGPT pivoted to a discovery-first model. | Spec alive (Beta `2026-04-17`) and adopted by **Microsoft Copilot Checkout** (live in-chat checkout, US, Jan 2026) — treat as a secondary rail, not the primary target |
+| **AP2 (Agent Payments Protocol)** | Google + Coinbase + Mastercard + 60+ | Cryptographic "mandates" proving a human authorized an agent's purchase (intent/cart/payment mandates) — solves non-repudiation for agent-initiated payments. Composes underneath UCP/ACP as the trust layer. | v0.2 (adds human-not-present payments); donated to the **FIDO Alliance** (Apr 2026); FIDO working groups chaired by Mastercard/Visa and CVS Health/Google/OpenAI |
 
-**Why this matters to us**: Every one of these protocols needs exactly what our architecture already produces — **structured, machine-readable product data and machine-composable commerce actions.** A JSON-native store is trivially agent-addressable. A Liquid/PHP store is not.
+**Lesson from the ACP shake-out**: in-chat checkout without merchant flexibility failed commercially — discovery and execution are two different problems. The durable layer is what all three protocols need anyway, and what our architecture already produces: **structured, machine-readable product data and machine-composable commerce actions.** A JSON-native store is one `/.well-known/ucp` manifest away from agent-addressability. A Liquid/PHP store is not.
 
 ### 1.2 Platform Moves
 
 | Platform | Move | Signal |
 |----------|------|--------|
-| **Shopify** | Catalog syndication to ChatGPT/Perplexity/Copilot; **Universal Cart** (cross-merchant cart carried by the assistant); Checkout Kit | Shopify is repositioning from storefront host → **commerce rails for AI surfaces** |
-| **Amazon** | Rufus (shopping assistant) backed by Cosmo (semantic intent model); agentic seller ops (pricing, inventory, listings) | Discovery is shifting from keyword search → **intent conversation** |
-| **Google** | AI Mode shopping, agentic **"Buy for me"**, virtual try-on | Checkout itself becomes delegable |
-| **Perplexity / Copilot** | In-assistant product cards + buy | New traffic sources with zero storefront visits |
+| **Shopify** | Co-developed UCP with Google; **Catalog API** syndicates structured listings to ChatGPT/Copilot/Google AI Mode/Shop app (Catalog-powered AI search converts ~2x vs scraped data); **Agentic Storefronts** control plane; Spring '26 removed the approval gate for agentic developers | Shopify is repositioning from storefront host → **commerce rails for AI surfaces** |
+| **Microsoft** | **Copilot Checkout** (Jan 2026): live in-chat checkout on ACP with PayPal/Stripe/Etsy; Shopify merchants auto-enrolled; **Brand Agents** deploy brand-voice AI shopping assistants on merchant sites | Post-shutdown, Microsoft operates the largest live in-chat checkout surface |
+| **Amazon** | Rufus retired (May 2026), merged into **Alexa for Shopping**: Auto-Buy, Scheduled Actions, cross-retailer **Buy for Me**, Shop Direct; agentic seller ops | Discovery is shifting from keyword search → **intent conversation** — and agents now complete purchases off-platform |
+| **Google** | Agentic checkout (Nov 2025): price-watch → **"Buy for me"** executes on the merchant site; Universal Cart; AI Mode shopping; virtual try-on | Checkout itself becomes delegable across the open web |
+| **Perplexity** | In-assistant product cards + buy; zero merchant fees | New traffic sources with zero storefront visits |
 
 ### 1.3 The Strategic Consequence for Us
 
@@ -36,7 +37,7 @@ FUTURE A (passive):  Merchant's store gets scraped/syndicated by assistants.
                      Margins compress; brand becomes a SKU row in ChatGPT.
 
 FUTURE B (active):   Merchant runs an AI-NATIVE store that:
-                     - Is fully legible to external agents (ACP/UCP endpoints)
+                     - Is fully legible to external agents (UCP read-side, ACP/Copilot sell-side)
                      - Fights back with per-visitor generation when humans DO visit
                      - Deploys its OWN agents as staff (ops, content, optimization)
 ```
@@ -49,12 +50,12 @@ Our platform is uniquely positioned for Future B because the hard part of both A
 
 | Capability | Who does it best today | Technique | Our equivalent slot |
 |-----------|----------------------|-----------|---------------------|
-| Product discovery | Amazon Rufus, Perplexity | Semantic retrieval over catalog + session context | Context engine + analytics events as retrieval features |
+| Product discovery | Amazon Alexa for Shopping (ex-Rufus), Perplexity | Semantic retrieval over catalog + session context | Context engine + analytics events as retrieval features |
 | Merchant copilot | Shopify Sidekick | Chat over store admin data; drafts policies/listings | Agent panel (already built in editor) |
 | Content generation | Shopify Magic | Product descriptions, SEO meta from images/title | AI pipeline domain (60% built) |
 | Layout/experience optimization | Nobody mainstream | — | **Our core bet**: generate + bandit-select full layouts |
 | Dynamic pricing | Amazon seller agents | Rule + RL hybrid on margin/inventory signals | Phase 3 (denied-guardrail by default) |
-| Support/shopping concierge | Intercom Fin, Rufus | RAG over catalog/policies | Nango-connected agent tools |
+| Support/shopping concierge | Intercom Fin, Alexa for Shopping | RAG over catalog/policies | Nango-connected agent tools |
 | Creative testing | Meta Advantage+ | Generative variants + budget bandit | Same math, applied to layout JSON instead of ad creative |
 
 **Key insight from research**: conversion lifts attributed to AI personalization/recommendation stack range ~10–25% (site-specific), but *every* measured winner shares one property: **closed feedback loop between exposure decision and outcome measurement.** Our schemaId+variantId+contextHash attribution is precisely that loop, at finer granularity than anyone.
@@ -69,10 +70,10 @@ As documented in `COMMERCE_ENGINE_GAP_ANALYSIS.md`: server commerce domain, comp
 ### Phase B (Phase 1): Store becomes agent-legible
 | Deliverable | Description |
 |-------------|-------------|
-| **Product feed endpoint** | Structured product JSON (schema.org/Product superset) at a stable URL — prerequisite for every aggregator and protocol |
-| **`llms.txt` + agent manifest** | Machine-readable description of store capabilities, policies, shipping, returns |
-| **ACP/UCP read-side** | Products + availability exposed so external assistants can browse accurately |
-| **Checkout delegation stub** | Delegated-checkout endpoint pattern reserved (Stripe Shared Payment Token compatible shape) |
+| **Product feed endpoint** | Structured product JSON (schema.org/Product superset) at a stable URL — shaped to also satisfy Shopify Catalog / UCP discovery expectations |
+| **`/.well-known/ucp` manifest + `llms.txt`** | UCP capability discovery document (checkout/discount/fulfillment capabilities, payment handlers) plus machine-readable store capabilities, policies, shipping, returns |
+| **UCP read-side** | Products + availability exposed so external assistants (Gemini, Copilot, ChatGPT discovery) can browse accurately |
+| **Checkout delegation stub** | UCP checkout-session-compatible shape reserved — maps naturally onto our XState cart JSONB — keeping Stripe Shared Payment Token compatibility for ACP rails |
 
 ### Phase C (Phase 2): Agents as staff
 | Agent Role | Tasks (human assigns, reviews, approves — existing Mastra guardrails) |
@@ -86,9 +87,9 @@ As documented in `COMMERCE_ENGINE_GAP_ANALYSIS.md`: server commerce domain, comp
 ### Phase D (Phase 3): Two-way agentic commerce
 | Deliverable | Description |
 |-------------|-------------|
-| **ACP sell-side** | Merchant opts in; orders can originate inside ChatGPT; we handle webhook → order creation identically to Stripe webhooks |
-| **Universal Cart participation** | Cart state machine already externalizable (XState JSONB) — expose cart ops as protocol endpoints |
-| **AP2 mandate verification** | Accept agent-initiated orders carrying intent/payment mandates; verify before fulfillment |
+| **Protocol sell-side (UCP first)** | Merchant opts in; orders can originate inside agent surfaces — Gemini/Google AI Mode and Shopify-ecosystem agents via UCP; Copilot Checkout via ACP. We handle session/webhook completion identically to Stripe webhooks |
+| **Checkout sessions as protocol objects** | Cart state machine already externalizable (XState JSONB) — expose create/update/complete as UCP checkout sessions rather than bespoke cart ops |
+| **AP2 mandate verification** | Accept agent-initiated orders carrying intent/payment mandates (FIDO-governed AP2 v0.2); verify signatures before fulfillment |
 | **Buyer-side agent (opt-in)** | "Reorder my usual," price-watch, bundle negotiation — platform ships reference buyer agent |
 
 ### Phase E (Phase 4): Self-improving stores
@@ -140,17 +141,23 @@ As documented in `COMMERCE_ENGINE_GAP_ANALYSIS.md`: server commerce domain, comp
 
 ## Sources (Primary Research)
 
-- [Stripe — Developing an open standard for agentic commerce](https://stripe.com/blog/developing-an-open-standard-for-agentic-commerce)
-- [OpenAI — Buy it in ChatGPT & Agentic Commerce Protocol](https://openai.com/index/buy-it-in-chatgpt/)
+Protocol state:
+- [UCP — specification hub](https://ucp.dev/)
 - [Google Developers — Under the Hood: Universal Commerce Protocol](https://developers.googleblog.com/under-the-hood-universal-commerce-protocol-ucp/)
+- [Shopify Engineering — Building the Universal Commerce Protocol](https://shopify.engineering/ucp)
+- [Shopify — Spring '26 Edition: agentic commerce for every developer](https://www.shopify.com/news/spring-26-edition-dev)
+- [Stripe — Developing an open standard for agentic commerce](https://stripe.com/blog/developing-an-open-standard-for-agentic-commerce) (launch, Sep 2025 — historical)
+- [OpenAI — Buy it in ChatGPT](https://openai.com/index/buy-it-in-chatgpt/) (launch, Sep 2025 — Instant Checkout discontinued Mar 2026)
+- [TWWIM — OpenAI shuts down Instant Checkout: 12 Shopify merchants went live](https://www.twwim.ai/blog/openai-shuts-down-instant-checkout-12-shopify-merchants)
+- [Evolve Media — ChatGPT Shopping in 2026: Why Instant Checkout Failed and What Replaced It](https://evolveamz.com/chatgpt-shopping-instant-checkout-guide)
 - [Google Cloud — Announcing Agent Payments Protocol (AP2)](https://cloud.google.com/blog/products/ai-machine-learning/announcing-agents-to-payments-ap2-protocol)
-- [PYMNTS — Shopify Brings Merchant Catalogs to ChatGPT, Perplexity and Copilot](https://www.pymnts.com/news/artificial-intelligence/2025/shopify-brings-merchant-catalogs-to-chatgpt-perplexity-and-copilot/)
-- [PYMNTS — Shopify's Universal Cart Makes AI the New Storefront](https://www.pymnts.com/news/ecommerce/2025/shopify-universal-cart-ai-new-storefront/)
+- [FIDO Alliance — Standards for trusted AI-agent interactions (AP2 donation)](https://fidoalliance.org/fido-alliance-to-develop-standards-for-trusted-ai-agent-interactions/)
+
+Platform moves:
+- [Microsoft — Conversations that Convert: Copilot Checkout and Brand Agents](https://about.ads.microsoft.com/en/blog/post/january-2026/conversations-that-convert-copilot-checkout-and-brand-agents)
+- [SellerForge — Amazon Alexa for Shopping Replaces Rufus (May 2026)](https://www.sellerforge.ai/blog/amazon-alexa-for-shopping-replaces-rufus)
+- [SellerMetrics — Amazon Merges Rufus and Alexa: Prepare for Agentic AI Search](https://sellermetrics.app/amazon-merges-rufus-and-alexa)
+- [Digital Commerce 360 — commercetools introduces standalone agentic commerce product (AgenticLift)](https://www.digitalcommerce360.com/2026/01/21/commercetools-introduces-standalone-agentic-commerce-product/)
 - [Google Blog — Shop with AI Mode, agentic buying & virtual try-on](https://blog.google/products-and-platforms/products/shopping/google-shopping-ai-mode-virtual-try-on-update/)
 - [9to5Google — Google agentic 'Buy for me' rollout](https://9to5google.com/2025/11/13/google-agentic-shopping/)
-- [Zinc — What Is ACP? The Agentic Commerce Protocol Explained](https://www.zinc.com/blog/what-is-acp)
-- [Search Engine Journal — What Google's UCP Tells Us About Agent-Ready Websites](https://www.searchenginejournal.com/what-googles-ucp-tells-us-about-agent-ready-websites/574220/)
-- [ZoNurus/BBE — How Amazon Rufus decides recommendations (Cosmo)](https://www.zonguru.com/blog/how-amazon-rufus-recommends-products)
-- [PPC Land — Amazon introduces agentic AI across seller platform](https://ppc.land/amazon-introduces-agentic-ai-across-seller-platform/)
-- [Zipify — Shopify Sidekick capabilities overview](https://zipify.com/blog-shopify-copilot/)
 - [Mirakl — Making product pages visible to AI agents (AEO/GEO)](https://www.mirakl.com/blogs/brands-sellers/how-to-make-your-product-pages-visible-for-ai-agents/)
