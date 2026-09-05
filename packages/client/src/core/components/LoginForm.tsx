@@ -75,7 +75,7 @@ export function LoginForm({
 
   const enabledProviders = useMemo(() => {
     const serverProviders = authConfig?.providers ?? [];
-    const fromSpec = providerList;
+    const fromSpec = providerList ?? [];
     if (fromSpec.length === 0) return serverProviders;
     return serverProviders.filter(
       (p) => fromSpec.includes(p as AuthProvider) || p.startsWith("custom:"),

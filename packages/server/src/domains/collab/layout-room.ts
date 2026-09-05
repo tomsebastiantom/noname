@@ -147,6 +147,22 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
         return;
       }
 
+      // Collab doc diverged from baseline — but Postgres may have moved too
+      // (seed, agent, or another replica wrote after this room loaded, or this
+      // room rehydrated from stale Automerge chunks). Never overwrite a moved
+      // row with stale room state: converge the room onto Postgres instead and
+      // let the next real edit persist against the fresh baseline.
+      const row = await deps.layout.get(room.orgId, room.layoutDocumentId);
+      if (row) {
+        const dbSpec = (row.data.spec ?? { root: "", elements: {} }) as Record<string, unknown>;
+        validateSpec(dbSpec);
+        if (JSON.stringify(dbSpec) !== baselineJson) {
+          reimportRoomSpecFromDb(room, dbSpec);
+          room.baselineSpec = cloneSpec(dbSpec);
+          return;
+        }
+      }
+
       await deps.layout.update(room.orgId, room.layoutDocumentId, { spec: collabSpec });
       room.baselineSpec = cloneSpec(collabSpec);
     } catch (err) {
@@ -246,6 +262,17 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     if (!handle.isReady()) {
       const binary = Automerge.save(specToAutomergeDoc(spec));
       handle = repo.import<Record<string, unknown>>(binary, { docId: documentId });
+    } else {
+      // Rehydrated Automerge chunks may predate the latest Postgres write
+      // (seed, agent, or another replica). Converge the room onto Postgres
+      // BEFORE baselining — otherwise the first persist would overwrite fresh
+      // DB state with stale room state and no ops trace.
+      const current = automergeDocToSpec(handle.doc() as AutomergeSpecDoc);
+      if (JSON.stringify(current) !== JSON.stringify(spec)) {
+        handle.change((draft) => {
+          applyLocalSpecToDraft(draft as AutomergeSpecDoc, current, spec);
+        });
+      }
     }
 
     const room: Room = {
