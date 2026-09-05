@@ -1,14 +1,14 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { Label } from "../../../components/ui/label";
-import { ADMIN_STATE } from "../../../core/admin-state";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import { ADMIN_STATE } from "../../core/admin-state";
 import {
   type AssetSummary,
   documentIdFromFieldValue,
   getAsset,
   uploadAsset,
-} from "../../content-entries";
+} from "../../documents/content-entries";
 
 export type MediaFieldLabels = {
   uploadFileLabel: string;

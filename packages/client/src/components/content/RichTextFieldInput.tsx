@@ -2,7 +2,7 @@ import { lazy, Suspense } from "react";
 import type { MediaFieldLabels } from "./MediaFieldInput";
 
 const RichTextTipTapEditor = lazy(() =>
-  import("../../../components/rich-text/RichTextTipTapEditor").then((m) => ({
+  import("../rich-text/RichTextTipTapEditor").then((m) => ({
     default: m.RichTextTipTapEditor,
   })),
 );

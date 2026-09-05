@@ -1,9 +1,15 @@
 {
   "$schema": "https://app.kilo.ai/config.json",
+  "snapshot": false,
   "mcp": {
     "playwright": {
       "type": "local",
-      "command": ["node", "C:\\Workspace\\noname\\node_modules\\@playwright\\mcp\\cli.js", "--browser", "chrome"],
+      "command": [
+        "node",
+        "C:\\Workspace\\noname\\node_modules\\@playwright\\mcp\\cli.js",
+        "--browser",
+        "chrome"
+      ],
       "enabled": true,
       "timeout": 30000
     }

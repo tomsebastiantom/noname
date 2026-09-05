@@ -146,6 +146,8 @@ export function EditorCanvasSlot() {
     canRedo,
     collabEnabled,
     collabPeers,
+    templateName,
+    layoutDocumentId,
   } = useEditorSessionData();
   const {
     undo,
@@ -163,6 +165,7 @@ export function EditorCanvasSlot() {
       <EditorCanvas
         previewSpec={previewSpec}
         registry={registry}
+        routeKey={`${templateName}:${layoutDocumentId ?? "draft"}`}
         storedSpec={storedSpec}
         pendingElementId={pendingAdd?.tempElementId ?? null}
         pendingComponentType={pendingAdd?.componentType ?? null}

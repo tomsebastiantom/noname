@@ -15,7 +15,7 @@ import { peerPresenceColor } from "../../collab/presence";
 import { getEditorDragComponentType, setEditorDragComponentType } from "../../editor-drag-state";
 import type { CanvasPreviewWidth } from "../../editor-layout-prefs";
 import { editMetaForType } from "../../lib/edit-metadata";
-import { canRemoveElement, findParentId, getElement, specStructureKey } from "../../lib/spec-utils";
+import { canRemoveElement, findParentId, getElement } from "../../lib/spec-utils";
 import type { EditSelection } from "../../lib/types";
 import { EDITOR_DRAG_MIME, PALETTE_DRAG_MIME } from "../../lib/types";
 import type { EditorShellLabels } from "../../schemas/components";
@@ -97,6 +97,7 @@ const PREVIEW_MAX_WIDTH: Record<Exclude<CanvasPreviewWidth, "full">, number> = {
 export function EditorCanvas({
   previewSpec,
   registry,
+  routeKey,
   storedSpec,
   pendingElementId,
   pendingComponentType,
@@ -117,6 +118,8 @@ export function EditorCanvas({
 }: {
   previewSpec: Spec;
   registry: ComponentRegistry;
+  /** Stable per template+document — remounts the preview shell only on route switch, never per keystroke. */
+  routeKey: string;
   storedSpec: Spec | null;
   pendingElementId: string | null;
   pendingComponentType: string | null;
@@ -536,7 +539,7 @@ export function EditorCanvas({
       onMouseMove={onCollabPointerMove ? handleCollabPointerMove : undefined}
       onMouseLeave={onCollabPointerMove ? handleCollabPointerLeave : undefined}
     >
-      <CatalogUiShell key={specStructureKey(previewSpec)} spec={previewSpec} registry={registry} />
+      <CatalogUiShell key={routeKey} spec={previewSpec} registry={registry} />
 
       {selectionChip ? (
         <div

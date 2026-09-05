@@ -1,4 +1,5 @@
 import { PERMISSIONS } from "@noname/auth";
+import { ROUTE_TABLE } from "../platform-routes";
 import type { AuthSessionStatus } from "./team-users";
 import { sessionHasPermission } from "./team-users";
 
@@ -45,22 +46,17 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
     sessionHasPermission(s, PERMISSIONS.AGENT_MANAGE),
 };
 
-export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = {
-  home: "/admin",
-  pages: "/admin/pages",
-  content: "/admin/content",
-  layout: "/admin/layout",
-  auth: "/admin/settings/auth",
-  integrations: "/admin/settings/integrations",
-  login: "/admin/settings/login",
-  users: "/admin/settings/users",
-  scope: "/admin/settings/scope",
-  analytics: "/admin/settings/analytics",
-  flags: "/admin/settings/flags",
-  replay: "/admin/settings/replay",
-  traces: "/admin/settings/traces",
-  agents: "/admin/settings/agents",
-};
+/** Derived from ROUTE_TABLE — add the route there, not here. Shortest path wins. */
+export const ADMIN_ROUTE_PATHS: Record<AdminRouteId, string> = (() => {
+  const paths = {} as Record<AdminRouteId, string>;
+  const byShortest = [...ROUTE_TABLE].sort((a, b) => a.path.length - b.path.length);
+  for (const entry of byShortest) {
+    if (entry.adminRouteId && !(entry.adminRouteId in paths)) {
+      paths[entry.adminRouteId] = entry.path;
+    }
+  }
+  return paths;
+})();
 
 const PATH_ENTRIES = (Object.entries(ADMIN_ROUTE_PATHS) as [AdminRouteId, string][]).sort(
   (a, b) => b[1].length - a[1].length,

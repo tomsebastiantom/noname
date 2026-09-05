@@ -1,5 +1,6 @@
 import * as Automerge from "@automerge/automerge";
 import type { Spec } from "@json-render/core";
+import { specValueEqual } from "../lib/spec-equal";
 
 export type AutomergeSpecDoc = Record<string, unknown>;
 
@@ -173,7 +174,7 @@ function patchRecordInPlace(
   }
   for (const [key, nextVal] of Object.entries(next)) {
     const prevVal = prev[key];
-    if (JSON.stringify(prevVal) === JSON.stringify(nextVal)) continue;
+    if (specValueEqual(prevVal, nextVal)) continue;
     if (isPlainObject(prevVal) && isPlainObject(nextVal) && isPlainObject(draft[key])) {
       patchRecordInPlace(draft[key] as Record<string, unknown>, prevVal, nextVal);
       continue;
@@ -188,12 +189,12 @@ function applyElementDiffToDraft(
   nextEl: Record<string, unknown>,
 ): void {
   for (const field of ["type", "visible"] as const) {
-    if (JSON.stringify(prevEl[field]) !== JSON.stringify(nextEl[field])) {
+    if (!specValueEqual(prevEl[field], nextEl[field])) {
       if (nextEl[field] === undefined) delete draftEl[field];
       else assignJsonField(draftEl, field, nextEl[field]);
     }
   }
-  if (JSON.stringify(prevEl.props) !== JSON.stringify(nextEl.props)) {
+  if (!specValueEqual(prevEl.props, nextEl.props)) {
     if (nextEl.props === undefined) {
       delete draftEl.props;
     } else if (!isPlainObject(draftEl.props) || !isPlainObject(nextEl.props)) {
@@ -206,7 +207,7 @@ function applyElementDiffToDraft(
       );
     }
   }
-  if (JSON.stringify(prevEl.children) !== JSON.stringify(nextEl.children)) {
+  if (!specValueEqual(prevEl.children, nextEl.children)) {
     if (nextEl.children === undefined) delete draftEl.children;
     else assignJsonField(draftEl, "children", nextEl.children);
   }

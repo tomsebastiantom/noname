@@ -3,6 +3,7 @@ import type { Spec } from "@json-render/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { sessionUserId } from "../../auth/session";
 import { type AutomergeSpecDoc, applyLocalSpecToDraft } from "./automerge-spec";
+import { specValueEqual } from "../lib/spec-equal";
 import { awaitCollabDocHandle } from "./await-collab-doc-handle";
 import { layoutCollabWsUrl, mintLayoutCollabTicket } from "./collab-api";
 import { collabHumanDisplayName } from "./collab-display-name";
@@ -21,10 +22,6 @@ import {
 
 const RECONNECT_DELAYS_MS = [500, 1_500, 4_000] as const;
 const POST_CONNECT_SYNC_MS = 400;
-
-function specJson(spec: Spec): string {
-  return JSON.stringify(spec);
-}
 
 function applySpecToHandle(handle: DocHandle<Spec>, prev: Spec | null, next: Spec): void {
   handle.change((draft) => {
@@ -225,14 +222,14 @@ export function useLayoutCollab({
         applyingLocalRef.current = true;
         try {
           const pendingLocal = pendingLocalSpecRef.current;
-          if (pendingLocal && specJson(pendingLocal) !== specJson(remoteDoc)) {
+          if (pendingLocal && !specValueEqual(pendingLocal, remoteDoc)) {
             applySpecToHandle(handle, remoteDoc, pendingLocal);
             pendingLocalSpecRef.current = null;
           }
           const current = handle.doc();
           lastSpecRef.current = current;
           const editorSpec = initialSpecRef.current;
-          if (editorSpec && specJson(current) !== specJson(editorSpec)) {
+          if (editorSpec && !specValueEqual(current, editorSpec)) {
             onRemoteSpecRef.current(current);
           }
         } finally {

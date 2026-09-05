@@ -1,5 +1,6 @@
 import type { Spec } from "@json-render/core";
 import { useCallback, useRef, useState } from "react";
+import { specValueEqual } from "../lib/spec-equal";
 import { cloneSpec } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
 
@@ -54,10 +55,7 @@ function selectionEqual(a: EditSelection | null, b: EditSelection | null): boole
 }
 
 function snapshotsEqual(a: EditorHistorySnapshot, b: EditorHistorySnapshot): boolean {
-  if (
-    a.storedSpec !== b.storedSpec &&
-    JSON.stringify(a.storedSpec) !== JSON.stringify(b.storedSpec)
-  ) {
+  if (!specValueEqual(a.storedSpec, b.storedSpec)) {
     return false;
   }
   if (!recordsEqual(a.contentValues, b.contentValues)) return false;

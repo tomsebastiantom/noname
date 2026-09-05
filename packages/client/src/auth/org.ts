@@ -1,4 +1,5 @@
 import { storeSlugFromHost } from "@noname/shared";
+import { apiFetchOptional } from "../lib/api";
 
 let cached: { key: string; orgId: string } | null = null;
 
@@ -17,13 +18,16 @@ export async function resolveOrgIdFromHostname(hostname: string): Promise<string
 
   if (cached?.key === sub) return cached.orgId;
 
-  const res = await fetch(`/api/tenants/resolve/${encodeURIComponent(sub)}`);
-  if (!res.ok) return null;
-
-  const body = (await res.json()) as { data?: { orgId?: string } };
-  const orgId = body.data?.orgId ?? null;
-  if (orgId) cached = { key: sub, orgId };
-  return orgId;
+  try {
+    const body = await apiFetchOptional<{ data?: { orgId?: string } }>(
+      `/api/tenants/resolve/${encodeURIComponent(sub)}`,
+    );
+    const orgId = body?.data?.orgId ?? null;
+    if (orgId) cached = { key: sub, orgId };
+    return orgId;
+  } catch {
+    return null;
+  }
 }
 
 export async function requireOrgId(): Promise<string> {

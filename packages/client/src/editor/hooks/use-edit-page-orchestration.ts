@@ -1,41 +1,24 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
-import { createStateStore, type SetState } from "@json-render/react";
-import { parseRichTextFieldValue, richTextToPlainText } from "@noname/documents";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { clearSession } from "../../auth/session";
-import { ApiConflictError, isAuthErrorMessage } from "../../lib/api";
+import { isAuthErrorMessage } from "../../lib/api";
 import { activateEditorDevtools, releaseEditorDevtools } from "../activate-editor-devtools";
 import { useLayoutCollab } from "../collab/use-layout-collab";
-import { defaultPropsForType } from "../components/palette/ComponentPalette";
-import { CONTENT_DEFAULT_LOCALE } from "../content-entries";
 import {
-  addComponentToSpec,
-  canRemoveElement,
-  duplicateElementSubtree,
-  getElement,
-  type LayerReorderPlacement,
   mergeContentDraftIntoPreview,
   mergePendingAddIntoPreview,
   mergeStoredEditsIntoPreview,
-  patchBlockProps,
-  removeElementFromSpec,
-  reorderElement,
 } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
-import { editorHandlers } from "../registry";
-import {
-  type EditorSessionActions,
-  type EditorSessionData,
-  mergeShellRuntimeConfig,
-} from "./editor-session";
+import { useEditorHistory } from "./use-editor-history";
+import { useEditorPersistence } from "./use-editor-persistence";
+import { editorShellStore, useEditorSessionData } from "./use-editor-session-data";
+import { useEditorShellConfig } from "./use-editor-shell-config";
+import { useElementMutations } from "./use-element-mutations";
 import { useContentDraft } from "./use-content-draft";
 import { useDocumentActivity } from "./use-document-activity";
-import { useEditorHistory } from "./use-editor-history";
-import { parseShellFromSpec, useEditorShell } from "./use-editor-shell-labels";
 import { useLayoutDraft } from "./use-layout-draft";
-
-const editorShellStore = createStateStore({});
 
 export function useEditPageOrchestration({
   displaySpec,
@@ -69,35 +52,16 @@ export function useEditPageOrchestration({
 
   const contentDraft = useContentDraft(pageContentRef);
   const [pendingAdd, setPendingAdd] = useState<PendingBlockAdd | null>(null);
+  const [selection, setSelection] = useState<EditSelection | null>(null);
   const dirty = layoutDirty || contentDraft.dirty || pendingAdd !== null;
 
-  const [selection, setSelection] = useState<EditSelection | null>(null);
-  const [agentTargetField, setAgentTargetField] = useState<{
-    fieldKey: string;
-    locale: string;
-    fieldLabel: string;
-    fieldType: string;
-    excerpt?: string;
-  } | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveConflict, setSaveConflict] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  const [activityRefreshKey, setActivityRefreshKey] = useState(0);
   const {
-    spec: fetchedShellSpec,
-    labels: fetchedShellLabels,
-    missing: fetchedShellMissing,
-    loading: shellLabelsLoading,
-  } = useEditorShell({ skip: Boolean(shellSpecFromEdge) });
-
-  const shellSpec = shellSpecFromEdge ?? fetchedShellSpec;
-  const parsedShell = parseShellFromSpec(shellSpec);
-  const shellLabels = shellSpecFromEdge ? parsedShell.labels : fetchedShellLabels;
-  const shellLabelsMissing = shellSpecFromEdge ? !parsedShell.labels : fetchedShellMissing;
-
-  const lastActivity = useDocumentActivity(draft?.layoutId, shellLabels, activityRefreshKey, {
-    enabled: !loading && Boolean(shellLabels),
-  });
+    shellLabels,
+    shellLabelsMissing,
+    shellLabelsLoading,
+    mergedShellSpec,
+    labelsMissingMessage,
+  } = useEditorShellConfig({ shellSpecFromEdge, templateName, pageContentRef });
 
   useEffect(() => {
     activateEditorDevtools();
@@ -119,13 +83,6 @@ export function useEditPageOrchestration({
     return next;
   }, [displaySpec, storedSpec, contentDraft.values, pendingAdd]);
 
-  useEffect(() => {
-    if (!pendingAdd || !selection || !storedSpec) return;
-    if (selection.elementId === pendingAdd.tempElementId) return;
-    if (getElement(storedSpec, selection.elementId)) return;
-    setSelection({ elementId: pendingAdd.tempElementId, componentType: pendingAdd.componentType });
-  }, [pendingAdd, selection, storedSpec]);
-
   const storedSpecRef = useRef(storedSpec);
   storedSpecRef.current = storedSpec;
   const contentValuesRef = useRef(contentDraft.values);
@@ -135,25 +92,78 @@ export function useEditPageOrchestration({
   const selectionRef = useRef(selection);
   selectionRef.current = selection;
 
-  const history = useEditorHistory({
-    getSnapshot: () => ({
+  // Stable snapshot closures (refs only) so history methods keep identity across
+  // keystrokes — this is what lets memoized palette/layer rows bail out.
+  const getSnapshot = useCallback(
+    () => ({
       storedSpec: storedSpecRef.current,
       contentValues: { ...contentValuesRef.current },
       pendingAdd: pendingAddRef.current,
       selection: selectionRef.current,
     }),
-    applySnapshot: (snapshot) => {
+    [],
+  );
+  const { restoreValues } = contentDraft;
+
+  // Stable forwarder: persistence owns setSaveSuccess but is created after mutations.
+  const saveSuccessRef = useRef<(value: string | null) => void>(() => {});
+  const setSaveSuccess = useCallback(
+    (value: string | null) => saveSuccessRef.current(value),
+    [],
+  );
+
+  const applySnapshot = useCallback(
+    (snapshot: {
+      storedSpec: Spec | null;
+      contentValues: Record<string, string>;
+      pendingAdd: PendingBlockAdd | null;
+      selection: EditSelection | null;
+    }) => {
       if (snapshot.storedSpec) {
         updateStoredSpec(snapshot.storedSpec);
       }
-      contentDraft.restoreValues(snapshot.contentValues);
+      restoreValues(snapshot.contentValues);
       setPendingAdd(snapshot.pendingAdd);
       setSelection(snapshot.selection);
       setSaveSuccess(null);
     },
-  });
+    [updateStoredSpec, restoreValues, setPendingAdd, setSelection, setSaveSuccess],
+  );
+
+  const history = useEditorHistory({ getSnapshot, applySnapshot });
+
+  // Stable facade: useEditorHistory methods are individually stable, but the
+  // returned object literal is new each render — which would bust memoization
+  // downstream (palette rows, layer rows).
+  const { recordBeforeChange, recordBeforeFieldChange, clearHistory } = history;
+  const stableHistory = useMemo(
+    () => ({ recordBeforeChange, recordBeforeFieldChange, clearHistory }),
+    [recordBeforeChange, recordBeforeFieldChange, clearHistory],
+  );
 
   const collabEnabled = !loading && Boolean(draft?.layoutId && storedSpec);
+  const collabRef = useRef<{ applyLocalSpec: (spec: Spec) => void } | null>(null);
+  const applyLocalSpec = useCallback(
+    (spec: Spec) => collabRef.current?.applyLocalSpec(spec),
+    [],
+  );
+
+  const collabEnabledRef = useRef(collabEnabled);
+  collabEnabledRef.current = collabEnabled;
+
+  const mutations = useElementMutations({
+    storedSpecRef,
+    pendingAddRef,
+    updateStoredSpec,
+    history: stableHistory,
+    collabEnabledRef,
+    applyLocalSpec,
+    pendingAdd,
+    setPendingAdd,
+    selection,
+    setSelection,
+    setSaveSuccess,
+  });
 
   const layoutCollab = useLayoutCollab({
     enabled: collabEnabled && !loading && Boolean(draft?.layoutId && storedSpec),
@@ -161,6 +171,7 @@ export function useEditPageOrchestration({
     initialSpec: storedSpec,
     onRemoteSpec: updateStoredSpec,
   });
+  collabRef.current = layoutCollab;
 
   useEffect(() => {
     if (!collabEnabled || !layoutCollab.connected) return;
@@ -202,392 +213,76 @@ export function useEditPageOrchestration({
       }
       setSaveSuccess(null);
     },
-    [updateStoredSpec, collabEnabled, layoutCollab],
+    [updateStoredSpec, collabEnabled, layoutCollab, setSaveSuccess],
   );
 
-  const handleStoredChange = useCallback(
-    (next: Spec) => {
-      history.recordBeforeFieldChange();
-      updateStoredSpec(next);
-      if (collabEnabled) {
-        layoutCollab.applyLocalSpec(next);
-      }
-      setSaveSuccess(null);
-    },
-    [updateStoredSpec, history, collabEnabled, layoutCollab],
-  );
+  const commitRef = useRef<() => Spec | null>(() => null);
+  commitRef.current = mutations.commitPendingToSpec;
 
-  const stageAdd = useCallback(
-    (componentType: string, parentId?: string, insertIndex?: number) => {
-      if (!storedSpec) return;
-      history.recordBeforeChange();
-      const defaults = defaultPropsForType(componentType);
-      if (!defaults) return;
-      const tempElementId = `${componentType.toLowerCase()}-pending-${Date.now().toString(36)}`;
-      setPendingAdd({
-        componentType,
-        tempElementId,
-        parentId,
-        insertIndex,
-        props: { ...defaults.defaultProps },
-      });
-      setSelection({ elementId: tempElementId, componentType });
-      setSaveSuccess(null);
-    },
-    [storedSpec, history],
-  );
-
-  const cancelPendingAdd = useCallback(() => {
-    history.recordBeforeChange();
-    setPendingAdd(null);
-    setSelection(null);
-    setSaveSuccess(null);
-  }, [history]);
-
-  const patchPendingProps = useCallback(
-    (fieldPath: string, value: unknown) => {
-      history.recordBeforeFieldChange();
-      setPendingAdd((current) => {
-        if (!current) return current;
-        return {
-          ...current,
-          props: patchBlockProps(current.props, fieldPath, value),
-        };
-      });
-      setSaveSuccess(null);
-    },
-    [history],
-  );
-
-  const commitPendingToSpec = useCallback((): Spec | null => {
-    if (!pendingAdd || !storedSpec) return storedSpec;
-    history.recordBeforeChange();
-    const defaults = defaultPropsForType(pendingAdd.componentType);
-    if (!defaults) return storedSpec;
-    const result = addComponentToSpec(
-      storedSpec,
-      pendingAdd.componentType,
-      {
-        defaultProps: pendingAdd.props,
-        preferredParentType: defaults.preferredParentType,
-      },
-      { parentId: pendingAdd.parentId, insertIndex: pendingAdd.insertIndex },
-    );
-    if (!result) return storedSpec;
-    setPendingAdd(null);
-    setSelection({ elementId: result.elementId, componentType: pendingAdd.componentType });
-    updateStoredSpec(result.spec);
-    return result.spec;
-  }, [pendingAdd, storedSpec, updateStoredSpec, history]);
-
-  const handleDelete = useCallback(
-    (elementId: string) => {
-      history.recordBeforeChange();
-      if (pendingAdd?.tempElementId === elementId) {
-        cancelPendingAdd();
-        return;
-      }
-      if (!storedSpec || !canRemoveElement(storedSpec, elementId)) return;
-      const next = removeElementFromSpec(storedSpec, elementId);
-      if (!next) return;
-      updateStoredSpec(next);
-      setSelection(null);
-      setSaveSuccess(null);
-    },
-    [pendingAdd, storedSpec, updateStoredSpec, cancelPendingAdd, history],
-  );
-
-  const isStoredElement = useCallback(
-    (elementId: string) => Boolean(storedSpec && getElement(storedSpec, elementId)),
-    [storedSpec],
-  );
-
-  const handleReorder = useCallback(
-    (elementId: string, targetId: string, placement: LayerReorderPlacement) => {
-      if (!storedSpec || pendingAdd?.tempElementId === elementId) return;
-      history.recordBeforeChange();
-      const next = reorderElement(storedSpec, elementId, targetId, placement);
-      if (!next) return;
-      updateStoredSpec(next);
-      if (collabEnabled) {
-        layoutCollab.applyLocalSpec(next);
-      }
-      setSaveSuccess(null);
-    },
-    [storedSpec, pendingAdd, updateStoredSpec, history, collabEnabled, layoutCollab],
-  );
-
-  const handleDuplicate = useCallback(
-    (elementId: string) => {
-      if (!storedSpec || pendingAdd?.tempElementId === elementId) return;
-      history.recordBeforeChange();
-      const result = duplicateElementSubtree(storedSpec, elementId);
-      if (!result) return;
-      updateStoredSpec(result.spec);
-      if (collabEnabled) {
-        layoutCollab.applyLocalSpec(result.spec);
-      }
-      const el = getElement(result.spec, result.newElementId);
-      if (el) {
-        setSelection({ elementId: result.newElementId, componentType: el.type });
-      }
-      setSaveSuccess(null);
-    },
-    [storedSpec, pendingAdd, updateStoredSpec, history, collabEnabled, layoutCollab],
-  );
-
-  const exitEditMode = useCallback(() => {
-    const url = new URL(window.location.href);
-    url.searchParams.delete("edit");
-    window.location.replace(url.pathname + url.search + url.hash);
-  }, []);
-
-  const handleSave = useCallback(async () => {
-    if (!shellLabels) return;
-    setSaveError(null);
-    setSaveConflict(false);
-    try {
-      if (contentDraft.dirty) {
-        await contentDraft.saveContent();
-      }
-      const specAfterPending = pendingAdd ? commitPendingToSpec() : storedSpec;
-      if (layoutDirty || pendingAdd) {
-        if (!specAfterPending) throw new Error("No layout to save");
-        await saveDraft(specAfterPending);
-      }
-      setSaveSuccess(shellLabels.draftSavedLabel);
-      history.clearHistory();
-      setActivityRefreshKey((key) => key + 1);
-      onReload();
-    } catch (err) {
-      if (err instanceof ApiConflictError) {
-        setSaveConflict(true);
-        setSaveError(shellLabels.saveConflictMessage);
-        return;
-      }
-      setSaveError(err instanceof Error ? err.message : String(err));
-    }
-  }, [
+  const persistence = useEditorPersistence({
     contentDraft,
-    pendingAdd,
+    commitRef,
+    pendingAddRef,
+    storedSpec,
     layoutDirty,
-    storedSpec,
-    commitPendingToSpec,
     saveDraft,
-    onReload,
-    shellLabels,
-    history,
-  ]);
-
-  const handlePublish = useCallback(async () => {
-    if (!shellLabels) return;
-    setSaveError(null);
-    setSaveConflict(false);
-    try {
-      if (contentDraft.dirty) {
-        await contentDraft.saveContent();
-      }
-      const specAfterPending = pendingAdd ? commitPendingToSpec() : storedSpec;
-      if (!specAfterPending) throw new Error("No layout to save");
-      await publishDraft(specAfterPending);
-      if (pageContentRef && contentDraft.parsed) {
-        await contentDraft.publishContent();
-      }
-      setSaveSuccess(shellLabels.publishedLabel);
-      history.clearHistory();
-      setActivityRefreshKey((key) => key + 1);
-      onReload();
-    } catch (err) {
-      if (err instanceof ApiConflictError) {
-        setSaveConflict(true);
-        setSaveError(shellLabels.saveConflictMessage);
-        return;
-      }
-      setSaveError(err instanceof Error ? err.message : String(err));
-    }
-  }, [
-    contentDraft,
-    pendingAdd,
-    storedSpec,
-    commitPendingToSpec,
     publishDraft,
+    discardChanges,
+    cancelPendingAdd: mutations.cancelPendingAdd,
     pageContentRef,
+    shellLabels,
+    history: stableHistory,
     onReload,
-    shellLabels,
-    history,
-  ]);
+  });
+  saveSuccessRef.current = persistence.setSaveSuccess;
 
-  const handleRefreshConflict = useCallback(() => {
-    setSaveConflict(false);
-    setSaveError(null);
-    history.clearHistory();
-    onReload();
-  }, [history, onReload]);
+  const lastActivity = useDocumentActivity(draft?.layoutId, shellLabels, persistence.activityRefreshKey, {
+    enabled: !loading && Boolean(shellLabels),
+  });
 
-  const handleContentFieldChange = useCallback(
-    (key: string, value: string) => {
-      history.recordBeforeFieldChange();
-      contentDraft.updateField(key, value);
-    },
-    [contentDraft, history],
-  );
-
-  const handleContentFieldFocus = useCallback(
-    (field: { key: string; type: string; label: string }) => {
-      const rawValue = contentDraft.values[field.key] ?? "";
-      let excerpt: string | undefined;
-      if (field.type === "richText" && rawValue.trim()) {
-        const parsed = parseRichTextFieldValue(rawValue);
-        if (parsed) {
-          const plain = richTextToPlainText(parsed).trim();
-          if (plain) excerpt = plain.slice(0, 200);
-        }
-      }
-      setAgentTargetField({
-        fieldKey: field.key,
-        locale: CONTENT_DEFAULT_LOCALE,
-        fieldLabel: field.label,
-        fieldType: field.type,
-        ...(excerpt ? { excerpt } : {}),
-      });
-    },
-    [contentDraft.values],
-  );
-
-  const contentDraftEditor = useMemo(
-    () => ({
-      values: contentDraft.values,
-      contentType: contentDraft.parsed?.contentType ?? null,
-      contentRef: pageContentRef,
-      schema: contentDraft.schema,
-      locale: CONTENT_DEFAULT_LOCALE,
-      loading: contentDraft.loading,
-      onFieldChange: handleContentFieldChange,
-      onFieldFocus: handleContentFieldFocus,
-    }),
-    [
-      contentDraft.values,
-      contentDraft.parsed?.contentType,
-      contentDraft.schema,
-      contentDraft.loading,
-      handleContentFieldChange,
-      handleContentFieldFocus,
-      pageContentRef,
-    ],
-  );
-
-  const chromeError = saveError ?? loadError ?? contentDraft.loadError ?? layoutCollab.error;
-
-  const handleDiscard = useCallback(() => {
-    discardChanges();
-    contentDraft.discardContent();
-    cancelPendingAdd();
-    history.clearHistory();
-    setSaveSuccess(null);
-    setSaveError(null);
-    setSaveConflict(false);
-  }, [discardChanges, contentDraft, cancelPendingAdd, history]);
-
-  const sessionData = useMemo((): EditorSessionData | null => {
-    if (!shellLabels) return null;
-    return {
-      templateName,
-      pageContentRef,
-      registry,
-      shellLabels,
-      previewSpec,
-      storedSpec,
-      selection,
-      pendingAdd,
-      contentDraft: contentDraftEditor,
-      agentTargetField,
-      dirty,
-      draftStatus: draft?.status ?? null,
-      canPublish,
-      chromeError,
-      saveSuccess,
-      saveConflict,
-      lastActivity,
-      canUndo: history.canUndo,
-      canRedo: history.canRedo,
-      collabEnabled,
-      collabConnected: layoutCollab.connected,
-      collabError: layoutCollab.error,
-      collabPeers: layoutCollab.peers,
-      agentTaskActivity: layoutCollab.agentTaskActivity,
-      layoutDocumentId: draft?.layoutId ?? null,
-    };
-  }, [
-    shellLabels,
+  const { sessionData, sessionActions, editorActionHandlers } = useEditorSessionData({
     templateName,
     pageContentRef,
     registry,
+    shellLabels,
     previewSpec,
     storedSpec,
     selection,
-    pendingAdd,
-    contentDraftEditor,
-    agentTargetField,
-    dirty,
-    draft?.status,
-    canPublish,
-    chromeError,
-    saveSuccess,
-    saveConflict,
-    lastActivity,
-    history.canUndo,
-    history.canRedo,
-    collabEnabled,
-    layoutCollab.connected,
-    layoutCollab.error,
-    layoutCollab.peers,
-    layoutCollab.agentTaskActivity,
-    draft?.layoutId,
-  ]);
-
-  const sessionActions: EditorSessionActions = {
     setSelection,
-    stageAdd,
-    handleStoredChange,
-    patchPendingProps,
-    handleSave,
-    handlePublish,
-    handleDiscard,
-    handleRefreshConflict,
-    undo: history.undo,
-    redo: history.redo,
-    exitEditMode,
-    cancelPendingAdd,
-    handleDelete,
-    handleDuplicate,
-    handleReorder,
-    isStoredElement,
+    pendingAdd,
+    contentDraft,
+    dirty,
+    draftStatus: draft?.status ?? null,
+    canPublish,
+    chromeError: persistence.saveError ?? loadError ?? contentDraft.loadError ?? layoutCollab.error,
+    saveSuccess: persistence.saveSuccess,
+    saveConflict: persistence.saveConflict,
+    lastActivity,
+    history,
+    collabEnabled,
+    layoutCollab,
+    layoutDocumentId: draft?.layoutId ?? null,
+    stageAdd: mutations.stageAdd,
+    handleStoredChange: mutations.handleStoredChange,
+    patchPendingProps: mutations.patchPendingProps,
+    handleSave: persistence.handleSave,
+    handlePublish: persistence.handlePublish,
+    handleDiscard: persistence.handleDiscard,
+    handleRefreshConflict: persistence.handleRefreshConflict,
+    cancelPendingAdd: mutations.cancelPendingAdd,
+    handleDelete: mutations.handleDelete,
+    handleDuplicate: mutations.handleDuplicate,
+    handleReorder: mutations.handleReorder,
+    isStoredElement: mutations.isStoredElement,
     reportCollabPointerMove,
     reloadLayoutAfterAgentPatch,
     applyAgentRevertedLayoutSpec,
-  };
-
-  const editorActionHandlers = useMemo(
-    () =>
-      editorHandlers(
-        () => editorShellStore.set.bind(editorShellStore) as unknown as SetState,
-        () => editorShellStore.getSnapshot(),
-      ),
-    [],
-  );
-
-  const mergedShellSpec = useMemo(() => {
-    if (!shellSpec) return null;
-    return mergeShellRuntimeConfig(shellSpec, { templateName, pageContentRef });
-  }, [shellSpec, templateName, pageContentRef]);
-
-  const labelsMissingMessage = useMemo(() => {
-    if (shellLabels?.labelsMissingHint) return shellLabels.labelsMissingHint;
-    if (!shellSpec?.root) return "Editor shell layout missing.";
-    const shell = shellSpec.elements[shellSpec.root];
-    const hint = (shell?.props as { labelsMissingHint?: string } | undefined)?.labelsMissingHint;
-    return hint ?? "Editor shell layout missing or labels invalid.";
-  }, [shellLabels, shellSpec]);
+    exitEditMode: useCallback(() => {
+      const url = new URL(window.location.href);
+      url.searchParams.delete("edit");
+      window.location.replace(url.pathname + url.search + url.hash);
+    }, []),
+  });
 
   return {
     editorShellStore,

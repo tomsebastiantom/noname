@@ -1,6 +1,6 @@
 import type { Spec } from "@json-render/core";
 import { JSONUIProvider, Renderer } from "@json-render/react-email";
-import { Label } from "../../../components/ui/label";
+import { Label } from "../ui/label";
 
 const PREVIEW_STATE = {
   name: "Preview User",

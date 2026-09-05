@@ -29,7 +29,7 @@ import {
 import { Button } from "../ui/button";
 import { Label } from "../ui/label";
 import "./rich-text-editor.css";
-import type { MediaFieldLabels } from "../../admin/components/content/MediaFieldInput";
+import type { MediaFieldLabels } from "../content/MediaFieldInput";
 import { richTextToTipTapJson, tipTapJsonToRichText } from "./tiptap-bridge";
 import {
   EmbeddedAssetBlock,

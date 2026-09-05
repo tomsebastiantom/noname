@@ -1,5 +1,5 @@
 import type { Spec } from "@json-render/core";
-import { type DragEvent, useCallback, useState } from "react";
+import { type DragEvent, memo, useCallback, useRef, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { useEditorPrefs } from "../../hooks/use-editor-prefs";
 import { componentAcceptsChildren } from "../../lib/catalog-slots";
@@ -82,16 +82,16 @@ function resolveLayerDrop(
   return { targetId, placement: "after" };
 }
 
-function LayerTreeRow({
-  displaySpec,
-  structureSpec,
+const LayerTreeRow = memo(function LayerTreeRow({
   elementId,
+  elementType,
   depth,
   selected,
   isPending,
   isStored,
   isDragging,
   isCollapsed,
+  isRoot,
   hasChildren,
   dropHint,
   labels,
@@ -102,15 +102,15 @@ function LayerTreeRow({
   onDragOverRow,
   onDropRow,
 }: {
-  displaySpec: Spec;
-  structureSpec: Spec;
   elementId: string;
+  elementType: string;
   depth: number;
   selected: boolean;
   isPending: boolean;
   isStored: boolean;
   isDragging: boolean;
   isCollapsed: boolean;
+  isRoot: boolean;
   hasChildren: boolean;
   dropHint: DropHint | null;
   labels: EditorShellLabels;
@@ -121,12 +121,8 @@ function LayerTreeRow({
   onDragOverRow: (elementId: string, event: DragEvent<HTMLDivElement>) => void;
   onDropRow: (elementId: string, event: DragEvent<HTMLDivElement>) => void;
 }) {
-  const el = getElement(displaySpec, elementId);
-  if (!el) return null;
-
-  const isRoot = elementId === structureSpec.root;
   const canDrag = isStored && !isRoot;
-  const typeLabel = componentLabel(el.type);
+  const typeLabel = componentLabel(elementType);
 
   const dropClass =
     dropHint?.targetId === elementId ? ` layer-tree-row--drop-${dropHint.placement}` : "";
@@ -160,7 +156,7 @@ function LayerTreeRow({
       <button
         type="button"
         className="layer-tree-row-label"
-        onClick={() => onSelect({ elementId, componentType: el.type })}
+        onClick={() => onSelect({ elementId, componentType: elementType })}
       >
         <span className="layer-tree-row-type">{typeLabel}</span>
         <span className="layer-tree-row-id">{elementId}</span>
@@ -192,7 +188,7 @@ function LayerTreeRow({
       )}
     </div>
   );
-}
+});
 
 function LayerTreeNode({
   displaySpec,
@@ -243,15 +239,15 @@ function LayerTreeNode({
   return (
     <>
       <LayerTreeRow
-        displaySpec={displaySpec}
-        structureSpec={structureSpec}
         elementId={elementId}
+        elementType={el.type}
         depth={depth}
         selected={selected}
         isPending={isPending}
         isStored={isStoredElement(elementId)}
         isDragging={dragElementId === elementId}
         isCollapsed={isCollapsed}
+        isRoot={elementId === structureSpec.root}
         hasChildren={hasChildren}
         dropHint={dropHint}
         labels={labels}
@@ -320,23 +316,35 @@ export function LayerTreePanel({
 
   const toggleCollapsed = onToggleCollapsed;
 
+  // Ref-forwarded so drag callbacks keep stable identity across keystrokes
+  // (structureSpec gets a new identity per edit) and memoized rows bail out.
+  const structureSpecRef = useRef(structureSpec);
+  structureSpecRef.current = structureSpec;
+  const dropHintRef = useRef(dropHint);
+  dropHintRef.current = dropHint;
+  const dragElementIdRef = useRef(dragElementId);
+  dragElementIdRef.current = dragElementId;
+  const onReorderRef = useRef(onReorder);
+  onReorderRef.current = onReorder;
+
   const readDragId = useCallback(
     (event: DragEvent<HTMLElement>): string | null => {
-      return event.dataTransfer.getData(LAYER_TREE_DRAG_MIME) || dragElementId;
+      return event.dataTransfer.getData(LAYER_TREE_DRAG_MIME) || dragElementIdRef.current;
     },
-    [dragElementId],
+    [],
   );
 
   const handleDragOverRow = useCallback(
     (targetId: string, event: DragEvent<HTMLDivElement>) => {
-      if (!structureSpec) return;
+      const spec = structureSpecRef.current;
+      if (!spec) return;
       const dragId = readDragId(event);
       if (!dragId) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
       const rect = event.currentTarget.getBoundingClientRect();
       const hint = resolveLayerDrop(
-        structureSpec,
+        spec,
         dragId,
         targetId,
         event.clientY - rect.top,
@@ -344,33 +352,35 @@ export function LayerTreePanel({
       );
       setDropHint(hint);
     },
-    [structureSpec, readDragId],
+    [readDragId],
   );
 
   const handleDropRow = useCallback(
     (targetId: string, event: DragEvent<HTMLDivElement>) => {
-      if (!structureSpec) return;
+      const spec = structureSpecRef.current;
+      if (!spec) return;
       const dragId = readDragId(event);
       if (!dragId) return;
       event.preventDefault();
       const rect = event.currentTarget.getBoundingClientRect();
+      const cached = dropHintRef.current;
       const hint =
-        dropHint?.targetId === targetId
-          ? dropHint
+        cached?.targetId === targetId
+          ? cached
           : resolveLayerDrop(
-              structureSpec,
+              spec,
               dragId,
               targetId,
               event.clientY - rect.top,
               rect.height,
             );
       if (hint) {
-        onReorder(dragId, hint.targetId, hint.placement);
+        onReorderRef.current(dragId, hint.targetId, hint.placement);
       }
       setDragElementId(null);
       setDropHint(null);
     },
-    [structureSpec, readDragId, dropHint, onReorder],
+    [readDragId],
   );
 
   const handleDragEnd = useCallback(() => {

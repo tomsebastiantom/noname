@@ -9,7 +9,7 @@ import {
 } from "../../../components/ui/card";
 import { isEditableField } from "../../content-entries";
 import { DocumentAccessFields } from "../shared/DocumentAccessFields";
-import { ContentEntryFieldInput } from "./content-entry-field-input";
+import { ContentEntryFieldInput } from "../../../components/content/content-entry-field-input";
 import { ContentEntryListPanel } from "./content-entry-list-panel";
 import type { ContentEntryEditorProps } from "./content-entry-types";
 

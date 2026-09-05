@@ -1,3 +1,4 @@
+import { ROUTE_TABLE } from "../platform-routes";
 import type { AuthSessionStatus } from "./team-users";
 
 /**
@@ -14,11 +15,16 @@ import type { AuthSessionStatus } from "./team-users";
  */
 export type AccountRouteId = "preferences" | "notifications" | "security";
 
-export const ACCOUNT_ROUTE_PATHS: Record<AccountRouteId, string> = {
-  preferences: "/account/communication-preferences",
-  notifications: "/account/notifications",
-  security: "/account/security",
-};
+/** Derived from ROUTE_TABLE — add the route there, not here. */
+export const ACCOUNT_ROUTE_PATHS: Record<AccountRouteId, string> = (() => {
+  const paths = {} as Record<AccountRouteId, string>;
+  for (const entry of ROUTE_TABLE) {
+    if (entry.accountRouteId && !(entry.accountRouteId in paths)) {
+      paths[entry.accountRouteId] = entry.path;
+    }
+  }
+  return paths;
+})();
 
 export type AccountNavLink = {
   id: AccountRouteId;

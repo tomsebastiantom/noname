@@ -11,9 +11,9 @@ import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentFieldSchema } from "../../content-entries";
 import type { DocumentAccessLabels } from "../shared/DocumentAccessFields";
 import { DocumentAccessFields } from "../shared/DocumentAccessFields";
-import { ContentEntryFieldInput } from "./content-entry-field-input";
-import type { MediaFieldLabels } from "./MediaFieldInput";
-import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
+import { ContentEntryFieldInput } from "../../../components/content/content-entry-field-input";
+import type { MediaFieldLabels } from "../../../components/content/MediaFieldInput";
+import type { ReferenceFieldLabels } from "../../../components/content/ReferenceFieldInput";
 
 export function ContentEntryCreateForm({
   entryCount,

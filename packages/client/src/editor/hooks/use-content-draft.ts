@@ -1,5 +1,6 @@
 import type { ContentTypeSchema } from "@noname/documents";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { specValueEqual } from "../lib/spec-equal";
 import { formatApiError } from "../../lib/api";
 import {
   CONTENT_DEFAULT_LOCALE,
@@ -65,7 +66,7 @@ export function useContentDraft(pageContentRef: string | null, locale = CONTENT_
 
   const dirty = useMemo(() => {
     if (!parsed) return false;
-    return JSON.stringify(values) !== JSON.stringify(baseline);
+    return !specValueEqual(values, baseline);
   }, [parsed, values, baseline]);
 
   const updateField = useCallback((key: string, value: string) => {

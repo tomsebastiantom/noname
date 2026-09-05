@@ -269,11 +269,11 @@ importers:
   packages/extensions:
     dependencies:
       '@json-render/core':
-        specifier: ^0.19.0
-        version: 0.19.0(zod@4.4.3)
+        specifier: ^0.20.0
+        version: 0.20.0(zod@4.4.3)
       '@json-render/react':
-        specifier: ^0.19.0
-        version: 0.19.0(react@19.2.7)(zod@4.4.3)
+        specifier: ^0.20.0
+        version: 0.20.0(react@19.2.7)(zod@4.4.3)
       '@noname/documents':
         specifier: workspace:*
         version: link:../documents
@@ -1294,11 +1294,6 @@ packages:
     peerDependencies:
       react: ^19.0.0
       zod: ^4.0.0
-
-  '@json-render/react@0.19.0':
-    resolution: {integrity: sha512-kTW6b6cSNRrlEfCUf/69SLoLn+CufC968ruge9tnQlp9pDTGG/SK8pgM541FdgwMFA4zm3s5mpM3G8rdODKc/A==}
-    peerDependencies:
-      react: ^19.2.3
 
   '@json-render/react@0.20.0':
     resolution: {integrity: sha512-arRrlf7zeIJYM6i2JHcTBKW5Kl+ErBtoNR29h4i6rG4AtTzLmaWDgPTs35pr3MdSCTp0UxKwY4O3vWMdUihpRQ==}
@@ -6876,13 +6871,6 @@ snapshots:
       zod: 4.4.3
     transitivePeerDependencies:
       - react-dom
-
-  '@json-render/react@0.19.0(react@19.2.7)(zod@4.4.3)':
-    dependencies:
-      '@json-render/core': 0.19.0(zod@4.4.3)
-      react: 19.2.7
-    transitivePeerDependencies:
-      - zod
 
   '@json-render/react@0.20.0(react@19.2.7)(zod@4.4.3)':
     dependencies:

@@ -1,3 +1,4 @@
+import { apiFetchData } from "../lib/api";
 import { loadOidcConfig } from "./config";
 import {
   clearOAuthState,
@@ -30,18 +31,20 @@ export async function startIdpLogin(
     codeChallenge,
   });
 
-  const res = await fetch(`/api/auth/${storeSlug}/idp/${provider}/start?${params.toString()}`);
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Could not start ${provider} sign-in (${res.status})`);
-  }
-
-  const body = (await res.json()) as { data?: { authorizeUrl?: string } };
-  if (!body.data?.authorizeUrl) {
+  const data = await apiFetchData<{ authorizeUrl?: string }>(
+    `/api/auth/${storeSlug}/idp/${provider}/start?${params.toString()}`,
+  ).catch((err: unknown) => {
+    throw new Error(
+      err instanceof Error && !err.message.startsWith("HTTP")
+        ? err.message
+        : `Could not start ${provider} sign-in`,
+    );
+  });
+  if (!data?.authorizeUrl) {
     throw new Error("Missing authorize URL");
   }
 
-  window.location.href = body.data.authorizeUrl;
+  window.location.href = data.authorizeUrl;
 }
 
 export async function completeOAuthCallback(code: string): Promise<string> {
@@ -55,7 +58,12 @@ export async function completeOAuthCallback(code: string): Promise<string> {
     throw new Error("Missing oidc.json — run pnpm init:zitadel");
   }
 
-  const res = await fetch(`/api/auth/${saved.state.storeSlug}/callback`, {
+  const data = await apiFetchData<{
+    accessToken?: string;
+    expiresIn?: number;
+    email?: string | null;
+    displayName?: string | null;
+  }>(`/api/auth/${saved.state.storeSlug}/callback`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -64,29 +72,19 @@ export async function completeOAuthCallback(code: string): Promise<string> {
       clientId: oidc.clientId,
       redirectUri: oauthRedirectUri(),
     }),
+  }).catch((err: unknown) => {
+    throw new Error(
+      err instanceof Error && !err.message.startsWith("HTTP") ? err.message : "Sign-in failed",
+    );
   });
-
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Sign-in failed (${res.status})`);
-  }
-
-  const body = (await res.json()) as {
-    data?: {
-      accessToken?: string;
-      expiresIn?: number;
-      email?: string | null;
-      displayName?: string | null;
-    };
-  };
-  if (!body.data?.accessToken) {
+  if (!data?.accessToken) {
     throw new Error("No access token returned");
   }
 
-  setSessionToken(body.data.accessToken, body.data.expiresIn ?? 3600);
+  setSessionToken(data.accessToken, data.expiresIn ?? 3600);
   setSessionIdentity({
-    email: body.data.email ?? null,
-    displayName: body.data.displayName ?? null,
+    email: data.email ?? null,
+    displayName: data.displayName ?? null,
   });
   clearOAuthState();
   return saved.state.returnUrl;

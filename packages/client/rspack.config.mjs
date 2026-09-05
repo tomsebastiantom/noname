@@ -114,10 +114,19 @@ export default {
           name: "editor",
           chunks: "async",
         },
+        // Rich-text + realtime libs are editor-only: keep them out of the
+        // initial vendor chunk even if a static import leaks in later.
+        editorVendor: {
+          test: /[\\/]node_modules[\\/](@tiptap|@automerge|yjs|y-|prosemirror|lib0|rrweb)/,
+          name: "editor-vendor",
+          chunks: "async",
+          priority: 20,
+        },
         vendor: {
           test: /[\\/]node_modules[\\/]/,
           name: "vendor",
-          chunks: "all",
+          // "initial" only: async editor deps must not bloat the storefront.
+          chunks: "initial",
         },
       },
     },

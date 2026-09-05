@@ -1,3 +1,5 @@
+import { apiFetchOptional } from "../lib/api";
+
 export interface OidcConfig {
   issuer: string;
   clientId: string;
@@ -10,10 +12,8 @@ let cached: OidcConfig | null = null;
 export async function loadOidcConfig(): Promise<OidcConfig | null> {
   if (cached) return cached;
   try {
-    const res = await fetch("/oidc.json");
-    if (!res.ok) return null;
-    const data = (await res.json()) as OidcConfig;
-    if (!data.clientId) return null;
+    const data = await apiFetchOptional<OidcConfig>("/oidc.json");
+    if (!data?.clientId) return null;
     cached = data;
     return cached;
   } catch {

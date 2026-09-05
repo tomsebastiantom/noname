@@ -1,21 +1,7 @@
-import type { ReactNode } from "react";
+import type { ComponentFn } from "@json-render/react";
+import { catalog } from "../catalog";
 
-export interface ComponentCtx<P = Record<string, unknown>> {
-  props: P;
-  children?: ReactNode;
-  emit: (event: string) => void;
-}
-
-export function Hero({
-  props,
-  emit,
-}: ComponentCtx<{
-  title: string;
-  subtitle: string | null;
-  image: string | null;
-  ctaLabel: string | null;
-  ctaAction: string | null;
-}>) {
+export const Hero: ComponentFn<typeof catalog, "Hero"> = ({ props, emit }) => {
   return (
     <section style={{ padding: "64px 24px", textAlign: "center", background: "#f5f5f5" }}>
       {props.image && (
@@ -40,17 +26,9 @@ export function Hero({
       )}
     </section>
   );
-}
+};
 
-export function ProductCard({
-  props,
-  emit,
-}: ComponentCtx<{
-  title: string;
-  price: number;
-  image: string | null;
-  description: string | null;
-}>) {
+export const ProductCard: ComponentFn<typeof catalog, "ProductCard"> = ({ props, emit }) => {
   return (
     <div
       style={{
@@ -87,15 +65,9 @@ export function ProductCard({
       </div>
     </div>
   );
-}
+};
 
-export function GridBase({
-  props,
-  children,
-}: ComponentCtx<{
-  columns: number;
-  gap: number;
-}>) {
+export const GridBase: ComponentFn<typeof catalog, "GridBase"> = ({ props, children }) => {
   return (
     <div
       style={{
@@ -108,16 +80,12 @@ export function GridBase({
       {children}
     </div>
   );
-}
+};
 
-export function StackBase({
+export const StackBase: ComponentFn<typeof catalog, "StackBase"> = ({
   props,
   children,
-}: ComponentCtx<{
-  direction: "row" | "column";
-  gap: number;
-  align: "start" | "center" | "end" | "stretch";
-}>) {
+}) => {
   return (
     <div
       style={{
@@ -130,15 +98,9 @@ export function StackBase({
       {children}
     </div>
   );
-}
+};
 
-export function TextBase({
-  props,
-}: ComponentCtx<{
-  content: string;
-  variant: "h1" | "h2" | "h3" | "body" | "caption";
-  align: "left" | "center" | "right";
-}>) {
+export const TextBase: ComponentFn<typeof catalog, "TextBase"> = ({ props }) => {
   const styles: Record<string, React.CSSProperties> = {
     h1: { fontSize: "2rem", fontWeight: 700, margin: "0 0 16px" },
     h2: { fontSize: "1.5rem", fontWeight: 600, margin: "0 0 12px" },
@@ -161,16 +123,9 @@ export function TextBase({
     default:
       return <p style={style}>{props.content}</p>;
   }
-}
+};
 
-export function ButtonBase({
-  props,
-  emit,
-}: ComponentCtx<{
-  label: string;
-  variant: "primary" | "secondary" | "outline";
-  action: string | null;
-}>) {
+export const ButtonBase: ComponentFn<typeof catalog, "ButtonBase"> = ({ props, emit }) => {
   const variantStyles: Record<string, React.CSSProperties> = {
     primary: { background: "#000", color: "#fff", border: "none" },
     secondary: { background: "#666", color: "#fff", border: "none" },
@@ -192,17 +147,9 @@ export function ButtonBase({
       {props.label}
     </button>
   );
-}
+};
 
-export function ImageBase({
-  props,
-}: ComponentCtx<{
-  src: string;
-  alt: string;
-  fit: "cover" | "contain" | "fill";
-  width: number | null;
-  height: number | null;
-}>) {
+export const ImageBase: ComponentFn<typeof catalog, "ImageBase"> = ({ props }) => {
   return (
     <img
       src={props.src}
@@ -214,4 +161,4 @@ export function ImageBase({
       }}
     />
   );
-}
+};

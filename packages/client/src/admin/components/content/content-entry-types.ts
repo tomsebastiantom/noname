@@ -1,8 +1,8 @@
 import type { ReferenceFieldOptions } from "../../../core/actions/content";
 import type { ContentEntryRow, ContentTypeSchema } from "../../content-entries";
 import type { DocumentAccessLabels } from "../shared/DocumentAccessFields";
-import type { MediaFieldLabels } from "./MediaFieldInput";
-import type { ReferenceFieldLabels } from "./ReferenceFieldInput";
+import type { MediaFieldLabels } from "../../../components/content/MediaFieldInput";
+import type { ReferenceFieldLabels } from "../../../components/content/ReferenceFieldInput";
 
 export type ContentEntryFormLabels = DocumentAccessLabels & {
   title: string;

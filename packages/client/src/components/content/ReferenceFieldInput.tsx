@@ -1,7 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Button } from "../../../components/ui/button";
-import { Label } from "../../../components/ui/label";
-import type { ReferenceFieldOptions } from "../../../core/actions/content";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
+import type { ReferenceFieldOptions } from "../../core/actions/content";
 import {
   type ContentEntryRow,
   type ContentTypeSchema,
@@ -9,7 +9,7 @@ import {
   entryLabel,
   getContentType,
   listEntries,
-} from "../../content-entries";
+} from "../../documents/content-entries";
 
 export type ReferenceFieldLabels = {
   entriesLoadingLabel: string;

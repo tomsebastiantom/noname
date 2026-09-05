@@ -12,6 +12,7 @@ import { startIdpLogin } from "../../auth/idp-login";
 import { performLogout } from "../../auth/logout";
 import { requireStoreSlug } from "../../auth/org";
 import { isLoggedIn } from "../../auth/session";
+import { apiFetchDataOptional } from "../../lib/api";
 import { fetchAuthSessionStatus } from "../../auth/team-users";
 import { ADMIN_STATE } from "../admin-state";
 import {
@@ -36,29 +37,26 @@ export const authActions = {
       return;
     }
     try {
-      const res = await fetch(`/api/auth/${encodeURIComponent(storeSlug)}/config`);
-      if (!res.ok) {
+      const data = await apiFetchDataOptional<{
+        providers?: string[];
+        allowPassword?: boolean;
+        allowSignUp?: boolean;
+        allowPasswordReset?: boolean;
+        providerLabels?: Record<string, string>;
+        providerIcons?: Record<string, string>;
+      }>(`/api/auth/${encodeURIComponent(storeSlug)}/config`);
+      if (!data) {
         setState(LOGIN_STATE.authConfig, null);
         return;
       }
-      const body = (await res.json()) as {
-        data?: {
-          providers?: string[];
-          allowPassword?: boolean;
-          allowSignUp?: boolean;
-          allowPasswordReset?: boolean;
-          providerLabels?: Record<string, string>;
-          providerIcons?: Record<string, string>;
-        };
-      };
       const loaded: LoginAuthConfigState = {
         loadedAt: Date.now(),
-        providers: body.data?.providers ?? [],
-        allowPassword: body.data?.allowPassword !== false,
-        allowSignUp: body.data?.allowSignUp === true,
-        allowPasswordReset: body.data?.allowPasswordReset !== false,
-        providerLabels: body.data?.providerLabels ?? {},
-        providerIcons: body.data?.providerIcons ?? {},
+        providers: data.providers ?? [],
+        allowPassword: data.allowPassword !== false,
+        allowSignUp: data.allowSignUp === true,
+        allowPasswordReset: data.allowPasswordReset !== false,
+        providerLabels: data.providerLabels ?? {},
+        providerIcons: data.providerIcons ?? {},
       };
       setState(LOGIN_STATE.authConfig, loaded);
     } catch {

@@ -1,5 +1,5 @@
 import type { ComponentRegistry } from "@json-render/react";
-import { type DragEvent, useCallback, useMemo, useState } from "react";
+import { type DragEvent, memo, useCallback, useMemo, useState } from "react";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
 import { getEditorDragComponentType, setEditorDragComponentType } from "../../editor-drag-state";
@@ -30,7 +30,7 @@ function PinnedBlocksList({
             key={item.componentType}
             item={item}
             labels={labels}
-            onAdd={(type) => onAdd(type)}
+            onAdd={onAdd}
             onUnpin={unpin}
           />
         ))}
@@ -61,7 +61,7 @@ function FilteredBlocksList({
       <ul className="space-y-1">
         {visibleBlocks.map((item) => (
           <li key={item.componentType}>
-            <PaletteBlockButton item={item} labels={labels} onAdd={(type) => onAdd(type)} />
+            <PaletteBlockButton item={item} labels={labels} onAdd={onAdd} />
           </li>
         ))}
       </ul>
@@ -111,7 +111,7 @@ function paletteItemTitle(item: PaletteItem, canAdd: boolean, labels: EditorShel
   return `${labels.paletteDragToAddHint} ${item.label}`;
 }
 
-function PaletteBlockButton({
+const PaletteBlockButton = memo(function PaletteBlockButton({
   item,
   labels,
   onAdd,
@@ -141,9 +141,9 @@ function PaletteBlockButton({
       + {item.label}
     </Button>
   );
-}
+});
 
-function PinnedBlockRow({
+const PinnedBlockRow = memo(function PinnedBlockRow({
   item,
   labels,
   onAdd,
@@ -177,7 +177,7 @@ function PinnedBlockRow({
       </div>
     </li>
   );
-}
+});
 
 export function ComponentPalette({
   registry,
