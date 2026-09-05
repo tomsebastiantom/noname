@@ -1,6 +1,7 @@
 import type { ToolsInput } from "@mastra/core/agent";
 import { Agent } from "@mastra/core/agent";
 import { SpanStatusCode, trace } from "@opentelemetry/api";
+import { ServiceUnavailableError, ValidationError } from "../../../shared/domain-error";
 import type { AIPipeline } from "../../ai-pipeline/ports";
 import { orchestrateSystemPrompt } from "../../ai-pipeline/prompts/orchestrate-system";
 import type { AnalyticsService } from "../../analytics/ports";
@@ -106,10 +107,12 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
   return {
     async execute(orgId, type, prompt, input, options?: AgentExecuteOptions) {
       if (type !== "orchestrate") {
-        throw new Error(`Mastra executor only handles orchestrate tasks, got ${type}`);
+        throw new ValidationError("type", `Mastra executor only handles orchestrate tasks, got ${type}`);
       }
       if (!orchestrateEnabled()) {
-        throw new Error("Orchestrate agent tasks are disabled (AGENT_ORCHESTRATE_ENABLED=false)");
+        throw new ServiceUnavailableError(
+          "Orchestrate agent tasks are disabled (AGENT_ORCHESTRATE_ENABLED=false)",
+        );
       }
 
       const taskId = String(input.taskId ?? "unknown");

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { getOrgId } from "../../shared/org";
 import { notFound, ok } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
-import type { TenantSettingsService } from "../documents/contracts";
+import type { TenantSettingsService } from "../documents/ports";
 import type { EdgeService } from "./ports";
 
 export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSettingsService) {

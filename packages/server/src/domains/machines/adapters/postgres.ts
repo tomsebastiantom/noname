@@ -41,7 +41,8 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
       const rows = await db
         .select()
         .from(machineDefinitions)
-        .where(eq(machineDefinitions.orgId, orgId));
+        .where(eq(machineDefinitions.orgId, orgId))
+        .limit(200);
       return rows.map(mapDefinition);
     },
 
@@ -79,7 +80,8 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
       const rows = await db
         .select()
         .from(machineInstances)
-        .where(eq(machineInstances.orgId, orgId));
+        .where(eq(machineInstances.orgId, orgId))
+        .limit(200);
       return rows.map(mapInstance);
     },
 
@@ -99,7 +101,8 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
       const rows = await db
         .select()
         .from(machineTransitions)
-        .where(eq(machineTransitions.instanceId, instanceId));
+        .where(eq(machineTransitions.instanceId, instanceId))
+        .limit(200);
       return rows.map(mapTransition);
     },
   };

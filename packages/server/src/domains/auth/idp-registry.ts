@@ -1,4 +1,4 @@
-import type { TenantAuthConfig } from "../documents/contracts";
+import type { TenantAuthConfig } from "../documents/ports";
 import type { AuthConfigUpdate } from "./ports";
 
 export type IdpProviderId = "google" | "github" | "apple";

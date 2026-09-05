@@ -1,8 +1,4 @@
-import {
-  createLLMProvider,
-  createLLMProviderForApiKey,
-  type LLMProvider,
-} from "../ai-pipeline/providers";
+import type { LLMProvider } from "../ai-pipeline/providers";
 import type { TenantSettingsService } from "../documents/ports";
 import type {
   CommsCredentials,
@@ -108,8 +104,10 @@ function readCommsConfig(integrations: Record<string, unknown>): {
 export function createSecretsService(deps: {
   store: SecretStorePort;
   tenantSettings?: TenantSettingsService;
+  createProvider: () => LLMProvider;
+  createProviderForApiKey: (provider: "openai" | "anthropic", apiKey: string) => LLMProvider;
 }): SecretsService {
-  const { store, tenantSettings } = deps;
+  const { store, tenantSettings, createProvider, createProviderForApiKey } = deps;
 
   async function orgLlmKey(orgId: string, provider: LlmProviderName): Promise<string | null> {
     const secret = await store.getOrgSecret({ orgId, kind: "llm", provider });
@@ -158,8 +156,8 @@ export function createSecretsService(deps: {
 
   async function resolveLLMProvider(orgId: string): Promise<LLMProvider> {
     const resolved = await resolveLlmApiKey(orgId);
-    if (resolved) return createLLMProviderForApiKey(resolved.provider, resolved.apiKey);
-    return createLLMProvider();
+    if (resolved) return createProviderForApiKey(resolved.provider, resolved.apiKey);
+    return createProvider();
   }
 
   async function resolveCommsCredentials(orgId: string): Promise<CommsCredentials | null> {

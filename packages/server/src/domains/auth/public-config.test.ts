@@ -3,7 +3,7 @@ import type {
   AssetDocumentService,
   ContentDocumentService,
   TenantSettingsService,
-} from "../documents/contracts";
+} from "../documents/ports";
 import { createAuthService } from "./service";
 
 describe("auth publicConfig", () => {

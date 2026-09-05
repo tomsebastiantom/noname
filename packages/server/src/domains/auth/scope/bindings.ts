@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { mapWithConcurrency } from "../../../shared/concurrency";
 import { contentCollections, contentTeams } from "../../documents/schema";
 import type { ScopeDeps } from "./deps";
 import {
@@ -19,11 +20,16 @@ export function createBindingOps(deps: ScopeDeps) {
       const teamSlugs = new Set(teams.map((row) => row.slug));
       const bindingMap = new Map<string, CollectionTeamBinding>();
 
-      for (const collection of collections) {
-        const tuples = await deps.tupleReader.listRelationTuples({
+      const allTuples = await mapWithConcurrency(collections, 10, (collection) =>
+        deps.tupleReader.listRelationTuples({
           namespace: "Collection",
           objectId: collection.slug,
-        });
+        }),
+      );
+      for (let i = 0; i < collections.length; i++) {
+        const collection = collections[i];
+        if (!collection) continue;
+        const tuples = allTuples[i] ?? [];
         for (const tuple of tuples) {
           if (tuple.subject.type !== "Team" || !teamSlugs.has(tuple.subject.id)) continue;
           const key = `${collection.slug}\0${tuple.subject.id}`;
@@ -56,11 +62,16 @@ export function createBindingOps(deps: ScopeDeps) {
         .where(eq(contentCollections.orgId, orgId));
       const bindings: CollectionAgentBinding[] = [];
 
-      for (const collection of collections) {
-        const tuples = await deps.tupleReader.listRelationTuples({
+      const allTuples = await mapWithConcurrency(collections, 10, (collection) =>
+        deps.tupleReader.listRelationTuples({
           namespace: "Collection",
           objectId: collection.slug,
-        });
+        }),
+      );
+      for (let i = 0; i < collections.length; i++) {
+        const collection = collections[i];
+        if (!collection) continue;
+        const tuples = allTuples[i] ?? [];
         for (const tuple of tuples) {
           if (tuple.subject.type !== "Agent" || tuple.relation !== "editors") continue;
           bindings.push({ collection: collection.slug, agent: tuple.subject.id });

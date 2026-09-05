@@ -1,4 +1,5 @@
 import {
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -42,28 +43,41 @@ export const machineDefinitions = pgTable(
   }),
 );
 
-export const machineInstances = pgTable("machine_instances", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  orgId: text("org_id").notNull(),
-  machineName: text("machine_name").notNull(),
-  currentState: text("current_state").notNull(),
-  context: jsonb("context").notNull().default({}),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-  updated_at: timestamp("updated_at").notNull().defaultNow(),
-});
+export const machineInstances = pgTable(
+  "machine_instances",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    machineName: text("machine_name").notNull(),
+    currentState: text("current_state").notNull(),
+    context: jsonb("context").notNull().default({}),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    orgNameIdx: index("machine_instances_org_name_idx").on(t.orgId, t.machineName),
+    orgIdx: index("machine_instances_org_idx").on(t.orgId),
+  }),
+);
 
-export const machineTransitions = pgTable("machine_transitions", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  instanceId: uuid("instance_id").notNull(),
-  event: text("event").notNull(),
-  fromState: text("from_state").notNull(),
-  toState: text("to_state").notNull(),
-  params: jsonb("params").default({}),
-  guardResult: jsonb("guard_result").default({}),
-  success: text("success").notNull().default("true"),
-  error: text("error"),
-  created_at: timestamp("created_at").notNull().defaultNow(),
-});
+export const machineTransitions = pgTable(
+  "machine_transitions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    instanceId: uuid("instance_id").notNull(),
+    event: text("event").notNull(),
+    fromState: text("from_state").notNull(),
+    toState: text("to_state").notNull(),
+    params: jsonb("params").default({}),
+    guardResult: jsonb("guard_result").default({}),
+    success: text("success").notNull().default("true"),
+    error: text("error"),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    instanceIdx: index("machine_transitions_instance_idx").on(t.instanceId),
+  }),
+);
 
 // Machine definitions also carry a draft/published status (mirrors the
 // documents domain's layout status enum, kept local to this schema).

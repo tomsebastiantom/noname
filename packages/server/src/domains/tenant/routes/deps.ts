@@ -1,4 +1,4 @@
-import type { TenantSettingsService } from "../../documents/contracts";
+import type { TenantSettingsService } from "../../documents/ports";
 import type { TenantCatalogService } from "../ports";
 
 export interface TenantRouteDeps {

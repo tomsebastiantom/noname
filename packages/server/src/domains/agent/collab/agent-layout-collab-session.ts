@@ -9,7 +9,8 @@ import { mintCollabTicket } from "../../collab/collab-ticket";
 import { resolveLayoutCollabDocumentId } from "../../collab/layout-collab-document-id";
 import { LayoutCollabWsClient, layoutCollabWsUrl } from "../../collab/layout-collab-ws-client";
 import { serializeCollabPresenceClientMessage } from "../../collab/presence";
-import { validateSpec } from "../../documents/services/layout-helpers";
+import { validateSpec } from "../../documents";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import { formatCollabApplyError } from "./collab-apply-error";
 
 export type AgentLayoutCollabSessionOptions = {
@@ -95,7 +96,7 @@ export class AgentLayoutCollabSession {
     try {
       await this.openConnection();
     } catch (err) {
-      throw new Error(formatCollabApplyError(err));
+      throw new ServiceUnavailableError(formatCollabApplyError(err));
     }
   }
 
@@ -123,7 +124,7 @@ export class AgentLayoutCollabSession {
   currentSpec(): Record<string, unknown> {
     const handle = this.handle;
     if (!handle) {
-      throw new Error("Layout collab session not connected");
+      throw new ServiceUnavailableError("Layout collab session not connected");
     }
     return automergeDocToSpec(handle.doc() as AutomergeSpecDoc);
   }
@@ -144,7 +145,7 @@ export class AgentLayoutCollabSession {
   ): Record<string, unknown> {
     const handle = this.handle;
     if (!handle) {
-      throw new Error("Layout collab session not connected");
+      throw new ServiceUnavailableError("Layout collab session not connected");
     }
     validateSpec(next);
 
@@ -154,7 +155,7 @@ export class AgentLayoutCollabSession {
         applyLocalSpecToDraft(draft as AutomergeSpecDoc, prev, next);
       });
     } catch (err) {
-      throw new Error(formatCollabApplyError(err));
+      throw new ServiceUnavailableError(formatCollabApplyError(err));
     }
 
     this.focusElement(focusElementId ?? null, prev, next);

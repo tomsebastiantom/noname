@@ -27,7 +27,10 @@ export async function hmacHeaders(
   const payload = `${orgId}:${userId}:${role}`;
   const key = await getHmacKey(env.WORKER_SERVER_SECRET);
   const signature = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(payload));
-  const hmac = btoa(String.fromCodePoint(...new Uint8Array(signature)));
+  const bytes = new Uint8Array(signature);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i] ?? 0);
+  const hmac = btoa(binary);
 
   return {
     "x-org-id": orgId,

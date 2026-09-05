@@ -8,8 +8,8 @@ import {
   userIdFromAccessToken,
 } from "@noname/auth";
 import type { Context } from "hono";
+import { verifyAgentToken } from "../../shared/agent-token";
 import { getOrgId, getUserId } from "../../shared/org";
-import { verifyAgentToken } from "../agent/agent-token";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";

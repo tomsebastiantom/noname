@@ -17,18 +17,6 @@ export {
   providerIdFromKey,
   resolveLoginProviders,
 } from "./content-types/auth-provider";
-export type {
-  AssetDocumentService,
-  AssetDTO,
-  ContentDocumentService,
-  DocumentStorage,
-  LayoutDocumentService,
-  MediaRef,
-  PageTreeService,
-  TenantAuthConfig,
-  TenantSettingsDTO,
-  TenantSettingsService,
-} from "./ports";
 export {
   DEFAULT_TENANT_AUTH,
   enabledProviders,

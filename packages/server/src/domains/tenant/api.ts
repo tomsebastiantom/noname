@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import type { TenantSettingsService } from "../documents/contracts";
+import type { TenantSettingsService } from "../documents/ports";
 import type { TenantCatalogService } from "./ports";
 import { registerTenantCatalogRoutes } from "./routes/catalog";
 import { registerTenantComponentRoutes } from "./routes/components";

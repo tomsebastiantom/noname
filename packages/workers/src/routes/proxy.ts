@@ -14,7 +14,7 @@ import {
   isWebSocketUpgrade,
   proxyWebSocketToOrigin,
 } from "./proxy-websocket";
-import { isPublicGet, isPublicPost } from "./public-routes";
+import { routeIsPublic } from "./public-routes";
 import { resolveProxyOrgId } from "./resolve-proxy-org";
 import {
   shouldStripBodyOrg,
@@ -26,16 +26,15 @@ function isResolveSlugPath(pathname: string): boolean {
   return /^\/api\/tenants\/resolve\/[^/]+$/.test(pathname);
 }
 
-function routeIsPublic(method: string, pathname: string): boolean {
-  return isPublicGet(method, pathname) || isPublicPost(method, pathname);
+function hasStreamTicket(url: URL): boolean {
+  if (!url.searchParams.has("stream_ticket")) return false;
+  return (
+    url.pathname === "/api/flags/stream" || url.pathname === "/api/notifications/stream"
+  );
 }
 
-function isNotificationsStreamWithTicket(url: URL): boolean {
-  return url.pathname === "/api/notifications/stream" && url.searchParams.has("stream_ticket");
-}
-
-function isFlagsStreamWithTicket(url: URL): boolean {
-  return url.pathname === "/api/flags/stream" && url.searchParams.has("stream_ticket");
+function hasCollabTicket(url: URL): boolean {
+  return isCollabWsWithTicket(url);
 }
 
 async function resolveJwt(
@@ -56,9 +55,9 @@ export function createApiProxyRoutes() {
     const search = stripOrgFromSearch(pathname, incoming.search);
     const isPublic = routeIsPublic(c.req.method, pathname);
     const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
-    const streamTicketBypass = isNotificationsStreamWithTicket(incoming);
-    const collabTicketBypass = isCollabWsWithTicket(incoming);
-    const flagsTicketBypass = isFlagsStreamWithTicket(incoming);
+    const streamTicketBypass = hasStreamTicket(incoming);
+    const collabTicketBypass = hasCollabTicket(incoming);
+    const flagsTicketBypass = streamTicketBypass;
     const editMode = isEditModeUrl(incoming);
     const apiOrigin = c.env.API_ORIGIN;
     const target = `${apiOrigin}${pathname}${search}`;
@@ -87,13 +86,15 @@ export function createApiProxyRoutes() {
       c.req.header("x-org-id") ?? undefined,
     );
 
-    if (
-      !orgId &&
-      !isResolveSlugPath(pathname) &&
-      !streamTicketBypass &&
-      !collabTicketBypass &&
-      !flagsTicketBypass
-    ) {
+    if (!orgId && !isResolveSlugPath(pathname)) {
+      if (streamTicketBypass || collabTicketBypass || flagsTicketBypass) {
+        return c.json({ error: "Invalid ticket or org id required" }, 401);
+      }
+      return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
+    }
+
+    if (!orgId) {
+      // resolve-slug path with no org — preserve null, do not sign empty org as valid
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
 

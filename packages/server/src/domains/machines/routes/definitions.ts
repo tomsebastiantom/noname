@@ -1,6 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
+import { parseLimitOffset } from "../../../shared/pagination";
 import { created, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
 import type { MachineDefinition } from "../ports";
@@ -13,7 +14,9 @@ export function registerMachineDefinitionRoutes(routes: Hono, deps: MachineRoute
     const denied = await denyUnless(c, PERMISSIONS.MACHINES_DEFINE);
     if (denied) return denied;
     const orgId = getOrgId(c);
-    return ok(c, await engine.listDefinitions(orgId));
+    const { limit = 50, offset = 0 } = parseLimitOffset(c, { defaultLimit: 50, maxLimit: 200 });
+    const all = await engine.listDefinitions(orgId);
+    return ok(c, all.slice(offset, offset + limit));
   });
 
   routes.post("/definitions", async (c) => {

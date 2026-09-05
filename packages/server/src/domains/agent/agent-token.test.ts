@@ -1,6 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import { describe, expect, it } from "vitest";
-import { mintAgentToken, verifyAgentToken } from "./agent-token";
+import { verifyAgentToken } from "../../shared/agent-token";
+import { mintAgentToken } from "./agent-token";
 
 describe("agent-token", () => {
   const secret = "test-agent-secret";

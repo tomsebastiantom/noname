@@ -1,6 +1,6 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Context } from "hono";
-import type { TenantSettingsService } from "../../documents/contracts";
+import type { TenantSettingsService } from "../../documents/ports";
 import { requirePermission } from "../guards";
 import type { AuthService } from "../ports";
 

@@ -31,9 +31,32 @@ await createApp();
 
 console.log(`Worker process started (pid ${process.pid}) — processing queues, no HTTP port bound`);
 
-function shutdown(signal: string): void {
-  console.log(`[worker] received ${signal}, exiting`);
+let shuttingDown = false;
+
+async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) {
+    console.log(`[worker] received ${signal} again, forcing exit`);
+    process.exit(1);
+  }
+  shuttingDown = true;
+  console.log(`[worker] received ${signal}, draining jobs (15s timeout)`);
+
+  const forceTimer = setTimeout(() => {
+    console.log("[worker] drain timeout, forcing exit");
+    process.exit(1);
+  }, 15_000);
+  forceTimer.unref();
+
+  try {
+    const { closeAllBullmqQueues } = await import("./shared/bullmq-queue");
+    await closeAllBullmqQueues();
+  } catch (err) {
+    console.warn("[worker] queue drain failed", err);
+  }
+
+  clearTimeout(forceTimer);
+  console.log("[worker] drain complete, exiting");
   process.exit(0);
 }
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));
+process.on("SIGINT", () => void shutdown("SIGINT"));

@@ -1,6 +1,6 @@
 import { fetchWithTimeout } from "@noname/auth";
 import { storeSlugFromHost } from "@noname/shared";
-import { getCached, setCache, slugCacheKey } from "./cache";
+import { getCached, isMiss, setCache, setMissCache, slugCacheKey } from "./cache";
 import { hmacHeaders } from "./hmac";
 import type { Env } from "./types";
 
@@ -8,13 +8,14 @@ const SLUG_CACHE_TTL = 300;
 
 export { storeSlugFromHost };
 
-/** Resolve store slug to org id — KV cache, then API. */
+/** Resolve store slug to org id — KV cache, then API. Negative-caches misses 60s. */
 export async function resolveSiteId(env: Env, siteId: string): Promise<string | null> {
   const slug = siteId.trim().toLowerCase();
   if (!slug) return null;
 
   const cached = await getCached<{ orgId: string }>(env, slugCacheKey(slug));
   if (cached?.orgId) return cached.orgId;
+  if (isMiss(cached)) return null;
 
   // Upstream orgMiddleware rejects unsigned calls when WORKER_SERVER_SECRET is set —
   // internal edge→API service calls must carry the same HMAC the proxy adds.
@@ -22,7 +23,11 @@ export async function resolveSiteId(env: Env, siteId: string): Promise<string | 
     `${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`,
     { headers: await hmacHeaders("", "", "", env) },
   );
-  if (!res.ok) return null;
+  if (!res.ok) {
+    console.warn(`[resolve-slug] ${slug} upstream ${res.status} — returning null, miss-cached`);
+    await setMissCache(env, slugCacheKey(slug));
+    return null;
+  }
 
   const body = (await res.json()) as { data?: { orgId?: string } };
   const orgId = body.data?.orgId ?? null;

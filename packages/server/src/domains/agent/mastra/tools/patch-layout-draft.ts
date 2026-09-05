@@ -1,6 +1,7 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { recordDocumentOp } from "../../../../shared/document-audit";
+import { StorageError } from "../../../../shared/domain-error";
 import type { AuthorizationPort } from "../../../auth/authorization-port";
 import type { LayoutCollabRoomManager } from "../../../collab/layout-room";
 import { buildSpecPatchPayload } from "../../../documents/document-op-payload";
@@ -111,7 +112,7 @@ export function createPatchLayoutDraftTool(
           await deps.layoutCollabRooms.flushPersist(orgId, layoutDocumentId);
           const applied = await deps.layoutCollabRooms.getSpec(orgId, layoutDocumentId);
           if (layoutSpecsEqual(previousSpec, applied)) {
-            throw new Error("Collab room spec did not change after apply");
+            throw new StorageError("Collab room spec did not change after apply");
           }
         } catch (err) {
           const collabError = err instanceof Error ? err.message : String(err);

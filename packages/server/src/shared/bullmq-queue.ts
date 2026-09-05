@@ -24,3 +24,14 @@ export async function closeBullmqQueue(queueName: string): Promise<void> {
   await queue.close();
   queues.delete(queueName);
 }
+
+export async function closeAllBullmqQueues(): Promise<void> {
+  for (const [name, queue] of [...queues]) {
+    try {
+      await queue.close();
+    } catch (err) {
+      console.warn(`[worker] queue ${name} close failed`, err);
+    }
+    queues.delete(name);
+  }
+}

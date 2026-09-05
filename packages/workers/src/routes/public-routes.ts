@@ -1,52 +1,51 @@
-/** Routes that skip JWT at the edge worker (anonymous browser SDK / auth flows). */
+/** Routes that skip JWT at the edge worker (anonymous browser SDK / auth flows). Single source of truth. */
 
-export const PUBLIC_GET_PATTERNS = [
-  /^\/api\/edge\/schema\/[^/]+$/,
-  /^\/api\/tenants\/resolve\/[^/]+$/,
-  /^\/api\/tenants\/[^/]+\/catalog$/,
-  /^\/api\/auth\/[^/]+\/config$/,
-  /^\/api\/auth\/[^/]+\/idp\/[^/]+\/start$/,
+export interface PublicRoute {
+  method: "GET" | "POST";
+  pattern: RegExp;
+}
+
+export const PUBLIC_ROUTES: PublicRoute[] = [
+  { method: "GET", pattern: /^\/api\/edge\/schema\/[^/]+$/ },
+  { method: "GET", pattern: /^\/api\/tenants\/resolve\/[^/]+$/ },
+  { method: "GET", pattern: /^\/api\/tenants\/[^/]+\/catalog$/ },
+  { method: "GET", pattern: /^\/api\/auth\/[^/]+\/config$/ },
+  { method: "GET", pattern: /^\/api\/auth\/[^/]+\/idp\/[^/]+\/start$/ },
   /** Anonymous storefront flag metadata (safe fields only — no targeting config). */
-  /^\/api\/flags\/public$/,
-  /^\/health$/,
-] as const;
-
-export const PUBLIC_POST_PATTERNS = [
-  /^\/api\/auth\/[^/]+\/login$/,
-  /^\/api\/auth\/[^/]+\/register$/,
-  /^\/api\/auth\/[^/]+\/password-reset\/request$/,
-  /^\/api\/auth\/[^/]+\/password-reset\/confirm$/,
-  /^\/api\/auth\/[^/]+\/mfa\/verify$/,
-  /^\/api\/auth\/[^/]+\/callback$/,
+  { method: "GET", pattern: /^\/api\/flags\/public$/ },
+  { method: "GET", pattern: /^\/health$/ },
+  /** Anonymous flag SSE — ticket verified at origin; edge allows without JWT. */
+  { method: "GET", pattern: /^\/api\/flags\/stream$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/login$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/register$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/password-reset\/request$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/password-reset\/confirm$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/mfa\/verify$/ },
+  { method: "POST", pattern: /^\/api\/auth\/[^/]+\/callback$/ },
   /** Anonymous storefront SDK ingest — org resolved from Host at edge. */
-  /^\/api\/analytics\/track$/,
-  /^\/api\/analytics\/error$/,
-  /^\/api\/analytics\/replay$/,
+  { method: "POST", pattern: /^\/api\/analytics\/track$/ },
+  { method: "POST", pattern: /^\/api\/analytics\/error$/ },
+  { method: "POST", pattern: /^\/api\/analytics\/replay$/ },
   /** Anonymous flag evaluation from browser SDK. */
-  /^\/api\/flags\/evaluate$/,
+  { method: "POST", pattern: /^\/api\/flags\/evaluate$/ },
   /** Anonymous flag SSE ticket minting — EventSource cannot send headers. */
-  /^\/api\/flags\/stream\/ticket$/,
+  { method: "POST", pattern: /^\/api\/flags\/stream\/ticket$/ },
   /** Provider business webhooks — verified in webhooks domain. */
-  /^\/api\/webhooks\/inbound\/[^/]+$/,
+  { method: "POST", pattern: /^\/api\/webhooks\/inbound\/[^/]+$/ },
   /** Comms provider lifecycle webhooks (Resend / SES / Twilio). */
-  /^\/api\/notifications\/webhooks\/[^/]+$/,
+  { method: "POST", pattern: /^\/api\/notifications\/webhooks\/[^/]+$/ },
   /** Nango OAuth connect callback. */
-  /^\/api\/integrations\/nango\/webhook$/,
-] as const;
+  { method: "POST", pattern: /^\/api\/integrations\/nango\/webhook$/ },
+];
 
-export const PUBLIC_GET_EXTRA_PATTERNS = [
-  /** Anonymous flag SSE from browser SDK. */
-  /^\/api\/flags\/stream$/,
-] as const;
+export function routeIsPublic(method: string, pathname: string): boolean {
+  return PUBLIC_ROUTES.some((r) => r.method === method && r.pattern.test(pathname));
+}
 
 export function isPublicGet(method: string, pathname: string): boolean {
-  return (
-    method === "GET" &&
-    (PUBLIC_GET_PATTERNS.some((re) => re.test(pathname)) ||
-      PUBLIC_GET_EXTRA_PATTERNS.some((re) => re.test(pathname)))
-  );
+  return routeIsPublic(method, pathname);
 }
 
 export function isPublicPost(method: string, pathname: string): boolean {
-  return method === "POST" && PUBLIC_POST_PATTERNS.some((re) => re.test(pathname));
+  return routeIsPublic(method, pathname);
 }

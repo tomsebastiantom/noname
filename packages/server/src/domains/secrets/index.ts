@@ -1,3 +1,4 @@
+import { createLLMProvider, createLLMProviderForApiKey } from "../ai-pipeline/providers";
 import type { TenantSettingsService } from "../documents/ports";
 import { createEnvFallbackSecretStore } from "./adapters/env-fallback";
 import { createVaultSecretStore, vaultConfigFromEnv } from "./adapters/vault";
@@ -28,6 +29,8 @@ export function createSecretsDomain(deps: SecretsDomainDeps = {}) {
   const service = createSecretsService({
     store,
     tenantSettings: deps.tenantSettings,
+    createProvider: createLLMProvider,
+    createProviderForApiKey: createLLMProviderForApiKey,
   });
 
   return { service, store };

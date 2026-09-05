@@ -14,6 +14,16 @@ function mockStore(overrides: Partial<SecretStorePort> = {}): SecretStorePort {
   };
 }
 
+function mockProviders() {
+  const mockProvider = () => ({
+    generate: async () => ({ response: {}, model: "mock", tokens: 0 }),
+  });
+  return {
+    createProvider: vi.fn(mockProvider),
+    createProviderForApiKey: vi.fn((_provider: string, _apiKey: string) => mockProvider()),
+  };
+}
+
 function mockTenantSettings(integrations: Record<string, unknown>): TenantSettingsService {
   return {
     get: vi.fn(async (orgId: string) => ({
@@ -35,6 +45,7 @@ describe("createSecretsService.resolveLLMProvider", () => {
     const service = createSecretsService({
       store: mockStore({ getOrgSecret }),
       tenantSettings: mockTenantSettings({ llm: { provider: "anthropic" } }),
+      ...mockProviders(),
     });
 
     const provider = await service.resolveLLMProvider("org-1");
@@ -53,6 +64,7 @@ describe("createSecretsService.resolveLLMProvider", () => {
     );
     const service = createSecretsService({
       store: mockStore({ getPlatformSecret }),
+      ...mockProviders(),
     });
 
     const provider = await service.resolveLLMProvider("org-1");
@@ -61,7 +73,7 @@ describe("createSecretsService.resolveLLMProvider", () => {
   });
 
   it("returns mock provider when no keys exist", async () => {
-    const service = createSecretsService({ store: mockStore() });
+    const service = createSecretsService({ store: mockStore(), ...mockProviders() });
     const provider = await service.resolveLLMProvider("org-1");
     const result = await provider.generate({ prompt: "x", targetType: "layout" });
     expect(result.model).toBe("mock");
@@ -74,6 +86,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
     const getPlatformSecret = vi.fn(async () => "sk-platform");
     const service = createSecretsService({
       store: mockStore({ getOrgSecret, getPlatformSecret }),
+      ...mockProviders(),
     });
 
     const resolved = await service.resolveLlmApiKey("org-1", "openai");
@@ -91,6 +104,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
     );
     const service = createSecretsService({
       store: mockStore({ getPlatformSecret }),
+      ...mockProviders(),
     });
 
     const resolved = await service.resolveLlmApiKey("org-1", "anthropic");
@@ -111,6 +125,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
 
     const service = createSecretsService({
       store: mockStore({ getOrgSecret, getPlatformSecret }),
+      ...mockProviders(),
     });
 
     const resolved = await service.resolveLlmApiKey("org-1", "openai");
@@ -129,6 +144,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
 
     const service = createSecretsService({
       store: mockStore({ getPlatformSecret }),
+      ...mockProviders(),
     });
 
     const resolved = await service.resolveLlmApiKey("org-1", "anthropic");
@@ -140,7 +156,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
   });
 
   it("returns null when no Vault keys exist", async () => {
-    const service = createSecretsService({ store: mockStore() });
+    const service = createSecretsService({ store: mockStore(), ...mockProviders() });
     await expect(service.resolveLlmApiKey("org-1", "openai")).resolves.toBeNull();
   });
 });
@@ -148,7 +164,7 @@ describe("createSecretsService.resolveLlmApiKey", () => {
 describe("createSecretsService.putOrgSecret", () => {
   it("delegates to store", async () => {
     const putOrgSecret = vi.fn();
-    const service = createSecretsService({ store: mockStore({ putOrgSecret }) });
+    const service = createSecretsService({ store: mockStore({ putOrgSecret }), ...mockProviders() });
 
     await service.putOrgSecret({
       orgId: "org-1",

@@ -13,6 +13,7 @@ import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProseMirrorRootNode } from "@tiptap/y-tiptap";
 import type * as awarenessProtocol from "y-protocols/awareness";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type * as Y from "yjs";
 import { agentRichTextEmbedExtensions } from "./richtext-tiptap-extensions";
 
@@ -68,7 +69,7 @@ export class AgentRichTextYjsEditor {
   applyDocument(doc: RichTextDocument): void {
     const fragment = this.fragment;
     if (!fragment) {
-      throw new Error("Rich text Yjs editor not bound");
+      throw new ServiceUnavailableError("Rich text Yjs editor not bound");
     }
     // Diffs the given ProseMirror JSON against the fragment's current content in place —
     // the same `updateYFragment` mechanism `ySyncPlugin` runs per keystroke, so this is a
@@ -79,7 +80,7 @@ export class AgentRichTextYjsEditor {
   currentDocument(): RichTextDocument {
     const fragment = this.fragment;
     if (!fragment) {
-      throw new Error("Rich text Yjs editor not bound");
+      throw new ServiceUnavailableError("Rich text Yjs editor not bound");
     }
     return tipTapJsonToRichText(
       yXmlFragmentToProseMirrorRootNode(fragment, richTextSchema).toJSON(),

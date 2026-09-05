@@ -161,10 +161,17 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (filters.collectionId) {
         conditions.push(eq(documents.collectionId, filters.collectionId));
       }
+      const limit = Math.min(
+        Math.max((filters as { limit?: number }).limit ?? 200, 1),
+        500,
+      );
+      const offset = Math.max((filters as { offset?: number }).offset ?? 0, 0);
       const rows = await db
         .select()
         .from(documents)
-        .where(and(...conditions));
+        .where(and(...conditions))
+        .limit(limit)
+        .offset(offset);
       return rows.map(mapDocument);
     },
     async findDocument(orgId, type, key, segment) {
@@ -243,7 +250,8 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const rows = await db
         .select()
         .from(documents)
-        .where(and(eq(documents.orgId, orgId), sql`${documents.data}::text LIKE ${pattern}`));
+        .where(and(eq(documents.orgId, orgId), sql`${documents.data}::text LIKE ${pattern}`))
+        .limit(50);
       return rows.map(mapDocument);
     },
 
@@ -260,7 +268,8 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
             eq(documents.type, type),
             sql`${documents.meta}->>'searchText' ILIKE ${pattern} ESCAPE '\\'`,
           ),
-        );
+        )
+        .limit(50);
       return rows.map(mapDocument);
     },
 

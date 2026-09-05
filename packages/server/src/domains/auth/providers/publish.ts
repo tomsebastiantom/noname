@@ -1,15 +1,14 @@
 import {
   AUTH_PROVIDER_CONTENT_TYPE,
   buildGenericOAuthPayload,
-  type DocumentStorage,
   isBuiltinLoginProvider,
   mergeAuthConfig,
   normalizeAuthConfig,
   parseAuthProviderDisplayData,
   parseAuthProviderEntryData,
   providerIdFromKey,
-  type TenantSettingsService,
 } from "../../documents/contracts";
+import type { DocumentStorage, TenantSettingsService } from "../../documents/ports";
 import { upsertZitadelIdp } from "../adapters/zitadel/management";
 
 /** On publish: push OAuth config to ZITADEL and store the returned IdP id in tenant settings. */

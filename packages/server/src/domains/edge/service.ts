@@ -5,7 +5,7 @@ import type {
   LayoutDocumentService,
   PageTreeService,
   TenantSettingsService,
-} from "../documents/contracts";
+} from "../documents/ports";
 import type { FlagService } from "../flags/ports";
 import { evaluationsToFlagMap } from "./flags-map";
 import type { EdgeService, GetSchemaOptions } from "./ports";

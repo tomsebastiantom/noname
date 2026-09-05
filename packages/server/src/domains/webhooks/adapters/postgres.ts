@@ -218,7 +218,8 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
         .select()
         .from(webhookSubscriptions)
         .where(eq(webhookSubscriptions.orgId, orgId))
-        .orderBy(desc(webhookSubscriptions.createdAt));
+        .orderBy(desc(webhookSubscriptions.createdAt))
+        .limit(200);
       return rows.map(mapSubscription);
     },
 
@@ -275,7 +276,8 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
       const rows = await db
         .select()
         .from(webhookSubscriptions)
-        .where(and(eq(webhookSubscriptions.orgId, orgId), eq(webhookSubscriptions.enabled, true)));
+        .where(and(eq(webhookSubscriptions.orgId, orgId), eq(webhookSubscriptions.enabled, true)))
+        .limit(200);
       return rows
         .map(mapSubscription)
         .filter((sub) => sub.eventTypes.includes("*") || sub.eventTypes.includes(eventType));

@@ -1,13 +1,15 @@
 import { fetchWithTimeout } from "@noname/auth";
 import { storeSlugFromHost } from "@noname/shared";
 import { Hono } from "hono";
+import { getCached, setCache } from "../cache";
 import { hmacHeaders } from "../hmac";
 import { resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
 import { extractSeoFromLayout, isBotUserAgent, renderBotHtml } from "./bot-ssr";
 
 const INDEX_HTML_KEY = "_assets/index.html";
-const SCHEMA_TIMEOUT_MS = 20_000;
+const SCHEMA_TIMEOUT_MS = 4_000;
+const BOT_SCHEMA_CACHE_TTL = 300;
 
 interface EdgeSchemaPayload {
   layout?: Record<string, unknown> | null;
@@ -19,20 +21,38 @@ async function fetchStorefrontSchema(
   siteId: string,
   pathname: string,
 ): Promise<EdgeSchemaPayload | null> {
+  const cacheKey = `bot-schema:${siteId.toLowerCase()}:${pathname.toLowerCase()}`;
+  try {
+    const cached = await getCached<EdgeSchemaPayload>(env, cacheKey);
+    if (cached) return cached;
+  } catch {
+    // cache miss — fetch origin
+  }
+
   const orgId = await resolveSiteId(env, siteId);
   if (!orgId) return null;
 
   const signed = await hmacHeaders(orgId, "", "", env);
   const qs = new URLSearchParams({ segment: "default", url: pathname });
-  const res = await fetchWithTimeout(
-    `${env.API_ORIGIN}/api/edge/schema/${encodeURIComponent(siteId)}?${qs}`,
-    { headers: signed },
-    SCHEMA_TIMEOUT_MS,
-  );
-  if (!res.ok) return null;
+  try {
+    const res = await fetchWithTimeout(
+      `${env.API_ORIGIN}/api/edge/schema/${encodeURIComponent(siteId)}?${qs}`,
+      { headers: signed },
+      SCHEMA_TIMEOUT_MS,
+    );
+    if (!res.ok) {
+      console.warn(`[storefront] bot schema ${siteId}${pathname} upstream ${res.status}`);
+      return null;
+    }
 
-  const body = (await res.json()) as { data?: EdgeSchemaPayload };
-  return body.data ?? null;
+    const body = (await res.json()) as { data?: EdgeSchemaPayload };
+    const data = body.data ?? null;
+    if (data) await setCache(env, cacheKey, data, BOT_SCHEMA_CACHE_TTL);
+    return data;
+  } catch (err) {
+    console.warn(`[storefront] bot schema fetch timeout/fail ${siteId}${pathname}`, err);
+    return null;
+  }
 }
 
 async function serveIndexHtml(env: Env): Promise<Response | null> {
@@ -62,6 +82,11 @@ export function createStorefrontRoutes() {
       return c.notFound();
     }
 
+    if (pathname === "/favicon.ico" || pathname === "/robots.txt") {
+      c.header("Cache-Control", "public, max-age=86400");
+      return c.notFound();
+    }
+
     const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "";
     const siteId = storeSlugFromHost(host);
     if (!siteId) {
@@ -75,9 +100,15 @@ export function createStorefrontRoutes() {
 
     if (isBotUserAgent(userAgent)) {
       const schema = await fetchStorefrontSchema(c.env, siteId, pathname);
+      if (!schema) {
+        const shell = await serveIndexHtml(c.env);
+        if (shell) return shell;
+      }
       const layout = schema?.layout ?? null;
       const seo = extractSeoFromLayout(layout);
       const html = renderBotHtml(seo, siteId);
+      c.header("Cache-Control", "public, max-age=300");
+      c.header("Vary", "User-Agent");
       return c.html(html);
     }
 

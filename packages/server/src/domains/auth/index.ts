@@ -4,7 +4,7 @@ import type {
   ContentDocumentService,
   DocumentStorage,
   TenantSettingsService,
-} from "../documents/contracts";
+} from "../documents/ports";
 import type { NotificationsService } from "../notifications/ports";
 import { teamRoleAssignments } from "./adapters/zitadel/authorizations";
 import { zitadelProjectId } from "./adapters/zitadel/project-id";

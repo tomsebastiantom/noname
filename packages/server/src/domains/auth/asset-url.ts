@@ -1,4 +1,5 @@
-import { type AssetDocumentService, iconUrlFromAsset, type MediaRef } from "../documents/contracts";
+import { iconUrlFromAsset } from "../documents/contracts";
+import type { AssetDocumentService, MediaRef } from "../documents/ports";
 
 export { iconUrlFromAsset };
 

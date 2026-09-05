@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { ServiceUnavailableError } from "./shared/domain-error";
 import { createAgentDomain } from "./domains/agent";
 import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
 import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
@@ -65,7 +66,7 @@ export async function createApp(): Promise<Hono> {
 
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
-    throw new Error(
+    throw new ServiceUnavailableError(
       "DATABASE_URL is required (Postgres). Start Postgres via Docker: `docker compose up postgres`.",
     );
   }

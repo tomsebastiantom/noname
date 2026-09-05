@@ -1,17 +1,19 @@
 import { mapWithConcurrency } from "../../shared/concurrency";
 import { ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
 import {
-  type AssetDocumentService,
-  type ContentDocumentService,
   idpIdForProvider,
   isBuiltinLoginProvider,
   listPublishedAuthProviders,
-  type MediaRef,
   mergeAuthConfig,
   normalizeAuthConfig,
   resolveLoginProviders,
-  type TenantSettingsService,
 } from "../documents/contracts";
+import type {
+  AssetDocumentService,
+  ContentDocumentService,
+  MediaRef,
+  TenantSettingsService,
+} from "../documents/ports";
 import type { NotificationsService } from "../notifications/ports";
 import { teamRoleAssignments, upsertUserTeamRole } from "./adapters/zitadel/authorizations";
 import {

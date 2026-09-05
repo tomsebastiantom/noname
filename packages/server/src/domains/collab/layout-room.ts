@@ -4,7 +4,7 @@ import type { WSContext } from "hono/ws";
 import type { Database } from "../../drizzle";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import type { LayoutDocumentService } from "../documents/ports";
-import { validateSpec } from "../documents/services/layout-helpers";
+import { validateSpec } from "../documents";
 import {
   type AutomergeSpecDoc,
   applyLocalSpecToDraft,

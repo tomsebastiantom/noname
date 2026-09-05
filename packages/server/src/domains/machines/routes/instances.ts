@@ -1,6 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { getOrgId } from "../../../shared/org";
+import { parseLimitOffset } from "../../../shared/pagination";
 import { created, notFound, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
 import type { MachineRouteDeps } from "./deps";
@@ -35,7 +36,9 @@ export function registerMachineInstanceRoutes(routes: Hono, deps: MachineRouteDe
     const denied = await denyUnless(c, PERMISSIONS.STOREFRONT_VIEW);
     if (denied) return denied;
     const orgId = getOrgId(c);
-    return ok(c, await engine.listInstances(orgId));
+    const { limit = 50, offset = 0 } = parseLimitOffset(c, { defaultLimit: 50, maxLimit: 200 });
+    const all = await engine.listInstances(orgId);
+    return ok(c, all.slice(offset, offset + limit));
   });
 
   routes.get("/instances/:id", async (c) => {

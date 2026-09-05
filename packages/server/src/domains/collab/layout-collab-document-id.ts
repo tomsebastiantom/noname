@@ -6,6 +6,7 @@ import {
   parseAutomergeUrl,
   stringifyAutomergeUrl,
 } from "@automerge/automerge-repo/slim";
+import { ValidationError } from "../../shared/domain-error";
 
 const CANONICAL_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -17,7 +18,7 @@ export function resolveLayoutCollabDocumentId(layoutDocumentId: string): Documen
     return layoutDocumentId;
   }
   if (!CANONICAL_UUID_RE.test(layoutDocumentId)) {
-    throw new Error(`Invalid layout collab document id: ${layoutDocumentId}`);
+    throw new ValidationError("layoutDocumentId", `Invalid layout collab id: ${layoutDocumentId}`);
   }
   const hex = layoutDocumentId.replace(/-/g, "");
   const bytes = new Uint8Array(16);
