@@ -160,7 +160,11 @@ export function EditorCanvasSlot() {
   } = useEditorSessionActions();
   const { layout } = useEditorPrefs();
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    // min-w-0 is load-bearing: flex items default to min-width:auto and refuse to
+    // shrink below content width, so without it a 768px preset frame blows out
+    // narrow windows instead of the column shrinking (content pans inside).
+    // Do not remove — it controls how the editor responds to browser resize.
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <EditorCanvasPreviewBar labels={shellLabels} />
       <EditorCanvas
         previewSpec={previewSpec}

@@ -66,6 +66,28 @@
     overflow: hidden;
   }
 
+  /* Mid viewport: the right panel floats so fixed sidebar widths (224+288 plus
+     rails) stop starving the canvas — measured 654px of chrome vs 280px canvas
+     at a 1000px window. Left panel keeps docking until the small breakpoint. */
+  @media (max-width: 1250px) {
+    .editor-layout-panel--right {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      right: 0;
+      z-index: 30;
+      flex-shrink: 0;
+      width: min(var(--editor-panel-w), 80%);
+      min-width: 0;
+      background: hsl(var(--background));
+      box-shadow: 0 8px 24px rgb(0 0 0 / 0.12);
+    }
+
+    .editor-layout-panel--right ~ .editor-layout-resizer {
+      display: none;
+    }
+  }
+
   /* Narrow viewport: panels float above the full-width canvas instead of squeezing it.
      Pure CSS (no JS measurement needed — the editor spans the whole viewport). */
   @media (max-width: 899px) {

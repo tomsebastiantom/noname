@@ -513,13 +513,16 @@ export function EditorCanvas({
 
   const previewMaxWidth = canvasPreview === "full" ? undefined : PREVIEW_MAX_WIDTH[canvasPreview];
 
+  // NOTE (min-w-0, see slot wrapper in VisualEditorShell): load-bearing for browser
+  // resize — without it this flex column refuses to shrink below content width and
+  // a 768px preset frame blows out narrow windows. Do not remove.
   return (
     <div
       ref={canvasRef}
       role="application"
       tabIndex={-1}
       aria-label={shellLabels.canvasAriaLabel}
-      className={`editor-canvas editor-canvas--${canvasPreview} relative min-h-0 flex-1 overflow-y-auto`}
+      className={`editor-canvas editor-canvas--${canvasPreview} relative min-h-0 min-w-0 flex-1 overflow-y-auto`}
       style={
         previewMaxWidth
           ? { maxWidth: previewMaxWidth, marginInline: "auto", width: "100%" }
