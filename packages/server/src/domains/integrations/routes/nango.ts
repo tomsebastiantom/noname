@@ -47,6 +47,37 @@ export function registerIntegrationsNangoRoutes(
     return ok(c, session);
   });
 
+  /**
+   * Nango-forwarded provider events (provider → Nango → us). Verified by
+   * Nango's forwarding signature; org resolved from the connection, never
+   * from payload claims. Distinct from `/nango/webhook` (Nango lifecycle).
+   */
+  routes.post("/nango/incoming", async (c) => {
+    if (!oauth?.isConfigured()) {
+      return c.json({ error: "OAuth integrations not configured" }, 503);
+    }
+
+    const rawBody = await c.req.text();
+    const headers = Object.fromEntries(c.req.raw.headers.entries()) as Record<
+      string,
+      string | undefined
+    >;
+
+    if (!oauth.verifyWebhook(rawBody, headers)) {
+      return c.json({ error: "Invalid webhook signature" }, 401);
+    }
+
+    let payload: unknown;
+    try {
+      payload = JSON.parse(rawBody) as unknown;
+    } catch {
+      return c.json({ error: "Invalid JSON body" }, 400);
+    }
+
+    await service.handleProviderWebhook(payload);
+    return ok(c, { received: true });
+  });
+
   routes.post("/nango/webhook", async (c) => {
     if (!oauth?.isConfigured()) {
       return c.json({ error: "OAuth integrations not configured" }, 503);

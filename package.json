@@ -16,7 +16,9 @@
     "seed:demo": "tsx scripts/seed/demo.ts",
     "seed:demo:commerce": "tsx scripts/seed/demo-commerce.ts",
     "deploy:client-r2": "tsx scripts/deploy/client-r2.ts",
-    "init:zitadel": "tsx scripts/init/zitadel-oidc.ts"
+    "init:zitadel": "tsx scripts/init/zitadel-oidc.ts",
+    "init:nango:connect": "tsx scripts/init/nango-connect.ts",
+    "init:nango": "tsx scripts/init/nango.ts"
   },
   "engines": {
     "node": ">=20"

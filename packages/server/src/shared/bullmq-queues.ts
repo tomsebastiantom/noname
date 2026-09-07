@@ -6,4 +6,5 @@ export const BULLMQ_QUEUES = {
   EMAIL_OUTBOUND: "{email-outbound}",
   WEBHOOK_INBOUND: "{webhook-inbound}",
   WEBHOOK_OUTBOUND: "{webhook-outbound}",
+  EXTENSION_DELIVERY: "{extension-delivery}",
 } as const;

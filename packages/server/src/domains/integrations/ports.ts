@@ -52,6 +52,7 @@ export interface IntegrationOAuthPort {
     endpoint: string;
     data?: unknown;
     params?: Record<string, string>;
+    headers?: Record<string, string>;
   }): Promise<T>;
 }
 
@@ -109,6 +110,8 @@ export interface IntegrationsService {
     integrationId: string,
   ): Promise<ConnectSessionResult>;
   handleOAuthWebhook(payload: unknown): Promise<void>;
+  /** Nango-forwarded provider event → attributed canonical event (or drop). */
+  handleProviderWebhook(payload: unknown): Promise<void>;
   triggerOAuthAction(
     orgId: string,
     integrationId: string,
@@ -122,5 +125,6 @@ export interface IntegrationsService {
     endpoint: string;
     data?: unknown;
     params?: Record<string, string>;
+    headers?: Record<string, string>;
   }): Promise<T>;
 }

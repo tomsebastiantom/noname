@@ -9,7 +9,7 @@ import type { SecretsService } from "../secrets/ports";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { WebhookEvents } from "./events";
 import type { WebhookOutboundJobData } from "./ports";
-import { signOutboundWebhook } from "./signing";
+import { signOutboundWebhook } from "../../shared/webhook-signing";
 
 const tracer = trace.getTracer("webhooks-outbound-worker");
 const AUTO_DISABLE_FAILURES = 10;

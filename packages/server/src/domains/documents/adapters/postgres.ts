@@ -86,7 +86,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
               jsonb_path_exists(
                 ${documents.data},
                 '$.integrations.nango.*.connectionId ? (@ == $cid)',
-                jsonb_build_object('cid', ${trimmed})
+                jsonb_build_object('cid', ${trimmed}::text)
               )
               OR ${documents.data}->'integrations'->'stripe'->>'connectionId' = ${trimmed}
               OR ${documents.data}->'integrations'->'googleMail'->>'connectionId' = ${trimmed}

@@ -14,7 +14,10 @@ import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
-import { createIntegrationsDomain } from "./domains/integrations";
+import {
+  createIntegrationsDomain,
+  registerExtensionDispatcher,
+} from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
@@ -227,6 +230,20 @@ export async function createApp(): Promise<Hono> {
 
   const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
   app.route("/api/tenants", tenant.routes);
+
+  registerExtensionDispatcher({
+    subscribe: (event: string, handler: (payload: unknown) => Promise<void>) => {
+      eventBus.subscribe(event, handler);
+    },
+    isExtensionInstalled: async (orgId, extension) => {
+      try {
+        const manifest = await tenant.service.getManifest(orgId);
+        return manifest.extensions?.includes(extension) ?? false;
+      } catch {
+        return false;
+      }
+    },
+  });
 
   app.route("/api/auth", auth.routes);
   app.route("/api/integrations", integrations.routes);

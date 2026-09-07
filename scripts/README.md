@@ -10,7 +10,9 @@ scripts/
 │   ├── init-dbs.sh           # First postgres boot: create zitadel, nango, keto DBs
 │   └── ensure-extra-dbs.sh   # Every compose up: idempotent DB + extension setup
 ├── init/             # One-time setup (manual)
-│   └── zitadel-oidc.ts       # pnpm init:zitadel — OIDC app + .env + wrangler.toml
+│   ├── zitadel-oidc.ts       # pnpm init:zitadel — OIDC app + .env + wrangler.toml
+│   ├── nango.ts                # pnpm init:nango — Nango admin + secret + Stripe integration
+│   └── nango-connect.ts        # pnpm init:nango:connect — provider key into Nango vault
 └── seed/             # Demo data (manual, API must be running)
     ├── demo.ts               # pnpm seed:demo — layouts, admin, users, Keto scope
     ├── demo-commerce.ts      # pnpm seed:demo:commerce — optional commerce extension
@@ -36,11 +38,22 @@ S3 bucket creation is inline in `docker-compose.yml` (`s3-init` service), not a 
 ```bash
 podman compose up -d
 pnpm init:zitadel                    # once
+pnpm init:nango                      # once (Nango admin + secret + Stripe integration)
 pnpm --filter @noname/server db:push # if fresh DB
 pnpm dev                             # API on :3000
 pnpm seed:demo
 pnpm seed:demo:commerce              # optional
 ```
+
+## Nango integrations
+
+```powershell
+# Store a provider key in Nango (key travels memory → vault, never files):
+$env:CREDENTIAL_API_KEY = "rk_test_..."
+pnpm init:nango:connect              # optional: $env:PROVIDER, $env:CONNECTION_ID, $env:STORE_SLUG
+```
+
+Files: `init/nango.ts` (provisioning), `init/nango-connect.ts` (key intake).
 
 ## Demo users (after `pnpm seed:demo`)
 

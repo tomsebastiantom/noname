@@ -84,6 +84,7 @@ export function createNangoAdapter(config: NangoAdapterConfig | null): Integrati
       endpoint: string;
       data?: unknown;
       params?: Record<string, string>;
+      headers?: Record<string, string>;
     }): Promise<T> {
       const res = await client.proxy<T>({
         method: input.method,
@@ -92,6 +93,7 @@ export function createNangoAdapter(config: NangoAdapterConfig | null): Integrati
         providerConfigKey: input.integrationId,
         data: input.data,
         params: input.params,
+        headers: input.headers,
       });
       return res.data;
     },

@@ -6,6 +6,7 @@ import type { IntegrationOAuthPort, IntegrationsService } from "./ports";
 import { registerIntegrationsCommsRoutes } from "./routes/comms";
 import { registerIntegrationsLlmRoutes } from "./routes/llm";
 import { registerIntegrationsNangoRoutes } from "./routes/nango";
+import { startExtensionDeliveryWorker } from "./extension-dispatcher";
 import { createIntegrationsService } from "./service";
 
 export { createNangoAdapter, nangoAdapterFromEnv } from "./adapters/nango";
@@ -16,6 +17,7 @@ export type {
   OAuthConnectionsPublic,
 } from "./ports";
 export { createIntegrationsService } from "./service";
+export { registerExtensionDispatcher, startExtensionDeliveryWorker } from "./extension-dispatcher";
 
 export interface IntegrationsDomainDeps {
   secrets: SecretsService;
@@ -50,5 +52,7 @@ export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
     oauth,
   });
 
-  return { service, routes, oauth };
+  const deliveryWorker = startExtensionDeliveryWorker();
+
+  return { service, routes, oauth, deliveryWorker };
 }

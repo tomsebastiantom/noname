@@ -146,6 +146,8 @@ export function createApiProxyRoutes() {
     if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);
     const stripeSignature = c.req.header("stripe-signature");
     if (stripeSignature) headers.set("stripe-signature", stripeSignature);
+    const nangoSignature = c.req.header("x-nango-hmac-sha256");
+    if (nangoSignature) headers.set("x-nango-hmac-sha256", nangoSignature);
 
     const init: RequestInit = {
       method: c.req.method,

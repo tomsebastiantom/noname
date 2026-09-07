@@ -36,6 +36,8 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   { method: "POST", pattern: /^\/api\/notifications\/webhooks\/[^/]+$/ },
   /** Nango OAuth connect callback. */
   { method: "POST", pattern: /^\/api\/integrations\/nango\/webhook$/ },
+  /** Nango-forwarded provider events (verified by Nango signature server-side). */
+  { method: "POST", pattern: /^\/api\/integrations\/nango\/incoming$/ },
 ];
 
 export function routeIsPublic(method: string, pathname: string): boolean {

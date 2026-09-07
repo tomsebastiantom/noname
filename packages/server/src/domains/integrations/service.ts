@@ -1,5 +1,7 @@
 import { type CommsProviderName, isCommsProviderName } from "@noname/shared";
 import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
+import { eventBus } from "../../shared/event-bus";
+import { PROVIDER_EVENT_RECEIVED, type ProviderForwardedEvent } from "./provider-events";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import { parseIntegrationId } from "./integration-id";
@@ -237,6 +239,54 @@ export function createIntegrationsService(deps: {
       });
     },
 
+    /**
+     * Nango-forwarded provider event → attributed internal event. Resolves the
+     * org from the connection (never trusts payload org claims) and emits for
+     * pipeline subscribers. Unknown connections/shapes are dropped silently.
+     */
+    async handleProviderWebhook(payload: unknown): Promise<void> {
+      if (!payload || typeof payload !== "object") return;
+      const body = payload as Record<string, unknown>;
+      const connectionId =
+        typeof body.connectionId === "string" ? body.connectionId.trim() : "";
+      if (!connectionId) return;
+      const integrationRaw =
+        typeof body.providerConfigKey === "string"
+          ? body.providerConfigKey
+          : typeof body.integrationId === "string"
+            ? body.integrationId
+            : "";
+      let integrationId: string;
+      try {
+        integrationId = parseIntegrationId(String(integrationRaw));
+      } catch {
+        return;
+      }
+      const orgId = await tenantSettings.findOrgIdByOAuthConnectionId(connectionId);
+      if (!orgId) return;
+      const eventType =
+        typeof body.type === "string"
+          ? body.type
+          : typeof body.eventType === "string"
+            ? body.eventType
+            : "";
+      if (!eventType) return;
+      const eventPayload =
+        body.payload && typeof body.payload === "object"
+          ? (body.payload as Record<string, unknown>)
+          : (body.data && typeof body.data === "object"
+            ? (body.data as Record<string, unknown>)
+            : null);
+      if (!eventPayload) return;
+      await eventBus.publish(PROVIDER_EVENT_RECEIVED, {
+        orgId,
+        integrationId,
+        connectionId,
+        eventType,
+        payload: eventPayload,
+      } satisfies ProviderForwardedEvent);
+    },
+
     async triggerOAuthAction(
       orgId: string,
       integrationId: string,
@@ -268,6 +318,7 @@ export function createIntegrationsService(deps: {
       endpoint: string;
       data?: unknown;
       params?: Record<string, string>;
+      headers?: Record<string, string>;
     }): Promise<T> {
       if (!oauth?.isConfigured()) {
         throw new ServiceUnavailableError("OAuth integrations are not configured");
@@ -287,6 +338,7 @@ export function createIntegrationsService(deps: {
         endpoint: input.endpoint,
         data: input.data,
         params: input.params,
+        headers: input.headers,
       });
     },
   };
