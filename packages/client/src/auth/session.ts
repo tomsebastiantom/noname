@@ -13,9 +13,16 @@ function clearTokenCookie(): void {
   document.cookie = `${COOKIE_NAME}=; path=/; domain=.localhost; SameSite=Lax; max-age=0`;
 }
 
+/** Fired whenever a fresh login token lands (all login flows funnel through here). */
+export const LOGIN_EVENT = "noname:login";
+
 export function setSessionToken(token: string, maxAgeSec: number): void {
+  const firstLogin = getAccessToken() === null;
   sessionStorage.setItem(STORAGE_TOKEN, token);
   setTokenCookie(token, maxAgeSec);
+  if (firstLogin && typeof window !== "undefined") {
+    window.dispatchEvent(new Event(LOGIN_EVENT));
+  }
 }
 
 export function setSessionIdentity(identity: {
@@ -75,7 +82,7 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
-/** ZITADEL `sub` from stored access token (no signature verify — same as edge trust model). */
+/** ZITADEL `sub` from stored access token (no signature verify — same as edge trust model). Exported for cart claim ownership. */
 export function sessionUserId(): string | null {
   hydrateTokenFromCookie();
   const token = getAccessToken();

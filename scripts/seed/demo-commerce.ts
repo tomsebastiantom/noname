@@ -336,6 +336,15 @@ async function main() {
     extensions: ["commerce"],
   });
 
+  // Publishable key for anonymous storefront access (logged by fingerprint only).
+  const { data: rotated } = await api<{ data: { publishableKey?: string } }>(
+    "POST",
+    `/api/tenants/${DEMO_STORE_SLUG}/publishable-key/rotate`,
+    {},
+  );
+  const fingerprint = (rotated?.publishableKey ?? "").slice(0, 12);
+  console.log(`Publishable key issued (fingerprint ${fingerprint}...).`);
+
   const cartDefinition = JSON.parse(
     readFileSync(join(ROOT, "packages/extensions/src/commerce/machines/cart.json"), "utf8"),
   ) as { name: string };

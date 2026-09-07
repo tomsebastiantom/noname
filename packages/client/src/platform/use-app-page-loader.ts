@@ -325,6 +325,10 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
     });
   }, [loadPage]);
 
+  // Stable caller: main.tsx runs loadPage in a useEffect keyed on this identity.
+  // Returning an inline wrapper would recreate it every render and refetch forever.
+  const reloadPage = useCallback(() => void loadPage(), [loadPage]);
+
   return {
     spec,
     composeMode,
@@ -339,6 +343,6 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
     error,
     loading,
     navigating,
-    loadPage: () => void loadPage(),
+    loadPage: reloadPage,
   };
 }

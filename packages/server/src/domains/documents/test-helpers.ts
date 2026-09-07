@@ -62,6 +62,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     seo: {},
     integrations: {},
     auth: { ...DEFAULT_TENANT_AUTH },
+    publishableKey: null,
   };
 
   return {

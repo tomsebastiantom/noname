@@ -4,6 +4,7 @@ import type { TenantCatalogService } from "./ports";
 import { registerTenantCatalogRoutes } from "./routes/catalog";
 import { registerTenantComponentRoutes } from "./routes/components";
 import type { TenantRouteDeps } from "./routes/deps";
+import { registerTenantPublishableKeyRoutes } from "./routes/publishable-key";
 import { registerTenantResolveRoutes } from "./routes/resolve";
 
 export function createTenantRoutes(
@@ -16,6 +17,7 @@ export function createTenantRoutes(
   registerTenantResolveRoutes(routes, deps);
   registerTenantCatalogRoutes(routes, deps);
   registerTenantComponentRoutes(routes, deps);
+  registerTenantPublishableKeyRoutes(routes, deps);
 
   return routes;
 }

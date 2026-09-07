@@ -1,6 +1,7 @@
 import type { ComponentRegistry } from "@json-render/react";
 import { loadRemote, registerRemotes } from "@module-federation/runtime";
-import { extensionLoaders } from "@noname/extensions";
+import { extensionLoaders, type ExtensionLifecycle } from "@noname/extensions";
+import { LOGIN_EVENT } from "./auth/session";
 import { initMfRuntime } from "./mf-init";
 import { registry as platformRegistry } from "./platform/registry";
 
@@ -15,6 +16,8 @@ export interface CatalogManifest {
   platform: { version: string; hash: string };
   /** Built-in extensions to merge (e.g. "commerce"). Loaded via code-split imports. */
   extensions?: string[];
+  /** Publishable key for anonymous storefront access. Public by design. */
+  publishableKey?: string | null;
   private?: CatalogManifestRemote;
   marketplace?: CatalogManifestRemote[];
 }
@@ -23,7 +26,11 @@ export interface LoadedCatalogs {
   registry: ComponentRegistry;
 }
 
-let catalogCache: { key: string; registry: ComponentRegistry } | null = null;
+let catalogCache: {
+  key: string;
+  registry: ComponentRegistry;
+  lifecycles: Array<{ name: string; onLogin: () => void }>;
+} | null = null;
 
 /** Stable fingerprint for catalog manifest change detection (admin soft-nav refresh). */
 export function manifestFingerprint(manifest: CatalogManifest): string {
@@ -81,8 +88,26 @@ async function loadRemoteRegistry(
   }
 }
 
-async function loadExtensionRegistries(extensions: string[]): Promise<ComponentRegistry[]> {
+/** Extensions whose lifecycle hooks are already wired (dedup across reloads). */
+const wiredLifecycle = new Set<string>();
+
+/**
+ * Platform-owned wiring for extension lifecycle callbacks. Domains declare
+ * (`ExtensionLifecycle`), the loader subscribes once — no window code in domains.
+ */
+function wireExtensionLifecycle(name: string, lifecycle?: ExtensionLifecycle): void {
+  if (!lifecycle?.onLogin || wiredLifecycle.has(name) || typeof window === "undefined") return;
+  wiredLifecycle.add(name);
+  const onLogin = lifecycle.onLogin;
+  window.addEventListener(LOGIN_EVENT, () => onLogin());
+}
+
+async function loadExtensionRegistries(extensions: string[]): Promise<{
+  registries: ComponentRegistry[];
+  lifecycles: Array<{ name: string; onLogin: () => void }>;
+}> {
   const registries: ComponentRegistry[] = [];
+  const lifecycles: Array<{ name: string; onLogin: () => void }> = [];
 
   for (const name of extensions) {
     const loader = extensionLoaders[name];
@@ -90,23 +115,31 @@ async function loadExtensionRegistries(extensions: string[]): Promise<ComponentR
     try {
       const mod = await loader();
       registries.push(mod.registry);
+      if (mod.lifecycle?.onLogin) {
+        lifecycles.push({ name, onLogin: mod.lifecycle.onLogin });
+      }
     } catch (err) {
       console.error(`[catalog-loader] failed to load extension "${name}":`, err);
     }
   }
 
-  return registries;
+  return { registries, lifecycles };
 }
 
 export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCatalogs> {
   const cacheKey = manifestCacheKey(manifest);
   if (catalogCache?.key === cacheKey) {
+    for (const lifecycle of catalogCache.lifecycles) {
+      wireExtensionLifecycle(lifecycle.name, lifecycle);
+    }
     return { registry: catalogCache.registry };
   }
 
   initMfRuntime();
 
-  const extensionRegistries = await loadExtensionRegistries(manifest.extensions ?? []);
+  const { registries: extensionRegistries, lifecycles } = await loadExtensionRegistries(
+    manifest.extensions ?? [],
+  );
   const registries: ComponentRegistry[] = [platformRegistry, ...extensionRegistries];
 
   const marketplace = manifest.marketplace ?? [];
@@ -123,8 +156,12 @@ export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCat
     if (registry) registries.push(registry);
   }
 
+  for (const lifecycle of lifecycles) {
+    wireExtensionLifecycle(lifecycle.name, lifecycle);
+  }
+
   const registry = mergeRegistries(registries);
-  catalogCache = { key: cacheKey, registry };
+  catalogCache = { key: cacheKey, registry, lifecycles };
   return { registry };
 }
 

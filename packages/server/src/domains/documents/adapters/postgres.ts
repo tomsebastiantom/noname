@@ -98,6 +98,11 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
     },
     async upsertTenantSettings(orgId, data) {
       const existing = await findRow(db, orgId, "tenant_settings", "default");
+      const existingData = (existing?.data ?? {}) as Record<string, unknown>;
+      const existingKey =
+        typeof existingData.publishableKey === "string" && existingData.publishableKey
+          ? existingData.publishableKey
+          : null;
       const merged = {
         slug: data.slug ?? null,
         locales: data.locales,
@@ -105,6 +110,9 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         seo: data.seo,
         integrations: data.integrations,
         auth: data.auth,
+        // Omitted key preserves the stored one — unrelated writers (auth,
+        // integrations) must never rotate or wipe it by accident.
+        publishableKey: data.publishableKey ?? existingKey,
       };
       if (existing) {
         const [row] = await db
@@ -487,5 +495,9 @@ function toTenantSettings(row: DocumentRow): TenantSettingsDTO {
     },
     integrations: integrations as TenantSettingsDTO["integrations"],
     auth: normalizeAuthConfig(data.auth),
+    publishableKey:
+      typeof data.publishableKey === "string" && data.publishableKey.trim() !== ""
+        ? data.publishableKey.trim()
+        : null,
   };
 }

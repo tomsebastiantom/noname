@@ -10,5 +10,6 @@ export function defaultTenantSettings(): Omit<TenantSettingsDTO, "id" | "orgId">
     seo: {},
     integrations: {},
     auth: { ...DEFAULT_TENANT_AUTH },
+    publishableKey: null,
   };
 }

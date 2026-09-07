@@ -117,6 +117,7 @@ export async function createApp(): Promise<Hono> {
 
   const machines = createMachineDomain({
     db,
+    tenantSettings: docs.service.tenantSettings,
     hooks: {
       async onTransitionComplete({ orgId, params }) {
         const notify = parseTransitionNotify(params);

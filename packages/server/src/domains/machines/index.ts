@@ -1,4 +1,5 @@
 import type { Database } from "../../drizzle";
+import type { TenantSettingsService } from "../documents/ports";
 import { createPostgresMachineStorage } from "./adapters/postgres";
 import { createMachineRoutes } from "./api";
 import { createMachineEngine, type MachineEngineHooks, registerGuard } from "./engine";
@@ -9,6 +10,7 @@ export interface MachineDomainDeps {
   storage?: MachineStorage;
   guards?: Record<string, Guard>;
   hooks?: MachineEngineHooks;
+  tenantSettings: Pick<TenantSettingsService, "get">;
 }
 
 export function createMachineDomain(deps: MachineDomainDeps) {
@@ -21,6 +23,6 @@ export function createMachineDomain(deps: MachineDomainDeps) {
     }
   }
 
-  const routes = createMachineRoutes(engine);
+  const routes = createMachineRoutes(engine, deps.tenantSettings);
   return { storage, engine, routes };
 }

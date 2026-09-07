@@ -39,4 +39,7 @@ export const commerceActionSchemas = {
   checkout: {
     description: "Proceed to checkout",
   },
+  mergeGuestCart: {
+    description: "Claim the guest cart for the signed-in user (also runs on login)",
+  },
 };

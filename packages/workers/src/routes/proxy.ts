@@ -37,6 +37,16 @@ function hasCollabTicket(url: URL): boolean {
   return isCollabWsWithTicket(url);
 }
 
+/**
+ * General anonymous lane: any request bearing a publishable key skips the
+ * edge JWT requirement — no per-domain path config, ever again. The server
+ * verifies key↔org binding per call (`requirePublicActor`); garbage keys
+ * get a server 401. Replaces the removed cart-specific public patterns.
+ */
+function hasPublishableKey(req: Request): boolean {
+  return Boolean(req.headers.get("x-publishable-key")?.trim());
+}
+
 async function resolveJwt(
   req: Request,
   env: Env,
@@ -58,6 +68,7 @@ export function createApiProxyRoutes() {
     const streamTicketBypass = hasStreamTicket(incoming);
     const collabTicketBypass = hasCollabTicket(incoming);
     const flagsTicketBypass = streamTicketBypass;
+    const publishableKeyBypass = hasPublishableKey(c.req.raw);
     const editMode = isEditModeUrl(incoming);
     const apiOrigin = c.env.API_ORIGIN;
     const target = `${apiOrigin}${pathname}${search}`;
@@ -71,7 +82,13 @@ export function createApiProxyRoutes() {
       if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
-    } else if (!isPublic && !streamTicketBypass && !collabTicketBypass && !flagsTicketBypass) {
+    } else if (
+      !isPublic &&
+      !streamTicketBypass &&
+      !collabTicketBypass &&
+      !flagsTicketBypass &&
+      !publishableKeyBypass
+    ) {
       const auth = await resolveJwt(c.req.raw, c.env);
       if (auth instanceof Response) return auth;
       jwt = auth;
@@ -87,8 +104,8 @@ export function createApiProxyRoutes() {
     );
 
     if (!orgId && !isResolveSlugPath(pathname)) {
-      if (streamTicketBypass || collabTicketBypass || flagsTicketBypass) {
-        return c.json({ error: "Invalid ticket or org id required" }, 401);
+      if (streamTicketBypass || collabTicketBypass || flagsTicketBypass || publishableKeyBypass) {
+        return c.json({ error: "Invalid ticket, key, or org id required" }, 401);
       }
       return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
     }
@@ -120,6 +137,10 @@ export function createApiProxyRoutes() {
     } else {
       const token = accessTokenFromRequest(c.req.raw);
       if (token) headers.set("Authorization", `Bearer ${token}`);
+    }
+    const publishableKey = c.req.header("x-publishable-key");
+    if (publishableKey) {
+      headers.set("x-publishable-key", publishableKey);
     }
     const webhookSignature = c.req.header("x-webhook-signature");
     if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);

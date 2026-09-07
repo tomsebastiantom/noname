@@ -13,7 +13,10 @@ export function registerTenantCatalogRoutes(routes: Hono, deps: TenantRouteDeps)
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const manifest = await service.getManifest(orgId);
-    return ok(c, manifest);
+    // Publishable key rides the already-public per-store manifest (same
+    // distribution model as Stripe pk_ / Ghost content key).
+    const publishableKey = tenantSettings ? (await tenantSettings.get(orgId)).publishableKey : null;
+    return ok(c, { ...manifest, publishableKey: publishableKey ?? undefined });
   });
 
   routes.put("/:id/catalog", async (c) => {

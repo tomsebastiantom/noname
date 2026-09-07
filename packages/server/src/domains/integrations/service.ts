@@ -256,5 +256,38 @@ export function createIntegrationsService(deps: {
 
       return oauth.triggerAction(id, connectionId, actionName, input);
     },
+
+    /**
+     * Provider REST via the store's own OAuth connection (Nango proxy).
+     * Resolves connectionId from tenant settings — callers never handle it.
+     */
+    async proxyProvider<T = unknown>(input: {
+      orgId: string;
+      integrationId: string;
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      endpoint: string;
+      data?: unknown;
+      params?: Record<string, string>;
+    }): Promise<T> {
+      if (!oauth?.isConfigured()) {
+        throw new ServiceUnavailableError("OAuth integrations are not configured");
+      }
+
+      const id = parseIntegrationId(input.integrationId);
+      const settings = await tenantSettings.get(input.orgId);
+      const connectionId = readOAuthConnectionMap(settings.integrations)[id]?.connectionId;
+      if (!connectionId) {
+        throw new NotFoundError("Connection", id);
+      }
+
+      return oauth.proxy<T>({
+        integrationId: id,
+        connectionId,
+        method: input.method,
+        endpoint: input.endpoint,
+        data: input.data,
+        params: input.params,
+      });
+    },
   };
 }

@@ -40,6 +40,19 @@ export interface IntegrationOAuthPort {
     actionName: string,
     input?: Record<string, unknown>,
   ): Promise<unknown>;
+  /**
+   * Provider API call with the store's own OAuth credentials (Nango proxy).
+   * This is THE path for provider REST calls (e.g. Stripe Checkout Sessions
+   * with the merchant's Stripe account) — never raw SDKs, never platform keys.
+   */
+  proxy<T = unknown>(input: {
+    integrationId: string;
+    connectionId: string;
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    endpoint: string;
+    data?: unknown;
+    params?: Record<string, string>;
+  }): Promise<T>;
 }
 
 export interface CommsIntegrationPublic {
@@ -102,4 +115,12 @@ export interface IntegrationsService {
     actionName: string,
     input?: Record<string, unknown>,
   ): Promise<unknown>;
+  proxyProvider<T = unknown>(input: {
+    orgId: string;
+    integrationId: string;
+    method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    endpoint: string;
+    data?: unknown;
+    params?: Record<string, string>;
+  }): Promise<T>;
 }

@@ -9,6 +9,8 @@ export interface CatalogManifest {
   platform: { version: string; hash: string };
   /** Built-in extensions enabled for this org (e.g. "commerce"). */
   extensions?: string[];
+  /** Publishable key for anonymous storefront access. Public by design. */
+  publishableKey?: string | null;
   private?: CatalogManifestRemote;
   marketplace?: CatalogManifestRemote[];
 }

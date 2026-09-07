@@ -5,6 +5,8 @@ import { commerceActions } from "./actions";
 import { commerceActionSchemas, commerceComponentSchemas } from "./catalog-schemas";
 import { commerceComponents } from "./components";
 
+export { commerceLifecycle } from "./lifecycle";
+
 const catalog = defineCatalog(schema, {
   components: commerceComponentSchemas,
   actions: commerceActionSchemas,

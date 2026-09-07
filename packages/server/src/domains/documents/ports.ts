@@ -143,6 +143,13 @@ export interface TenantSettingsDTO {
   seo: TenantSeoConfig;
   integrations: TenantIntegrations;
   auth: TenantAuthConfig;
+  /**
+   * Publishable key (`pk_test_*` / `pk_live_*`) for anonymous storefront
+   * access. Public by design (sent by browsers) — capability is limited
+   * server-side per explicit public path. Null until issued.
+   * See PUBLIC-ACCESS-MODEL.md. Generic: not commerce/store-coupled.
+   */
+  publishableKey: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -307,10 +314,7 @@ export interface DocumentStorage {
   getTenantSettings(orgId: string): Promise<TenantSettingsDTO | null>;
   findOrgIdByStoreSlug(slug: string): Promise<string | null>;
   findOrgIdByOAuthConnectionId(connectionId: string): Promise<string | null>;
-  upsertTenantSettings(
-    orgId: string,
-    data: Omit<TenantSettingsDTO, "id" | "orgId">,
-  ): Promise<TenantSettingsDTO>;
+  upsertTenantSettings(orgId: string, data: TenantSettingsUpsert): Promise<TenantSettingsDTO>;
 
   // generic document CRUD (unified table)
   createDocument(input: CreateDocumentInput): Promise<DocumentDTO>;
@@ -364,9 +368,18 @@ export interface ContentTypeDocumentService {
   update(orgId: string, name: string, schema: ContentTypeSchema): Promise<ContentTypeDTO>;
 }
 
+/**
+ * Settings write payload. `publishableKey` is optional so unrelated writers
+ * (auth, integrations, seed) never need key-awareness — omit it to leave
+ * the stored key untouched.
+ */
+export type TenantSettingsUpsert = Omit<TenantSettingsDTO, "id" | "orgId" | "publishableKey"> & {
+  publishableKey?: string | null;
+};
+
 export interface TenantSettingsService {
   get(orgId: string): Promise<TenantSettingsDTO>;
-  upsert(orgId: string, data: Omit<TenantSettingsDTO, "id" | "orgId">): Promise<TenantSettingsDTO>;
+  upsert(orgId: string, data: TenantSettingsUpsert): Promise<TenantSettingsDTO>;
   resolveStoreSlug(slug: string): Promise<string | null>;
   findOrgIdByOAuthConnectionId(connectionId: string): Promise<string | null>;
 }

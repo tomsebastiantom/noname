@@ -4,7 +4,10 @@
   "states": {
     "active": {
       "on": {
-        "addToCart": { "target": "active" }
+        "addToCart": { "target": "active" },
+        "clear": { "target": "active" },
+        "checkout": { "target": "active" },
+        "claim": { "target": "active" }
       }
     }
   }

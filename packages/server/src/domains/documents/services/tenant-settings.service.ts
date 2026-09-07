@@ -1,9 +1,21 @@
+import { createHash, randomBytes } from "node:crypto";
 import { assertValidStoreSlug, normalizeStoreSlug } from "@noname/shared";
 import { ValidationError } from "../../../shared/domain-error";
 import { eventBus } from "../../../shared/event-bus";
 import { TenantSettingsEvents } from "../events";
 import type { DocumentStorage, TenantSettingsService } from "../ports";
 import { defaultTenantSettings } from "./tenant-defaults";
+
+/** Publishable key (`pk_test_*` / `pk_live_*`) — public by design. */
+export function generatePublishableKey(): string {
+  const env = process.env.NODE_ENV === "production" ? "live" : "test";
+  return `pk_${env}_${randomBytes(24).toString("base64url")}`;
+}
+
+/** Fingerprint for logs (never log the key itself). */
+export function publishableKeyFingerprint(key: string): string {
+  return createHash("sha256").update(key).digest("hex").slice(0, 12);
+}
 
 export function createTenantSettingsService(storage: DocumentStorage): TenantSettingsService {
   return {

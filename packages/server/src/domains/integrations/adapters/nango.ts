@@ -76,6 +76,25 @@ export function createNangoAdapter(config: NangoAdapterConfig | null): Integrati
     ): Promise<unknown> {
       return client.triggerAction(integrationId, connectionId, actionName, input);
     },
+
+    async proxy<T = unknown>(input: {
+      integrationId: string;
+      connectionId: string;
+      method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+      endpoint: string;
+      data?: unknown;
+      params?: Record<string, string>;
+    }): Promise<T> {
+      const res = await client.proxy<T>({
+        method: input.method,
+        endpoint: input.endpoint,
+        connectionId: input.connectionId,
+        providerConfigKey: input.integrationId,
+        data: input.data,
+        params: input.params,
+      });
+      return res.data;
+    },
   };
 }
 
