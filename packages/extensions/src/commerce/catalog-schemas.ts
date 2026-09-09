@@ -1,6 +1,23 @@
 import { z } from "zod";
 
 export const commerceComponentSchemas = {
+  CartSummary: {
+    props: z.object({
+      title: z.string(),
+      checkoutLabel: z.string(),
+      viewCartLabel: z.string(),
+      hideCartLabel: z.string(),
+      loadingLabel: z.string(),
+      itemLabel: z.string(),
+      itemsLabel: z.string(),
+      priceUnavailableLabel: z.string(),
+      signInLabel: z.string(),
+      signInRequiredLabel: z.string(),
+      paymentPendingLabel: z.string(),
+      paymentSuccessLabel: z.string(),
+      paymentFailedLabel: z.string(),
+    }),
+  },
   Hero: {
     props: z.object({
       title: z.string(),

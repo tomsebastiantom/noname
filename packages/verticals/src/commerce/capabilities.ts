@@ -55,14 +55,8 @@ export function createStripeCheckoutAdapter(): CheckoutProviderAdapter {
         integrationId: request.integrationId,
         method: "POST",
         endpoint: "/v1/checkout/sessions",
-        data: {
-          mode: "payment",
-          line_items: [{ price_data: { currency: request.currency, unit_amount: request.amount }, quantity: 1 }],
-          metadata: request.metadata,
-          success_url: request.metadata.successUrl,
-          cancel_url: request.metadata.cancelUrl,
-          client_reference_id: request.machineInstanceId,
-        },
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        data: encodeStripeCheckoutForm(request),
       });
       if (!result.id || !result.url) throw new Error("Stripe returned an invalid checkout session");
       return { externalCheckoutId: result.id, redirectUrl: result.url };
@@ -78,11 +72,77 @@ export function createCheckoutProviderRegistry(
   );
 }
 
+type ProviderForwardedEvent = {
+  orgId: string;
+  integrationId: string;
+  connectionId: string;
+  providerEventId?: string;
+  deliveryId?: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+};
+
+export type CommerceContributionDeps = {
+  machines: CommerceMachines;
+  integrations: CommerceIntegrations;
+};
+
+export function createCommerceContribution(deps: CommerceContributionDeps) {
+  return createCommerceCapabilities({
+    ...deps,
+    checkoutProviders: createCheckoutProviderRegistry({ stripe: createStripeCheckoutAdapter() }),
+  });
+}
+
+export function createCommerceProviderEventMappings() {
+  return [{
+    integrationId: "stripe",
+    eventType: "checkout.session.completed",
+    normalize: (event: ProviderForwardedEvent) => {
+      const payload = event.payload;
+      const metadata = payload.metadata && typeof payload.metadata === "object"
+        ? (payload.metadata as Record<string, unknown>)
+        : {};
+      const machineInstanceId = readString(metadata.machineInstanceId ?? payload.client_reference_id);
+      if (!machineInstanceId) return null;
+      return {
+        event: "PAYMENT_SUCCEEDED",
+        params: {
+          paymentRef: readString(payload.payment_intent) ?? event.providerEventId,
+          amount: payload.amount_total,
+          currency: payload.currency,
+        },
+        machineInstanceId,
+      };
+    },
+  }];
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
+function encodeStripeCheckoutForm(request: CheckoutSessionRequest): string {
+  const values = new URLSearchParams({
+    mode: "payment",
+    success_url: request.metadata.successUrl ?? "",
+    cancel_url: request.metadata.cancelUrl ?? "",
+    client_reference_id: request.machineInstanceId,
+  });
+  values.set("line_items[0][price_data][currency]", request.currency);
+  values.set("line_items[0][price_data][unit_amount]", String(request.amount));
+  values.set("line_items[0][price_data][product_data][name]", "Order payment");
+  values.set("line_items[0][quantity]", "1");
+  values.set("metadata[machineEvent]", "PAYMENT_SUCCEEDED");
+  for (const [key, value] of Object.entries(request.metadata)) {
+    values.set(`metadata[${key}]`, value);
+  }
+  return values.toString();
+}
+
 const checkoutInput = z.object({
   instanceId: z.string().uuid(),
   integrationId: z.string().min(1).max(100),
-  amount: z.number().int().positive(),
-  currency: z.string().length(3).transform((value) => value.toLowerCase()),
   successEvent: z.string().min(1).max(100).default("checkout"),
   failureEvent: z.string().min(1).max(100).default("checkout_failed"),
   metadata: z.record(z.string(), z.string().max(200)).default({}),
@@ -97,8 +157,13 @@ export function createCommerceCapabilities(deps: {
     "commerce.checkout": async (rawInput, context) => {
       const input = checkoutInput.parse(rawInput);
       const instance = await deps.machines.getInstance(context.orgId, input.instanceId);
-      if (!instance || instance.machineName !== "cart") throw new Error("Cart not found");
-      if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
+       if (instance?.machineName !== "cart") throw new Error("Cart not found");
+       if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
+       const cartContext = (instance as MachineInstance & { context?: { items?: Array<{ quantity?: number; price?: number }>; total?: number; currency?: string } }).context ?? {};
+       const items = Array.isArray(cartContext.items) ? cartContext.items : [];
+       const amount = items.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0), 0) || Number(cartContext.total);
+       const currency = cartContext.currency ?? "cad";
+       if (!Number.isInteger(amount) || amount <= 0) throw new Error("Cart total is unavailable");
 
       const provider = deps.checkoutProviders[input.integrationId.trim().toLowerCase()];
       if (!provider) throw new Error("Checkout provider is not configured");
@@ -106,8 +171,8 @@ export function createCommerceCapabilities(deps: {
         {
           orgId: context.orgId,
           integrationId: input.integrationId,
-          amount: input.amount,
-          currency: input.currency,
+          amount,
+          currency,
           machineInstanceId: instance.id,
           idempotencyKey: context.idempotencyKey,
           metadata: { ...input.metadata, machineInstanceId: instance.id },
@@ -115,11 +180,11 @@ export function createCommerceCapabilities(deps: {
         deps.integrations.proxyProvider,
       );
 
-      await deps.machines.transition(context.orgId, instance.id, input.successEvent, {
+      await deps.machines.transition(context.orgId, instance.id, "checkout", {
         checkoutId: result.externalCheckoutId,
         checkoutProvider: input.integrationId,
-        checkoutAmount: input.amount,
-        checkoutCurrency: input.currency,
+        checkoutAmount: amount,
+        checkoutCurrency: currency,
       });
       return {
         provider: input.integrationId,

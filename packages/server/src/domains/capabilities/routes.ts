@@ -6,14 +6,26 @@ import { denyUnless } from "../auth/deny-unless";
 import { parseBody } from "../../shared/parse-body";
 import { error, ok } from "../../shared/respond";
 import { getOrgId } from "../../shared/org";
+import type { TenantSettingsService } from "../documents/ports";
+import { requirePublicActor } from "../../shared/public-actor";
 import type { CapabilityRegistry } from "./registry";
 
 const capabilityRequestSchema = z.object({ input: z.unknown().optional() });
 
-export function registerCapabilityRoutes(routes: Hono, registry: CapabilityRegistry): void {
+export function registerCapabilityRoutes(
+  routes: Hono,
+  registry: CapabilityRegistry,
+  tenantSettings?: Pick<TenantSettingsService, "get">,
+): void {
   routes.post("/:capability", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.STOREFRONT_VIEW);
-    if (denied) return denied;
+    const capability = c.req.param("capability");
+    const publicCheckout = capability === "commerce.checkout" && tenantSettings
+      ? await requirePublicActor(c, getOrgId(c), tenantSettings)
+      : null;
+    if (!publicCheckout) {
+      const denied = await denyUnless(c, PERMISSIONS.STOREFRONT_VIEW);
+      if (denied) return denied;
+    }
     const idempotencyKey = c.req.header("Idempotency-Key")?.trim();
     if (!idempotencyKey || idempotencyKey.length > 200) {
       return error(c, "Idempotency-Key is required", 400);

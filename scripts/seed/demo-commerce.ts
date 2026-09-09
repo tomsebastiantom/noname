@@ -51,7 +51,7 @@ const commerceSpec = {
     main: {
       type: "StackBase",
       props: specProps({ direction: "column", gap: 24, align: "stretch" }, {}),
-      children: ["hero", "intro", "products"],
+       children: ["hero", "intro", "products", "cart"],
     },
     hero: {
       type: "Hero",
@@ -76,6 +76,27 @@ const commerceSpec = {
       type: "GridBase",
       props: specProps({ columns: 2, gap: 16 }, {}),
       children: ["product1"],
+    },
+    cart: {
+      type: "CartSummary",
+      props: specProps(
+        {
+          title: "Your cart",
+          checkoutLabel: "Checkout",
+          viewCartLabel: "View cart",
+          hideCartLabel: "Hide cart",
+          loadingLabel: "Loading cart…",
+          itemLabel: "item",
+          itemsLabel: "items",
+          priceUnavailableLabel: "Price unavailable",
+          signInLabel: "Sign in",
+          signInRequiredLabel: "Sign in to view your cart",
+          paymentPendingLabel: "Payment processing",
+          paymentSuccessLabel: "Payment successful",
+          paymentFailedLabel: "Payment failed",
+        },
+        {},
+      ),
     },
     product1: {
       type: "ProductCard",

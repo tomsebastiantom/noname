@@ -5,7 +5,7 @@ import { commerceActions } from "./actions";
 import { commerceActionSchemas, commerceComponentSchemas } from "./catalog-schemas";
 import { commerceComponents } from "./components";
 
-export { commerceLifecycle } from "./lifecycle";
+import { commerceLifecycle } from "./lifecycle";
 
 const catalog = defineCatalog(schema, {
   components: commerceComponentSchemas,
@@ -16,3 +16,6 @@ export const { registry } = defineRegistry(catalog, {
   components: commerceComponents,
   actions: commerceActions,
 });
+
+export { commerceComponentSchemas, commerceActionSchemas };
+export const lifecycle = commerceLifecycle;

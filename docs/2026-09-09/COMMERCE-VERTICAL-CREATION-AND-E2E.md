@@ -42,7 +42,9 @@ Body:
   { "input": { "instanceId", "integrationId", ... } }
 ```
 
-The handler must load the cart, verify its state and organization, derive totals from trusted catalog/cart data, call `IntegrationsService.proxyProvider()` through Nango, and return a hosted URL. It must not mark payment successful. A later Nango callback enters the durable provider-event queue and transitions the machine with `PAYMENT_SUCCEEDED` or `PAYMENT_FAILED`.
+The handler must load the cart, verify its state and organization, derive totals from trusted catalog/cart data, call `IntegrationsService.proxyProvider()` through Nango, and return a hosted URL. It must transition only to `awaiting_payment`; it must not mark payment successful. A later Nango callback enters the durable provider-event queue and transitions the machine with `PAYMENT_SUCCEEDED` or `PAYMENT_FAILED`.
+
+Anonymous checkout is allowed only through the generic capability route when the edge has resolved the store and `requirePublicActor` validates the store's `x-publishable-key`. Authenticated checkout uses the same route with the user's JWT. The provider adapter is the only Stripe-specific code; Nango remains the credential and transport boundary.
 
 The current checkout handler is a contract scaffold only: it still expects the trusted amount/catalog port and provider checkout-session contract to be finalized before enabling the live capability. Do not expose it to production traffic until those validations and idempotency storage are complete.
 

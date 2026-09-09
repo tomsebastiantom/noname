@@ -21,9 +21,8 @@ import {
 import { createMachineDomain } from "./domains/machines";
 import { createCapabilityRegistry, registerCapabilityRoutes } from "./domains/capabilities";
 import {
-  createCheckoutProviderRegistry,
-  createCommerceCapabilities,
-  createStripeCheckoutAdapter,
+  createCommerceContribution,
+  createCommerceProviderEventMappings,
 } from "@noname/verticals/commerce";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
@@ -131,6 +130,12 @@ export async function createApp(): Promise<Hono> {
     secrets: secrets.service,
     tenantSettings: docs.service.tenantSettings,
     providerEventMachines: machines.engine,
+    providerEventMappings: createCommerceProviderEventMappings(),
+  });
+
+  const commerce = createCommerceContribution({
+    machines: machines.engine,
+    integrations: integrations.service,
   });
 
   const webhooks = createWebhooksDomain({
@@ -240,17 +245,9 @@ export async function createApp(): Promise<Hono> {
     },
   });
 
-  const capabilities = createCapabilityRegistry(
-    createCommerceCapabilities({
-      machines: machines.engine,
-      integrations: integrations.service,
-      checkoutProviders: createCheckoutProviderRegistry({
-        stripe: createStripeCheckoutAdapter(),
-      }),
-    }),
-  );
+  const capabilities = createCapabilityRegistry(commerce);
   const capabilityRoutes = new Hono();
-  registerCapabilityRoutes(capabilityRoutes, capabilities);
+  registerCapabilityRoutes(capabilityRoutes, capabilities, docs.service.tenantSettings);
 
   app.route("/api/capabilities", capabilityRoutes);
   app.route("/api/auth", auth.routes);

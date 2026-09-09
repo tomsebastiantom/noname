@@ -87,7 +87,8 @@ The same route/runtime also serves non-commerce capabilities without changing ma
 ## Security
 
 - Generic capability routes require an installed extension/capability and explicit permission or public grant.
-- Public capabilities must be explicitly allowlisted by path/capability and re-verified server-side; a publishable key is not authentication for sensitive operations.
+- Public capabilities must be explicitly allowlisted by path/capability and re-verified server-side with `requirePublicActor`; the publishable key grants only the explicitly designed public capability and is not authentication for account-sensitive operations.
+- The edge `PUBLIC_ROUTES` list controls JWT bypass only; it never grants access by itself. The origin must still verify the publishable key against the edge-resolved organization.
 - Capability handlers cannot receive provider secrets. Nango connection IDs are resolved from tenant settings.
 - Inputs and outputs are schema-bounded; raw provider payloads never cross to the browser.
 

@@ -6,9 +6,17 @@
       "on": {
         "addToCart": { "target": "active" },
         "clear": { "target": "active" },
-        "checkout": { "target": "active" },
+        "checkout": { "target": "awaiting_payment" },
         "claim": { "target": "active" }
       }
-    }
+    },
+    "awaiting_payment": {
+      "on": {
+        "PAYMENT_SUCCEEDED": { "target": "paid" },
+        "PAYMENT_FAILED": { "target": "payment_failed" }
+      }
+    },
+    "paid": { "final": true },
+    "payment_failed": { "final": true }
   }
 }

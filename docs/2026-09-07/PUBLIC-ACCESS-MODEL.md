@@ -29,6 +29,10 @@
 * **Industry-aligned naming**: `publishableKey`, `pk_test_/pk_live_`, `x-publishable-key` — Stripe/Ghost language, domain-independent (a `storeKey` prototype was renamed for exactly this reason).
 * **1000-domain scaling**: new anonymous surface = explicit paths + one `requirePublicActor` call (~10 lines), no new credential types ever again.
 
+## Capability routes
+
+Capability paths may be admitted by the edge as anonymous transport routes, but the origin must call `requirePublicActor` for each explicitly public capability. `PUBLIC_ROUTES` is a JWT-bypass list, not an authorization list. Authenticated capability calls continue through JWT/permission checks.
+
 ## Gateway rule (absolute)
 
 Every client — browser, mobile app, server-to-server — talks through the edge

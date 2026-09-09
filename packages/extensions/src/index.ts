@@ -12,6 +12,8 @@ export interface ExtensionLifecycle {
 
 export interface ExtensionModule {
   registry: ComponentRegistry;
+  componentSchemas?: Record<string, unknown>;
+  actionSchemas?: Record<string, unknown>;
   lifecycle?: ExtensionLifecycle;
 }
 

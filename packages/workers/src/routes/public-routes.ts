@@ -37,7 +37,10 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   /** Nango OAuth connect callback. */
   { method: "POST", pattern: /^\/api\/integrations\/nango\/webhook$/ },
   /** Nango-forwarded provider events (verified by Nango signature server-side). */
-  { method: "POST", pattern: /^\/api\/integrations\/nango\/incoming$/ },
+   { method: "POST", pattern: /^\/api\/integrations\/nango\/incoming$/ },
+   /** Capability requests use publishable-key validation at the origin. */
+   { method: "POST", pattern: /^\/api\/capabilities\/[^/]+$/ },
+
 ];
 
 export function routeIsPublic(method: string, pathname: string): boolean {

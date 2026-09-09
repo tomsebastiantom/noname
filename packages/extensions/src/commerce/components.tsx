@@ -1,8 +1,9 @@
 import { isRichTextDocument } from "@noname/documents";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RichTextRenderer } from "../shared/RichTextRenderer";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
+import { CartRequestError, getCart } from "./cart";
 
 function renderDescription(description: unknown) {
   if (!isRichTextDocument(description)) return null;
@@ -46,6 +47,8 @@ export function Hero({ props, emit }: ComponentCtx<HeroProps>) {
   );
 }
 
+type CartItem = { productId: string; quantity: number; price?: number };
+
 type ProductCardProps = {
   addToCart: string;
   adding: string;
@@ -58,6 +61,8 @@ type ProductCardProps = {
   description: unknown;
 };
 
+const CART_UPDATED_EVENT = "noname:cart-updated";
+
 export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
   const labels = props;
   const [status, setStatus] = useState<string | null>(null);
@@ -67,11 +72,13 @@ export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
     setLoading(true);
     setStatus(null);
     try {
-      await commerceActions.addToCart({
+       await commerceActions.addToCart({
         productId: props.productId,
         quantity: 1,
-      });
-      setStatus(labels.addedToCart);
+        price: props.price,
+       });
+       window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+       setStatus(labels.addedToCart);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : labels.addFailed);
     } finally {
@@ -108,7 +115,93 @@ export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
   );
 }
 
+type CartSummaryProps = {
+  title: string;
+  checkoutLabel: string;
+  viewCartLabel: string;
+  hideCartLabel: string;
+  loadingLabel: string;
+  itemLabel: string;
+  itemsLabel: string;
+  priceUnavailableLabel: string;
+  signInLabel: string;
+  signInRequiredLabel: string;
+  paymentPendingLabel: string;
+  paymentSuccessLabel: string;
+  paymentFailedLabel: string;
+};
+
+export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
+  const [cart, setCart] = useState<{ context: { items?: CartItem[]; total?: number; currency?: string } } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const [requiresSignIn, setRequiresSignIn] = useState(false);
+  const [paymentStatus, setPaymentStatus] = useState<"pending" | "success" | "failed" | null>(null);
+
+  useEffect(() => {
+    setRequiresSignIn(false);
+    const load = async () => {
+      try {
+         const nextCart = await getCart();
+         setCart(nextCart);
+         setError(null);
+         setPaymentStatus(nextCart.currentState === "paid" ? "success" : nextCart.currentState === "payment_failed" ? "failed" : nextCart.currentState === "awaiting_payment" ? "pending" : null);
+      } catch (err) {
+        if (err instanceof CartRequestError && err.status === 401) {
+          setRequiresSignIn(true);
+          setError(props.signInRequiredLabel);
+        } else {
+          setError(err instanceof Error ? err.message : "Cart unavailable");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+    window.addEventListener(CART_UPDATED_EVENT, load);
+    return () => window.removeEventListener(CART_UPDATED_EVENT, load);
+  }, [props.signInRequiredLabel]);
+
+  const items = cart?.context.items ?? [];
+  const total = items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0) / 100;
+  const currency = cart?.context.currency?.toUpperCase() ?? "CAD";
+  return (
+    <aside className="sticky bottom-4 z-10 mx-auto mt-8 w-full max-w-3xl rounded-xl border bg-card/95 p-5 shadow-lg backdrop-blur">
+      {expanded && items.length > 0 && (
+        <div className="mb-4 border-b pb-4">
+          <ul className="space-y-2 text-sm">
+            {items.map((item) => (
+              <li key={`${item.productId}-${item.price ?? "unknown"}`} className="flex justify-between gap-4">
+                <span>{item.productId} × {item.quantity}</span>
+                <span>{item.price === undefined ? props.priceUnavailableLabel : `${((item.price * item.quantity) / 100).toFixed(2)} ${currency}`}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-semibold">{props.title}</h2>
+          {loading ? <p className="text-sm text-muted-foreground">{props.loadingLabel}</p> : <p className="text-sm text-muted-foreground">{items.length} {items.length === 1 ? props.itemLabel : props.itemsLabel}</p>}
+          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
+          {paymentStatus === "pending" && <p className="text-sm text-muted-foreground" role="status">{props.paymentPendingLabel}</p>}
+          {paymentStatus === "success" && <p className="text-sm text-green-600" role="status">{props.paymentSuccessLabel}</p>}
+          {paymentStatus === "failed" && <p className="text-sm text-destructive" role="alert">{props.paymentFailedLabel}</p>}
+          {requiresSignIn && <a className="text-sm font-medium underline" href="/login">{props.signInLabel}</a>}
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-xl font-bold">{total.toFixed(2)} {currency}</span>
+          <button type="button" className="rounded-md border px-4 py-2 text-sm font-medium" onClick={() => setExpanded((value) => !value)}>{expanded ? props.hideCartLabel : props.viewCartLabel}</button>
+          <button type="button" className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={loading || items.length === 0 || items.some((item) => item.price === undefined)} onClick={() => void commerceActions.checkout()}>{props.checkoutLabel}</button>
+        </div>
+      </div>
+    </aside>
+  );
+}
+
 export const commerceComponents = {
   Hero,
   ProductCard,
+  CartSummary,
 };
