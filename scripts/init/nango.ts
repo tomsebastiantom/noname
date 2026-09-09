@@ -140,12 +140,13 @@ async function main(): Promise<void> {
   const secret = psql(
     "nango",
     `SELECT secret_key FROM nango._nango_environments WHERE name = 'dev' ORDER BY id ASC LIMIT 1;`,
-  ).trim();
+  ).trim().replace(/^=/, "");
   if (!secret || secret.length < 8) {
     throw new Error("Could not read Nango dev secret key");
   }
-  setEnvVar(join(ROOT, ".env"), "NANGO_SECRET_KEY", secret);
-  setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_SECRET_KEY", secret);
+    setEnvVar(join(ROOT, ".env"), "NANGO_SECRET_KEY", secret.replace(/^=/, ""));
+
+  setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_SECRET_KEY", secret.replace(/^=/, ""));
   setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_HOST", NANGO_HOST);
 
   console.log("Ensuring Stripe integration...");
@@ -157,7 +158,14 @@ async function main(): Promise<void> {
       body: { unique_key: "stripe", provider: "stripe-api-key", display_name: "Stripe" },
     });
     if (created.status !== 200 && created.status !== 201) {
-      throw new Error(`Stripe integration create failed: ${created.status}`);
+      const error = created.json as { error?: { errors?: Array<{ message?: string }> } } | null;
+      const alreadyExists = error?.error?.errors?.some((item) =>
+        item.message?.toLowerCase().includes("unique key already exists"),
+      );
+      if (!alreadyExists) {
+        throw new Error(`Stripe integration create failed: ${created.status}`);
+      }
+      console.log("Stripe integration already exists.");
     }
   } else {
     console.log("Stripe integration already exists.");
