@@ -19,6 +19,12 @@ import {
   registerExtensionDispatcher,
 } from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
+import { createCapabilityRegistry, registerCapabilityRoutes } from "./domains/capabilities";
+import {
+  createCheckoutProviderRegistry,
+  createCommerceCapabilities,
+  createStripeCheckoutAdapter,
+} from "@noname/verticals/commerce";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
@@ -234,6 +240,19 @@ export async function createApp(): Promise<Hono> {
     },
   });
 
+  const capabilities = createCapabilityRegistry(
+    createCommerceCapabilities({
+      machines: machines.engine,
+      integrations: integrations.service,
+      checkoutProviders: createCheckoutProviderRegistry({
+        stripe: createStripeCheckoutAdapter(),
+      }),
+    }),
+  );
+  const capabilityRoutes = new Hono();
+  registerCapabilityRoutes(capabilityRoutes, capabilities);
+
+  app.route("/api/capabilities", capabilityRoutes);
   app.route("/api/auth", auth.routes);
   app.route("/api/integrations", integrations.routes);
   app.route("/api/notifications", notifications.routes);

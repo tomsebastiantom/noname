@@ -10,6 +10,6 @@ export const commerceActions = {
     await mergeGuestCartOnLogin();
   },
   checkout: async () => {
-    window.location.href = "/checkout";
+    window.location.assign("/checkout");
   },
 };

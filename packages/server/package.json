@@ -35,6 +35,7 @@
     "@noname/auth": "workspace:*",
     "@noname/documents": "workspace:*",
     "@noname/shared": "workspace:*",
+    "@noname/verticals": "workspace:*",
     "@opentelemetry/api": "^1.9.1",
     "@opentelemetry/auto-instrumentations-node": "^0.78.0",
     "@opentelemetry/exporter-trace-otlp-http": "^0.220.0",

@@ -1,0 +1,22 @@
+{
+  "name": "@noname/verticals",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./commerce": "./src/commerce/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint"
+  },
+  "dependencies": {
+    "@noname/auth": "workspace:*",
+    "@noname/server": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0"
+  }
+}

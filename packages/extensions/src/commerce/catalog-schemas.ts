@@ -37,7 +37,7 @@ export const commerceActionSchemas = {
     description: "Add product to cart",
   },
   checkout: {
-    description: "Proceed to checkout",
+    description: "Create a hosted checkout session and redirect",
   },
   mergeGuestCart: {
     description: "Claim the guest cart for the signed-in user (also runs on login)",
