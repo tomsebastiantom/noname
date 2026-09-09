@@ -1,7 +1,7 @@
 import { type CommsProviderName, isCommsProviderName } from "@noname/shared";
 import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
-import { eventBus } from "../../shared/event-bus";
-import { PROVIDER_EVENT_RECEIVED, type ProviderForwardedEvent } from "./provider-events";
+import { getProviderEventQueue } from "./provider-event-queue";
+import type { ProviderEventMapping, ProviderForwardedEvent } from "./provider-events";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import { parseIntegrationId } from "./integration-id";
@@ -33,8 +33,15 @@ export function createIntegrationsService(deps: {
   secrets: SecretsService;
   tenantSettings: TenantSettingsService;
   oauth?: IntegrationOAuthPort | null;
+  providerEventMappings?: ProviderEventMapping[];
+  enqueueProviderEvent?: (event: ProviderForwardedEvent, jobId: string) => Promise<void>;
 }): IntegrationsService {
   const { secrets, tenantSettings, oauth = null } = deps;
+  const enqueueProviderEvent =
+    deps.enqueueProviderEvent ??
+    (async (event, jobId) => {
+      await getProviderEventQueue().add("process", { event }, { jobId });
+    });
 
   async function getLlmConfig(orgId: string): Promise<LlmIntegrationPublic> {
     const settings = await tenantSettings.get(orgId);
@@ -278,13 +285,24 @@ export function createIntegrationsService(deps: {
             ? (body.data as Record<string, unknown>)
             : null);
       if (!eventPayload) return;
-      await eventBus.publish(PROVIDER_EVENT_RECEIVED, {
+      const providerEventId =
+        typeof body.providerEventId === "string"
+          ? body.providerEventId
+          : typeof body.eventId === "string"
+            ? body.eventId
+            : undefined;
+      const deliveryId = typeof body.deliveryId === "string" ? body.deliveryId : undefined;
+      const forwarded = {
         orgId,
         integrationId,
         connectionId,
+        providerEventId,
+        deliveryId,
         eventType,
         payload: eventPayload,
-      } satisfies ProviderForwardedEvent);
+      } satisfies ProviderForwardedEvent;
+      const jobId = `${connectionId}:${providerEventId ?? deliveryId ?? eventType}`;
+      await enqueueProviderEvent(forwarded, jobId);
     },
 
     async triggerOAuthAction(

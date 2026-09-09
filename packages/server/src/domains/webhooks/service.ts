@@ -3,50 +3,20 @@ import type { Queue } from "bullmq";
 import {
   ConflictError,
   NotFoundError,
-  ServiceUnavailableError,
-  UnauthorizedError,
   ValidationError,
 } from "../../shared/domain-error";
 import type { SecretsService } from "../secrets/ports";
-import { createGenericHmacAdapter } from "./adapters/generic-hmac";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { toOutboundDeliveryDTO, toSubscriptionDTO } from "./adapters/postgres";
-import { createStripeWebhookAdapter } from "./adapters/stripe";
 import { buildOutboundWebhookBody } from "./envelope";
-import type {
-  InboundWebhookAdapter,
-  WebhookInboundJobData,
-  WebhookOutboundJobData,
-  WebhooksService,
-} from "./ports";
-
-function adapterForProvider(provider: string): InboundWebhookAdapter | null {
-  switch (provider) {
-    case "stripe": {
-      const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
-      return secret ? createStripeWebhookAdapter(secret) : null;
-    }
-    case "generic": {
-      const secret = process.env.WEBHOOK_GENERIC_SECRET?.trim();
-      return secret ? createGenericHmacAdapter(secret) : null;
-    }
-    default:
-      return null;
-  }
-}
+import type { WebhookOutboundJobData, WebhooksService } from "./ports";
 
 export function createWebhooksService(deps: {
   storage: WebhooksStorage;
-  inboundQueue: Queue<WebhookInboundJobData>;
   outboundQueue: Queue<WebhookOutboundJobData>;
   secrets: Pick<SecretsService, "putOrgSecret" | "hasOrgSecret">;
-  resolveOrgId?: (input: {
-    orgId?: string;
-    connectionId?: string;
-    provider: string;
-  }) => Promise<string | null>;
 }): WebhooksService {
-  const { storage, inboundQueue, outboundQueue, secrets, resolveOrgId } = deps;
+  const { storage, outboundQueue, secrets } = deps;
 
   async function subscriptionDto(
     orgId: string,
@@ -58,49 +28,6 @@ export function createWebhooksService(deps: {
   }
 
   return {
-    async handleInbound(provider, rawBody, headers) {
-      const adapter = adapterForProvider(provider);
-      if (!adapter) {
-        throw new ServiceUnavailableError(`Webhook provider not configured: ${provider}`);
-      }
-
-      if (!adapter.verify(rawBody, headers)) {
-        throw new UnauthorizedError("Invalid webhook signature");
-      }
-
-      const normalized = adapter.normalize(rawBody);
-      let orgId = normalized.orgId ?? null;
-      if (!orgId && normalized.connectionId && resolveOrgId) {
-        orgId = await resolveOrgId({
-          orgId: normalized.orgId,
-          connectionId: normalized.connectionId,
-          provider,
-        });
-      }
-
-      const { row, duplicate } = await storage.insertReceipt({
-        orgId,
-        provider,
-        externalEventId: normalized.externalEventId,
-        eventType: normalized.eventType,
-        status: "received",
-        payload: normalized.payload,
-      });
-
-      if (duplicate) {
-        return { receiptId: row.id, duplicate: true };
-      }
-
-      await inboundQueue.add("process", {
-        receiptId: row.id,
-        orgId,
-        provider,
-        eventType: normalized.eventType,
-        payload: normalized.payload,
-      });
-
-      return { receiptId: row.id, duplicate: false };
-    },
 
     async listSubscriptions(orgId) {
       const rows = await storage.listSubscriptions(orgId);

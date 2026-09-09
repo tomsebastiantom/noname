@@ -2,11 +2,13 @@ import { Hono } from "hono";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import { nangoAdapterFromEnv } from "./adapters/nango";
+import type { ProviderEventMapping } from "./provider-events";
 import type { IntegrationOAuthPort, IntegrationsService } from "./ports";
 import { registerIntegrationsCommsRoutes } from "./routes/comms";
 import { registerIntegrationsLlmRoutes } from "./routes/llm";
 import { registerIntegrationsNangoRoutes } from "./routes/nango";
 import { startExtensionDeliveryWorker } from "./extension-dispatcher";
+import { startProviderEventWorker } from "./provider-event-worker";
 import { createIntegrationsService } from "./service";
 
 export { createNangoAdapter, nangoAdapterFromEnv } from "./adapters/nango";
@@ -17,6 +19,17 @@ export type {
   OAuthConnectionsPublic,
 } from "./ports";
 export { createIntegrationsService } from "./service";
+export {
+  createMachineEventMapping,
+  createProviderEventRegistry,
+  PROVIDER_EVENT_NORMALIZED,
+  PROVIDER_EVENT_RECEIVED,
+} from "./provider-events";
+export type {
+  NormalizedProviderEvent,
+  ProviderEventMapping,
+  ProviderForwardedEvent,
+} from "./provider-events";
 export { registerExtensionDispatcher, startExtensionDeliveryWorker } from "./extension-dispatcher";
 
 export interface IntegrationsDomainDeps {
@@ -24,6 +37,8 @@ export interface IntegrationsDomainDeps {
   tenantSettings: TenantSettingsService;
   oauth?: IntegrationOAuthPort | null;
   service?: IntegrationsService;
+  providerEventMappings?: ProviderEventMapping[];
+  providerEventMachines?: import("../machines/ports").MachineEngine;
 }
 
 export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
@@ -35,7 +50,9 @@ export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
       secrets: deps.secrets,
       tenantSettings: deps.tenantSettings,
       oauth,
+      providerEventMappings: deps.providerEventMappings,
     });
+
 
   const routes = new Hono();
   registerIntegrationsLlmRoutes(routes, {
@@ -54,5 +71,10 @@ export function createIntegrationsDomain(deps: IntegrationsDomainDeps) {
 
   const deliveryWorker = startExtensionDeliveryWorker();
 
-  return { service, routes, oauth, deliveryWorker };
+  const providerEventWorker = startProviderEventWorker({
+    mappings: deps.providerEventMappings,
+    machines: deps.providerEventMachines,
+  });
+
+  return { service, routes, oauth, deliveryWorker, providerEventWorker };
 }

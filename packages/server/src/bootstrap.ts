@@ -22,11 +22,7 @@ import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
-import {
-  createWebhooksDomain,
-  registerWebhookInboundRouter,
-  registerWebhookOutboundRouter,
-} from "./domains/webhooks";
+import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
@@ -96,11 +92,6 @@ export async function createApp(): Promise<Hono> {
     tenantSettings: docs.service.tenantSettings,
   });
 
-  const integrations = createIntegrationsDomain({
-    secrets: secrets.service,
-    tenantSettings: docs.service.tenantSettings,
-  });
-
   const notifications = createNotificationsDomain({
     db,
     secrets: secrets.service,
@@ -130,17 +121,15 @@ export async function createApp(): Promise<Hono> {
     },
   });
 
+  const integrations = createIntegrationsDomain({
+    secrets: secrets.service,
+    tenantSettings: docs.service.tenantSettings,
+    providerEventMachines: machines.engine,
+  });
+
   const webhooks = createWebhooksDomain({
     db,
     secrets: secrets.service,
-    tenantSettings: docs.service.tenantSettings,
-  });
-
-  registerWebhookInboundRouter({
-    machines: machines.engine,
-    subscribe: (event, handler) => {
-      eventBus.subscribe(event, handler);
-    },
   });
 
   registerWebhookOutboundRouter({

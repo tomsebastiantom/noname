@@ -9,8 +9,6 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-export { webhookReceipts } from "./inbound-schema";
-
 export const webhookSubscriptions = pgTable(
   "webhook_subscriptions",
   {

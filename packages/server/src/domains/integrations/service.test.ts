@@ -20,6 +20,7 @@ function mockTenantSettings(integrations: Record<string, unknown> = {}): TenantS
       integrations: patch.integrations ?? row.integrations,
     })),
     resolveStoreSlug: vi.fn(async () => "org-1"),
+    findOrgIdByOAuthConnectionId: vi.fn(async () => "org-1"),
   };
 }
 
@@ -154,6 +155,66 @@ describe("createIntegrationsService", () => {
           nango: { hubspot: { connectionId: "conn-123" } },
         }),
       }),
+    );
+  });
+
+  it("normalizes a registered provider event and publishes it", async () => {
+    const { eventBus } = await import("../../shared/event-bus");
+    const publish = vi.spyOn(eventBus, "publish").mockResolvedValue();
+    const enqueueProviderEvent = vi.fn(async () => undefined);
+    const service = createIntegrationsService({
+      secrets: mockSecrets(),
+      tenantSettings: mockTenantSettings(),
+      oauth: mockOAuth(),
+      enqueueProviderEvent,
+      providerEventMappings: [
+        {
+          integrationId: "stripe",
+          eventType: "checkout.session.completed",
+          normalize: () => ({
+            event: "PAYMENT_SUCCEEDED",
+            params: { paymentRef: "cs_123" },
+            machineInstanceId: "inst-1",
+          }),
+        },
+      ],
+    });
+
+    await service.handleProviderWebhook({
+      connectionId: "conn-1",
+      providerConfigKey: "stripe",
+      eventId: "evt-1",
+      type: "checkout.session.completed",
+      payload: { id: "cs_123" },
+    });
+
+    expect(enqueueProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-1", providerEventId: "evt-1" }),
+      "conn-1:evt-1",
+    );
+    publish.mockRestore();
+  });
+
+  it("does not normalize an unregistered provider event", async () => {
+    const enqueueProviderEvent = vi.fn(async () => undefined);
+    const service = createIntegrationsService({
+      secrets: mockSecrets(),
+      tenantSettings: mockTenantSettings(),
+      oauth: mockOAuth(),
+      enqueueProviderEvent,
+    });
+
+    await service.handleProviderWebhook({
+      connectionId: "conn-1",
+      providerConfigKey: "stripe",
+      eventId: "evt-1",
+      type: "unknown.event",
+      payload: { id: "x" },
+    });
+
+    expect(enqueueProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ orgId: "org-1", eventType: "unknown.event" }),
+      "conn-1:evt-1",
     );
   });
 

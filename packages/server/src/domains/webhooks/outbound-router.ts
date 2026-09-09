@@ -1,14 +1,12 @@
 import { AgentEvents } from "../agent/events";
 import { MachineEvents } from "../machines/events";
 import { CommsEvents } from "../notifications/events";
-import { WebhookEvents } from "./events";
 import type { WebhooksService } from "./ports";
 
 export const WebhookPlatformEventTypes = {
   MACHINE_TRANSITION: "machine.transition",
   COMMS_SENT: "comms.sent",
   COMMS_FAILED: "comms.failed",
-  WEBHOOK_RECEIVED: "webhook.received",
   AGENT_TASK_COMPLETED: "agent.task.completed",
 } as const;
 
@@ -77,29 +75,6 @@ export function registerWebhookOutboundRouter(deps: {
         error: payload.error,
       },
       `comms-failed:${payload.orgId}:${payload.deliveryId}`,
-    );
-  });
-
-  deps.subscribe(WebhookEvents.RECEIVED, async (rawPayload) => {
-    const payload = rawPayload as {
-      orgId?: string | null;
-      receiptId?: string;
-      provider?: string;
-      eventType?: string;
-      payload?: Record<string, unknown>;
-    };
-    if (!payload.orgId || !payload.receiptId) return;
-
-    await deps.webhooks.deliverOutbound(
-      payload.orgId,
-      WebhookPlatformEventTypes.WEBHOOK_RECEIVED,
-      {
-        receiptId: payload.receiptId,
-        provider: payload.provider,
-        eventType: payload.eventType,
-        payload: payload.payload ?? {},
-      },
-      `inbound:${payload.provider}:${payload.receiptId}`,
     );
   });
 

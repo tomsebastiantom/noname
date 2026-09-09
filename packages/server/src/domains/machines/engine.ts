@@ -1,20 +1,16 @@
-import { createActor, createMachine } from "xstate";
+import { assign, createActor, createMachine } from "xstate";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { MachineEvents } from "./events";
 import type {
   Guard,
-  GuardContext,
   MachineDefinition,
   MachineEngine,
   MachineInstanceDTO,
   MachineStorage,
-  MachineTransition,
   TransitionResult,
 } from "./ports";
 
-// Built-in guards. External services (payments, inventory, flags) are injected
-// by consumers registering guards here.
 const guards = new Map<string, Guard>();
 
 export function registerGuard(name: string, guard: Guard): void {
@@ -32,55 +28,29 @@ export interface MachineEngineHooks {
   }) => Promise<void>;
 }
 
+type MachineEvent = { type: string; params?: Record<string, unknown> };
+
+type Execution = {
+  actor: ReturnType<typeof createActor>;
+  state: string;
+  context: Record<string, unknown>;
+};
+
 export function createMachineEngine(
   storage: MachineStorage,
   hooks: MachineEngineHooks = {},
 ): MachineEngine {
   const ensureDefinition = async (orgId: string, name: string): Promise<MachineDefinition> => {
-    const def = await storage.findDefinition(orgId, name);
-    if (!def) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
-    return def;
+    const definition = await storage.findDefinition(orgId, name);
+    if (!definition) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
+    validateDefinition(definition);
+    return definition;
   };
 
   const ensureInstance = async (orgId: string, id: string): Promise<MachineInstanceDTO> => {
     const instance = await storage.findInstance(orgId, id);
     if (!instance) throw new NotFoundError("MachineInstance", id);
     return instance;
-  };
-
-  const evaluateTransition = async (
-    definition: MachineDefinition,
-    instance: MachineInstanceDTO,
-    transition: MachineTransition,
-    params: Record<string, unknown>,
-  ): Promise<TransitionResult> => {
-    if (!transition.guard) {
-      return { success: true, fromState: instance.currentState, toState: transition.target };
-    }
-
-    const guardFn = guards.get(transition.guard.type);
-    if (!guardFn) {
-      return {
-        success: false,
-        fromState: instance.currentState,
-        toState: instance.currentState,
-        error: `Unknown guard: ${transition.guard.type}`,
-      };
-    }
-
-    const guardCtx: GuardContext = {
-      instance,
-      params: { ...transition.guard.params, ...params },
-      definition,
-    };
-
-    const guardResult = await guardFn(guardCtx);
-    return {
-      success: guardResult.passed,
-      fromState: instance.currentState,
-      toState: guardResult.passed ? transition.target : instance.currentState,
-      guardResult,
-    };
   };
 
   return {
@@ -101,90 +71,90 @@ export function createMachineEngine(
 
     async start(orgId, machineName, context) {
       const definition = await ensureDefinition(orgId, machineName);
-      if (!definition.states[definition.initial]) {
-        throw new ValidationError("initial", `Unknown initial state ${definition.initial}`);
+      const execution = startActor(definition, context);
+      try {
+        const instance = await storage.createInstance(
+          orgId,
+          machineName,
+          execution.state,
+          execution.context,
+        );
+        eventBus.publish(MachineEvents.STARTED, { orgId, instanceId: instance.id, machineName });
+        return instance;
+      } finally {
+        execution.actor.stop();
       }
-
-      const actor = createActor(buildXStateMachine(definition), { input: context });
-      actor.start();
-      const initialState = actor.getSnapshot().value as string;
-
-      const instance = await storage.createInstance(orgId, machineName, initialState, context);
-      eventBus.publish(MachineEvents.STARTED, { orgId, instanceId: instance.id, machineName });
-      return instance;
     },
 
     async transition(orgId, instanceId, event, params = {}) {
       const instance = await ensureInstance(orgId, instanceId);
       const definition = await ensureDefinition(orgId, instance.machineName);
+      const execution = startActor(definition, instance.context, instance.currentState);
+      const fromState = execution.state;
 
-      const stateConfig = definition.states[instance.currentState];
-      if (!stateConfig) {
-        throw new ValidationError("state", `Instance is in unknown state ${instance.currentState}`);
-      }
+      try {
+        execution.actor.send({ type: event, params });
+        const snapshot = execution.actor.getSnapshot();
+        const toState = stateValue(snapshot.value);
+        const nextContext = snapshot.context as Record<string, unknown>;
+        const changed = toState !== fromState || !sameContext(nextContext, instance.context);
 
-      const transitionConfig = stateConfig.on?.[event];
-      if (!transitionConfig) {
-        throw new ValidationError(
-          "transition",
-          `Event ${event} not handled in state ${instance.currentState}`,
-        );
-      }
+        if (!changed) {
+          const result: TransitionResult = {
+            success: false,
+            fromState,
+            toState: fromState,
+            error: `Event ${event} was rejected in state ${fromState}`,
+          };
+          await storage.logTransition(instanceId, event, result, params);
+          eventBus.publish(MachineEvents.TRANSITION_REJECTED, {
+            orgId,
+            instanceId,
+            event,
+            fromState,
+            reason: result.error,
+          });
+          throw new ValidationError("transition", result.error ?? "rejected");
+        }
 
-      const result = await evaluateTransition(definition, instance, transitionConfig, params);
-
-      await storage.logTransition(instanceId, event, result, params);
-
-      if (!result.success) {
-        eventBus.publish(MachineEvents.TRANSITION_REJECTED, {
+        const result: TransitionResult = { success: true, fromState, toState };
+        await storage.logTransition(instanceId, event, result, params);
+        const updated: MachineInstanceDTO = {
+          ...instance,
+          currentState: toState,
+          context: nextContext,
+          updatedAt: new Date(),
+        };
+        const saved = await storage.updateInstance(updated);
+        eventBus.publish(MachineEvents.TRANSITION, {
           orgId,
           instanceId,
           event,
-          fromState: result.fromState,
-          reason: result.error || result.guardResult?.reason,
+          fromState,
+          toState,
         });
-        throw new ValidationError(
-          "transition",
-          result.error || result.guardResult?.reason || "rejected",
-        );
+
+        if (hooks.onTransitionComplete) {
+          await hooks.onTransitionComplete({
+            orgId,
+            instance: saved,
+            event,
+            fromState,
+            toState,
+            params,
+          });
+        }
+        return saved;
+      } finally {
+        execution.actor.stop();
       }
-
-      const nextContext = await applyActions(definition, instance, transitionConfig, params);
-      const updated: MachineInstanceDTO = {
-        ...instance,
-        currentState: result.toState,
-        context: nextContext,
-        updatedAt: new Date(),
-      };
-
-      await storage.updateInstance(updated);
-      eventBus.publish(MachineEvents.TRANSITION, {
-        orgId,
-        instanceId,
-        event,
-        fromState: result.fromState,
-        toState: result.toState,
-      });
-
-      if (hooks.onTransitionComplete) {
-        await hooks.onTransitionComplete({
-          orgId,
-          instance: updated,
-          event,
-          fromState: result.fromState,
-          toState: result.toState,
-          params,
-        });
-      }
-
-      return updated;
     },
 
-    async listInstances(orgId) {
+    listInstances(orgId) {
       return storage.listInstances(orgId);
     },
 
-    async getInstance(orgId, id) {
+    getInstance(orgId, id) {
       return storage.findInstance(orgId, id);
     },
   };
@@ -192,16 +162,22 @@ export function createMachineEngine(
 
 function validateDefinition(definition: MachineDefinition): void {
   if (!definition.name || !definition.initial || !definition.states) {
-    throw new ValidationError(
-      "definition",
-      "Machine definition must include name, initial, and states",
-    );
+    throw new ValidationError("definition", "Machine definition must include name, initial, and states");
   }
   if (!definition.states[definition.initial]) {
     throw new ValidationError("initial", `Initial state ${definition.initial} not found in states`);
   }
   for (const [stateName, state] of Object.entries(definition.states)) {
-    for (const [_event, transition] of Object.entries(state.on || {})) {
+    if (state.entry && !Array.isArray(state.entry)) {
+      throw new ValidationError("entry", `Entry actions for ${stateName} must be an array`);
+    }
+    if (state.exit && !Array.isArray(state.exit)) {
+      throw new ValidationError("exit", `Exit actions for ${stateName} must be an array`);
+    }
+    for (const [event, transition] of Object.entries(state.on ?? {})) {
+      if (!transition || typeof transition !== "object" || !transition.target) {
+        throw new ValidationError("transition", `Malformed transition ${stateName}.${event}`);
+      }
       if (!definition.states[transition.target]) {
         throw new ValidationError(
           "transition",
@@ -212,36 +188,74 @@ function validateDefinition(definition: MachineDefinition): void {
   }
 }
 
-function buildXStateMachine(definition: MachineDefinition) {
-  const states: Record<string, any> = {};
-  for (const [name, state] of Object.entries(definition.states)) {
-    states[name] = {
-      on: mapTransitions(state.on || {}),
-    };
-  }
-  return createMachine({
+function startActor(
+  definition: MachineDefinition,
+  context: Record<string, unknown>,
+  currentState?: string,
+): Execution {
+  const machine = createMachine({
     id: definition.name,
     initial: definition.initial,
-    states,
-    context: ({ input }) => input,
+    context: ({ input }) => input as Record<string, unknown>,
+    states: Object.fromEntries(
+      Object.entries(definition.states).map(([name, state]) => [name, {
+        type: state.final ? "final" : undefined,
+        entry: state.entry?.length ? assign(({ context }) => context) : undefined,
+        exit: state.exit?.length ? assign(({ context }) => context) : undefined,
+        on: Object.fromEntries(
+          Object.entries(state.on ?? {}).map(([event, transition]) => [
+            event,
+            {
+              target: transition.target,
+              guard: transition.guard
+                ? ({ context, event: received }: { context: Record<string, unknown>; event: MachineEvent }) => {
+                    const guard = guards.get(transition.guard!.type);
+                    if (!guard) return false;
+                    const result = guard({
+                      instance: {
+                        id: "ephemeral",
+                        orgId: "ephemeral",
+                        machineName: definition.name,
+                        currentState: name,
+                        context,
+                        createdAt: new Date(0),
+                        updatedAt: new Date(0),
+                      },
+                      params: { ...transition.guard!.params, ...(received.params ?? {}) },
+                      definition,
+                    });
+                    if (result instanceof Promise) {
+                      throw new ValidationError("guard", "Asynchronous guards are not supported by XState transitions");
+                    }
+                    return result.passed;
+                  }
+                : undefined,
+              actions: assign(({ context, event: received }: { context: Record<string, unknown>; event: MachineEvent }) => ({
+                ...context,
+                ...(received.params ?? {}),
+              })),
+            },
+          ]),
+        ),
+      }]),
+    ),
   });
+  const actor = createActor(machine, {
+    input: context,
+    snapshot: currentState
+      ? machine.resolveState({ value: currentState, context })
+      : undefined,
+  });
+  actor.start();
+  const snapshot = actor.getSnapshot();
+  return { actor, state: stateValue(snapshot.value), context: snapshot.context as Record<string, unknown> };
 }
 
-function mapTransitions(on: Record<string, MachineTransition>): Record<string, { target: string }> {
-  const out: Record<string, { target: string }> = {};
-  for (const [event, t] of Object.entries(on)) {
-    out[event] = { target: t.target };
-  }
-  return out;
+function stateValue(value: unknown): string {
+  if (typeof value === "string") return value;
+  throw new ValidationError("state", "Only flat XState states are supported");
 }
 
-async function applyActions(
-  _definition: MachineDefinition,
-  instance: MachineInstanceDTO,
-  _transition: MachineTransition,
-  params: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
-  // Phase 0: only merge params into context. Later: call action registry for
-  // side effects (payment capture, inventory decrement, analytics).
-  return { ...instance.context, ...params };
+function sameContext(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
 }
