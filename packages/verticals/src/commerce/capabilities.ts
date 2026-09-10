@@ -25,6 +25,10 @@ type CommerceIntegrations = {
   proxyProvider: ProviderProxy;
 };
 
+type CommerceCatalog = {
+  findByType(orgId: string, type: string): Promise<Array<{ data: Record<string, unknown>; status?: string }>>;
+};
+
 export interface CheckoutSessionRequest {
   orgId: string;
   integrationId: string;
@@ -85,6 +89,7 @@ type ProviderForwardedEvent = {
 export type CommerceContributionDeps = {
   machines: CommerceMachines;
   integrations: CommerceIntegrations;
+  catalog?: CommerceCatalog;
 };
 
 export function createCommerceContribution(deps: CommerceContributionDeps) {
@@ -150,8 +155,9 @@ const checkoutInput = z.object({
 
 export function createCommerceCapabilities(deps: {
   machines: CommerceMachines;
-  integrations: CommerceIntegrations;
-  checkoutProviders: Record<string, CheckoutProviderAdapter>;
+   integrations: CommerceIntegrations;
+   catalog?: CommerceCatalog;
+   checkoutProviders: Record<string, CheckoutProviderAdapter>;
 }): Record<string, CapabilityHandler> {
   return {
     "commerce.checkout": async (rawInput, context) => {
@@ -160,8 +166,11 @@ export function createCommerceCapabilities(deps: {
        if (instance?.machineName !== "cart") throw new Error("Cart not found");
        if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
        const cartContext = (instance as MachineInstance & { context?: { items?: Array<{ quantity?: number; price?: number }>; total?: number; currency?: string } }).context ?? {};
-       const items = Array.isArray(cartContext.items) ? cartContext.items : [];
-       const amount = items.reduce((sum, item) => sum + (item.price ?? 0) * (item.quantity ?? 0), 0) || Number(cartContext.total);
+        const items = Array.isArray(cartContext.items) ? cartContext.items : [];
+        const products = deps.catalog ? await deps.catalog.findByType(context.orgId, "product") : [];
+        const prices = new Map(products.map((product) => [String(product.data.productId ?? product.data.id ?? ""), Number(product.data.price)]));
+        const amount = items.reduce((sum, item) => sum + (prices.get(String((item as { productId?: unknown }).productId)) ?? 0) * (item.quantity ?? 0) * 100, 0);
+        if (items.length > 0 && amount <= 0) throw new Error("Cart prices are unavailable");
        const currency = cartContext.currency ?? "cad";
        if (!Number.isInteger(amount) || amount <= 0) throw new Error("Cart total is unavailable");
 

@@ -136,6 +136,7 @@ export async function createApp(): Promise<Hono> {
   const commerce = createCommerceContribution({
     machines: machines.engine,
     integrations: integrations.service,
+    catalog: docs.service.content,
   });
 
   const webhooks = createWebhooksDomain({

@@ -4,6 +4,7 @@ import { RichTextRenderer } from "../shared/RichTextRenderer";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
 import { CartRequestError, getCart } from "./cart";
+import { cacheProduct, getCachedProduct } from "./product-catalog";
 
 function renderDescription(description: unknown) {
   if (!isRichTextDocument(description)) return null;
@@ -65,6 +66,7 @@ const CART_UPDATED_EVENT = "noname:cart-updated";
 
 export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
   const labels = props;
+  cacheProduct({ productId: props.productId, title: props.title, price: props.price });
   const [status, setStatus] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -75,7 +77,6 @@ export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
        await commerceActions.addToCart({
         productId: props.productId,
         quantity: 1,
-        price: props.price,
        });
        window.dispatchEvent(new Event(CART_UPDATED_EVENT));
        setStatus(labels.addedToCart);
@@ -164,17 +165,18 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
   }, [props.signInRequiredLabel]);
 
   const items = cart?.context.items ?? [];
-  const total = items.reduce((sum, item) => sum + (item.price ?? 0) * item.quantity, 0) / 100;
+  const pricedItems = items.map((item) => ({ ...item, product: getCachedProduct(item.productId) }));
+  const total = pricedItems.reduce((sum, item) => sum + (item.product?.price ?? 0) * item.quantity, 0);
   const currency = cart?.context.currency?.toUpperCase() ?? "CAD";
   return (
     <aside className="sticky bottom-4 z-10 mx-auto mt-8 w-full max-w-3xl rounded-xl border bg-card/95 p-5 shadow-lg backdrop-blur">
       {expanded && items.length > 0 && (
         <div className="mb-4 border-b pb-4">
           <ul className="space-y-2 text-sm">
-            {items.map((item) => (
-              <li key={`${item.productId}-${item.price ?? "unknown"}`} className="flex justify-between gap-4">
-                <span>{item.productId} × {item.quantity}</span>
-                <span>{item.price === undefined ? props.priceUnavailableLabel : `${((item.price * item.quantity) / 100).toFixed(2)} ${currency}`}</span>
+            {pricedItems.map((item) => (
+              <li key={item.productId} className="flex justify-between gap-4">
+                <span>{item.product?.title ?? item.productId} × {item.quantity}</span>
+                <span>{item.product ? `${(item.product.price * item.quantity).toFixed(2)} ${currency}` : props.priceUnavailableLabel}</span>
               </li>
             ))}
           </ul>
@@ -193,7 +195,7 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
         <div className="flex items-center gap-3">
           <span className="text-xl font-bold">{total.toFixed(2)} {currency}</span>
           <button type="button" className="rounded-md border px-4 py-2 text-sm font-medium" onClick={() => setExpanded((value) => !value)}>{expanded ? props.hideCartLabel : props.viewCartLabel}</button>
-          <button type="button" className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={loading || items.length === 0 || items.some((item) => item.price === undefined)} onClick={() => void commerceActions.checkout()}>{props.checkoutLabel}</button>
+          <button type="button" className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={loading || items.length === 0 || pricedItems.some((item) => !item.product)} onClick={() => void commerceActions.checkout()}>{props.checkoutLabel}</button>
         </div>
       </div>
     </aside>

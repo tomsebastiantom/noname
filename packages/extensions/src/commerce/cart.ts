@@ -38,7 +38,6 @@ export async function getPublishableKey(force = false): Promise<string | null> {
 interface CartItem {
   productId: string;
   quantity: number;
-  price?: number;
 }
 
 interface ApiEnvelope<T> {
@@ -191,21 +190,15 @@ export async function checkout(): Promise<void> {
   window.location.assign(result.redirectUrl);
 }
 
-export async function addProductToCart(productId: string, quantity: number, price?: number): Promise<void> {
+export async function addProductToCart(productId: string, quantity: number): Promise<void> {
   const instanceId = await getOrStartCart();
 
   const getRes = await fetch(`/api/machines/cart/${instanceId}`, {
     headers: authHeaders(),
   });
   const instance = await parseJson<MachineInstance>(getRes);
-  const items = Array.isArray(instance.context.items)
-    ? instance.context.items.map((item) =>
-        item.productId === productId && item.price === undefined && typeof price === "number"
-          ? { ...item, price: Math.round(price * 100) }
-          : item,
-      )
-    : [];
-  items.push({ productId, quantity, ...(typeof price === "number" ? { price: Math.round(price * 100) } : {}) });
+  const items = Array.isArray(instance.context.items) ? [...instance.context.items] : [];
+  items.push({ productId, quantity });
 
   const res = await fetch(`/api/machines/cart/${instanceId}/addToCart`, {
     method: "POST",
