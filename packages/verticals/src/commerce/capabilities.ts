@@ -9,7 +9,12 @@ type MachineInstance = {
 
 type CommerceMachines = {
   getInstance(orgId: string, id: string): Promise<MachineInstance | null>;
-  transition(orgId: string, id: string, event: string, params: Record<string, unknown>): Promise<unknown>;
+  transition(
+    orgId: string,
+    id: string,
+    event: string,
+    params: Record<string, unknown>,
+  ): Promise<unknown>;
 };
 
 type ProviderProxy = <T = unknown>(input: {
@@ -26,7 +31,10 @@ type CommerceIntegrations = {
 };
 
 type CommerceCatalog = {
-  findByType(orgId: string, type: string): Promise<Array<{ data: Record<string, unknown>; status?: string }>>;
+  findByType(
+    orgId: string,
+    type: string,
+  ): Promise<Array<{ data: Record<string, unknown>; status?: string }>>;
 };
 
 export interface CheckoutSessionRequest {
@@ -100,27 +108,50 @@ export function createCommerceContribution(deps: CommerceContributionDeps) {
 }
 
 export function createCommerceProviderEventMappings() {
-  return [{
-    integrationId: "stripe",
-    eventType: "checkout.session.completed",
-    normalize: (event: ProviderForwardedEvent) => {
-      const payload = event.payload;
-      const metadata = payload.metadata && typeof payload.metadata === "object"
+  const normalizePaymentEvent = (
+    event: ProviderForwardedEvent,
+    normalizedEvent: "PAYMENT_SUCCEEDED" | "PAYMENT_FAILED",
+  ) => {
+    const payload = event.payload;
+    const metadata =
+      payload.metadata && typeof payload.metadata === "object"
         ? (payload.metadata as Record<string, unknown>)
         : {};
-      const machineInstanceId = readString(metadata.machineInstanceId ?? payload.client_reference_id);
-      if (!machineInstanceId) return null;
-      return {
-        event: "PAYMENT_SUCCEEDED",
-        params: {
-          paymentRef: readString(payload.payment_intent) ?? event.providerEventId,
-          amount: payload.amount_total,
-          currency: payload.currency,
-        },
-        machineInstanceId,
-      };
+    const machineInstanceId = readString(metadata.machineInstanceId ?? payload.client_reference_id);
+    if (!machineInstanceId) return null;
+    return {
+      event: normalizedEvent,
+      params: {
+        paymentRef: readString(payload.payment_intent) ?? event.providerEventId,
+        amount: payload.amount_total,
+        currency: payload.currency,
+        reason:
+          normalizedEvent === "PAYMENT_FAILED"
+            ? (readString(payload.payment_status) ?? event.eventType)
+            : undefined,
+      },
+      machineInstanceId,
+    };
+  };
+
+  return [
+    {
+      integrationId: "stripe",
+      eventType: "checkout.session.completed",
+      normalize: (event: ProviderForwardedEvent) =>
+        normalizePaymentEvent(event, "PAYMENT_SUCCEEDED"),
     },
-  }];
+    {
+      integrationId: "stripe",
+      eventType: "checkout.session.async_payment_failed",
+      normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
+    },
+    {
+      integrationId: "stripe",
+      eventType: "checkout.session.expired",
+      normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
+    },
+  ];
 }
 
 function readString(value: unknown): string | undefined {
@@ -155,24 +186,45 @@ const checkoutInput = z.object({
 
 export function createCommerceCapabilities(deps: {
   machines: CommerceMachines;
-   integrations: CommerceIntegrations;
-   catalog?: CommerceCatalog;
-   checkoutProviders: Record<string, CheckoutProviderAdapter>;
+  integrations: CommerceIntegrations;
+  catalog?: CommerceCatalog;
+  checkoutProviders: Record<string, CheckoutProviderAdapter>;
 }): Record<string, CapabilityHandler> {
   return {
     "commerce.checkout": async (rawInput, context) => {
       const input = checkoutInput.parse(rawInput);
       const instance = await deps.machines.getInstance(context.orgId, input.instanceId);
-       if (instance?.machineName !== "cart") throw new Error("Cart not found");
-       if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
-       const cartContext = (instance as MachineInstance & { context?: { items?: Array<{ quantity?: number; price?: number }>; total?: number; currency?: string } }).context ?? {};
-        const items = Array.isArray(cartContext.items) ? cartContext.items : [];
-        const products = deps.catalog ? await deps.catalog.findByType(context.orgId, "product") : [];
-        const prices = new Map(products.map((product) => [String(product.data.productId ?? product.data.id ?? ""), Number(product.data.price)]));
-        const amount = items.reduce((sum, item) => sum + (prices.get(String((item as { productId?: unknown }).productId)) ?? 0) * (item.quantity ?? 0) * 100, 0);
-        if (items.length > 0 && amount <= 0) throw new Error("Cart prices are unavailable");
-       const currency = cartContext.currency ?? "cad";
-       if (!Number.isInteger(amount) || amount <= 0) throw new Error("Cart total is unavailable");
+      if (instance?.machineName !== "cart") throw new Error("Cart not found");
+      if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
+      const cartContext =
+        (
+          instance as MachineInstance & {
+            context?: {
+              items?: Array<{ quantity?: number; price?: number }>;
+              total?: number;
+              currency?: string;
+            };
+          }
+        ).context ?? {};
+      const items = Array.isArray(cartContext.items) ? cartContext.items : [];
+      const products = deps.catalog ? await deps.catalog.findByType(context.orgId, "product") : [];
+      const prices = new Map(
+        products.map((product) => [
+          String(product.data.productId ?? product.data.id ?? ""),
+          Number(product.data.price),
+        ]),
+      );
+      const amount = items.reduce(
+        (sum, item) =>
+          sum +
+          (prices.get(String((item as { productId?: unknown }).productId)) ?? 0) *
+            (item.quantity ?? 0) *
+            100,
+        0,
+      );
+      if (items.length > 0 && amount <= 0) throw new Error("Cart prices are unavailable");
+      const currency = cartContext.currency ?? "cad";
+      if (!Number.isInteger(amount) || amount <= 0) throw new Error("Cart total is unavailable");
 
       const provider = deps.checkoutProviders[input.integrationId.trim().toLowerCase()];
       if (!provider) throw new Error("Checkout provider is not configured");
@@ -189,7 +241,7 @@ export function createCommerceCapabilities(deps: {
         deps.integrations.proxyProvider,
       );
 
-      await deps.machines.transition(context.orgId, instance.id, "checkout", {
+      await deps.machines.transition(context.orgId, instance.id, "checkout_started", {
         checkoutId: result.externalCheckoutId,
         checkoutProvider: input.integrationId,
         checkoutAmount: amount,

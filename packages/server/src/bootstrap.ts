@@ -1,5 +1,8 @@
+import {
+  createCommerceContribution,
+  createCommerceProviderEventMappings,
+} from "@noname/verticals/commerce";
 import { Hono } from "hono";
-import { ServiceUnavailableError } from "./shared/domain-error";
 import { createAgentDomain } from "./domains/agent";
 import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
 import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
@@ -8,6 +11,11 @@ import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notif
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
+import {
+  createCapabilityIdempotencyStore,
+  createCapabilityRegistry,
+  registerCapabilityRoutes,
+} from "./domains/capabilities";
 import { createCollabDomain } from "./domains/collab";
 import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
@@ -16,19 +24,16 @@ import { createEdgeDomain } from "./domains/edge";
 import { createFlagDomain } from "./domains/flags";
 import {
   createIntegrationsDomain,
+  createProviderEventReceiptStore,
   registerExtensionDispatcher,
 } from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
-import { createCapabilityRegistry, registerCapabilityRoutes } from "./domains/capabilities";
-import {
-  createCommerceContribution,
-  createCommerceProviderEventMappings,
-} from "@noname/verticals/commerce";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
+import { ServiceUnavailableError } from "./shared/domain-error";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
 import { orgMiddleware } from "./shared/org";
@@ -131,6 +136,7 @@ export async function createApp(): Promise<Hono> {
     tenantSettings: docs.service.tenantSettings,
     providerEventMachines: machines.engine,
     providerEventMappings: createCommerceProviderEventMappings(),
+    providerEventReceipts: createProviderEventReceiptStore(db),
   });
 
   const commerce = createCommerceContribution({
@@ -248,7 +254,12 @@ export async function createApp(): Promise<Hono> {
 
   const capabilities = createCapabilityRegistry(commerce);
   const capabilityRoutes = new Hono();
-  registerCapabilityRoutes(capabilityRoutes, capabilities, docs.service.tenantSettings);
+  registerCapabilityRoutes(
+    capabilityRoutes,
+    capabilities,
+    docs.service.tenantSettings,
+    createCapabilityIdempotencyStore(db),
+  );
 
   app.route("/api/capabilities", capabilityRoutes);
   app.route("/api/auth", auth.routes);

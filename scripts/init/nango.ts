@@ -1,19 +1,22 @@
 /**
  * Provisions self-hosted Nango for local dev — no dashboard clicks:
  * admin signup (API) → email verify (DB) → adopt env secret key →
- * Stripe integration (API, idempotent).
+ * configure signed provider callback → Stripe integration (API, idempotent).
  * Requires: podman compose up (Nango healthy) + postgres reachable.
  *
  * Run: pnpm init:nango
  */
 import "dotenv/config";
 import { execSync } from "node:child_process";
+import { randomBytes } from "node:crypto";
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const NANGO_HOST = process.env.NANGO_HOST ?? "http://localhost:3003";
+const NANGO_WEBHOOK_BASE_URL = process.env.NANGO_WEBHOOK_BASE_URL ?? "http://host.docker.internal:3000";
+const NANGO_PROVIDER_WEBHOOK_URL = `${NANGO_WEBHOOK_BASE_URL.replace(/\/$/, "")}/api/integrations/nango/incoming`;
 const ADMIN_NAME = process.env.NANGO_ADMIN_NAME ?? "Noname Admin";
 const ADMIN_EMAIL = process.env.NANGO_ADMIN_EMAIL ?? "admin@noname.localhost";
 const ADMIN_PASSWORD = process.env.NANGO_ADMIN_PASSWORD ?? "NonameDev123!x";
@@ -77,6 +80,26 @@ function setEnvVar(file: string, key: string, value: string): void {
     content += `${line}\n`;
   }
   writeFileSync(file, content);
+}
+
+function configureProviderWebhook(): void {
+  const existingKey = psql(
+    "nango",
+    "SELECT COALESCE(hmac_key, '') FROM nango._nango_environments WHERE name = 'dev' ORDER BY id ASC LIMIT 1;",
+  );
+  const signingKey = existingKey || randomBytes(32).toString("hex");
+  const escapedUrl = NANGO_PROVIDER_WEBHOOK_URL.replace(/'/g, "''");
+  const escapedKey = signingKey.replace(/'/g, "''");
+  psql(
+    "nango",
+    `UPDATE nango._nango_environments SET webhook_url = '${escapedUrl}', hmac_enabled = true, hmac_key = '${escapedKey}', always_send_webhook = true, updated_at = NOW() WHERE id = (SELECT id FROM nango._nango_environments WHERE name = 'dev' ORDER BY id ASC LIMIT 1);`,
+  );
+  setEnvVar(join(ROOT, ".env"), "NANGO_WEBHOOK_BASE_URL", NANGO_WEBHOOK_BASE_URL);
+  setEnvVar(join(ROOT, ".env"), "NANGO_WEBHOOK_SIGNING_KEY", signingKey);
+  setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_WEBHOOK_BASE_URL", NANGO_WEBHOOK_BASE_URL);
+  setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_WEBHOOK_SIGNING_KEY", signingKey);
+  console.log(`Nango provider webhook configured → ${NANGO_PROVIDER_WEBHOOK_URL}`);
+  console.log("Nango webhook HMAC signing key stored in local environment files only.");
 }
 
 async function main(): Promise<void> {
@@ -148,6 +171,8 @@ async function main(): Promise<void> {
 
   setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_SECRET_KEY", secret.replace(/^=/, ""));
   setEnvVar(join(ROOT, "packages/server/.env"), "NANGO_HOST", NANGO_HOST);
+
+  configureProviderWebhook();
 
   console.log("Ensuring Stripe integration...");
   const list = await nangoApi("/integrations", secret);

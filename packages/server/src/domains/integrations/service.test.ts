@@ -190,7 +190,7 @@ describe("createIntegrationsService", () => {
 
     expect(enqueueProviderEvent).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-1", providerEventId: "evt-1" }),
-      "conn-1:evt-1",
+      "conn-1%3Aevt-1",
     );
     publish.mockRestore();
   });
@@ -214,7 +214,7 @@ describe("createIntegrationsService", () => {
 
     expect(enqueueProviderEvent).toHaveBeenCalledWith(
       expect.objectContaining({ orgId: "org-1", eventType: "unknown.event" }),
-      "conn-1:evt-1",
+      "conn-1%3Aevt-1",
     );
   });
 

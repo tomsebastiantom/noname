@@ -1,9 +1,11 @@
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
-import { eventBus } from "../../shared/event-bus";
 import type { MachineEngine } from "../machines/ports";
+import type { ProviderEventJob } from "./provider-event-queue";
+import type { ProviderEventReceiptStore } from "./provider-event-receipts";
 import {
   createMachineEventMapping,
   createProviderEventRegistry,
@@ -11,11 +13,11 @@ import {
   type ProviderEventMapping,
   type ProviderForwardedEvent,
 } from "./provider-events";
-import type { ProviderEventJob } from "./provider-event-queue";
 
 export function startProviderEventWorker(deps: {
   machines?: Pick<MachineEngine, "transition">;
   mappings?: ProviderEventMapping[];
+  receipts?: ProviderEventReceiptStore;
 }): Worker<ProviderEventJob> | null {
   if (!workersEnabled()) return null;
   const registry = createProviderEventRegistry([
@@ -26,18 +28,30 @@ export function startProviderEventWorker(deps: {
     BULLMQ_QUEUES.PROVIDER_EVENTS,
     async (job) => {
       const event: ProviderForwardedEvent = job.data.event;
-      await eventBus.publish("provider.event.received", event);
-      const normalized = registry.normalize(event);
-      if (!normalized) return;
-      await eventBus.publish(PROVIDER_EVENT_NORMALIZED, normalized);
-      if (!normalized.machineInstanceId) return;
-      if (!deps.machines) return;
-      await deps.machines.transition(
-        normalized.orgId,
-        normalized.machineInstanceId,
-        normalized.event,
-        normalized.params,
-      );
+      try {
+        await eventBus.publish("provider.event.received", event);
+        const normalized = registry.normalize(event);
+        if (normalized) {
+          await eventBus.publish(PROVIDER_EVENT_NORMALIZED, normalized);
+          if (normalized.machineInstanceId && deps.machines) {
+            await deps.machines.transition(
+              normalized.orgId,
+              normalized.machineInstanceId,
+              normalized.event,
+              normalized.params,
+            );
+          }
+        }
+        if (deps.receipts) await deps.receipts.complete(event);
+      } catch (cause) {
+        if (deps.receipts) {
+          await deps.receipts.fail(
+            event,
+            cause instanceof Error ? cause.message : "Provider event failed",
+          );
+        }
+        throw cause;
+      }
     },
     {
       connection: getRedisConnection(),
