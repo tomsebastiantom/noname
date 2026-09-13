@@ -197,9 +197,9 @@ services:
       timeout: 3s
       retries: 10
 
-  # Nango — OAuth integrations (profile: integrations). See docs/2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md
+  # Nango — OAuth integrations. Starts with the default compose stack so the API can use
+  # provider connections without a second compose command. See docs/2026-08-04/INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md
   nango:
-    profiles: [integrations]
     image: nangohq/nango-server:hosted
     platform: linux/amd64
     ports:

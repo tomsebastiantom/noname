@@ -29,14 +29,14 @@ scripts/
 | Every `podman compose up` | `compose/ensure-extra-dbs.sh` | `postgres-init-dbs` service |
 | Once per machine / after ZITADEL reset | `init/zitadel-oidc.ts` | `pnpm init:zitadel` |
 | After API + DB ready | `seed/demo.ts` | `pnpm seed:demo` |
-| Optional storefront demo | `seed/demo-commerce.ts` | `pnpm seed:demo:commerce` |
+| Storefront demo | `seed/demo-commerce.ts` | `pnpm seed:demo:commerce` (optional commerce data) |
 
 S3 bucket creation is inline in `docker-compose.yml` (`s3-init` service), not a separate script.
 
 ## Typical local flow
 
 ```bash
-podman compose up -d
+podman compose up -d                 # includes Nango on :3003/:3009
 pnpm init:zitadel                    # once
 pnpm init:nango                      # once (Nango admin + secret + Stripe integration)
 pnpm --filter @noname/server db:push # if fresh DB
