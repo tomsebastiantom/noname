@@ -95,7 +95,6 @@ describe("registerWebhookOutboundRouter", () => {
       "org-1:inst-1:PAY:paid",
     );
   });
-
 });
 
 describe("retryOutboundDelivery", () => {

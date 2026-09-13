@@ -1,4 +1,5 @@
 import { type DocHandle, Repo } from "@automerge/automerge-repo/slim";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import {
   type AutomergeSpecDoc,
   applyLocalSpecToDraft,
@@ -10,7 +11,6 @@ import { resolveLayoutCollabDocumentId } from "../../collab/layout-collab-docume
 import { LayoutCollabWsClient, layoutCollabWsUrl } from "../../collab/layout-collab-ws-client";
 import { serializeCollabPresenceClientMessage } from "../../collab/presence";
 import { validateSpec } from "../../documents";
-import { ServiceUnavailableError } from "../../../shared/domain-error";
 import { formatCollabApplyError } from "./collab-apply-error";
 
 export type AgentLayoutCollabSessionOptions = {

@@ -12,8 +12,8 @@ import { startIdpLogin } from "../../auth/idp-login";
 import { performLogout } from "../../auth/logout";
 import { requireStoreSlug } from "../../auth/org";
 import { isLoggedIn } from "../../auth/session";
-import { apiFetchDataOptional } from "../../lib/api";
 import { fetchAuthSessionStatus } from "../../auth/team-users";
+import { apiFetchDataOptional } from "../../lib/api";
 import { ADMIN_STATE } from "../admin-state";
 import {
   ACCOUNT_SECURITY_STATE,

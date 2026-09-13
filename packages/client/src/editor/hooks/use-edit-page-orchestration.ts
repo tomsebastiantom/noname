@@ -11,13 +11,13 @@ import {
   mergeStoredEditsIntoPreview,
 } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
+import { useContentDraft } from "./use-content-draft";
+import { useDocumentActivity } from "./use-document-activity";
 import { useEditorHistory } from "./use-editor-history";
 import { useEditorPersistence } from "./use-editor-persistence";
 import { editorShellStore, useEditorSessionData } from "./use-editor-session-data";
 import { useEditorShellConfig } from "./use-editor-shell-config";
 import { useElementMutations } from "./use-element-mutations";
-import { useContentDraft } from "./use-content-draft";
-import { useDocumentActivity } from "./use-document-activity";
 import { useLayoutDraft } from "./use-layout-draft";
 
 export function useEditPageOrchestration({
@@ -107,10 +107,7 @@ export function useEditPageOrchestration({
 
   // Stable forwarder: persistence owns setSaveSuccess but is created after mutations.
   const saveSuccessRef = useRef<(value: string | null) => void>(() => {});
-  const setSaveSuccess = useCallback(
-    (value: string | null) => saveSuccessRef.current(value),
-    [],
-  );
+  const setSaveSuccess = useCallback((value: string | null) => saveSuccessRef.current(value), []);
 
   const applySnapshot = useCallback(
     (snapshot: {
@@ -127,7 +124,7 @@ export function useEditPageOrchestration({
       setSelection(snapshot.selection);
       setSaveSuccess(null);
     },
-    [updateStoredSpec, restoreValues, setPendingAdd, setSelection, setSaveSuccess],
+    [updateStoredSpec, restoreValues, setSaveSuccess],
   );
 
   const history = useEditorHistory({ getSnapshot, applySnapshot });
@@ -143,10 +140,7 @@ export function useEditPageOrchestration({
 
   const collabEnabled = !loading && Boolean(draft?.layoutId && storedSpec);
   const collabRef = useRef<{ applyLocalSpec: (spec: Spec) => void } | null>(null);
-  const applyLocalSpec = useCallback(
-    (spec: Spec) => collabRef.current?.applyLocalSpec(spec),
-    [],
-  );
+  const applyLocalSpec = useCallback((spec: Spec) => collabRef.current?.applyLocalSpec(spec), []);
 
   const collabEnabledRef = useRef(collabEnabled);
   collabEnabledRef.current = collabEnabled;
@@ -236,9 +230,14 @@ export function useEditPageOrchestration({
   });
   saveSuccessRef.current = persistence.setSaveSuccess;
 
-  const lastActivity = useDocumentActivity(draft?.layoutId, shellLabels, persistence.activityRefreshKey, {
-    enabled: !loading && Boolean(shellLabels),
-  });
+  const lastActivity = useDocumentActivity(
+    draft?.layoutId,
+    shellLabels,
+    persistence.activityRefreshKey,
+    {
+      enabled: !loading && Boolean(shellLabels),
+    },
+  );
 
   const { sessionData, sessionActions, editorActionHandlers } = useEditorSessionData({
     templateName,

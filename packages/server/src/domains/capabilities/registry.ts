@@ -5,10 +5,7 @@ export interface CapabilityContext {
   idempotencyKey: string;
 }
 
-export type CapabilityHandler = (
-  input: unknown,
-  context: CapabilityContext,
-) => Promise<unknown>;
+export type CapabilityHandler = (input: unknown, context: CapabilityContext) => Promise<unknown>;
 
 export interface CapabilityRegistry {
   register(name: string, handler: CapabilityHandler): void;

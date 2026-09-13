@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { Worker } from "bullmq";
-import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getBullmqQueue } from "../../shared/bullmq-queue";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import { signOutboundWebhook } from "../../shared/webhook-signing";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";

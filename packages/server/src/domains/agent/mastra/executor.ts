@@ -107,7 +107,10 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
   return {
     async execute(orgId, type, prompt, input, options?: AgentExecuteOptions) {
       if (type !== "orchestrate") {
-        throw new ValidationError("type", `Mastra executor only handles orchestrate tasks, got ${type}`);
+        throw new ValidationError(
+          "type",
+          `Mastra executor only handles orchestrate tasks, got ${type}`,
+        );
       }
       if (!orchestrateEnabled()) {
         throw new ServiceUnavailableError(

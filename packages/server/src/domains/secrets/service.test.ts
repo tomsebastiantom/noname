@@ -164,7 +164,10 @@ describe("createSecretsService.resolveLlmApiKey", () => {
 describe("createSecretsService.putOrgSecret", () => {
   it("delegates to store", async () => {
     const putOrgSecret = vi.fn();
-    const service = createSecretsService({ store: mockStore({ putOrgSecret }), ...mockProviders() });
+    const service = createSecretsService({
+      store: mockStore({ putOrgSecret }),
+      ...mockProviders(),
+    });
 
     await service.putOrgSecret({
       orgId: "org-1",

@@ -28,9 +28,7 @@ function isResolveSlugPath(pathname: string): boolean {
 
 function hasStreamTicket(url: URL): boolean {
   if (!url.searchParams.has("stream_ticket")) return false;
-  return (
-    url.pathname === "/api/flags/stream" || url.pathname === "/api/notifications/stream"
-  );
+  return url.pathname === "/api/flags/stream" || url.pathname === "/api/notifications/stream";
 }
 
 function hasCollabTicket(url: URL): boolean {
@@ -146,11 +144,10 @@ export function createApiProxyRoutes() {
     if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);
     const stripeSignature = c.req.header("stripe-signature");
     if (stripeSignature) headers.set("stripe-signature", stripeSignature);
-     const nangoSignature = c.req.header("x-nango-hmac-sha256");
-     if (nangoSignature) headers.set("x-nango-hmac-sha256", nangoSignature);
-     const idempotencyKey = c.req.header("idempotency-key");
-     if (idempotencyKey) headers.set("idempotency-key", idempotencyKey);
-
+    const nangoSignature = c.req.header("x-nango-hmac-sha256");
+    if (nangoSignature) headers.set("x-nango-hmac-sha256", nangoSignature);
+    const idempotencyKey = c.req.header("idempotency-key");
+    if (idempotencyKey) headers.set("idempotency-key", idempotencyKey);
 
     const init: RequestInit = {
       method: c.req.method,

@@ -1,6 +1,6 @@
 import type { ComponentRegistry } from "@json-render/react";
 import { loadRemote, registerRemotes } from "@module-federation/runtime";
-import { extensionLoaders, type ExtensionLifecycle } from "@noname/extensions";
+import { type ExtensionLifecycle, extensionLoaders } from "@noname/extensions";
 import { LOGIN_EVENT } from "./auth/session";
 import { initMfRuntime } from "./mf-init";
 import { registry as platformRegistry } from "./platform/registry";

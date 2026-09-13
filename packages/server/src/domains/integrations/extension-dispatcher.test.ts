@@ -1,14 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  registerExtensionDispatcher,
-  type ExtensionDeliveryJob,
-} from "./extension-dispatcher";
+import { type ExtensionDeliveryJob, registerExtensionDispatcher } from "./extension-dispatcher";
 import { PROVIDER_EVENT_RECEIVED } from "./provider-events";
 
-function setup(opts: {
-  installed?: boolean;
-  backends?: Array<{ extension: string; url: string; events: string[] }>;
-} = {}) {
+function setup(
+  opts: {
+    installed?: boolean;
+    backends?: Array<{ extension: string; url: string; events: string[] }>;
+  } = {},
+) {
   const handlers = new Map<string, (payload: unknown) => Promise<void>>();
   const enqueued: ExtensionDeliveryJob[] = [];
   registerExtensionDispatcher({

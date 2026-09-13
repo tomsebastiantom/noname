@@ -327,12 +327,9 @@ export function LayerTreePanel({
   const onReorderRef = useRef(onReorder);
   onReorderRef.current = onReorder;
 
-  const readDragId = useCallback(
-    (event: DragEvent<HTMLElement>): string | null => {
-      return event.dataTransfer.getData(LAYER_TREE_DRAG_MIME) || dragElementIdRef.current;
-    },
-    [],
-  );
+  const readDragId = useCallback((event: DragEvent<HTMLElement>): string | null => {
+    return event.dataTransfer.getData(LAYER_TREE_DRAG_MIME) || dragElementIdRef.current;
+  }, []);
 
   const handleDragOverRow = useCallback(
     (targetId: string, event: DragEvent<HTMLDivElement>) => {
@@ -343,13 +340,7 @@ export function LayerTreePanel({
       event.preventDefault();
       event.dataTransfer.dropEffect = "move";
       const rect = event.currentTarget.getBoundingClientRect();
-      const hint = resolveLayerDrop(
-        spec,
-        dragId,
-        targetId,
-        event.clientY - rect.top,
-        rect.height,
-      );
+      const hint = resolveLayerDrop(spec, dragId, targetId, event.clientY - rect.top, rect.height);
       setDropHint(hint);
     },
     [readDragId],
@@ -367,13 +358,7 @@ export function LayerTreePanel({
       const hint =
         cached?.targetId === targetId
           ? cached
-          : resolveLayerDrop(
-              spec,
-              dragId,
-              targetId,
-              event.clientY - rect.top,
-              rect.height,
-            );
+          : resolveLayerDrop(spec, dragId, targetId, event.clientY - rect.top, rect.height);
       if (hint) {
         onReorderRef.current(dragId, hint.targetId, hint.placement);
       }

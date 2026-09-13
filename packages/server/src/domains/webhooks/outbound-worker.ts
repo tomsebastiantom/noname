@@ -4,12 +4,12 @@ import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { ServiceUnavailableError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
+import { signOutboundWebhook } from "../../shared/webhook-signing";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { SecretsService } from "../secrets/ports";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { WebhookEvents } from "./events";
 import type { WebhookOutboundJobData } from "./ports";
-import { signOutboundWebhook } from "../../shared/webhook-signing";
 
 const tracer = trace.getTracer("webhooks-outbound-worker");
 const AUTO_DISABLE_FAILURES = 10;

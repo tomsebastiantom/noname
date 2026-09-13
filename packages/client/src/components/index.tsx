@@ -1,5 +1,5 @@
 import type { ComponentFn } from "@json-render/react";
-import { catalog } from "../catalog";
+import type { catalog } from "../catalog";
 
 export const Hero: ComponentFn<typeof catalog, "Hero"> = ({ props, emit }) => {
   return (
@@ -82,10 +82,7 @@ export const GridBase: ComponentFn<typeof catalog, "GridBase"> = ({ props, child
   );
 };
 
-export const StackBase: ComponentFn<typeof catalog, "StackBase"> = ({
-  props,
-  children,
-}) => {
+export const StackBase: ComponentFn<typeof catalog, "StackBase"> = ({ props, children }) => {
   return (
     <div
       style={{

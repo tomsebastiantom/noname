@@ -74,12 +74,12 @@ export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
     setLoading(true);
     setStatus(null);
     try {
-       await commerceActions.addToCart({
+      await commerceActions.addToCart({
         productId: props.productId,
         quantity: 1,
-       });
-       window.dispatchEvent(new Event(CART_UPDATED_EVENT));
-       setStatus(labels.addedToCart);
+      });
+      window.dispatchEvent(new Event(CART_UPDATED_EVENT));
+      setStatus(labels.addedToCart);
     } catch (err) {
       setStatus(err instanceof Error ? err.message : labels.addFailed);
     } finally {
@@ -133,7 +133,9 @@ type CartSummaryProps = {
 };
 
 export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
-  const [cart, setCart] = useState<{ context: { items?: CartItem[]; total?: number; currency?: string } } | null>(null);
+  const [cart, setCart] = useState<{
+    context: { items?: CartItem[]; total?: number; currency?: string };
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState(false);
@@ -144,10 +146,18 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
     setRequiresSignIn(false);
     const load = async () => {
       try {
-         const nextCart = await getCart();
-         setCart(nextCart);
-         setError(null);
-         setPaymentStatus(nextCart.currentState === "paid" ? "success" : nextCart.currentState === "payment_failed" ? "failed" : nextCart.currentState === "awaiting_payment" ? "pending" : null);
+        const nextCart = await getCart();
+        setCart(nextCart);
+        setError(null);
+        setPaymentStatus(
+          nextCart.currentState === "paid"
+            ? "success"
+            : nextCart.currentState === "payment_failed"
+              ? "failed"
+              : nextCart.currentState === "awaiting_payment"
+                ? "pending"
+                : null,
+        );
       } catch (err) {
         if (err instanceof CartRequestError && err.status === 401) {
           setRequiresSignIn(true);
@@ -166,7 +176,10 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
 
   const items = cart?.context.items ?? [];
   const pricedItems = items.map((item) => ({ ...item, product: getCachedProduct(item.productId) }));
-  const total = pricedItems.reduce((sum, item) => sum + (item.product?.price ?? 0) * item.quantity, 0);
+  const total = pricedItems.reduce(
+    (sum, item) => sum + (item.product?.price ?? 0) * item.quantity,
+    0,
+  );
   const currency = cart?.context.currency?.toUpperCase() ?? "CAD";
   return (
     <aside className="sticky bottom-4 z-10 mx-auto mt-8 w-full max-w-3xl rounded-xl border bg-card/95 p-5 shadow-lg backdrop-blur">
@@ -175,8 +188,14 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
           <ul className="space-y-2 text-sm">
             {pricedItems.map((item) => (
               <li key={item.productId} className="flex justify-between gap-4">
-                <span>{item.product?.title ?? item.productId} × {item.quantity}</span>
-                <span>{item.product ? `${(item.product.price * item.quantity).toFixed(2)} ${currency}` : props.priceUnavailableLabel}</span>
+                <span>
+                  {item.product?.title ?? item.productId} × {item.quantity}
+                </span>
+                <span>
+                  {item.product
+                    ? `${(item.product.price * item.quantity).toFixed(2)} ${currency}`
+                    : props.priceUnavailableLabel}
+                </span>
               </li>
             ))}
           </ul>
@@ -185,17 +204,58 @@ export function CartSummary({ props }: ComponentCtx<CartSummaryProps>) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold">{props.title}</h2>
-          {loading ? <p className="text-sm text-muted-foreground">{props.loadingLabel}</p> : <p className="text-sm text-muted-foreground">{items.length} {items.length === 1 ? props.itemLabel : props.itemsLabel}</p>}
-          {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
-          {paymentStatus === "pending" && <p className="text-sm text-muted-foreground" role="status">{props.paymentPendingLabel}</p>}
-          {paymentStatus === "success" && <p className="text-sm text-green-600" role="status">{props.paymentSuccessLabel}</p>}
-          {paymentStatus === "failed" && <p className="text-sm text-destructive" role="alert">{props.paymentFailedLabel}</p>}
-          {requiresSignIn && <a className="text-sm font-medium underline" href="/login">{props.signInLabel}</a>}
+          {loading ? (
+            <p className="text-sm text-muted-foreground">{props.loadingLabel}</p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              {items.length} {items.length === 1 ? props.itemLabel : props.itemsLabel}
+            </p>
+          )}
+          {error && (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          )}
+          {paymentStatus === "pending" && (
+            <p className="text-sm text-muted-foreground" role="status">
+              {props.paymentPendingLabel}
+            </p>
+          )}
+          {paymentStatus === "success" && (
+            <p className="text-sm text-green-600" role="status">
+              {props.paymentSuccessLabel}
+            </p>
+          )}
+          {paymentStatus === "failed" && (
+            <p className="text-sm text-destructive" role="alert">
+              {props.paymentFailedLabel}
+            </p>
+          )}
+          {requiresSignIn && (
+            <a className="text-sm font-medium underline" href="/login">
+              {props.signInLabel}
+            </a>
+          )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-xl font-bold">{total.toFixed(2)} {currency}</span>
-          <button type="button" className="rounded-md border px-4 py-2 text-sm font-medium" onClick={() => setExpanded((value) => !value)}>{expanded ? props.hideCartLabel : props.viewCartLabel}</button>
-          <button type="button" className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50" disabled={loading || items.length === 0 || pricedItems.some((item) => !item.product)} onClick={() => void commerceActions.checkout()}>{props.checkoutLabel}</button>
+          <span className="text-xl font-bold">
+            {total.toFixed(2)} {currency}
+          </span>
+          <button
+            type="button"
+            className="rounded-md border px-4 py-2 text-sm font-medium"
+            onClick={() => setExpanded((value) => !value)}
+          >
+            {expanded ? props.hideCartLabel : props.viewCartLabel}
+          </button>
+          <button
+            type="button"
+            className="rounded-md bg-primary px-5 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            disabled={loading || items.length === 0 || pricedItems.some((item) => !item.product)}
+            onClick={() => void commerceActions.checkout()}
+          >
+            {props.checkoutLabel}
+          </button>
         </div>
       </div>
     </aside>

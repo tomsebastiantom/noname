@@ -1,7 +1,5 @@
 import { useActions, useStateValue } from "@json-render/react";
 import { useEffect, useRef, useState } from "react";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
 import { ADMIN_STATE } from "../../core/admin-state";
 import {
   type AssetSummary,
@@ -9,6 +7,8 @@ import {
   getAsset,
   uploadAsset,
 } from "../../documents/content-entries";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
 
 export type MediaFieldLabels = {
   uploadFileLabel: string;

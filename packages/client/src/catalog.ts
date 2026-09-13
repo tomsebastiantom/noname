@@ -15,7 +15,11 @@ type CatalogComponents = {
   [K in keyof typeof componentSchemas]: CatalogComponentDef<(typeof componentSchemas)[K]>;
 };
 
-function toCatalogDef(def: { props: z.ZodTypeAny; description: string; slots?: readonly string[] }) {
+function toCatalogDef(def: {
+  props: z.ZodTypeAny;
+  description: string;
+  slots?: readonly string[];
+}) {
   return {
     props: def.props,
     // Some shadcn definitions omit `slots` — normalize instead of widening access.
@@ -30,9 +34,7 @@ export const catalog = defineCatalog(schema, {
   components: Object.fromEntries(
     Object.entries(componentSchemas).map(([name, def]) => [
       name,
-      toCatalogDef(
-        def as { props: z.ZodTypeAny; description: string; slots?: readonly string[] },
-      ),
+      toCatalogDef(def as { props: z.ZodTypeAny; description: string; slots?: readonly string[] }),
     ]),
   ) as CatalogComponents,
   actions: {

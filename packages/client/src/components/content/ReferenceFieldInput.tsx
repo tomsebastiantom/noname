@@ -1,6 +1,4 @@
 import { type ReactNode, useEffect, useState } from "react";
-import { Button } from "../ui/button";
-import { Label } from "../ui/label";
 import type { ReferenceFieldOptions } from "../../core/actions/content";
 import {
   type ContentEntryRow,
@@ -10,6 +8,8 @@ import {
   getContentType,
   listEntries,
 } from "../../documents/content-entries";
+import { Button } from "../ui/button";
+import { Label } from "../ui/label";
 
 export type ReferenceFieldLabels = {
   entriesLoadingLabel: string;

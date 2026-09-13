@@ -13,8 +13,8 @@ import Underline from "@tiptap/extension-underline";
 import StarterKit from "@tiptap/starter-kit";
 import { prosemirrorJSONToYXmlFragment, yXmlFragmentToProseMirrorRootNode } from "@tiptap/y-tiptap";
 import type * as awarenessProtocol from "y-protocols/awareness";
-import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type * as Y from "yjs";
+import { ServiceUnavailableError } from "../../../shared/domain-error";
 import { agentRichTextEmbedExtensions } from "./richtext-tiptap-extensions";
 
 /** Yjs collaboration field TipTap's Collaboration extension defaults to (`ydoc.getXmlFragment("default")`). */

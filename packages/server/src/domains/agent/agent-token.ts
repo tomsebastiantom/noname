@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
-import { ServiceUnavailableError } from "../../shared/domain-error";
 import type { AgentTokenClaims } from "../../shared/agent-token";
+import { ServiceUnavailableError } from "../../shared/domain-error";
 
 const PREFIX = "nag.";
 

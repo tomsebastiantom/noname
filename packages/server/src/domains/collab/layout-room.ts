@@ -3,8 +3,8 @@ import { type DocHandle, type PeerId, Repo } from "@automerge/automerge-repo/sli
 import type { WSContext } from "hono/ws";
 import type { Database } from "../../drizzle";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
-import type { LayoutDocumentService } from "../documents/ports";
 import { validateSpec } from "../documents";
+import type { LayoutDocumentService } from "../documents/ports";
 import {
   type AutomergeSpecDoc,
   applyLocalSpecToDraft,

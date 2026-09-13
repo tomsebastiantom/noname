@@ -51,7 +51,10 @@ interface MachineInstance {
 }
 
 export class CartRequestError extends Error {
-  constructor(readonly status: number, message: string) {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
     super(message);
   }
 }

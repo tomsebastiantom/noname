@@ -169,10 +169,7 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (filters.collectionId) {
         conditions.push(eq(documents.collectionId, filters.collectionId));
       }
-      const limit = Math.min(
-        Math.max((filters as { limit?: number }).limit ?? 200, 1),
-        500,
-      );
+      const limit = Math.min(Math.max((filters as { limit?: number }).limit ?? 200, 1), 500);
       const offset = Math.max((filters as { offset?: number }).offset ?? 0, 0);
       const rows = await db
         .select()

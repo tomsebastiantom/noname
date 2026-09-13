@@ -37,17 +37,15 @@ export interface ProviderEventMapping {
   eventType: string;
   normalize: (
     event: ProviderForwardedEvent,
-  ) =>
-    | Omit<
-        NormalizedProviderEvent,
-        | "orgId"
-        | "integrationId"
-        | "connectionId"
-        | "providerEventId"
-        | "deliveryId"
-        | "sourceEventType"
-      >
-    | null;
+  ) => Omit<
+    NormalizedProviderEvent,
+    | "orgId"
+    | "integrationId"
+    | "connectionId"
+    | "providerEventId"
+    | "deliveryId"
+    | "sourceEventType"
+  > | null;
 }
 
 export const PROVIDER_EVENT_RECEIVED = "provider.event.received";

@@ -1,10 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { Queue } from "bullmq";
-import {
-  ConflictError,
-  NotFoundError,
-  ValidationError,
-} from "../../shared/domain-error";
+import { ConflictError, NotFoundError, ValidationError } from "../../shared/domain-error";
 import type { SecretsService } from "../secrets/ports";
 import type { WebhooksStorage } from "./adapters/postgres";
 import { toOutboundDeliveryDTO, toSubscriptionDTO } from "./adapters/postgres";
@@ -28,7 +24,6 @@ export function createWebhooksService(deps: {
   }
 
   return {
-
     async listSubscriptions(orgId) {
       const rows = await storage.listSubscriptions(orgId);
       return Promise.all(

@@ -1,5 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { type PermissionKey, isPermissionKey } from "@noname/auth";
+import { isPermissionKey, type PermissionKey } from "@noname/auth";
 
 const PREFIX = "nag.";
 

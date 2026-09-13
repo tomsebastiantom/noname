@@ -6,7 +6,10 @@ const MISS_CACHE_TTL = 60;
 const memCache = new Map<string, { value: unknown; expiresAt: number }>();
 
 function normalizeSlug(slug: string): string {
-  return slug.trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+  return slug
+    .trim()
+    .toLowerCase()
+    .replace(/^\/+|\/+$/g, "");
 }
 
 function normalizePath(path: string): string {

@@ -1,6 +1,8 @@
 import { useStateValue } from "@json-render/react";
 import { useMemo, useState } from "react";
 import { useAdminRouteAccess } from "../../../auth/admin-access";
+import type { MediaFieldLabels } from "../../../components/content/MediaFieldInput";
+import type { ReferenceFieldLabels } from "../../../components/content/ReferenceFieldInput";
 import { Alert, AlertDescription } from "../../../components/ui/alert";
 import {
   Card,
@@ -27,8 +29,6 @@ import { ContentEntryTypeList } from "./content-entry-type-list";
 import type { ContentEntryFormLabels } from "./content-entry-types";
 import { emptyValuesForSchema, newEntryCardDescription } from "./content-entry-utils";
 import { ContentFolderNav } from "./content-folder-nav";
-import type { MediaFieldLabels } from "../../../components/content/MediaFieldInput";
-import type { ReferenceFieldLabels } from "../../../components/content/ReferenceFieldInput";
 import { useContentEntryAdminActions } from "./use-content-entry-actions";
 
 type ContentEntryConfig = {

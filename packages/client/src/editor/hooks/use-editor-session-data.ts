@@ -3,20 +3,15 @@ import type { ComponentRegistry } from "@json-render/react";
 import { createStateStore, type SetState } from "@json-render/react";
 import { parseRichTextFieldValue, richTextToPlainText } from "@noname/documents";
 import { useCallback, useMemo, useState } from "react";
-import { CONTENT_DEFAULT_LOCALE } from "../content-entries";
+import type { ContentTypeSchema } from "../../documents/content-entries";
 import type { LayoutAgentActivity } from "../collab/collab-peer-display";
 import type { CollabPeerPresence } from "../collab/presence";
-import type { ContentDraftEditor } from "../components/panel/PropsPanel";
-import type { ContentTypeSchema } from "../../documents/content-entries";
+import { CONTENT_DEFAULT_LOCALE } from "../content-entries";
 import type { LayerReorderPlacement } from "../lib/spec-utils";
 import type { EditSelection, PendingBlockAdd } from "../lib/types";
 import { editorHandlers } from "../registry";
-import type {
-  AgentTargetField,
-  EditorSessionActions,
-  EditorSessionData,
-} from "./editor-session";
 import type { EditorShellLabels } from "../schemas/components";
+import type { AgentTargetField, EditorSessionActions, EditorSessionData } from "./editor-session";
 
 export const editorShellStore = createStateStore({});
 

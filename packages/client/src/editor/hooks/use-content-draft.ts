@@ -1,6 +1,5 @@
 import type { ContentTypeSchema } from "@noname/documents";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { specValueEqual } from "../lib/spec-equal";
 import { formatApiError } from "../../lib/api";
 import {
   CONTENT_DEFAULT_LOCALE,
@@ -10,6 +9,7 @@ import {
   saveContentEntry,
 } from "../content-entries";
 import { parseContentRef } from "../content-ref";
+import { specValueEqual } from "../lib/spec-equal";
 
 export function useContentDraft(pageContentRef: string | null, locale = CONTENT_DEFAULT_LOCALE) {
   const parsed = useMemo(

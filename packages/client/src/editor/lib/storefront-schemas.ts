@@ -1,6 +1,6 @@
 import { shadcnComponentDefinitions } from "@json-render/shadcn/catalog";
-import type { ZodType } from "zod";
 import { commerceComponentSchemas } from "@noname/extensions/commerce/catalog-schemas";
+import type { ZodType } from "zod";
 import { coreComponentSchemas } from "../../core/catalog-schemas";
 
 export type CatalogComponentSchemaEntry = {

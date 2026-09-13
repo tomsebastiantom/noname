@@ -17,5 +17,5 @@ export const { registry } = defineRegistry(catalog, {
   actions: commerceActions,
 });
 
-export { commerceComponentSchemas, commerceActionSchemas };
+export { commerceActionSchemas, commerceComponentSchemas };
 export const lifecycle = commerceLifecycle;

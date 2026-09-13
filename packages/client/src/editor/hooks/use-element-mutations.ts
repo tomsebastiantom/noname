@@ -1,5 +1,5 @@
 import type { Spec } from "@json-render/core";
-import { useCallback, useEffect, type MutableRefObject } from "react";
+import { type MutableRefObject, useCallback, useEffect } from "react";
 import { defaultPropsForType } from "../components/palette/ComponentPalette";
 import {
   addComponentToSpec,
@@ -47,7 +47,9 @@ export function useElementMutations({
   collabEnabledRef: MutableRefObject<boolean>;
   applyLocalSpec: (spec: Spec) => void;
   pendingAdd: PendingBlockAdd | null;
-  setPendingAdd: (value: PendingBlockAdd | null | ((current: PendingBlockAdd | null) => PendingBlockAdd | null)) => void;
+  setPendingAdd: (
+    value: PendingBlockAdd | null | ((current: PendingBlockAdd | null) => PendingBlockAdd | null),
+  ) => void;
   selection: EditSelection | null;
   setSelection: (value: EditSelection | null) => void;
   setSaveSuccess: (value: string | null) => void;
@@ -153,7 +155,15 @@ export function useElementMutations({
       setSelection(null);
       setSaveSuccess(null);
     },
-    [pendingAddRef, storedSpecRef, updateStoredSpec, cancelPendingAdd, history, setSelection, setSaveSuccess],
+    [
+      pendingAddRef,
+      storedSpecRef,
+      updateStoredSpec,
+      cancelPendingAdd,
+      history,
+      setSelection,
+      setSaveSuccess,
+    ],
   );
 
   const isStoredElement = useCallback(
