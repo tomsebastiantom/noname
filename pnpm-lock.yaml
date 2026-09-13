@@ -344,6 +344,9 @@ importers:
       '@noname/shared':
         specifier: workspace:*
         version: link:../shared
+      '@noname/verticals':
+        specifier: workspace:*
+        version: link:../verticals
       '@opentelemetry/api':
         specifier: ^1.9.1
         version: 1.9.1
@@ -469,6 +472,22 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  packages/verticals:
+    dependencies:
+      '@noname/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@noname/server':
+        specifier: workspace:*
+        version: link:../server
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   packages/workers:
     dependencies:
       '@cfworker/jwt':
@@ -486,10 +505,22 @@ importers:
       hono:
         specifier: ^4.13.1
         version: 4.13.1
+      react:
+        specifier: 19.2.7
+        version: 19.2.7
+      react-dom:
+        specifier: 19.2.7
+        version: 19.2.7(react@19.2.7)
     devDependencies:
       '@cloudflare/workers-types':
         specifier: ^5.0.0
         version: 5.20260710.1
+      '@types/react':
+        specifier: 19.2.7
+        version: 19.2.7
+      '@types/react-dom':
+        specifier: 19.2.3
+        version: 19.2.3(@types/react@19.2.7)
       typescript:
         specifier: ^7.0.0
         version: 7.0.2
@@ -3631,6 +3662,9 @@ packages:
 
   '@types/react@19.2.15':
     resolution: {integrity: sha512-eRwcGNHve+E8qtEQSSRl6urh+rFop4v8gm6O8rGv25CodbvFdLjA1vVQ1KkiFE0w0UPOnb8tDiFKL5lp0rtY5Q==}
+
+  '@types/react@19.2.7':
+    resolution: {integrity: sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg==}
 
   '@types/semver@7.5.8':
     resolution: {integrity: sha512-I8EUhyrgfLrcTkzV3TSsGyl1tSuPrEDzr0yd5m90UgNxQkyDXULk3b6MlQqTCpZpNtWe1K0hzclnZkTcLBe2UQ==}
@@ -9480,7 +9514,15 @@ snapshots:
     dependencies:
       '@types/react': 19.2.15
 
+  '@types/react-dom@19.2.3(@types/react@19.2.7)':
+    dependencies:
+      '@types/react': 19.2.7
+
   '@types/react@19.2.15':
+    dependencies:
+      csstype: 3.2.3
+
+  '@types/react@19.2.7':
     dependencies:
       csstype: 3.2.3
 

@@ -11,15 +11,19 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@cfworker/jwt": "^6.0.0",
     "@noname/auth": "workspace:*",
     "@noname/documents": "workspace:*",
     "@noname/shared": "workspace:*",
-    "@cfworker/jwt": "^6.0.0",
-    "hono": "^4.0.0"
+    "hono": "^4.0.0",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
   },
   "devDependencies": {
-    "wrangler": "^4.0.0",
     "@cloudflare/workers-types": "^5.0.0",
-    "typescript": "^7.0.0"
+    "@types/react": "19.2.7",
+    "@types/react-dom": "19.2.3",
+    "typescript": "^7.0.0",
+    "wrangler": "^4.0.0"
   }
 }

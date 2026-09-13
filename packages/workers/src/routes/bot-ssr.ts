@@ -1,10 +1,12 @@
-/** Bot detection + lightweight HTML from json-render layout (I1 — no full React SSR in worker). */
+/** Bot detection and React 19 streaming HTML from the resolved storefront layout. */
 
 import {
   isRichTextDocument,
   richTextToHtml,
   richTextToPlainText,
 } from "@noname/documents/richtext-html";
+import { createElement, type ReactNode } from "react";
+import { renderToReadableStream } from "react-dom/server.edge";
 
 const BOT_UA =
   /bot|crawl|spider|slurp|facebookexternalhit|whatsapp|twitterbot|linkedinbot|preview|gptbot|anthropic-ai/i;
@@ -116,4 +118,40 @@ export function renderBotHtml(seo: StorefrontSeo, siteLabel: string): string {
   <main>${body}</main>
 </body>
 </html>`;
+}
+
+/** Render the SEO document with React's edge-compatible streaming renderer. */
+export async function renderBotStream(
+  seo: StorefrontSeo,
+  siteLabel: string,
+): Promise<ReadableStream<Uint8Array>> {
+  const title = seo.title || siteLabel;
+  const description = seo.description || title || siteLabel;
+  const richBlocks: ReactNode[] = seo.richHtml.map((html, index) =>
+    // biome-ignore lint/security/noDangerouslySetInnerHtml: richTextToHtml sanitizes CMS rich text.
+    createElement("div", { key: `rich-${index}`, dangerouslySetInnerHTML: { __html: html } }),
+  );
+  const plainBlocks = seo.snippets
+    .slice(0, 8)
+    .map((line, index) => createElement("p", { key: `text-${index}` }, line));
+
+  return renderToReadableStream(
+    createElement(
+      "html",
+      { lang: "en" },
+      createElement(
+        "head",
+        null,
+        createElement("meta", { charSet: "utf-8" }),
+        createElement("meta", {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1.0",
+        }),
+        createElement("title", null, title),
+        createElement("meta", { name: "description", content: description }),
+        createElement("meta", { name: "robots", content: "index,follow" }),
+      ),
+      createElement("body", null, createElement("main", null, ...richBlocks, ...plainBlocks)),
+    ),
+  );
 }

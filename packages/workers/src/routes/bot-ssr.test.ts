@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractSeoFromLayout, isBotUserAgent, renderBotHtml } from "./bot-ssr";
+import { extractSeoFromLayout, isBotUserAgent, renderBotHtml, renderBotStream } from "./bot-ssr";
 
 describe("isBotUserAgent", () => {
   it("detects common crawlers", () => {
@@ -64,6 +64,18 @@ describe("extractSeoFromLayout", () => {
     expect(seo.description).toContain("Lightweight");
     expect(seo.richHtml[0]).toContain("<strong>Soft sole</strong>");
     expect(seo.richHtml[0]).toContain("<ul><li>Lightweight</li></ul>");
+  });
+});
+
+describe("renderBotStream", () => {
+  it("streams an escaped SEO document through the edge renderer", async () => {
+    const stream = await renderBotStream(
+      { title: "Product", description: "Summary", snippets: ["Safe"], richHtml: [] },
+      "yogastore",
+    );
+    const html = await new Response(stream).text();
+    expect(html).toContain("<title>Product</title>");
+    expect(html).toContain("<p>Safe</p>");
   });
 });
 

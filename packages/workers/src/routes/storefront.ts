@@ -5,7 +5,7 @@ import { getCached, setCache } from "../cache";
 import { hmacHeaders } from "../hmac";
 import { resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
-import { extractSeoFromLayout, isBotUserAgent, renderBotHtml } from "./bot-ssr";
+import { extractSeoFromLayout, isBotUserAgent, renderBotHtml, renderBotStream } from "./bot-ssr";
 
 const INDEX_HTML_KEY = "_assets/index.html";
 const SCHEMA_TIMEOUT_MS = 4_000;
@@ -106,10 +106,21 @@ export function createStorefrontRoutes() {
       }
       const layout = schema?.layout ?? null;
       const seo = extractSeoFromLayout(layout);
-      const html = renderBotHtml(seo, siteId);
       c.header("Cache-Control", "public, max-age=300");
       c.header("Vary", "User-Agent");
-      return c.html(html);
+      try {
+        const stream = await renderBotStream(seo, siteId);
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/html; charset=UTF-8",
+            "Cache-Control": "public, max-age=300",
+            Vary: "User-Agent",
+          },
+        });
+      } catch (error) {
+        console.warn(`[storefront] React bot render failed ${siteId}${pathname}`, error);
+        return c.html(renderBotHtml(seo, siteId));
+      }
     }
 
     const shell = await serveIndexHtml(c.env);
