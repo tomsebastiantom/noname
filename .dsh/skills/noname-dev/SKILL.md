@@ -56,17 +56,20 @@ Wait until all containers exit (`podman ps -a` shows nothing or only Exited).
 
 ```bash
 podman compose up -d         # starts postgres, dragonfly, clickhouse,
-                             # zitadel, keto, vault, s3, jaeger
+                             # zitadel, keto, vault, s3, jaeger, and Nango
 ```
 
-Wait ~30s (`curl -sf http://localhost:8080/.well-known/openid-configuration` must return 200).
+Wait until infrastructure is healthy (`curl -sf http://localhost:8080/.well-known/openid-configuration` and `curl -sf http://localhost:3003/health` must return 200). Nango may take several minutes on its first boot while it migrates its dedicated database.
 
-## Step 4: init auth + push DB
+## Step 4: initialize auth, Nango, and push DB
 
 ```bash
 pnpm init:zitadel              # refreshes .env + zitadel_keys/
+pnpm init:nango                # idempotent admin, secret adoption, and Stripe config
 pnpm --filter @noname/server db:push
 ```
+
+`pnpm init:nango` is safe to rerun; it only creates missing local Nango setup. Do not run `pnpm init:nango:connect` automatically: that command imports a real provider credential and requires an explicit user-supplied secret (`CREDENTIAL_API_KEY`).
 
 ## Step 5: start all three app processes (background)
 
@@ -131,7 +134,7 @@ API side checks:
 
 ```bash
 curl -sf http://localhost:3000/health
-curl -sf -H "x-org-id: 387316114289393674" \
+curl -sf -H "x-org-id: ${ZITADEL_DEMO_ORG_ID}" \
   http://localhost:3000/api/tenants/resolve/yogastore
 ```
 

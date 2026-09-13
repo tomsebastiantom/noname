@@ -22,12 +22,21 @@ This skill verifies the stack WITHOUT restarting it.
 - `.env` and `key` credentials loaded (see noname-dev/reference.md)
 - Browser MCP (`@playwright/mcp`) registered via `kilo.json` and `dsh-mcp-client`
 
+If the model-facing `mcp__browser__*` tools are not listed, do not substitute unverified screenshots or direct DOM claims. Start the same Playwright MCP server over its SSE transport and connect with an MCP client:
+
+```powershell
+pnpm exec playwright-mcp --browser chrome --headless --port 8931
+```
+
+The MCP client must call `initialize`, `notifications/initialized`, then `tools/call` for `browser_navigate`, `browser_wait_for`, `browser_snapshot`, `browser_fill_form`, `browser_click`, and `browser_console_messages`. Keep the SSE session open for the complete flow so login state is preserved. Record the returned `.playwright-mcp/page-*.yml` and `console-*.log` evidence.
+
 ## Step 1: health checks
 
 ```bash
 curl -sf http://localhost:3000/health || echo "FAIL: API"
 curl -sf http://localhost:8080/.well-known/openid-configuration || echo "FAIL: ZITADEL"
-curl -sf -H "x-org-id: 387316114289393674" \
+curl -sf http://localhost:3003/health || echo "FAIL: NANGO"
+curl -sf -H "x-org-id: ${ZITADEL_DEMO_ORG_ID}" \
   http://localhost:3000/api/tenants/resolve/yogastore || echo "FAIL: tenant"
 ```
 
@@ -43,6 +52,10 @@ Use `mcp__browser__*` (registered by dsh-mcp-client):
 6. Confirm admin dashboard loads (requires auth — use demo user or JWT from seed)
 7. `mcp__browser__navigate` → `http://yogastore.localhost:5173/?edit=true`
 8. Confirm visual editor loads
+9. Open the seeded commerce checkout and confirm server-derived pricing.
+10. Confirm the checkout enters `awaiting_payment` and that a normalized provider callback reaches `paid`.
+11. Replay the callback and confirm no duplicate transition.
+12. Reload and confirm persisted machine state/context.
 
 ## Step 3: regression checks (manual or automated)
 
