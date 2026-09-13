@@ -1,11 +1,14 @@
-﻿import Redis from "ioredis";
+import { randomUUID } from "node:crypto";
+import Redis from "ioredis";
 import type { DomainEventName } from "../domain-events";
 import { getRedisConnection } from "./redis";
 import { registerRedisFanout } from "./redis-fanout-status";
 
 const CHANNEL = "noname:event-bus";
+const INSTANCE_ID = randomUUID();
 
 type EventHandler = (payload: unknown) => Promise<void>;
+type PublishedMessage = { event: string; payload: unknown; origin?: string };
 
 const handlers = new Map<string, EventHandler[]>();
 let publisher: Redis | null = null;
@@ -33,7 +36,8 @@ export function initEventBus(): void {
     void subscriber.subscribe(CHANNEL);
     subscriber.on("message", (_channel, raw) => {
       try {
-        const msg = JSON.parse(raw) as { event?: string; payload?: unknown };
+        const msg = JSON.parse(raw) as PublishedMessage;
+        if (msg.origin === INSTANCE_ID) return;
         if (typeof msg.event === "string") {
           void dispatchLocal(msg.event, msg.payload);
         }
@@ -52,11 +56,11 @@ export function initEventBus(): void {
 
 export const eventBus = {
   publish: async (event: DomainEventName | string, payload: unknown) => {
-    if (publisher) {
-      await publisher.publish(CHANNEL, JSON.stringify({ event, payload }));
-      return;
-    }
+    // Always deliver locally first. Redis is cross-replica fan-out, not the local delivery path.
     await dispatchLocal(event, payload);
+    if (publisher) {
+      await publisher.publish(CHANNEL, JSON.stringify({ event, payload, origin: INSTANCE_ID }));
+    }
   },
 
   subscribe: (event: DomainEventName | string, handler: EventHandler) => {

@@ -2,6 +2,7 @@ import { assign, createActor, createMachine } from "xstate";
 import { NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { MachineEvents } from "./events";
+import { normalizeMachineDefinition } from "./machine-config";
 import type {
   Guard,
   MachineDefinition,
@@ -43,7 +44,7 @@ export function createMachineEngine(
   const ensureDefinition = async (orgId: string, name: string): Promise<MachineDefinition> => {
     const definition = await storage.findDefinition(orgId, name);
     if (!definition) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
-    validateDefinition(definition);
+    normalizeMachineDefinition(definition);
     return definition;
   };
 
@@ -59,7 +60,7 @@ export function createMachineEngine(
     },
 
     async define(orgId, definition) {
-      validateDefinition(definition);
+      normalizeMachineDefinition(definition);
       const saved = await storage.saveDefinition(orgId, definition);
       eventBus.publish(MachineEvents.DEFINED, { orgId, machineName: saved.name });
       return saved;
@@ -160,95 +161,90 @@ export function createMachineEngine(
   };
 }
 
-function validateDefinition(definition: MachineDefinition): void {
-  if (!definition.name || !definition.initial || !definition.states) {
-    throw new ValidationError("definition", "Machine definition must include name, initial, and states");
-  }
-  if (!definition.states[definition.initial]) {
-    throw new ValidationError("initial", `Initial state ${definition.initial} not found in states`);
-  }
-  for (const [stateName, state] of Object.entries(definition.states)) {
-    if (state.entry && !Array.isArray(state.entry)) {
-      throw new ValidationError("entry", `Entry actions for ${stateName} must be an array`);
-    }
-    if (state.exit && !Array.isArray(state.exit)) {
-      throw new ValidationError("exit", `Exit actions for ${stateName} must be an array`);
-    }
-    for (const [event, transition] of Object.entries(state.on ?? {})) {
-      if (!transition || typeof transition !== "object" || !transition.target) {
-        throw new ValidationError("transition", `Malformed transition ${stateName}.${event}`);
-      }
-      if (!definition.states[transition.target]) {
-        throw new ValidationError(
-          "transition",
-          `Transition target ${transition.target} from state ${stateName} does not exist`,
-        );
-      }
-    }
-  }
-}
-
 function startActor(
   definition: MachineDefinition,
   context: Record<string, unknown>,
   currentState?: string,
 ): Execution {
+  const normalized = normalizeMachineDefinition(definition);
   const machine = createMachine({
-    id: definition.name,
-    initial: definition.initial,
+    id: normalized.id,
+    initial: normalized.initial,
     context: ({ input }) => input as Record<string, unknown>,
     states: Object.fromEntries(
-      Object.entries(definition.states).map(([name, state]) => [name, {
-        type: state.final ? "final" : undefined,
-        entry: state.entry?.length ? assign(({ context }) => context) : undefined,
-        exit: state.exit?.length ? assign(({ context }) => context) : undefined,
-        on: Object.fromEntries(
-          Object.entries(state.on ?? {}).map(([event, transition]) => [
-            event,
-            {
-              target: transition.target,
-              guard: transition.guard
-                ? ({ context, event: received }: { context: Record<string, unknown>; event: MachineEvent }) => {
-                    const guard = guards.get(transition.guard!.type);
-                    if (!guard) return false;
-                    const result = guard({
-                      instance: {
-                        id: "ephemeral",
-                        orgId: "ephemeral",
-                        machineName: definition.name,
-                        currentState: name,
-                        context,
-                        createdAt: new Date(0),
-                        updatedAt: new Date(0),
-                      },
-                      params: { ...transition.guard!.params, ...(received.params ?? {}) },
-                      definition,
-                    });
-                    if (result instanceof Promise) {
-                      throw new ValidationError("guard", "Asynchronous guards are not supported by XState transitions");
+      Object.entries(normalized.states).map(([name, state]) => [
+        name,
+        {
+          type: state.final ? "final" : undefined,
+          on: Object.fromEntries(
+            Object.entries(state.on).map(([event, transition]) => [
+              event,
+              {
+                target: transition.target,
+                guard: transition.guard
+                  ? ({
+                      context,
+                      event: received,
+                    }: {
+                      context: Record<string, unknown>;
+                      event: MachineEvent;
+                    }) => {
+                      const guard = guards.get(transition.guard!.type);
+                      if (!guard) return false;
+                      const result = guard({
+                        instance: {
+                          id: "ephemeral",
+                          orgId: "ephemeral",
+                          machineName: normalized.id,
+                          currentState: name,
+                          context,
+                          createdAt: new Date(0),
+                          updatedAt: new Date(0),
+                        },
+                        params: { ...transition.guard!.params, ...(received.params ?? {}) },
+                        definition,
+                      });
+                      if (result instanceof Promise) {
+                        throw new ValidationError(
+                          "guard",
+                          "Asynchronous guards are not supported by XState transitions",
+                        );
+                      }
+                      return result.passed;
                     }
-                    return result.passed;
-                  }
-                : undefined,
-              actions: assign(({ context, event: received }: { context: Record<string, unknown>; event: MachineEvent }) => ({
-                ...context,
-                ...(received.params ?? {}),
-              })),
-            },
-          ]),
-        ),
-      }]),
+                  : undefined,
+                // Existing machine definitions use event params as context updates. Keep that
+                // public behavior, but express it as an XState action rather than an engine merge.
+                actions: assign(
+                  ({
+                    context,
+                    event: received,
+                  }: {
+                    context: Record<string, unknown>;
+                    event: MachineEvent;
+                  }) => ({
+                    ...context,
+                    ...(received.params ?? {}),
+                  }),
+                ),
+              },
+            ]),
+          ),
+        },
+      ]),
     ),
   });
   const actor = createActor(machine, {
     input: context,
-    snapshot: currentState
-      ? machine.resolveState({ value: currentState, context })
-      : undefined,
+    snapshot: currentState ? machine.resolveState({ value: currentState, context }) : undefined,
   });
   actor.start();
   const snapshot = actor.getSnapshot();
-  return { actor, state: stateValue(snapshot.value), context: snapshot.context as Record<string, unknown> };
+  return {
+    actor,
+    state: stateValue(snapshot.value),
+    context: snapshot.context as Record<string, unknown>,
+  };
 }
 
 function stateValue(value: unknown): string {

@@ -69,7 +69,7 @@ pnpm init:nango                # idempotent admin, secret adoption, and Stripe c
 pnpm --filter @noname/server db:push
 ```
 
-`pnpm init:nango` is safe to rerun; it only creates missing local Nango setup. Do not run `pnpm init:nango:connect` automatically: that command imports a real provider credential and requires an explicit user-supplied secret (`CREDENTIAL_API_KEY`).
+`pnpm init:nango` is safe to rerun; it creates missing local Nango setup, synchronizes the provider callback URL, enables Nango HMAC signing, and stores the generated `NANGO_WEBHOOK_SIGNING_KEY` only in ignored local environment files. Do not run `pnpm init:nango:connect` automatically: that command imports a real provider credential and requires an explicit user-supplied secret (`CREDENTIAL_API_KEY`).
 
 ## Step 5: start all three app processes (background)
 

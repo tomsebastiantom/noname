@@ -1,7 +1,8 @@
 # Session Status — Continue Here Tomorrow
 
 > **Date:** 2026-09-08 (covers work from 09-05 → 09-08)
-> **Status:** Handoff — everything below is verified state, not aspiration
+> **Status:** Handoff — everything below is verified state, not aspiration  
+> **Current continuation:** [`CHECKOUT-RELIABILITY-PLAN.md`](../2026-09-10/CHECKOUT-RELIABILITY-PLAN.md) supersedes the ordered “not done” list below.
 
 ---
 

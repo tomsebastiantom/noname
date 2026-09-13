@@ -14,7 +14,7 @@ Nango is NOT a CLI tool or developer utility. It is a separate Docker service (s
 
 | Component | Status | Detail |
 |-----------|--------|--------|
-| Docker service | ✅ Defined | `docker-compose.yml:62-78`, port 3003, `profiles: [integrations]` |
+| Docker service | ✅ Defined | `docker-compose.yml`, ports 3003/3009, starts with the default compose stack |
 | Postgres database | ✅ Created | `scripts/compose/init-dbs.sh:7` runs `CREATE DATABASE nango` |
 | Env vars | ✅ Defined | `.env.example:16-18` — `NANGO_DB_PASSWORD`, `NANGO_SECRET_KEY` |
 | Integration scripts | ❌ None | No TypeScript files written for any external API |
@@ -22,7 +22,7 @@ Nango is NOT a CLI tool or developer utility. It is a separate Docker service (s
 | Connection to analytics pipeline | ❌ Not wired | Analytics listeners don't capture machine.transition events |
 | LLM/Mastra | ❌ Not wired | Agent domain stub routes only |
 
-Nango is labeled **"Phase 2+"** in `.env.example`. It starts only when explicitly requested: `docker compose --profile integrations up`.
+Nango is part of the default local compose stack. `docker compose up -d` starts Nango on ports `3003` (API) and `3009` (Connect UI). `pnpm init:nango` remains a one-time idempotent provisioning step for the local admin, environment secret, and Stripe integration.
 
 ## Architecture: Three Engines, One Platform
 

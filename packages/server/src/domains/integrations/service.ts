@@ -1,7 +1,5 @@
 import { type CommsProviderName, isCommsProviderName } from "@noname/shared";
 import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
-import { getProviderEventQueue } from "./provider-event-queue";
-import type { ProviderEventMapping, ProviderForwardedEvent } from "./provider-events";
 import type { TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import { parseIntegrationId } from "./integration-id";
@@ -17,6 +15,9 @@ import type {
   LlmProviderName,
   OAuthConnectionsPublic,
 } from "./ports";
+import { getProviderEventQueue } from "./provider-event-queue";
+import type { ProviderEventReceiptStore } from "./provider-event-receipts";
+import type { ProviderEventMapping, ProviderForwardedEvent } from "./provider-events";
 
 function normalizeProvider(value: string | undefined): LlmProviderName {
   return value === "anthropic" ? "anthropic" : "openai";
@@ -35,6 +36,7 @@ export function createIntegrationsService(deps: {
   oauth?: IntegrationOAuthPort | null;
   providerEventMappings?: ProviderEventMapping[];
   enqueueProviderEvent?: (event: ProviderForwardedEvent, jobId: string) => Promise<void>;
+  providerEventReceipts?: ProviderEventReceiptStore;
 }): IntegrationsService {
   const { secrets, tenantSettings, oauth = null } = deps;
   const enqueueProviderEvent =
@@ -254,8 +256,7 @@ export function createIntegrationsService(deps: {
     async handleProviderWebhook(payload: unknown): Promise<void> {
       if (!payload || typeof payload !== "object") return;
       const body = payload as Record<string, unknown>;
-      const connectionId =
-        typeof body.connectionId === "string" ? body.connectionId.trim() : "";
+      const connectionId = typeof body.connectionId === "string" ? body.connectionId.trim() : "";
       if (!connectionId) return;
       const integrationRaw =
         typeof body.providerConfigKey === "string"
@@ -281,9 +282,9 @@ export function createIntegrationsService(deps: {
       const eventPayload =
         body.payload && typeof body.payload === "object"
           ? (body.payload as Record<string, unknown>)
-          : (body.data && typeof body.data === "object"
+          : body.data && typeof body.data === "object"
             ? (body.data as Record<string, unknown>)
-            : null);
+            : null;
       if (!eventPayload) return;
       const providerEventId =
         typeof body.providerEventId === "string"
@@ -301,8 +302,26 @@ export function createIntegrationsService(deps: {
         eventType,
         payload: eventPayload,
       } satisfies ProviderForwardedEvent;
-      const jobId = `${connectionId}:${providerEventId ?? deliveryId ?? eventType}`;
-      await enqueueProviderEvent(forwarded, jobId);
+      if (deps.providerEventReceipts) {
+        const claim = await deps.providerEventReceipts.claim(forwarded);
+        if (claim === "duplicate") return;
+      }
+      // BullMQ custom IDs cannot contain `:`; keep the semantic identity while
+      // encoding provider-supplied IDs that may contain punctuation.
+      const jobId = encodeURIComponent(
+        `${connectionId}:${providerEventId ?? deliveryId ?? eventType}`,
+      );
+      try {
+        await enqueueProviderEvent(forwarded, jobId);
+      } catch (cause) {
+        if (deps.providerEventReceipts) {
+          await deps.providerEventReceipts.fail(
+            forwarded,
+            cause instanceof Error ? cause.message : "Provider event enqueue failed",
+          );
+        }
+        throw cause;
+      }
     },
 
     async triggerOAuthAction(

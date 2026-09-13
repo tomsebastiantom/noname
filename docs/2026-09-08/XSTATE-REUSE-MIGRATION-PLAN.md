@@ -1,7 +1,7 @@
 # XState Reuse Migration Plan
 
 > **Date:** 2026-09-08  
-> **Status:** Phase C implementation in progress — actor execution landed; normalization and full regression coverage remain
+> **Status:** Phase C implementation complete for flat-state machines — live cart reload smoke and final integration sign-off remain
 
 > **Scope:** Replace the machine engine's private transition DSL execution with real XState configuration and ephemeral actors, without changing the public API or storage contract.
 

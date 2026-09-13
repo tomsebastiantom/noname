@@ -10,6 +10,8 @@ export default defineConfig({
     "./src/domains/agent/schema.ts",
     "./src/domains/ai-pipeline/schema.ts",
     "./src/domains/notifications/schema.ts",
+    "./src/domains/capabilities/schema.ts",
+    "./src/domains/integrations/provider-event-schema.ts",
     "./src/domains/webhooks/schema.ts",
     "./src/domains/webhooks/inbound-schema.ts",
   ],

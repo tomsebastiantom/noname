@@ -6,6 +6,7 @@
       "on": {
         "addToCart": { "target": "active" },
         "clear": { "target": "active" },
+        "checkout_started": { "target": "awaiting_payment" },
         "checkout": { "target": "awaiting_payment" },
         "claim": { "target": "active" }
       }
