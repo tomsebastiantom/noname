@@ -2,7 +2,8 @@
 
 > **Date:** 2026-09-12  
 > **Status:** Research complete; implementation proposal, not yet implemented  
-> **Related starting point:** [`AUDITABLE-RECORDS-DESIGN-START.md`](./AUDITABLE-RECORDS-DESIGN-START.md)
+> **Related starting point:** [`AUDITABLE-RECORDS-DESIGN-START.md`](./AUDITABLE-RECORDS-DESIGN-START.md)  
+> **Scope correction:** Analytics ingestion and ClickHouse storage are out of scope because Noname already has an analytics implementation. This research only covers generic provenance, records, links, audit, and cross-domain evidence patterns.
 
 ## Executive recommendation
 

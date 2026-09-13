@@ -11,7 +11,7 @@ Candidate consumers include:
 
 - Commerce orders and payments
 - Bookings and reservations
-- Analytics summaries and traces
+- Architecture decisions and deployments
 - Blog publication history
 - Architecture decisions
 - Deployments and incidents
@@ -75,7 +75,7 @@ Before implementation, compare open-source and technical approaches for:
 - Schema evolution for immutable payloads
 - Tenant isolation and authorization
 - PII retention, redaction, and legal holds
-- High-volume analytics versus transactional records
+- Cross-domain provenance without reimplementing existing analytics storage
 - Attachments and recordings in object storage
 - Operational complexity and migration strategy
 
