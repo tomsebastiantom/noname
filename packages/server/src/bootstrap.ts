@@ -21,6 +21,7 @@ import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
+import { createEvidenceDomain } from "./domains/evidence";
 import { createFlagDomain } from "./domains/flags";
 import {
   createIntegrationsDomain,
@@ -149,6 +150,7 @@ export async function createApp(): Promise<Hono> {
     db,
     secrets: secrets.service,
   });
+  const evidence = createEvidenceDomain({ db });
 
   registerWebhookOutboundRouter({
     webhooks: webhooks.service,
@@ -266,6 +268,7 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/integrations", integrations.routes);
   app.route("/api/notifications", notifications.routes);
   app.route("/api/webhooks", webhooks.routes);
+  app.route("/api/evidence", evidence.routes);
 
   return app;
 }

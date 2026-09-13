@@ -6,6 +6,7 @@ import * as capabilitiesSchema from "./domains/capabilities/schema";
 import * as collabSchema from "./domains/collab/schema";
 import * as contextSchema from "./domains/context/schema";
 import * as documentSchema from "./domains/documents/schema";
+import * as evidenceSchema from "./domains/evidence/schema";
 import * as flagsSchema from "./domains/flags/schema";
 import * as providerEventSchema from "./domains/integrations/provider-event-schema";
 import * as machineSchema from "./domains/machines/schema";
@@ -19,6 +20,7 @@ export function createDatabase(connectionString: string) {
   return drizzle(client, {
     schema: {
       ...documentSchema,
+      ...evidenceSchema,
       ...capabilitiesSchema,
       ...collabSchema,
       ...machineSchema,
