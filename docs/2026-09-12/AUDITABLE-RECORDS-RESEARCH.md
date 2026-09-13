@@ -407,6 +407,49 @@ The first concrete implementation should be commerce order projection because it
 - [Saleor order actions](https://github.com/saleor/saleor/blob/fe9d1d46388587875a4715a9c85ddd091f3b7a0f/saleor/order/actions.py)
 - [Temporal durable execution and replay](https://learn.temporal.io/tutorials/typescript/background-check/durable-execution/)
 - [Sphereon audit logging](https://docs.sphereon.com/edk/guides/audit/overview)
+- [Kurrent/EventStoreDB projections](https://docs.kurrent.io/clients/node/v1.2/projections.html)
+- [AWS guidance for securing analytics audit logs](https://docs.aws.amazon.com/wellarchitected/latest/analytics-lens/best-practice-5.4---secure-the-audit-logs-that-record-every-data-or-resource-access-in-analytics-infrastructure..html)
+- [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/)
+
+## Additional research findings
+
+### EventStoreDB/Kurrent projections
+
+Kurrent's projection model reinforces that projections are derived views, not the event log. A projection can be rebuilt or replaced, which supports keeping Orders admin data separate from immutable domain facts.
+
+Noname implication:
+
+- Store projection version and checkpoint state.
+- Never let an admin write directly to a projection.
+- Make replay/rebuild an explicit operator action.
+- Use stream/aggregate version checks to prevent stale writes.
+
+Reference: [Kurrent projections](https://docs.kurrent.io/clients/node/v1.2/projections.html).
+
+### AWS audit-log guidance
+
+AWS guidance emphasizes protecting audit logs from unauthorized modification and limiting access to the logs themselves. This supports a separate audit store and access policy rather than treating audit history as ordinary editable records.
+
+Noname implication:
+
+- Audit writes should be append-only.
+- Exported logs need restricted access and retention policy.
+- Tenant users should not automatically receive raw platform audit access.
+- Security operators and domain operators may need different projections of the same audit facts.
+
+Reference: [AWS analytics audit-log security guidance](https://docs.aws.amazon.com/wellarchitected/latest/analytics-lens/best-practice-5.4---secure-the-audit-logs-that-record-every-data-or-resource-access-in-analytics-infrastructure..html).
+
+### OpenTelemetry correlation
+
+OpenTelemetry semantic conventions provide a useful interoperability model for trace, span, service, deployment, and event correlation. The record kernel should not replace telemetry, but it should preserve trace and correlation identifiers when a business record is created from an HTTP request, worker job, or provider callback.
+
+Noname implication:
+
+- Carry `traceId`, `spanId`, `correlationId`, and `causationId` when available.
+- Keep telemetry export separate from business-record persistence.
+- Link business records to traces without copying full telemetry payloads into order/booking tables.
+
+Reference: [OpenTelemetry semantic conventions](https://opentelemetry.io/docs/specs/semconv/).
 
 ## Source feedback note
 
