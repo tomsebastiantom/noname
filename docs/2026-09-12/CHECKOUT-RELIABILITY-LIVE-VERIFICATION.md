@@ -111,6 +111,16 @@ A local browser cannot receive a real Stripe webhook from the public Stripe serv
 
 This is explicitly a provider-callback simulation; it is reported separately from a real Stripe webhook delivery. A real external callback can be added later with Stripe CLI/tunnel forwarding without changing the application path.
 
+### Live Postgres concurrency evidence
+
+A direct live verifier ran against the active Postgres database with eight simultaneous callers:
+
+- Capability idempotency: exactly one `claimed`, seven `in_progress`; after completion, the same request returned `replay` and a changed body returned `conflict`.
+- Provider-event receipts: exactly one `claimed`, seven `duplicate`; after completion, replay returned `duplicate`.
+- Database schema and unique constraints were exercised against the real Postgres service, not an in-memory substitute.
+
+The callback test also found and fixed a BullMQ constraint: custom job IDs cannot contain `:`. Provider enqueue IDs are now URI-encoded while receipt identity remains unchanged.
+
 ## Commit rule
 
 Do not create the milestone commit until:
