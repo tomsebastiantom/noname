@@ -145,8 +145,8 @@ See [`documents-domain.md`](../2026-07-10/documents-domain.md) § KV Cache Key S
 5. ~~API proxy to server edge routes~~ ✅
 6. ~~HMAC signing to server~~ ✅
 7. ~~SEO prerenderer (React 19 SSR)~~ ✅
-8. Wire personalization result in `api.ts` — **next**
-9. Deploy to Cloudflare Workers via wrangler
+8. ~~Wire personalization result in the storefront edge path~~ ✅
+9. Deploy to Cloudflare Workers via wrangler — **next**
 
 ## Key Decisions
 

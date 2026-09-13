@@ -3,6 +3,7 @@ import { storeSlugFromHost } from "@noname/shared";
 import { Hono } from "hono";
 import { getCached, setCache } from "../cache";
 import { hmacHeaders } from "../hmac";
+import { personalizeSchema } from "../renderer";
 import { resolveSiteId } from "../resolve-slug";
 import type { Env } from "../types";
 import { extractSeoFromLayout, isBotUserAgent, renderBotHtml, renderBotStream } from "./bot-ssr";
@@ -20,6 +21,7 @@ async function fetchStorefrontSchema(
   env: Env,
   siteId: string,
   pathname: string,
+  request: Request,
 ): Promise<EdgeSchemaPayload | null> {
   const cacheKey = `bot-schema:${siteId.toLowerCase()}:${pathname.toLowerCase()}`;
   try {
@@ -31,6 +33,11 @@ async function fetchStorefrontSchema(
 
   const orgId = await resolveSiteId(env, siteId);
   if (!orgId) return null;
+
+  const personalized = await personalizeSchema(siteId, request, env, orgId);
+  if (personalized?.layout && typeof personalized.layout === "object") {
+    return personalized as EdgeSchemaPayload;
+  }
 
   const signed = await hmacHeaders(orgId, "", "", env);
   const qs = new URLSearchParams({ segment: "default", url: pathname });
@@ -99,7 +106,7 @@ export function createStorefrontRoutes() {
     const userAgent = c.req.header("User-Agent");
 
     if (isBotUserAgent(userAgent)) {
-      const schema = await fetchStorefrontSchema(c.env, siteId, pathname);
+      const schema = await fetchStorefrontSchema(c.env, siteId, pathname, c.req.raw);
       if (!schema) {
         const shell = await serveIndexHtml(c.env);
         if (shell) return shell;

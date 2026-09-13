@@ -30,9 +30,10 @@ export async function fetchSchema(
 }
 
 export async function personalizeSchema(
-  tenantId: string,
+  siteId: string,
   request: Request,
   env: Env,
+  orgId = siteId,
   userId = "",
   role = "",
 ): Promise<Record<string, unknown> | null> {
@@ -45,12 +46,12 @@ export async function personalizeSchema(
     const url = `${env.API_ORIGIN}/api/edge/personalize`;
     const headers = {
       "Content-Type": "application/json",
-      ...(await hmacHeaders(tenantId, userId, role, env)),
+      ...(await hmacHeaders(orgId, userId, role, env)),
     };
     const response = await fetch(url, {
       method: "POST",
       headers,
-      body: JSON.stringify({ siteId: tenantId, headers: reqHeaders }),
+      body: JSON.stringify({ siteId, headers: reqHeaders }),
     });
     if (!response.ok) return null;
 
