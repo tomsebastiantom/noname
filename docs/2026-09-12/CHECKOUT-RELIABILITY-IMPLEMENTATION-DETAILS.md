@@ -7,9 +7,9 @@
 
 | Commit | Conventional type | Detail |
 |---|---|---|
-| `7f04bd3` | `feat(checkout)` | Added the checkout reliability implementation: XState definition normalization, capability idempotency, durable provider receipts, authoritative checkout transitions, payment mappings, and regression coverage. |
-| `845296a` | `fix(checkout)` | Added live Postgres concurrency evidence and fixed BullMQ custom job IDs so provider callback jobs cannot fail on `:` characters. |
-| `3a53c86` | `docs(checkout)` | Recorded final Browser MCP, Stripe Sandbox, signed callback, duplicate suppression, build, and verification evidence. |
+| `2d140c5` | `feat(checkout)` | Added the checkout reliability implementation: XState definition normalization, capability idempotency, durable provider receipts, authoritative checkout transitions, payment mappings, and regression coverage. |
+| `8271199` | `fix(checkout)` | Added live Postgres concurrency evidence and fixed BullMQ custom job IDs so provider callback jobs cannot fail on `:` characters. |
+| `78a53ad` | `docs(checkout)` | Recorded final Browser MCP, Stripe Sandbox, signed callback, duplicate suppression, build, and verification evidence. |
 
 Earlier supporting commits also include conventional Nango startup work:
 
