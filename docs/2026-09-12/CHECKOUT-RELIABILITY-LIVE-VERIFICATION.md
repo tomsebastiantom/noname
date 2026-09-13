@@ -121,15 +121,25 @@ A direct live verifier ran against the active Postgres database with eight simul
 
 The callback test also found and fixed a BullMQ constraint: custom job IDs cannot contain `:`. Provider enqueue IDs are now URI-encoded while receipt identity remains unchanged.
 
-## Commit rule
+### Final Browser MCP smoke after concurrency verification
 
-Do not create the milestone commit until:
+- Login to the seeded admin — PASS; redirected to the signed-in storefront.
+- Storefront rendered the seeded commerce layout and product.
+- Browser console — no application errors; the existing favicon 404 remains.
+
+## Verification and commit status
+
+All milestone gates are now recorded:
 
 - Podman/infrastructure is running.
-- `db:push` succeeds for the new capability and provider receipt tables.
-- Browser MCP storefront/login/admin/editor smoke checks pass.
-- Checkout callback-to-`paid` verification passes.
-- Duplicate callback and reload checks pass.
-- A final `pnpm typecheck`, `pnpm test`, and `pnpm build` pass is recorded.
+- `db:push` succeeded for the capability and provider receipt tables.
+- Browser MCP storefront/login/admin/editor smoke checks passed.
+- Stripe Sandbox checkout and test payment passed.
+- Signed callback-to-`paid` verification passed.
+- Duplicate callback and live Postgres concurrency checks passed.
+- `pnpm typecheck`, `pnpm test`, and `pnpm build` passed.
 
-After those checks, update this document with the exact Browser MCP evidence and create one focused commit containing the milestone.
+Commits:
+
+- `7f04bd3` — Complete checkout reliability hardening
+- `845296a` — Document live concurrency verification
