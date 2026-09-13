@@ -139,7 +139,7 @@ When order durability, inventory locking, refunds, or admin queries exceed machi
 5. Register provider mappings in the commerce extension, not in generic integrations transport.
 6. Route normalized callback events through the durable provider-event worker to `MachineEngine.transition()`.
 7. Add extension-owned order projection only when the checkout proof requires it.
-8. Test with Stripe sandbox through Nango, then repeat the same machine test with a second provider mapping fixture.
+8. ~~Test with Stripe sandbox through Nango, then repeat the same machine test with a second provider mapping fixture.~~ ✅
 
 ## Non-goals
 

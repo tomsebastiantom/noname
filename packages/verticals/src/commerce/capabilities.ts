@@ -107,7 +107,21 @@ export function createCommerceContribution(deps: CommerceContributionDeps) {
   });
 }
 
-export function createCommerceProviderEventMappings() {
+export type CommerceProviderMappingOptions = {
+  integrationId: string;
+  successEventType: string;
+  failureEventType: string;
+  expiredEventType?: string;
+};
+
+export function createCommerceProviderEventMappings(
+  options: CommerceProviderMappingOptions = {
+    integrationId: "stripe",
+    successEventType: "checkout.session.completed",
+    failureEventType: "checkout.session.async_payment_failed",
+    expiredEventType: "checkout.session.expired",
+  },
+) {
   const normalizePaymentEvent = (
     event: ProviderForwardedEvent,
     normalizedEvent: "PAYMENT_SUCCEEDED" | "PAYMENT_FAILED",
@@ -117,41 +131,47 @@ export function createCommerceProviderEventMappings() {
       payload.metadata && typeof payload.metadata === "object"
         ? (payload.metadata as Record<string, unknown>)
         : {};
-    const machineInstanceId = readString(metadata.machineInstanceId ?? payload.client_reference_id);
+    const machineInstanceId = readString(
+      metadata.machineInstanceId ?? metadata.machine_instance_id ?? payload.client_reference_id,
+    );
     if (!machineInstanceId) return null;
     return {
       event: normalizedEvent,
       params: {
-        paymentRef: readString(payload.payment_intent) ?? event.providerEventId,
-        amount: payload.amount_total,
+        paymentRef:
+          readString(payload.payment_intent ?? payload.payment_reference) ?? event.providerEventId,
+        amount: payload.amount_total ?? payload.amount,
         currency: payload.currency,
         reason:
           normalizedEvent === "PAYMENT_FAILED"
-            ? (readString(payload.payment_status) ?? event.eventType)
+            ? (readString(payload.payment_status ?? payload.status) ?? event.eventType)
             : undefined,
       },
       machineInstanceId,
     };
   };
 
-  return [
+  const mappings = [
     {
-      integrationId: "stripe",
-      eventType: "checkout.session.completed",
+      integrationId: options.integrationId,
+      eventType: options.successEventType,
       normalize: (event: ProviderForwardedEvent) =>
         normalizePaymentEvent(event, "PAYMENT_SUCCEEDED"),
     },
     {
-      integrationId: "stripe",
-      eventType: "checkout.session.async_payment_failed",
-      normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
-    },
-    {
-      integrationId: "stripe",
-      eventType: "checkout.session.expired",
+      integrationId: options.integrationId,
+      eventType: options.failureEventType,
       normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
     },
   ];
+  if (options.expiredEventType) {
+    mappings.push({
+      integrationId: options.integrationId,
+      eventType: options.expiredEventType,
+      normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
+    });
+  }
+  return mappings;
 }
 
 function readString(value: unknown): string | undefined {

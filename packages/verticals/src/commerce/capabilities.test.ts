@@ -77,4 +77,48 @@ describe("commerce provider event mappings", () => {
     expect(failure?.event).toBe("PAYMENT_FAILED");
     expect(failure?.machineInstanceId).toBe(instanceId);
   });
+
+  it("normalizes a second provider fixture through the same contract", () => {
+    const mappings = createCommerceProviderEventMappings({
+      integrationId: "adyen",
+      successEventType: "payment.completed",
+      failureEventType: "payment.failed",
+    });
+    const success = mappings[0]?.normalize({
+      orgId: "org-1",
+      integrationId: "adyen",
+      connectionId: "connection-adyen",
+      providerEventId: "adyen-success",
+      eventType: "payment.completed",
+      payload: {
+        metadata: { machine_instance_id: instanceId },
+        payment_reference: "adyen-payment-1",
+        amount: 2500,
+        currency: "cad",
+      },
+    });
+    const failure = mappings[1]?.normalize({
+      orgId: "org-1",
+      integrationId: "adyen",
+      connectionId: "connection-adyen",
+      providerEventId: "adyen-failure",
+      eventType: "payment.failed",
+      payload: {
+        metadata: { machine_instance_id: instanceId },
+        status: "refused",
+        currency: "cad",
+      },
+    });
+
+    expect(success).toMatchObject({
+      event: "PAYMENT_SUCCEEDED",
+      machineInstanceId: instanceId,
+      params: { paymentRef: "adyen-payment-1", amount: 2500, currency: "cad" },
+    });
+    expect(failure).toMatchObject({
+      event: "PAYMENT_FAILED",
+      machineInstanceId: instanceId,
+      params: { reason: "refused", currency: "cad" },
+    });
+  });
 });
