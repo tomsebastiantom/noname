@@ -1,7 +1,11 @@
 # Checkout Reliability — Live Verification and Commit Gate
 
 > **Date:** 2026-09-12  
-> **Status:** Code milestone implemented; commit intentionally blocked pending live browser MCP verification.
+> **Status:** Historical milestone record — fully verified; not current status
+>
+> **Current status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+>
+> The initial commit gate described below was later cleared. The completed verification and commit evidence is recorded in the final sections of this document.
 
 ## Scope verified in code
 
@@ -26,9 +30,9 @@ The current milestone includes:
 
 Repository-wide `pnpm check` still reports pre-existing formatting/import issues outside this milestone. The changed implementation files pass targeted checks.
 
-## Live verification required before commit
+## Initial live verification gate
 
-The commit gate is deliberately not satisfied until the running stack is tested through Browser MCP.
+At the time of the initial record, the commit gate was deliberately not satisfied until the running stack was tested through Browser MCP. The gate was subsequently cleared; see `## Browser MCP evidence` and `## Verification and commit status` below.
 
 Required health checks:
 

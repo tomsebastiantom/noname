@@ -1,8 +1,10 @@
 # XState Reuse Migration Plan
 
 > **Date:** 2026-09-08  
-> **Status:** Phase C implementation complete for flat-state machines — live cart reload smoke and final integration sign-off remain
-
+> **Status:** Historical implementation plan — completed and live-verified; not current status
+>
+> **Current status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+>
 > **Scope:** Replace the machine engine's private transition DSL execution with real XState configuration and ephemeral actors, without changing the public API or storage contract.
 
 ## 1. Why this work exists

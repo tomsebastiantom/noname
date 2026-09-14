@@ -1,8 +1,9 @@
 # Cleanup Plan — Before New Domain
 
 > **Date:** 2026-09-05
-> **Status:** In progress — mark each item complete as fixed
-> **Rule:** Fix data-loss / 500 / mystery-400 now. God-file refactors after commerce MVP.
+> **Status:** Historical cleanup plan — implementation items were completed or superseded; not current status
+> **Current status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+> **Rule at the time:** Fix data-loss / 500 / mystery-400 now. God-file refactors after commerce MVP.
 > **Related:** [`ADD-DOMAIN-VS-EXTENSION.md`](./ADD-DOMAIN-VS-EXTENSION.md) · [`ARCHITECTURE.md`](../2026-08-07/ARCHITECTURE.md) · [`ACTION-PLAN.md`](../2026-08-07/ACTION-PLAN.md) · [`EDGE-STOREFRONT-FIXES.md`](../2026-08-23/EDGE-STOREFRONT-FIXES.md) · [`SHARED-SECRET-STRATEGY.md`](../2026-08-23/SHARED-SECRET-STRATEGY.md)
 
 ---

@@ -1,5 +1,8 @@
 # Edge Personalization Implementation
 
+> **Status:** Historical implementation record — personalization is complete for the documented local scope.
+> **Current roadmap:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+
 ## Scope
 
 Implemented the next non-Stripe roadmap item: wire the edge personalization result into the storefront bot/request path.

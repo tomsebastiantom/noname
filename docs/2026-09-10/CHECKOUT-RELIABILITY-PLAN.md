@@ -1,8 +1,11 @@
 # Checkout Reliability Implementation Plan
 
 > **Date:** 2026-09-10  
-> **Status:** Active — execute in order, one workstream at a time  
-> **Goal:** Make checkout reliable without breaking the existing platform, guest-cart flow, XState API, or provider boundaries.
+> **Status:** Historical implementation plan — completed; not current status  
+> **Goal:** Historical goal: make checkout reliable without breaking the existing platform, guest-cart flow, XState API, or provider boundaries.
+>
+> **Current status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+> **Final evidence:** [`../2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md`](../2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md)
 
 ## Scope
 
@@ -167,7 +170,7 @@ For runtime-affecting changes, run focused tests first, then the complete suite,
 - Trusted server-side pricing: complete and verified.
 - Capability idempotency: durable Postgres storage and route replay/conflict/retry handling are implemented; database push and live concurrent-request verification remain.
 - Provider callbacks: durable receipt claim/deduplication and worker completion/failure updates are implemented; live Postgres/queue verification remains.
-- XState actor execution: normalization and flat-state regression coverage are now implemented; live cart reload smoke remains before final sign-off.
+- Historical baseline before final verification: XState actor execution and flat-state regression coverage were implemented; the live cart reload smoke was subsequently completed and is recorded in `docs/2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md`.
 - Full callback-to-`paid` E2E: not yet automated.
 - Initial verification on 2026-09-10: `pnpm typecheck` passed; `pnpm test` had one event-bus timeout (`506 passed, 1 failed`).
 - Workstream 0 is now complete: event-bus local delivery is deterministic and full verification is green (`141` files, `507` tests).

@@ -1,8 +1,9 @@
 # Product Roadmap — Phased Build & Validate
 
 > **Date:** 2026-07-25  
-> **Status:** Active  
-> **Start here:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · **Snapshot:** [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)
+> **Status:** Historical roadmap snapshot — not current status  
+> **Current roadmap:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)  
+> **Original references:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)
 
 ---
 

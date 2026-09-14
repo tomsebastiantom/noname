@@ -2,6 +2,8 @@
 
 Date: 2026-09-14
 
+> **Status:** Historical evaluation superseded by [`./AUTHORITATIVE-ROADMAP-CURRENT.md`](./AUTHORITATIVE-ROADMAP-CURRENT.md). Retained because it captures the earlier checkout-workstream analysis.
+
 ## Executive decision
 
 The immediate next roadmap step should be:

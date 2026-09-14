@@ -1,9 +1,10 @@
 # Commerce Hardening Implementation Tracker
 
-> Status: In progress
+> Status: Historical implementation tracker — workstreams completed and verified in the final record
 > Started: 2026-09-09
-> Scope: implement and verify the checkout hardening sequence one workstream at a time.  
-> Current execution plan: [`CHECKOUT-RELIABILITY-PLAN.md`](../2026-09-10/CHECKOUT-RELIABILITY-PLAN.md)
+> Scope: historical record of the checkout hardening sequence.
+> Current status: [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+> Final verification: [`../2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md`](../2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md)
 
 ## Workstreams
 

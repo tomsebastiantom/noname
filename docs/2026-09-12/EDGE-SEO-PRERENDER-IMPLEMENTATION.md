@@ -1,5 +1,10 @@
 # Edge SEO Prerender Implementation
 
+> **Status:** Historical implementation record — SEO streaming is complete for the documented scope.
+> **Current roadmap:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
+>
+> The original note that personalization was the next item is historical; personalization was subsequently implemented and verified.
+
 ## Scope
 
 Implemented the next non-Stripe edge-worker roadmap item: React 19 streaming SEO HTML for bot requests.

@@ -1,7 +1,9 @@
 # Seed Architecture and `packages/seeding`
 
 > **Date:** 2026-09-14  
-> **Status:** Architecture and initial implementation
+> **Status:** Implemented architecture record — not the current roadmap
+>
+> **Current status and next work:** [`./AUTHORITATIVE-ROADMAP-CURRENT.md`](./AUTHORITATIVE-ROADMAP-CURRENT.md)
 
 ## Purpose
 

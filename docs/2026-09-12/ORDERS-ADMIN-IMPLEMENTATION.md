@@ -1,7 +1,9 @@
 # Commerce Orders Admin Read View
 
 > **Date:** 2026-09-12  
-> **Status:** Initial read-only admin implementation
+> **Status:** Historical implementation record — initial read-only slice complete; not current status
+>
+> **Current status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
 
 ## Scope
 
