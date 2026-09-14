@@ -37,18 +37,16 @@ The browser only reads. Evidence writes remain server-side through `EvidenceServ
 
 ## UI ownership
 
-The client contributes:
+The Commerce extension contributes:
 
 ```text
 OrdersAdmin component
-orders client API helper
-orders admin state
-loadOrdersAdmin action
-selectOrderAdmin action
-loadOrderLinks action
+orders-admin-api.ts evidence reader
+commerceActions.loadOrdersAdmin
+commerceActions.loadOrderEvidenceLinks
 ```
 
-The client does not define order lifecycle behavior. It renders the commerce evidence projection and related records.
+The platform client contributes only the generic admin route, shell, permission policy, and catalog loading. It does not define Commerce order state or actions. The extension renders the commerce evidence projection and related records.
 
 ## Permission
 

@@ -1,4 +1,5 @@
 import { addProductToCart, checkout, mergeGuestCartOnLogin } from "./cart";
+import { fetchCommerceEvidenceLinks, fetchCommerceOrders } from "./orders-admin-api";
 
 export const commerceActions = {
   addToCart: async (params: unknown) => {
@@ -12,4 +13,6 @@ export const commerceActions = {
   checkout: async () => {
     await checkout();
   },
+  loadOrdersAdmin: async () => fetchCommerceOrders(),
+  loadOrderEvidenceLinks: async (recordId: string) => fetchCommerceEvidenceLinks(recordId),
 };

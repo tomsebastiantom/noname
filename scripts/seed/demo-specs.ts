@@ -567,11 +567,7 @@ export const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdm
   },
 });
 
-export const adminOrdersSpec = adminPanelSpec(["loadOrders", "ordersAdmin"], {
-  loadOrders: {
-    type: "MountAction",
-    props: specProps({ action: "loadOrdersAdmin" }, {}),
-  },
+export const adminOrdersSpec = adminPanelSpec(["ordersAdmin"], {
   ordersAdmin: {
     type: "OrdersAdmin",
     props: panelProps(

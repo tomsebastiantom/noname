@@ -4,6 +4,7 @@ import { RichTextRenderer } from "../shared/RichTextRenderer";
 import type { ComponentCtx } from "../types";
 import { commerceActions } from "./actions";
 import { CartRequestError, getCart } from "./cart";
+import { OrdersAdmin } from "./orders-admin";
 import { cacheProduct, getCachedProduct } from "./product-catalog";
 
 function renderDescription(description: unknown) {
@@ -266,4 +267,5 @@ export const commerceComponents = {
   Hero,
   ProductCard,
   CartSummary,
+  OrdersAdmin,
 };

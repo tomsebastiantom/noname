@@ -1,6 +1,28 @@
 import { z } from "zod";
 
 export const commerceComponentSchemas = {
+  OrdersAdmin: {
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      refreshLabel: z.string(),
+      refreshingLabel: z.string(),
+      forbiddenLabel: z.string(),
+      orderColumnHeader: z.string(),
+      amountColumnHeader: z.string(),
+      currencyColumnHeader: z.string(),
+      paymentColumnHeader: z.string(),
+      dateColumnHeader: z.string(),
+      detailsTitle: z.string(),
+      detailsDescription: z.string().nullable(),
+      linksTitle: z.string(),
+      linksLoadingLabel: z.string(),
+      noLinksLabel: z.string(),
+    }),
+    description: "Browse commerce orders and their evidence links",
+  },
   CartSummary: {
     props: z.object({
       title: z.string(),
