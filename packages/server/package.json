@@ -72,6 +72,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@noname/fixtures": "workspace:*",
     "@types/node": "^26.0.0",
     "@types/ws": "^8.18.1",
     "drizzle-kit": "^0.31.0",

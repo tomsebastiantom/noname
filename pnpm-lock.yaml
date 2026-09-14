@@ -291,6 +291,12 @@ importers:
         specifier: ^7.0.0
         version: 7.0.2
 
+  packages/fixtures:
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   packages/seeding:
     dependencies:
       '@noname/auth':
@@ -302,6 +308,9 @@ importers:
       '@noname/documents':
         specifier: workspace:*
         version: link:../documents
+      '@noname/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
       '@noname/server':
         specifier: workspace:*
         version: link:../server
@@ -472,6 +481,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@noname/fixtures':
+        specifier: workspace:*
+        version: link:../fixtures
       '@types/node':
         specifier: ^26.0.0
         version: 26.1.1

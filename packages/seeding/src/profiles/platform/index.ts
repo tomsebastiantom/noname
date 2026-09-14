@@ -8,6 +8,7 @@ import { createHmac, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { agentTaskCompleteEmailSpec, welcomeEmailSpec } from "@noname/fixtures/notifications";
 import { config as loadEnv } from "dotenv";
 import {
   findUserIdByEmail,
@@ -47,7 +48,6 @@ import {
   visualEditorShellSpec,
 } from "./demo-specs";
 import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
-import { agentTaskCompleteEmailSpec, welcomeEmailSpec } from "./email-specs";
 import { seedOrgEditorAccess } from "./keto-tuples";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));

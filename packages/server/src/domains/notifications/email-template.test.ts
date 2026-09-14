@@ -1,6 +1,6 @@
 import { plainTextToRichTextDocument, serializeRichTextFieldValue } from "@noname/documents";
+import { agentTaskCompleteEmailSpec } from "@noname/fixtures/notifications";
 import { describe, expect, it } from "vitest";
-import { agentTaskCompleteEmailSpec } from "../../../../../packages/seeding/src/profiles/platform/email-specs";
 import { parseNotificationEmailEntry, renderNotificationEmail } from "./email-template";
 
 describe("notification email template", () => {

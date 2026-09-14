@@ -583,3 +583,28 @@ package/domain tests
 ```
 
 This preserves reuse without turning `packages/fixtures` into a second monolith.
+
+## Implementation status
+
+The first shared fixture extraction is now implemented:
+
+```text
+packages/fixtures/
+  package.json
+  tsconfig.json
+  src/
+    index.ts
+    notifications/
+      index.ts
+      email-specs.ts
+```
+
+Updated consumers:
+
+```text
+packages/seeding/src/profiles/platform/index.ts
+packages/server/src/domains/notifications/email-template.test.ts
+packages/server/src/domains/notifications/service.test.ts
+```
+
+The notification tests now depend on `@noname/fixtures/notifications`, while the platform seed imports the same neutral fixture package. No test imports a seeding profile.

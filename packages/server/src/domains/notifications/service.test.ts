@@ -1,5 +1,5 @@
+import { agentTaskCompleteEmailSpec } from "@noname/fixtures/notifications";
 import { describe, expect, it, vi } from "vitest";
-import { agentTaskCompleteEmailSpec } from "../../../../../packages/seeding/src/profiles/platform/email-specs";
 import type { NotificationsStorage } from "./adapters/postgres";
 import { DEFAULT_NOTIFICATION_PREFERENCES } from "./preferences";
 import type { EmailOutboundJobData } from "./queue";
