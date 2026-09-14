@@ -1,5 +1,6 @@
 import {
   createCommerceContribution,
+  createCommerceOrderProjector,
   createCommerceProviderEventMappings,
 } from "@noname/verticals/commerce";
 import { Hono } from "hono";
@@ -49,8 +50,8 @@ import { getRedisFanoutStatus } from "./shared/redis-fanout-status";
  * binds HTTP, is the worker replica) because HTTP routes and background workers both come out of
  * the same domain factories — e.g. `createAgentDomain` returns both `routes` and `worker` in one
  * call. Splitting that apart per-domain would be a much larger refactor; gating worker startup
- * via `RUN_WORKERS` (see `shared/worker-runtime.ts`) gets the actual goal — HTTP and
- * job-processing scaling independently, on separate DB connection pools — without it.
+ * via `RUN_WORKERS` (see `shared/worker-runtime.ts`) gets the actual goal — HTTP and job-processing
+ * scaling independently, on separate DB connection pools — without it.
  */
 export async function createApp(): Promise<Hono> {
   const app = new Hono();
@@ -120,14 +121,17 @@ export async function createApp(): Promise<Hono> {
   });
   onAuthProviderPublished = auth.onAuthProviderPublished;
 
+  const evidence = createEvidenceDomain({ db });
+  const commerceOrderProjector = createCommerceOrderProjector(evidence.service);
   const machines = createMachineDomain({
     db,
     tenantSettings: docs.service.tenantSettings,
     hooks: {
-      async onTransitionComplete({ orgId, params }) {
-        const notify = parseTransitionNotify(params);
+      async onTransitionComplete(transition) {
+        await commerceOrderProjector(transition);
+        const notify = parseTransitionNotify(transition.params);
         if (!notify) return;
-        await notifications.service.notify(orgId, notify);
+        await notifications.service.notify(transition.orgId, notify);
       },
     },
   });
@@ -150,7 +154,6 @@ export async function createApp(): Promise<Hono> {
     db,
     secrets: secrets.service,
   });
-  const evidence = createEvidenceDomain({ db });
 
   registerWebhookOutboundRouter({
     webhooks: webhooks.service,

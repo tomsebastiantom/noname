@@ -1,7 +1,7 @@
 # Evidence and Provenance Server Domain
 
 > **Date:** 2026-09-12  
-> **Status:** Initial server implementation
+> **Status:** Server implementation with commerce integration
 
 ## What was implemented
 
@@ -85,21 +85,55 @@ pnpm --filter @noname/server db:push
 Results:
 
 - Focused evidence tests: 3 passed
-- Full repository tests: 148 files, 525 tests passed
+- Full repository tests: 149 files, 527 tests passed
 - Server typecheck: passed
 - Biome check: passed
 - Local Postgres schema push: applied successfully
 
-## Next domain integration
+## Commerce integration
 
-The next consumer should be commerce order projection:
+Commerce now consumes the server port through `createCommerceOrderProjector`.
+
+The machine engine invokes the projector from its awaited `onTransitionComplete` hook, after the authoritative state update succeeds. The projector accepts only `PAYMENT_SUCCEEDED` from the commerce `cart` machine, so unrelated platform machines cannot create commerce orders.
 
 ```text
 MachineEngine PAYMENT_SUCCEEDED
-  → commerce-owned order projection
-  → EvidenceService.appendActivity()
-  → EvidenceService.appendRecord()
-  → EvidenceService.link()
+  → commerce order projector
+  → commerce.order.created record
+  → commerce.payment.receipt record
+  → commerce.payment_succeeded activity
+  → paid_by / caused_by links
 ```
 
-The order aggregate and order read model remain commerce-owned. The evidence domain records the durable facts and relationships without becoming a generic order domain.
+The projector derives all values from the persisted machine context and normalized transition parameters. It does not accept browser prices, browser ownership, or redirect state.
+
+The projection is idempotent by:
+
+```text
+commerce:order:<machine-instance-id>
+commerce:payment:<payment-reference>
+commerce:payment-succeeded:<machine-instance-id>
+```
+
+The commerce domain owns the semantic type names and payload meaning. The server evidence domain owns persistence and tenant/idempotency guarantees.
+
+The order aggregate and future order read model remain commerce-owned. Evidence records the durable facts and relationships without becoming a generic order domain.
+
+## Commerce verification
+
+Additional focused tests cover:
+
+- Projection only after `PAYMENT_SUCCEEDED`
+- Order and payment receipt creation
+- Activity input/output references
+- Typed relationship creation
+- Machine-context-derived order/payment references
+- Ignoring failed payment transitions
+
+Commands:
+
+```text
+pnpm --filter @noname/verticals typecheck
+pnpm exec vitest run --config vitest.config.ts packages/verticals/src/commerce/order-projection.test.ts
+pnpm --filter @noname/server build
+```

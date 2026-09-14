@@ -133,6 +133,7 @@ export function createMachineEngine(
           event,
           fromState,
           toState,
+          params,
         });
 
         if (hooks.onTransitionComplete) {
