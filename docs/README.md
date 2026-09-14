@@ -4,6 +4,7 @@
 - **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
 - **[2026-09-14/DOCUMENTATION-AUDIT-INDEX.md](2026-09-14/DOCUMENTATION-AUDIT-INDEX.md)** — Repository-wide per-document audit index with evidence reports and status classifications.
 - **[2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md](2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md)** — Documentation platform options, professional page taxonomy, templates, ADR rules, generated references, and migration plan.
+- **[2026-09-14/DIATAXIS-DOCS-EXAMPLES.md](2026-09-14/DIATAXIS-DOCS-EXAMPLES.md)** — Short Diátaxis setup and ready-to-copy tutorial, how-to, explanation, reference, and ADR examples.
 - **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Historical implementation snapshot. It is retained for context but is not authoritative for current status.
 
 ## Incident & Fix Reports
