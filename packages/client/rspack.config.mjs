@@ -89,6 +89,7 @@ export default {
     alias: {
       "@": join(dir, "src"),
       "@/": join(dir, "src/"),
+      "@noname/browser-sdk": join(dir, "../browser-sdk/dist/index.js"),
       "@noname/extensions": join(dir, "../extensions/src/index.ts"),
       "@noname/extensions/commerce/catalog-schemas": join(
         dir,
