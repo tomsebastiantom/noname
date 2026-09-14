@@ -13,14 +13,14 @@ export type EvidenceOrderRecord = {
 export async function fetchCommerceOrders(limit = 50): Promise<EvidenceOrderRecord[]> {
   const params = new URLSearchParams({ type: "commerce.order.created", limit: String(limit) });
   const body = await apiFetch<{ data?: EvidenceOrderRecord[] }>(
-    `/api/commerce/orders/records?${params.toString()}`,
+    `/api/evidence/records?${params.toString()}`,
   );
   return body.data ?? [];
 }
 
 export async function fetchEvidenceLinks(recordId: string) {
   const body = await apiFetch<{ data?: Array<Record<string, unknown>> }>(
-    `/api/commerce/orders/links/${encodeURIComponent(recordId)}`,
+    `/api/evidence/links/${encodeURIComponent(recordId)}`,
   );
   return body.data ?? [];
 }

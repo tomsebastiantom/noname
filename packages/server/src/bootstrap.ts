@@ -1,4 +1,3 @@
-import { PERMISSIONS } from "@noname/auth";
 import {
   createCommerceContribution,
   createCommerceOrderProjector,
@@ -23,7 +22,7 @@ import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
-import { createEvidenceDomain, createEvidenceRoutes } from "./domains/evidence";
+import { createEvidenceDomain } from "./domains/evidence";
 import { createFlagDomain } from "./domains/flags";
 import {
   createIntegrationsDomain,
@@ -273,14 +272,6 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/notifications", notifications.routes);
   app.route("/api/webhooks", webhooks.routes);
   app.route("/api/evidence", evidence.routes);
-  app.route(
-    "/api/commerce/orders",
-    createEvidenceRoutes(evidence.service, {
-      permission: PERMISSIONS.COMMERCE_ORDERS_VIEW,
-      recordType: "commerce.order.created",
-      subjectType: "commerce.order",
-    }),
-  );
 
   return app;
 }

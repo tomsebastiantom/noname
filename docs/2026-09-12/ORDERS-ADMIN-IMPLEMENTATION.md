@@ -21,25 +21,17 @@ The first slice supports:
 
 ## API boundary
 
-The generic evidence API remains available at `/api/evidence`.
-
-Commerce receives a protected route adapter:
+The Orders UI consumes the shared evidence API directly:
 
 ```text
-GET /api/commerce/orders/records
-GET /api/commerce/orders/links/:recordId
-GET /api/commerce/orders/audit
+GET /api/evidence/records?type=commerce.order.created
+GET /api/evidence/links/:recordId
+GET /api/evidence/audit?subjectType=commerce.order
 ```
 
-The adapter forces:
+The endpoint is generic and can serve orders, bookings, publications, architecture records, and other evidence types. The Commerce UI owns the type filter and presentation semantics; the server evidence domain does not gain an Orders route or Orders-specific query model.
 
-```text
-permission = commerce:orders_view
-type = commerce.order.created
-subjectType = commerce.order
-```
-
-This prevents the client from using a generic evidence read route to bypass the commerce permission or query unrelated evidence types.
+The UI still mirrors the `commerce:orders_view` permission for navigation and rendering. Domain-specific server authorization can be added by an extension-level policy when a domain requires stricter access than the organization-scoped evidence reader.
 
 The browser only reads. Evidence writes remain server-side through `EvidenceService` and the commerce projection port.
 
