@@ -1,7 +1,8 @@
 # Documentation
 
 ## Current Status (Start Here)
-- **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Actual implementation status as of 2026-08-21. **Read this first.** Documents what's built, what's missing, and priority order to complete Phase 0.
+- **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
+- **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Historical implementation snapshot. It is retained for context but is not authoritative for current status.
 
 ## Incident & Fix Reports
 - **[2026-08-23/EDGE-STOREFRONT-FIXES.md](2026-08-23/EDGE-STOREFRONT-FIXES.md)** — Why all anonymous storefront edge calls 400'd (unsigned internal HMAC call), the half-finished flags SSE ticket migration, and the new public `GET /api/flags/public` metadata endpoint (Flagsmith/Unleash pattern).
@@ -37,4 +38,4 @@
 
 ---
 
-> ⚠️ **Important**: The 2026-05-23 roadmap and architecture docs were written before the team pivoted from GrapesJS to a custom inline visual editor. They have been updated with corrections, but **2026-08-21/CURRENT_STATUS.md is the authoritative source** for actual implementation status.
+> ⚠️ **Important**: Older roadmap and status documents are historical. The 2026-09-14 code-audited roadmap is now authoritative for current implementation status and next work.
