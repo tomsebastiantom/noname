@@ -1,0 +1,36 @@
+{
+  "id": "decisions/ADR-0006-commerce-ui-ownership",
+  "title": "ADR-0006 — Commerce UI stays in the Commerce extension",
+  "description": "- Status: accepted",
+  "source": "@site/docs/decisions/ADR-0006-commerce-ui-ownership.md",
+  "sourceDirName": "decisions",
+  "slug": "/decisions/ADR-0006-commerce-ui-ownership",
+  "permalink": "/docs/decisions/ADR-0006-commerce-ui-ownership",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "ADR-0006 — Commerce UI stays in the Commerce extension",
+    "sidebar_position": 4,
+    "status": "accepted",
+    "owner": "commerce",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "source_documents": [
+      "docs/2026-09-12/ORDERS-ADMIN-IMPLEMENTATION.md"
+    ],
+    "implementation_evidence": [
+      "packages/extensions/src/commerce"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "ADR-0005 — Evidence and provenance kernel",
+    "permalink": "/docs/decisions/ADR-0005-evidence-provenance-kernel"
+  },
+  "next": {
+    "title": "ADR-0007 — Seeding and fixture boundaries",
+    "permalink": "/docs/decisions/ADR-0007-seeding-and-fixture-boundaries"
+  }
+}

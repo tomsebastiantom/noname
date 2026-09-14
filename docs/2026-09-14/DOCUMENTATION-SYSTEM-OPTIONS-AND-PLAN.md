@@ -119,7 +119,7 @@ Use GitHub/GitLab rendering and folder navigation as the docs UI.
 ### Option B — Docusaurus or an equivalent docs-as-code site
 
 ```text
-docs-site/
+apps/docs/
   docs/
   blog/
   sidebars.ts
@@ -161,7 +161,7 @@ Examples include Mintlify, ReadMe, GitBook, or similar hosted products.
 - Fast polished presentation
 - Search, navigation, analytics, and feedback are built in
 - OpenAPI import is often straightforward
-- Low initial frontend/docs-site maintenance
+- Low initial frontend/apps/docs maintenance
 - Useful for external developer portals
 
 #### Disadvantages
@@ -597,7 +597,7 @@ Best when:
 4. Add ADR-0001 through ADR-0007 from already accepted decisions.
 5. Define or export OpenAPI for generic routes and generate API reference pages.
 6. Add package/extension reference only for stable public contracts.
-7. Add docs-site navigation and search.
+7. Add apps/docs navigation and search.
 8. Add CI checks for broken links, missing status/owner metadata, and stale verification dates.
 9. Add versioning only when public API compatibility requires it.
 ```

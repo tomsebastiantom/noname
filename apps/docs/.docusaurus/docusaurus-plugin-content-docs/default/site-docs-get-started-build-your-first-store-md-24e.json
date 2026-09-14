@@ -1,0 +1,33 @@
+{
+  "id": "get-started/build-your-first-store",
+  "title": "Build your first Noname store",
+  "description": "Tutorial · 10 minutes",
+  "source": "@site/docs/get-started/build-your-first-store.md",
+  "sourceDirName": "get-started",
+  "slug": "/get-started/build-your-first-store",
+  "permalink": "/docs/get-started/build-your-first-store",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Build your first Noname store",
+    "sidebar_position": 1,
+    "status": "current",
+    "owner": "platform",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "audience": [
+      "new-developer"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Noname documentation",
+    "permalink": "/docs/"
+  },
+  "next": {
+    "title": "Local development",
+    "permalink": "/docs/get-started/local-development"
+  }
+}

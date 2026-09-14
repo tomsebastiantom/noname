@@ -19,7 +19,10 @@
     "deploy:client-r2": "tsx scripts/deploy/client-r2.ts",
     "init:zitadel": "tsx scripts/init/zitadel-oidc.ts",
     "init:nango:connect": "tsx scripts/init/nango-connect.ts",
-    "init:nango": "tsx scripts/init/nango.ts"
+    "init:nango": "tsx scripts/init/nango.ts",
+    "docs:dev": "pnpm --dir apps/docs --ignore-workspace start",
+    "docs:build": "pnpm --dir apps/docs --ignore-workspace build",
+    "docs:serve": "pnpm --dir apps/docs --ignore-workspace serve"
   },
   "engines": {
     "node": ">=20"

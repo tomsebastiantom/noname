@@ -26,15 +26,15 @@ Git        = review, version, and history
 ## Short setup example
 
 ```bash
-npx create-docusaurus@latest docs-site classic --typescript
-cd docs-site
+npx create-docusaurus@latest apps/docs classic --typescript
+cd apps/docs
 npm run start
 ```
 
 Recommended initial tree:
 
 ```text
-docs-site/
+apps/docs/
   docs/
     get-started/
     how-to/

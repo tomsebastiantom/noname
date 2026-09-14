@@ -1,0 +1,26 @@
+{
+  "id": "reference/index",
+  "title": "Reference",
+  "description": "Reference pages document exact contracts. They are intentionally compact and should be generated from schemas where possible.",
+  "source": "@site/docs/reference/index.md",
+  "sourceDirName": "reference",
+  "slug": "/reference/",
+  "permalink": "/docs/reference/",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "Reference",
+    "sidebar_position": 1,
+    "status": "current",
+    "owner": "platform",
+    "last_verified": "2026-09-14T00:00:00.000Z"
+  },
+  "sidebar": "reference",
+  "next": {
+    "title": "Evidence API",
+    "permalink": "/docs/reference/api/evidence"
+  }
+}

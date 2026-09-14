@@ -1,0 +1,33 @@
+{
+  "id": "reference/packages/fixtures",
+  "title": "Fixtures package",
+  "description": "Package: @noname/fixtures",
+  "source": "@site/docs/reference/packages/fixtures.md",
+  "sourceDirName": "reference/packages",
+  "slug": "/reference/packages/fixtures",
+  "permalink": "/docs/reference/packages/fixtures",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Fixtures package",
+    "sidebar_position": 2,
+    "status": "current",
+    "owner": "testing",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "source_paths": [
+      "packages/fixtures"
+    ]
+  },
+  "sidebar": "reference",
+  "previous": {
+    "title": "Seeding package",
+    "permalink": "/docs/reference/packages/seeding"
+  },
+  "next": {
+    "title": "Permissions reference",
+    "permalink": "/docs/reference/permissions"
+  }
+}

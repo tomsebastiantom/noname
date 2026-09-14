@@ -1,0 +1,26 @@
+{
+  "id": "history/audit-reports",
+  "title": "Documentation audit reports",
+  "description": "The repository-wide documentation audit is preserved as dated evidence:",
+  "source": "@site/docs/history/audit-reports.md",
+  "sourceDirName": "history",
+  "slug": "/history/audit-reports",
+  "permalink": "/docs/history/audit-reports",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "Documentation audit reports",
+    "sidebar_position": 3,
+    "status": "historical-archive",
+    "owner": "documentation",
+    "last_verified": "2026-09-14T00:00:00.000Z"
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Implementation records",
+    "permalink": "/docs/history/implementation-records"
+  }
+}

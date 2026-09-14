@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[Noname documentation site](../apps/docs/)** — New Docusaurus + Diátaxis documentation app. Run `pnpm docs:dev` from the repository root.
 - **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
 - **[2026-09-14/DOCUMENTATION-AUDIT-INDEX.md](2026-09-14/DOCUMENTATION-AUDIT-INDEX.md)** — Repository-wide per-document audit index with evidence reports and status classifications.
 - **[2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md](2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md)** — Documentation platform options, professional page taxonomy, templates, ADR rules, generated references, and migration plan.

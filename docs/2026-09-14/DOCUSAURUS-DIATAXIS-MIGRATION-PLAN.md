@@ -48,7 +48,7 @@ The new page must not copy stale status claims. It should copy concepts, decisio
 Recommended initial location:
 
 ```text
-docs-site/
+apps/docs/
   package.json
   docusaurus.config.ts
   sidebars.ts
@@ -72,7 +72,7 @@ If the repository later standardizes all applications under `apps/`, the site ca
 ## New information architecture
 
 ```text
-docs-site/docs/
+apps/docs/docs/
   get-started/
     build-your-first-store.md
     local-development.md
@@ -250,7 +250,7 @@ Each page links to its source route and tests.
 Export OpenAPI-compatible schemas from route definitions or create a checked-in OpenAPI document generated from the Hono/Zod boundary schemas:
 
 ```text
-docs-site/static/openapi.json
+apps/docs/static/openapi.json
 ```
 
 Render it under:
@@ -289,12 +289,12 @@ operations/troubleshooting.md
 ### New files
 
 ```text
-docs-site/
+apps/docs/
 package.json
 docusaurus.config.ts
 sidebars.ts
-docs-site/docs/**
-docs-site/static/**
+apps/docs/docs/**
+apps/docs/static/**
 ```
 
 ### Root package changes
@@ -310,8 +310,8 @@ Potentially:
 
 ```text
 .gitignore
-  docs-site/.docusaurus/
-  docs-site/build/
+  apps/docs/.docusaurus/
+  apps/docs/build/
 ```
 
 ### Existing files that should not be moved
@@ -351,7 +351,7 @@ Before a page becomes part of the current navigation:
 ## Recommended implementation sequence
 
 ```text
-1. Create docs-site with Docusaurus.
+1. Create apps/docs with Docusaurus.
 2. Add the four Diátaxis sections and sidebar navigation.
 3. Add the first 12–16 critical pages.
 4. Copy accepted decisions into ADRs with source provenance.

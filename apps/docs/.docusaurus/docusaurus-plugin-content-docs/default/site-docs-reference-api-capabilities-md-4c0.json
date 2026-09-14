@@ -1,0 +1,33 @@
+{
+  "id": "reference/api/capabilities",
+  "title": "Capabilities API",
+  "description": "Capabilities are generic server execution boundaries. Commerce checkout is a vertical-owned capability exposed through the generic capability route.",
+  "source": "@site/docs/reference/api/capabilities.md",
+  "sourceDirName": "reference/api",
+  "slug": "/reference/api/capabilities",
+  "permalink": "/docs/reference/api/capabilities",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 3,
+  "frontMatter": {
+    "title": "Capabilities API",
+    "sidebar_position": 3,
+    "status": "current",
+    "owner": "server/capabilities",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "source_paths": [
+      "packages/server/src/domains/capabilities"
+    ]
+  },
+  "sidebar": "reference",
+  "previous": {
+    "title": "Machines API",
+    "permalink": "/docs/reference/api/machines"
+  },
+  "next": {
+    "title": "Seeding package",
+    "permalink": "/docs/reference/packages/seeding"
+  }
+}

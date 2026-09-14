@@ -1,0 +1,34 @@
+{
+  "id": "architecture/extension-lifecycle",
+  "title": "Extension lifecycle",
+  "description": "An extension registers domain-owned components, actions, schemas, and routes through the platform's generic catalog and integration points.",
+  "source": "@site/docs/architecture/extension-lifecycle.md",
+  "sourceDirName": "architecture",
+  "slug": "/architecture/extension-lifecycle",
+  "permalink": "/docs/architecture/extension-lifecycle",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Extension lifecycle",
+    "sidebar_position": 2,
+    "status": "current",
+    "owner": "extensions",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "audience": [
+      "extension-author",
+      "architect"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Package boundaries",
+    "permalink": "/docs/architecture/package-boundaries"
+  },
+  "next": {
+    "title": "ADR-0001 — Domain versus extension ownership",
+    "permalink": "/docs/decisions/ADR-0001-domain-vs-extension"
+  }
+}

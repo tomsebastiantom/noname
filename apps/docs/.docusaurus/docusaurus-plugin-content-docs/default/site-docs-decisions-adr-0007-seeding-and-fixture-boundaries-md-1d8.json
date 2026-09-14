@@ -1,0 +1,38 @@
+{
+  "id": "decisions/ADR-0007-seeding-and-fixture-boundaries",
+  "title": "ADR-0007 — Seeding and fixture boundaries",
+  "description": "- Status: accepted",
+  "source": "@site/docs/decisions/ADR-0007-seeding-and-fixture-boundaries.md",
+  "sourceDirName": "decisions",
+  "slug": "/decisions/ADR-0007-seeding-and-fixture-boundaries",
+  "permalink": "/docs/decisions/ADR-0007-seeding-and-fixture-boundaries",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 5,
+  "frontMatter": {
+    "title": "ADR-0007 — Seeding and fixture boundaries",
+    "sidebar_position": 5,
+    "status": "accepted",
+    "owner": "testing",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "source_documents": [
+      "docs/2026-09-14/SEEDING-ARCHITECTURE-IMPLEMENTATION.md",
+      "docs/2026-09-14/TEST-FIXTURE-ARCHITECTURE-ANALYSIS.md"
+    ],
+    "implementation_evidence": [
+      "packages/seeding",
+      "packages/fixtures"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "ADR-0006 — Commerce UI stays in the Commerce extension",
+    "permalink": "/docs/decisions/ADR-0006-commerce-ui-ownership"
+  },
+  "next": {
+    "title": "Run the local stack",
+    "permalink": "/docs/operations/local-stack"
+  }
+}

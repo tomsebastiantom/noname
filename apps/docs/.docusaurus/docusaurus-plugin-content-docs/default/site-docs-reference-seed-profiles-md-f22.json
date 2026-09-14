@@ -1,0 +1,26 @@
+{
+  "id": "reference/seed-profiles",
+  "title": "Seed profiles",
+  "description": "| Profile | Purpose | Command |",
+  "source": "@site/docs/reference/seed-profiles.md",
+  "sourceDirName": "reference",
+  "slug": "/reference/seed-profiles",
+  "permalink": "/docs/reference/seed-profiles",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 4,
+  "frontMatter": {
+    "title": "Seed profiles",
+    "sidebar_position": 4,
+    "status": "current",
+    "owner": "seeding",
+    "last_verified": "2026-09-14T00:00:00.000Z"
+  },
+  "sidebar": "reference",
+  "previous": {
+    "title": "Permissions reference",
+    "permalink": "/docs/reference/permissions"
+  }
+}

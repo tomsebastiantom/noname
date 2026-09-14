@@ -1,0 +1,36 @@
+{
+  "id": "decisions/ADR-0002-xstate-transition-authority",
+  "title": "ADR-0002 — XState is the transition authority",
+  "description": "- Status: accepted",
+  "source": "@site/docs/decisions/ADR-0002-xstate-transition-authority.md",
+  "sourceDirName": "decisions",
+  "slug": "/decisions/ADR-0002-xstate-transition-authority",
+  "permalink": "/docs/decisions/ADR-0002-xstate-transition-authority",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "ADR-0002 — XState is the transition authority",
+    "sidebar_position": 2,
+    "status": "accepted",
+    "owner": "server/machines",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "source_documents": [
+      "docs/2026-09-08/XSTATE-REUSE-MIGRATION-PLAN.md"
+    ],
+    "implementation_evidence": [
+      "packages/server/src/domains/machines/engine.ts"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "ADR-0001 — Domain versus extension ownership",
+    "permalink": "/docs/decisions/ADR-0001-domain-vs-extension"
+  },
+  "next": {
+    "title": "ADR-0005 — Evidence and provenance kernel",
+    "permalink": "/docs/decisions/ADR-0005-evidence-provenance-kernel"
+  }
+}

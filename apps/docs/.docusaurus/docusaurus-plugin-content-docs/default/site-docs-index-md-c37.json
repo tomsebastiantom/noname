@@ -1,0 +1,26 @@
+{
+  "id": "index",
+  "title": "Noname documentation",
+  "description": "Noname is an AI-native, declarative full-stack platform. Describe what you want, represent it as a spec, and execute it across UI, backend machines, integrations, and vertical extensions.",
+  "source": "@site/docs/index.md",
+  "sourceDirName": ".",
+  "slug": "/",
+  "permalink": "/docs/",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "sidebar_position": 1,
+    "title": "Noname documentation",
+    "status": "current",
+    "owner": "platform",
+    "last_verified": "2026-09-14T00:00:00.000Z"
+  },
+  "sidebar": "docs",
+  "next": {
+    "title": "Build your first Noname store",
+    "permalink": "/docs/get-started/build-your-first-store"
+  }
+}

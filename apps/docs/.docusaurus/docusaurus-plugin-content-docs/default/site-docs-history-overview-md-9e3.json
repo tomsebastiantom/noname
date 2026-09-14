@@ -1,0 +1,30 @@
+{
+  "id": "history/overview",
+  "title": "History and audit records",
+  "description": "This section keeps the engineering record separate from the learning path.",
+  "source": "@site/docs/history/overview.md",
+  "sourceDirName": "history",
+  "slug": "/history/overview",
+  "permalink": "/docs/history/overview",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 1,
+  "frontMatter": {
+    "title": "History and audit records",
+    "sidebar_position": 1,
+    "status": "historical-archive",
+    "owner": "documentation",
+    "last_verified": "2026-09-14T00:00:00.000Z"
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Troubleshooting",
+    "permalink": "/docs/operations/troubleshooting"
+  },
+  "next": {
+    "title": "Implementation records",
+    "permalink": "/docs/history/implementation-records"
+  }
+}

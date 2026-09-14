@@ -1,0 +1,146 @@
+{
+  "/docs-5d4": {
+    "__comp": "5e95c892",
+    "__context": {
+      "plugin": "aba21aa0"
+    }
+  },
+  "/docs-989": {
+    "__comp": "a7bd4aaa",
+    "__props": "0058b4c6"
+  },
+  "/docs-3ca": {
+    "__comp": "a94703ab"
+  },
+  "/docs/-56e": {
+    "__comp": "17896441",
+    "content": "c377a04b"
+  },
+  "/docs/architecture/extension-lifecycle-702": {
+    "__comp": "17896441",
+    "content": "35b410ec"
+  },
+  "/docs/architecture/package-boundaries-c42": {
+    "__comp": "17896441",
+    "content": "1d04506b"
+  },
+  "/docs/concepts/documents-and-layouts-31e": {
+    "__comp": "17896441",
+    "content": "41dd1a32"
+  },
+  "/docs/concepts/evidence-and-provenance-ee0": {
+    "__comp": "17896441",
+    "content": "81c1c37e"
+  },
+  "/docs/concepts/machines-and-xstate-cca": {
+    "__comp": "17896441",
+    "content": "4d3cd95d"
+  },
+  "/docs/concepts/seeding-b73": {
+    "__comp": "17896441",
+    "content": "a39f3ad4"
+  },
+  "/docs/concepts/system-overview-3ea": {
+    "__comp": "17896441",
+    "content": "e1b7de67"
+  },
+  "/docs/decisions/ADR-0001-domain-vs-extension-385": {
+    "__comp": "17896441",
+    "content": "96647e6b"
+  },
+  "/docs/decisions/ADR-0002-xstate-transition-authority-5dc": {
+    "__comp": "17896441",
+    "content": "225779f4"
+  },
+  "/docs/decisions/ADR-0005-evidence-provenance-kernel-347": {
+    "__comp": "17896441",
+    "content": "f7bf8158"
+  },
+  "/docs/decisions/ADR-0006-commerce-ui-ownership-7d9": {
+    "__comp": "17896441",
+    "content": "c0d8102b"
+  },
+  "/docs/decisions/ADR-0007-seeding-and-fixture-boundaries-2bc": {
+    "__comp": "17896441",
+    "content": "1d871e8d"
+  },
+  "/docs/get-started/build-your-first-store-127": {
+    "__comp": "17896441",
+    "content": "24ee3371"
+  },
+  "/docs/get-started/local-development-5d2": {
+    "__comp": "17896441",
+    "content": "251b7b32"
+  },
+  "/docs/history/audit-reports-efc": {
+    "__comp": "17896441",
+    "content": "2ddf0ace"
+  },
+  "/docs/history/implementation-records-c26": {
+    "__comp": "17896441",
+    "content": "fbb50b61"
+  },
+  "/docs/history/overview-75c": {
+    "__comp": "17896441",
+    "content": "9e3a2078"
+  },
+  "/docs/how-to/create-an-extension-a09": {
+    "__comp": "17896441",
+    "content": "946b2e44"
+  },
+  "/docs/how-to/seed-a-commerce-demo-4f5": {
+    "__comp": "17896441",
+    "content": "83883e65"
+  },
+  "/docs/how-to/verify-a-checkout-2ec": {
+    "__comp": "17896441",
+    "content": "a9f1be38"
+  },
+  "/docs/operations/local-stack-4b0": {
+    "__comp": "17896441",
+    "content": "7951844e"
+  },
+  "/docs/operations/troubleshooting-344": {
+    "__comp": "17896441",
+    "content": "2db7685e"
+  },
+  "/docs/reference/-06f": {
+    "__comp": "17896441",
+    "content": "1a3c9b31"
+  },
+  "/docs/reference/api/capabilities-6df": {
+    "__comp": "17896441",
+    "content": "4c061059"
+  },
+  "/docs/reference/api/evidence-e36": {
+    "__comp": "17896441",
+    "content": "a3c95137"
+  },
+  "/docs/reference/api/machines-d78": {
+    "__comp": "17896441",
+    "content": "5b73acf0"
+  },
+  "/docs/reference/packages/fixtures-f0b": {
+    "__comp": "17896441",
+    "content": "cef768dc"
+  },
+  "/docs/reference/packages/seeding-8a1": {
+    "__comp": "17896441",
+    "content": "02aa5074"
+  },
+  "/docs/reference/permissions-fa8": {
+    "__comp": "17896441",
+    "content": "09e0e7e9"
+  },
+  "/docs/reference/seed-profiles-fb0": {
+    "__comp": "17896441",
+    "content": "f22ed3be"
+  },
+  "/-e5f": {
+    "__comp": "1df93b7f",
+    "__context": {
+      "plugin": "a7456010"
+    },
+    "config": "5e9f5e1a"
+  }
+}

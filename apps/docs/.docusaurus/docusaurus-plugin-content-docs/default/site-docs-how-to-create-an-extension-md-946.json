@@ -1,0 +1,33 @@
+{
+  "id": "how-to/create-an-extension",
+  "title": "Create an extension",
+  "description": "How-to guide · Start from an existing vertical or extension example.",
+  "source": "@site/docs/how-to/create-an-extension.md",
+  "sourceDirName": "how-to",
+  "slug": "/how-to/create-an-extension",
+  "permalink": "/docs/how-to/create-an-extension",
+  "draft": false,
+  "unlisted": false,
+  "tags": [],
+  "version": "current",
+  "sidebarPosition": 2,
+  "frontMatter": {
+    "title": "Create an extension",
+    "sidebar_position": 2,
+    "status": "current",
+    "owner": "extensions",
+    "last_verified": "2026-09-14T00:00:00.000Z",
+    "audience": [
+      "extension-author"
+    ]
+  },
+  "sidebar": "docs",
+  "previous": {
+    "title": "Seed a Commerce demo environment",
+    "permalink": "/docs/how-to/seed-a-commerce-demo"
+  },
+  "next": {
+    "title": "Verify a checkout",
+    "permalink": "/docs/how-to/verify-a-checkout"
+  }
+}
