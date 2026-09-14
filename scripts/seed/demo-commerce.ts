@@ -8,6 +8,7 @@ import { randomBytes, createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createSeedContext, runSeedProfile } from "../../packages/seeding/src";
 import { seedDemoOrderEvidence as seedDemoOrderEvidenceThroughPort } from "../../packages/verticals/src/commerce";
 import { createDatabase } from "../../packages/server/src/drizzle";
 import { createEvidencePostgresService } from "../../packages/server/src/domains/evidence/adapters/postgres";
@@ -353,7 +354,7 @@ async function seedDemoOrderEvidence(): Promise<void> {
   console.log("Demo order evidence seeded (demo-order-1001).");
 }
 
-async function main() {
+async function runCommerceSeed() {
   if (!DEMO_ORG_ID) {
     throw new Error("ZITADEL_DEMO_ORG_ID is empty — run: pnpm init:zitadel");
   }
@@ -433,7 +434,18 @@ async function main() {
   console.log(`  Client:      http://yogastore.localhost:5173/products/demo-sneakers`);
 }
 
-main().catch((err: Error) => {
+runSeedProfile({
+  profile: "commerce",
+  context: createSeedContext({
+    profile: "commerce",
+    runId: `commerce-${Date.now()}`,
+    dryRun: false,
+    now: new Date(),
+    apiBase: API_BASE,
+    storeSlug: DEMO_STORE_SLUG,
+  }),
+  steps: [{ id: "commerce", run: runCommerceSeed }],
+}).catch((err: Error) => {
   console.error(err.message);
   process.exit(1);
 });

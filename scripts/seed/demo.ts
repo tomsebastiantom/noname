@@ -9,6 +9,7 @@ import { randomBytes, createHmac } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createSeedContext, runSeedProfile } from "../../packages/seeding/src";
 import { findUserIdByEmail, loginWithCredentials, upsertUserTeamRole } from "../../packages/server/src/seed";
 import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
 import { seedOrgEditorAccess } from "./keto-tuples";
@@ -236,7 +237,7 @@ async function syncKetoOrgEditorAccess(): Promise<void> {
   }
 }
 
-async function main() {
+async function runPlatformSeed() {
   reloadSeedEnv();
   demoOrgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
 
@@ -676,7 +677,18 @@ async function ensurePageRouting(pageContentId: string): Promise<void> {
   console.log("Page routing seeded (page_tree → home → page content).");
 }
 
-main().catch((err: Error) => {
+runSeedProfile({
+  profile: "platform",
+  context: createSeedContext({
+    profile: "platform",
+    runId: `platform-${Date.now()}`,
+    dryRun: false,
+    now: new Date(),
+    apiBase: API_BASE,
+    storeSlug: DEMO_STORE_SLUG,
+  }),
+  steps: [{ id: "platform", run: runPlatformSeed }],
+}).catch((err: Error) => {
   console.error(err.message);
   process.exit(1);
 });
