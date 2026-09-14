@@ -9,7 +9,7 @@ import {
   loginWithCredentials,
   registerHumanUser,
   upsertUserTeamRole,
-} from "../../packages/server/src/seed";
+} from "../../../../server/src/seed";
 import { seedMarketingScopeDemo, seedOrgEditorAccess, subFromAccessToken } from "./keto-tuples";
 
 export { subFromAccessToken };
@@ -115,7 +115,11 @@ async function ensureDemoTeamUser(
   console.log(`Assigned ${spec.role} role to ${spec.email}`);
 }
 
-async function loginDemoSub(orgId: string, email: string, password: string): Promise<string | null> {
+async function loginDemoSub(
+  orgId: string,
+  email: string,
+  password: string,
+): Promise<string | null> {
   const clientId = process.env.ZITADEL_CLIENT_ID?.trim();
   if (!clientId) return null;
 
@@ -176,7 +180,9 @@ export async function seedDemoTeamAndScope(options: {
     publisherSpec.password,
   );
 
-  const storeEditorSubs = [options.adminSub, editorSub].filter((sub): sub is string => Boolean(sub));
+  const storeEditorSubs = [options.adminSub, editorSub].filter((sub): sub is string =>
+    Boolean(sub),
+  );
 
   await seedOrgEditorAccess({
     orgId: options.orgId,
@@ -199,7 +205,11 @@ export async function seedDemoTeamAndScope(options: {
   console.log("\nDemo logins (yogastore.localhost:5173):");
   console.log(`  admin@…      ${adminEmail} — store admin`);
   for (const spec of specs) {
-    console.log(`  ${spec.email.split("@")[0]}@…  ${spec.email} / ${spec.password} — ${spec.access}`);
+    console.log(
+      `  ${spec.email.split("@")[0]}@…  ${spec.email} / ${spec.password} — ${spec.access}`,
+    );
   }
-  console.log("  Test: marketing → edit home with ?edit=true; publisher → publish; replay → /admin/settings/replay");
+  console.log(
+    "  Test: marketing → edit home with ?edit=true; publisher → publish; replay → /admin/settings/replay",
+  );
 }

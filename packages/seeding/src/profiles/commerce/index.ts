@@ -4,17 +4,16 @@
  * Run after pnpm seed:demo with API server up: pnpm seed:demo:commerce
  */
 import "dotenv/config";
-import { randomBytes, createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createSeedContext, runSeedProfile } from "../../packages/seeding/src";
-import { seedDemoOrderEvidence as seedDemoOrderEvidenceThroughPort } from "../../packages/verticals/src/commerce";
-import { createDatabase } from "../../packages/server/src/drizzle";
-import { createEvidencePostgresService } from "../../packages/server/src/domains/evidence/adapters/postgres";
-import { loginWithCredentials } from "../../packages/server/src/seed";
+import { createEvidencePostgresService } from "../../../../server/src/domains/evidence/adapters/postgres";
+import { createDatabase } from "../../../../server/src/drizzle";
+import { loginWithCredentials } from "../../../../server/src/seed";
+import { seedDemoOrderEvidence as seedDemoOrderEvidenceThroughPort } from "../../../../verticals/src/commerce";
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../../../../..");
 const DEMO_ORG_ID = process.env.ZITADEL_DEMO_ORG_ID ?? "";
 const DEMO_STORE_SLUG = "yogastore";
 
@@ -42,10 +41,10 @@ const productContentType = {
   ],
 };
 
-function specProps<TConfig extends Record<string, unknown>, TLabels extends Record<string, unknown>>(
-  config: TConfig,
-  labels: TLabels,
-) {
+function specProps<
+  TConfig extends Record<string, unknown>,
+  TLabels extends Record<string, unknown>,
+>(config: TConfig, labels: TLabels) {
   return { ...config, ...labels };
 }
 
@@ -55,7 +54,7 @@ const commerceSpec = {
     main: {
       type: "StackBase",
       props: specProps({ direction: "column", gap: 24, align: "stretch" }, {}),
-       children: ["hero", "intro", "products", "cart"],
+      children: ["hero", "intro", "products", "cart"],
     },
     hero: {
       type: "Hero",
@@ -73,7 +72,10 @@ const commerceSpec = {
       type: "TextBase",
       props: specProps(
         { variant: "body", align: "center" },
-        { content: "Click blocks in ?edit=true to change layout copy. Product fields edit in Content admin." },
+        {
+          content:
+            "Click blocks in ?edit=true to change layout copy. Product fields edit in Content admin.",
+        },
       ),
     },
     products: {
@@ -167,13 +169,16 @@ let seedAdminToken: string | null = null;
 async function obtainSeedAdminToken(): Promise<void> {
   const clientId = process.env.ZITADEL_CLIENT_ID?.trim();
   if (!clientId) {
-    console.warn("ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)");
+    console.warn(
+      "ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)",
+    );
     return;
   }
 
   const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
   const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
-  const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
+  const redirectUri =
+    process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
 
   try {
     const result = await loginWithCredentials({
@@ -185,7 +190,9 @@ async function obtainSeedAdminToken(): Promise<void> {
       codeVerifier: randomBytes(32).toString("base64url"),
     });
     if (result.status !== "success") {
-      console.warn("Seed admin login requires MFA — complete MFA manually or disable for seed user");
+      console.warn(
+        "Seed admin login requires MFA — complete MFA manually or disable for seed user",
+      );
       return;
     }
     seedAdminToken = result.accessToken;
@@ -210,7 +217,10 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
 }
 
 async function ensureProductContentType(): Promise<void> {
-  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const { data: types } = await api<{ data: { name: string }[] }>(
+    "GET",
+    "/api/documents/content-types",
+  );
   if (types.some((t) => t.name === "product")) {
     console.log("Product content type already exists.");
     return;
@@ -250,7 +260,10 @@ const demoProductDescription = {
 };
 
 async function seedDemoProduct(): Promise<string> {
-  const { data: existing } = await api<{ data: ContentEntryRow[] }>("GET", "/api/documents/product");
+  const { data: existing } = await api<{ data: ContentEntryRow[] }>(
+    "GET",
+    "/api/documents/product",
+  );
   const published = existing.find((row) => row.status === "published");
   if (published) {
     console.log(`Demo product already published (${published.id}).`);
@@ -318,10 +331,9 @@ async function ensureCommercePageRouting(productId: string): Promise<void> {
     contentRef: productContentRef,
   });
 
-  const { data: tree } = await api<{ data: { pages: Array<{ id: string; slug: Record<string, string>; pageId: string }> } | null }>(
-    "GET",
-    "/api/documents/page_tree/main",
-  );
+  const { data: tree } = await api<{
+    data: { pages: Array<{ id: string; slug: Record<string, string>; pageId: string }> } | null;
+  }>("GET", "/api/documents/page_tree/main");
   const pages = tree?.pages ?? [];
   const hasProduct = pages.some(
     (entry) =>
@@ -396,7 +408,9 @@ async function runCommerceSeed() {
   await ensureCommercePageRouting(productId);
   await seedDemoOrderEvidence();
 
-  const { data: productSchema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
+  const { data: productSchema } = await api<{
+    data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } };
+  }>(
     "GET",
     `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
@@ -418,10 +432,9 @@ async function runCommerceSeed() {
     }
   };
 
-  const { data: homeSchema } = await api<{ data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } } }>(
-    "GET",
-    `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/")}`,
-  );
+  const { data: homeSchema } = await api<{
+    data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } };
+  }>("GET", `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/")}`);
   assertProductCard(homeSchema.layout, "Home", "/");
   assertProductCard(productSchema.layout, "Product", "/products/demo-sneakers");
 
@@ -434,18 +447,4 @@ async function runCommerceSeed() {
   console.log(`  Client:      http://yogastore.localhost:5173/products/demo-sneakers`);
 }
 
-runSeedProfile({
-  profile: "commerce",
-  context: createSeedContext({
-    profile: "commerce",
-    runId: `commerce-${Date.now()}`,
-    dryRun: false,
-    now: new Date(),
-    apiBase: API_BASE,
-    storeSlug: DEMO_STORE_SLUG,
-  }),
-  steps: [{ id: "commerce", run: runCommerceSeed }],
-}).catch((err: Error) => {
-  console.error(err.message);
-  process.exit(1);
-});
+export { runCommerceSeed };

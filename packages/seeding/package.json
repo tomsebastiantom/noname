@@ -4,12 +4,22 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./cli": "./src/cli.ts",
+    "./profiles/platform": "./src/profiles/platform/index.ts",
+    "./profiles/commerce": "./src/profiles/commerce/index.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "biome lint",
     "format": "biome format --write"
+  },
+  "dependencies": {
+    "@noname/auth": "workspace:*",
+    "@noname/client": "workspace:*",
+    "@noname/documents": "workspace:*",
+    "@noname/server": "workspace:*",
+    "@noname/verticals": "workspace:*"
   },
   "devDependencies": {
     "typescript": "^7.0.0"

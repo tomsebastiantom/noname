@@ -16,27 +16,15 @@ These must not all use the same write mechanism or be conflated into one giant s
 ## Existing seed inventory
 
 ```text
-scripts/seed/demo.ts
-  Platform demo orchestration.
-  Uses authenticated HTTP APIs for documents, layouts, content types, tenant configuration,
-  users, and access setup.
+packages/seeding/src/cli.ts
+  Profile CLI for platform, commerce, and full demo seeds.
 
-scripts/seed/demo-commerce.ts
-  Optional Commerce demo orchestration.
-  Uses authenticated HTTP APIs for Commerce catalog/product/cart setup.
-  Uses a trusted server-side EvidenceService port for the immutable order fixture.
+packages/seeding/src/profiles/platform/
+  Platform demo orchestration, users, Keto tuples, labels, specs, content types,
+  email specs, and seed assets.
 
-scripts/seed/demo-users.ts
-  Demo team and user setup helpers.
-
-scripts/seed/keto-tuples.ts
-  Demo authorization tuple setup.
-
-scripts/seed/demo-specs.ts
-  Seeded JSON-render layout specifications.
-
-scripts/seed/demo-labels.ts
-  Seeded labels and navigation text.
+packages/seeding/src/profiles/commerce/
+  Commerce demo orchestration for catalog/product/cart setup and evidence fixture wiring.
 
 packages/verticals/src/commerce/demo-order-evidence.ts
   Commerce-owned deterministic evidence fixture semantics.
@@ -149,14 +137,15 @@ behavioral-e2e
   Real checkout/provider callback flow; not a fixture seed.
 ```
 
-Current commands remain backward-compatible:
+The new profile commands are:
 
 ```text
-pnpm seed:demo
-pnpm seed:demo:commerce
+pnpm seed:demo             # platform profile
+pnpm seed:demo:commerce    # commerce profile
+pnpm seed:demo:full        # platform → commerce
 ```
 
-The generic runner provides the common lifecycle around these existing commands without forcing all setup into one script.
+All profiles execute through `packages/seeding/src/cli.ts`. The old `scripts/seed` tree is intentionally removed; seed orchestration now belongs to the package.
 
 ## Idempotency requirements
 
@@ -203,13 +192,13 @@ browser
   → database
 ```
 
-## Implementation sequence
+## Implementation status
 
-1. Add the generic `packages/seeding` context and profile runner.
-2. Wrap existing platform and Commerce seed entrypoints in explicit profile steps.
-3. Keep domain fixture semantics in Commerce and other owning packages.
-4. Add a full profile only after platform and Commerce steps are independently rerunnable.
-5. Keep behavioral checkout verification separate from fixture seeding.
+1. The generic `packages/seeding` context and dependency-aware runner are implemented.
+2. Platform and Commerce orchestration live under `packages/seeding/src/profiles`.
+3. Domain fixture semantics remain in Commerce-owned modules.
+4. The `full` profile composes platform before Commerce.
+5. Behavioral checkout verification remains separate from fixture seeding.
 
 ## Verification contract
 

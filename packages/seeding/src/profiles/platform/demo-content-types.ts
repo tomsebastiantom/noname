@@ -41,7 +41,13 @@ export const editorPrefsContentType = {
 
 export const notificationEmailContentType = {
   fields: [
-    { key: "template_key", type: "text", required: true, isLocalizable: false, label: "Template key" },
+    {
+      key: "template_key",
+      type: "text",
+      required: true,
+      isLocalizable: false,
+      label: "Template key",
+    },
     { key: "subject", type: "text", required: true, isLocalizable: false, label: "Email subject" },
     {
       key: "spec",

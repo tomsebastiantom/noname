@@ -16,9 +16,7 @@ function ketoBase(url: string): string {
 export async function assertKetoReady(): Promise<void> {
   const res = await fetch(`${ketoBase(KETO_READ)}/health/ready`);
   if (!res.ok) {
-    throw new Error(
-      `Keto not ready (${res.status}) — start infra: podman compose up -d keto`,
-    );
+    throw new Error(`Keto not ready (${res.status}) — start infra: podman compose up -d keto`);
   }
 }
 
@@ -104,7 +102,10 @@ export async function grantTeamPublisher(team: string, userSub: string): Promise
   });
 }
 
-export async function bindCollectionTeamPublishers(collection: string, team: string): Promise<void> {
+export async function bindCollectionTeamPublishers(
+  collection: string,
+  team: string,
+): Promise<void> {
   await ketoPut({
     namespace: "Collection",
     object: collection,
@@ -207,11 +208,6 @@ export async function seedOrgEditorAccess(options: {
     await linkDocumentToStoreEditors(docId, options.orgId);
   }
   console.log(`Keto: linked ${documentIds.length} documents to Store:${options.orgId}#editors`);
-}
-
-interface LayoutRow {
-  id: string;
-  key: string;
 }
 
 export async function seedMarketingScopeDemo(options: {

@@ -1,5 +1,5 @@
-import { specProps } from "../../packages/documents/src/catalog-props";
-import { DEFAULT_LOGIN_FORM_MESSAGES } from "../../packages/client/src/core/login-form-labels";
+import { DEFAULT_LOGIN_FORM_MESSAGES } from "../../../../client/src/core/login-form-labels";
+import { specProps } from "../../../../documents/src/catalog-props";
 import {
   accountCommunicationPrefsLabels,
   accountNotificationsLabels,
@@ -11,7 +11,6 @@ import {
   agentsAdminLabels,
   analyticsEventsAdminLabels,
   authSettingsLabels,
-  ordersAdminLabels,
   contentAdminLabels,
   featureFlagsAdminLabels,
   integrationsCommsDeliveriesLabels,
@@ -23,6 +22,7 @@ import {
   layoutAdminLabels,
   loginBrandingLabels,
   loginViewLabels,
+  ordersAdminLabels,
   pageEntryAdminLabels,
   pageTreeAdminLabels,
   scopeAdminLabels,
@@ -176,8 +176,7 @@ export const visualEditorShellSpec = {
           scopeLayoutBody:
             "block structure and layout fields apply to all pages using this template.",
           scopeContentTitle: "Page content:",
-          scopeContentBody:
-            "fields marked Content in the panel save for this page only.",
+          scopeContentBody: "fields marked Content in the panel save for this page only.",
           scopeNoContentBody:
             "This page has no linked content entry — all fields save to the layout.",
           propsSelectBlockHint:
@@ -245,8 +244,7 @@ export const visualEditorShellSpec = {
           dropAtTopTemplate: "Drop {block} at top of {parent}",
           dropAtBottomTemplate: "Drop {block} at bottom of {parent}",
           dropAtSlotTemplate: "Drop {block} — slot {slot} in {parent}",
-          saveConflictMessage:
-            "Someone else saved this layout — refresh to see their changes.",
+          saveConflictMessage: "Someone else saved this layout — refresh to see their changes.",
           refreshLayoutLabel: "Refresh",
           runAgentLabel: "Run agent",
           runAgentDisabledHint: "Save or load a layout draft before running an agent.",
@@ -387,7 +385,12 @@ export const adminIntegrationsSpec = adminPanelSpec(
           description: "Transactional email provider, delivery log, and retries.",
         },
       ),
-      children: ["loadIntegrationsComms", "integrationsComms", "loadCommsDeliveries", "commsDeliveries"],
+      children: [
+        "loadIntegrationsComms",
+        "integrationsComms",
+        "loadCommsDeliveries",
+        "commsDeliveries",
+      ],
     },
     sectionInbox: {
       type: "AdminCollapsibleSection",
@@ -395,7 +398,8 @@ export const adminIntegrationsSpec = adminPanelSpec(
         { defaultOpen: false },
         {
           title: "In-app inbox",
-          description: "Preview of your signed-in user's inbox feed (same as Account → Notifications).",
+          description:
+            "Preview of your signed-in user's inbox feed (same as Account → Notifications).",
         },
       ),
       children: ["loadCommsInbox", "commsInbox"],

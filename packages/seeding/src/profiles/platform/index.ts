@@ -4,16 +4,22 @@
  * Requires: pnpm init:zitadel (sets ZITADEL org id as org_id)
  */
 import "dotenv/config";
-import { config as loadEnv } from "dotenv";
-import { randomBytes, createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { createSeedContext, runSeedProfile } from "../../packages/seeding/src";
-import { findUserIdByEmail, loginWithCredentials, upsertUserTeamRole } from "../../packages/server/src/seed";
-import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
-import { seedOrgEditorAccess } from "./keto-tuples";
-import { agentTaskCompleteEmailSpec, welcomeEmailSpec } from "./email-specs";
+import { config as loadEnv } from "dotenv";
+import {
+  findUserIdByEmail,
+  loginWithCredentials,
+  upsertUserTeamRole,
+} from "../../../../server/src/seed";
+import {
+  authProviderContentType,
+  editorPrefsContentType,
+  notificationEmailContentType,
+  pageContentType,
+} from "./demo-content-types";
 import {
   accountCommunicationPrefsSpec,
   accountNotificationsSpec,
@@ -22,13 +28,13 @@ import {
   adminAgentsSpec,
   adminAnalyticsSpec,
   adminContentSpec,
-  adminOrdersSpec,
   adminDashboardSpec,
   adminFlagsSpec,
   adminHomeSpec,
   adminIntegrationsSpec,
   adminLayoutSpec,
   adminLoginBrandingSpec,
+  adminOrdersSpec,
   adminPagesSpec,
   adminPagesTreeSpec,
   adminReplaySpec,
@@ -40,15 +46,12 @@ import {
   loginSpec,
   visualEditorShellSpec,
 } from "./demo-specs";
-import {
-  authProviderContentType,
-  editorPrefsContentType,
-  notificationEmailContentType,
-  pageContentType,
-} from "./demo-content-types";
+import { seedDemoTeamAndScope, subFromAccessToken } from "./demo-users";
+import { agentTaskCompleteEmailSpec, welcomeEmailSpec } from "./email-specs";
+import { seedOrgEditorAccess } from "./keto-tuples";
 
 const scriptDir = dirname(fileURLToPath(import.meta.url));
-const repoRoot = join(scriptDir, "../..");
+const repoRoot = join(scriptDir, "../../../../..");
 
 /** Re-read .env on each seed run (picks up init:zitadel without restarting this process). */
 function reloadSeedEnv(): void {
@@ -110,13 +113,16 @@ async function ensureDemoAdminRole(): Promise<void> {
 async function obtainSeedAdminToken(): Promise<void> {
   const clientId = process.env.ZITADEL_CLIENT_ID?.trim();
   if (!clientId) {
-    console.warn("ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)");
+    console.warn(
+      "ZITADEL_CLIENT_ID not set — seed mutations need admin JWT (run pnpm init:zitadel)",
+    );
     return;
   }
 
   const email = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
   const password = process.env.ZITADEL_DEMO_ADMIN_PASSWORD?.trim() ?? "NonameAdmin1!";
-  const redirectUri = process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
+  const redirectUri =
+    process.env.ZITADEL_REDIRECT_URI?.trim() ?? "http://localhost:5173/auth/callback";
 
   try {
     const result = await loginWithCredentials({
@@ -128,7 +134,9 @@ async function obtainSeedAdminToken(): Promise<void> {
       codeVerifier: randomBytes(32).toString("base64url"),
     });
     if (result.status !== "success") {
-      console.warn("Seed admin login requires MFA — complete MFA manually or disable for seed user");
+      console.warn(
+        "Seed admin login requires MFA — complete MFA manually or disable for seed user",
+      );
       return;
     }
     seedAdminToken = result.accessToken;
@@ -387,7 +395,9 @@ async function runPlatformSeed() {
   console.log("Demo seed complete.");
   console.log(`  Org:     ${demoOrgId}`);
   console.log(`  Slug:    yogastore`);
-  console.log(`  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_analytics + admin_replay + admin_traces`);
+  console.log(
+    `  Layout:  home + login + admin_home + admin_content + admin_layout + admin_pages + admin_pages_tree + admin_dashboard + admin_analytics + admin_replay + admin_traces`,
+  );
   console.log(`  Client:  http://yogastore.localhost:5173`);
   console.log(`  Login:   http://yogastore.localhost:5173/login`);
   console.log(`  Admin:   http://yogastore.localhost:5173/admin`);
@@ -401,7 +411,10 @@ async function runPlatformSeed() {
 }
 
 async function ensureNotificationEmailContentType(): Promise<void> {
-  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const { data: types } = await api<{ data: { name: string }[] }>(
+    "GET",
+    "/api/documents/content-types",
+  );
   const existing = types.find((t) => t.name === "notification_email");
 
   if (existing) {
@@ -479,7 +492,10 @@ async function ensureNotificationEmailTemplates(): Promise<void> {
 
 async function ensureAuthProviderContentType(): Promise<void> {
   const iconField = authProviderContentType.fields.find((f) => f.key === "icon");
-  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const { data: types } = await api<{ data: { name: string }[] }>(
+    "GET",
+    "/api/documents/content-types",
+  );
   const existing = types.find((t) => t.name === "auth_provider");
 
   if (existing) {
@@ -488,12 +504,16 @@ async function ensureAuthProviderContentType(): Promise<void> {
       "/api/documents/content-types/auth_provider",
     );
     const hasIcon = typeDef.schema.fields.some((f) => f.key === "icon");
-    const oauthOptional = ["client_id", "client_secret", "authorization_endpoint", "token_endpoint", "user_endpoint"].every(
-      (key) => {
-        const field = typeDef.schema.fields.find((f) => f.key === key);
-        return !field || field.required === false;
-      },
-    );
+    const oauthOptional = [
+      "client_id",
+      "client_secret",
+      "authorization_endpoint",
+      "token_endpoint",
+      "user_endpoint",
+    ].every((key) => {
+      const field = typeDef.schema.fields.find((f) => f.key === key);
+      return !field || field.required === false;
+    });
     if ((!hasIcon && iconField) || !oauthOptional) {
       await api("PUT", "/api/documents/content-types/auth_provider", {
         schema: authProviderContentType,
@@ -542,9 +562,7 @@ async function uploadIdpIcon(fileName: string): Promise<UploadedAssetRow> {
   return body.data;
 }
 
-async function ensureBuiltinAuthProviders(options: {
-  googleEnabled: boolean;
-}): Promise<void> {
+async function ensureBuiltinAuthProviders(options: { googleEnabled: boolean }): Promise<void> {
   const builtins = [
     { key: "google", name: "Google", file: "google.svg", enabled: options.googleEnabled },
     { key: "github", name: "GitHub", file: "github.svg", enabled: false },
@@ -595,7 +613,10 @@ interface ContentEntryRow {
 }
 
 async function ensureEditorPrefsContentType(): Promise<void> {
-  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const { data: types } = await api<{ data: { name: string }[] }>(
+    "GET",
+    "/api/documents/content-types",
+  );
   const existing = types.find((t) => t.name === "editor_prefs");
 
   if (existing) {
@@ -627,7 +648,10 @@ async function ensureEditorPrefsContentType(): Promise<void> {
 }
 
 async function ensurePageContentType(): Promise<void> {
-  const { data: types } = await api<{ data: { name: string }[] }>("GET", "/api/documents/content-types");
+  const { data: types } = await api<{ data: { name: string }[] }>(
+    "GET",
+    "/api/documents/content-types",
+  );
   if (types.some((t) => t.name === "page")) {
     console.log("Page content type already exists.");
     return;
@@ -677,18 +701,4 @@ async function ensurePageRouting(pageContentId: string): Promise<void> {
   console.log("Page routing seeded (page_tree → home → page content).");
 }
 
-runSeedProfile({
-  profile: "platform",
-  context: createSeedContext({
-    profile: "platform",
-    runId: `platform-${Date.now()}`,
-    dryRun: false,
-    now: new Date(),
-    apiBase: API_BASE,
-    storeSlug: DEMO_STORE_SLUG,
-  }),
-  steps: [{ id: "platform", run: runPlatformSeed }],
-}).catch((err: Error) => {
-  console.error(err.message);
-  process.exit(1);
-});
+export { runPlatformSeed };

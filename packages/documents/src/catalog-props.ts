@@ -2,7 +2,7 @@
  * Spec-driven-UI props contract — flat props only (config + labels merged at top level).
  * See skills/spec-driven-ui/props-contract.md
  *
- * Used by: scripts/seed (specProps).
+ * Used by: packages/seeding profiles (specProps).
  */
 
 /** Plain-data variant for seed scripts and tests that build spec JSON (no zod). Flat merge of config + labels. */

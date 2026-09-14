@@ -292,6 +292,22 @@ importers:
         version: 7.0.2
 
   packages/seeding:
+    dependencies:
+      '@noname/auth':
+        specifier: workspace:*
+        version: link:../auth
+      '@noname/client':
+        specifier: workspace:*
+        version: link:../client
+      '@noname/documents':
+        specifier: workspace:*
+        version: link:../documents
+      '@noname/server':
+        specifier: workspace:*
+        version: link:../server
+      '@noname/verticals':
+        specifier: workspace:*
+        version: link:../verticals
     devDependencies:
       typescript:
         specifier: ^7.0.0

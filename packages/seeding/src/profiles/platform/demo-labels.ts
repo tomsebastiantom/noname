@@ -1,4 +1,4 @@
-import { DEFAULT_LOGIN_FORM_VIEWS } from "../../packages/client/src/core/login-form-labels";
+import { DEFAULT_LOGIN_FORM_VIEWS } from "../../../../client/src/core/login-form-labels";
 
 export const loginViewLabels = DEFAULT_LOGIN_FORM_VIEWS;
 
@@ -114,7 +114,8 @@ export const referenceFieldLabels = {
   entriesLoadingLabel: "Loading entries…",
   emptyLabel: "No {type} entries yet.",
   selectedPrefix: "Selected:",
-  missingTargetMessage: 'Reference field "{label}" is missing schema references (target content type).',
+  missingTargetMessage:
+    'Reference field "{label}" is missing schema references (target content type).',
 };
 
 export const accountSecurityLabels = {
@@ -159,8 +160,7 @@ export const authSettingsLabels = {
   allowSignUpLabel: "Allow customers to create accounts on /login",
   adminSecurityLegend: "Admin security",
   requireMfaLabel: "Require authenticator app (MFA) for admin access",
-  mfaHelperText:
-    "When enabled, team members must enroll at Account security before using /admin.",
+  mfaHelperText: "When enabled, team members must enroll at Account security before using /admin.",
   loginAppearanceLinkText: "Edit login appearance — title, logo, and brand copy on /login.",
   googleLabel: "Google",
   githubLabel: "GitHub",
@@ -505,7 +505,8 @@ export const adminHomeLinkLabels: Record<string, { label: string; description: s
   layout: { label: "Layouts", description: "Edit json-render templates (home, login, …)" },
   users: {
     label: "Team members",
-    description: "Invite staff, assign roles (admin: any; access manager: all except admin), view MFA status",
+    description:
+      "Invite staff, assign roles (admin: any; access manager: all except admin), view MFA status",
   },
   scope: {
     label: "Content access",
@@ -591,8 +592,7 @@ export const scopeAdminLabels = {
   deleteSuccessMessage: "Deleted.",
   deleteFolderConfirm:
     "Delete this folder? Documents in it will have no folder, and teams will lose access to it.",
-  deleteTeamConfirm:
-    "Delete this team? Members lose folder access granted through this team.",
+  deleteTeamConfirm: "Delete this team? Members lose folder access granted through this team.",
   userLabel: "Add people",
   memberSearchPlaceholder: "Search by name or email…",
   noMemberMatchesMessage: "No matching people.",
@@ -625,7 +625,8 @@ export const scopeAdminLabels = {
     "Connect a folder to a team or view agent folder access. Edit = draft in that folder. Publish = go live (teams only; agents never publish).",
   agentLabel: "Agent",
   agentBindingsListTitle: "Agent folder access",
-  emptyAgentBindingsMessage: "No agents have folder access yet — grant access on Settings → Agents.",
+  emptyAgentBindingsMessage:
+    "No agents have folder access yet — grant access on Settings → Agents.",
   removeAgentBindingLabel: "Remove",
   membershipSectionTitle: "Team members",
   membershipSectionHint:
@@ -673,7 +674,8 @@ export const agentsAdminLabels = {
   typeColumnHeader: "Type",
   promptColumnHeader: "Prompt",
   reviewedByColumnHeader: "Reviewed by",
-  tasksForbiddenLabel: "Task review requires store admin or ownership of the agent linked to the task.",
+  tasksForbiddenLabel:
+    "Task review requires store admin or ownership of the agent linked to the task.",
   createTaskSectionTitle: "Run orchestrate task",
   createTaskSectionDescription:
     "Example: “Summarize last week’s signups and draft a hero layout.” The agent runs analytics → layout/content drafts; you approve before publish.",
