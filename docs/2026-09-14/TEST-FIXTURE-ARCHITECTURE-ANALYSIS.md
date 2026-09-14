@@ -413,6 +413,173 @@ This gives the repository three clean layers:
 
 ```text
 fixtures       what the data is
-seeding        how an environment is populated
 test-support   how tests obtain isolated infrastructure
+seeding        how an environment is populated
 ```
+
+## Should every test fixture live in `packages/fixtures`?
+
+No. `packages/fixtures` should not become a dumping ground for every mock, builder, fake, snapshot, or test helper in the repository.
+
+There are two possible architectures.
+
+### Architecture A: one central fixture package for everything
+
+```text
+packages/fixtures/
+  src/
+    notifications/
+    documents/
+    commerce/
+    auth/
+    server/
+    workers/
+    test-doubles/
+    builders/
+```
+
+#### Advantages
+
+- One discoverable location for test data.
+- Easy reuse across packages.
+- Consistent naming and deterministic defaults.
+- Less duplication when several packages need the same canonical payload.
+- Easier to publish or version as a single internal testing API.
+- Useful for true cross-package contracts such as Evidence records, provider events, and shared JSON-render documents.
+
+#### Disadvantages
+
+- It becomes a large miscellaneous package over time.
+- Domain ownership becomes unclear.
+- Small changes create broad dependency and review impact.
+- Package consumers may import internals that were never intended to be stable.
+- Server tests may start depending on Commerce or client fixtures unnecessarily.
+- The package can accumulate runtime dependencies and create dependency cycles.
+- Builders can become overly generic and hide what each test actually needs.
+- A central package encourages shared mutable objects and cross-test coupling if not strictly designed.
+
+#### Architectural evidence
+
+Nx's monorepo guidance supports libraries for code that is intentionally reused, but its value depends on clear boundaries rather than putting every concern into one library:
+
+- [Nx: why monorepos](https://nx.dev/docs/concepts/decisions/why-monorepos)
+
+Vitest and Playwright distinguish fixture values from fixture lifecycle and scope. A central package is appropriate for reusable values, but it should not own every test's setup lifecycle:
+
+- [Vitest test context](https://v1.vitest.dev/guide/test-context)
+- [Playwright test fixtures](https://playwright.dev/docs/test-fixtures)
+
+### Architecture B: shared-only fixtures plus domain-local fixtures
+
+```text
+packages/fixtures/
+  src/
+    notifications/
+    commerce/
+    evidence/
+
+packages/server/src/domains/notifications/__fixtures__/
+packages/server/src/domains/evidence/__fixtures__/
+packages/client/src/admin/__fixtures__/
+packages/verticals/src/commerce/__fixtures__/
+```
+
+The central package contains only data that has at least two legitimate package consumers or represents a cross-package contract. Domain-local directories contain data and doubles that only one domain understands.
+
+#### Advantages
+
+- Strong domain ownership.
+- Smaller dependency graph.
+- Better test locality and discoverability.
+- Easier refactoring of a domain without changing unrelated packages.
+- Lower chance of accidentally coupling unit tests to demo or production workflows.
+- Clearer distinction between a shared contract and a private implementation detail.
+- Local fixtures can use domain-specific types, mocks, and test helpers without polluting a universal package.
+
+#### Disadvantages
+
+- The same conceptual fixture may be duplicated if ownership is not reviewed.
+- Developers must decide whether a fixture is local or shared.
+- Cross-package consumers may need a deliberate promotion from local to shared.
+- Discoverability is distributed across the repository.
+- A fixture can remain local too long and cause inconsistent variants.
+
+#### Architectural evidence
+
+Factory Bot's factory model encourages reusable defaults with local overrides, but it does not imply that every test helper belongs in one global module:
+
+- [Factory Bot README](https://github.com/thoughtbot/factory_bot)
+
+Django separates reusable serialized fixture data from the mechanism that loads it into a test or environment. This supports centralizing portable data while keeping test setup local:
+
+- [Django initial data fixtures](https://django.readthedocs.io/en/6.1.x/howto/initial-data.html)
+- [Django database fixtures](https://django.readthedocs.io/en/stable/topics/db/fixtures.html)
+
+Playwright's worker-scoped versus test-scoped fixtures also supports locality: the correct location depends on scope and ownership, not on a universal fixture directory:
+
+- [Playwright test fixtures](https://playwright.dev/docs/test-fixtures)
+
+## Recommended choice for Noname
+
+Use Architecture B: shared-only fixtures plus domain-local fixtures.
+
+The rule should be:
+
+```text
+one package consumer       → keep fixture beside that package/domain
+multiple package consumers → promote to packages/fixtures
+cross-package contract     → packages/fixtures
+runtime/demo workflow      → packages/seeding
+lifecycle/infrastructure   → packages/test-support only when repeated
+```
+
+A fixture should be promoted to `packages/fixtures` when at least one of these is true:
+
+1. It is imported by two or more package boundaries.
+2. It represents a protocol or contract owned by multiple boundaries.
+3. It is intentionally canonical across production, seed, and test behavior.
+4. Keeping it local would force an invalid dependency on an implementation package.
+
+A fixture should remain local when:
+
+1. It is used by one domain's tests.
+2. It encodes private implementation details.
+3. It is a mock of one domain's storage or adapter interface.
+4. It exists only to express an edge case for one module.
+5. Sharing it would require importing a large runtime package.
+
+## Concrete classification for current code
+
+| Current item | Recommended location | Reason |
+|---|---|---|
+| `agentTaskCompleteEmailSpec` | `packages/fixtures/notifications` | Used by platform seed and server notification tests |
+| `welcomeEmailSpec` | `packages/fixtures/notifications` | Canonical seeded notification content; likely reusable in notification tests |
+| `NotificationsStorage` mock defaults | Notifications domain test-local | Encodes one service's storage contract |
+| Queue `add` mock | Notifications domain test-local | Infrastructure double for one service |
+| Commerce order evidence fixture | Commerce-owned fixture module, promoted only if tests outside Commerce consume it | Commerce owns the meaning |
+| Evidence record protocol payloads | `packages/fixtures/evidence` if server and vertical tests share them | Cross-package immutable contract |
+| ZITADEL user setup workflow | `packages/seeding` | Environment mutation, not fixture data |
+| Keto tuple setup workflow | `packages/seeding` or auth test support | Requires external service behavior |
+| Database reset and transaction helpers | `packages/test-support` if reused | Lifecycle/infrastructure, not data |
+
+## Final answer to the placement question
+
+Not all tests should go inside `packages/fixtures`, and not all fixture-like code should be centralized there.
+
+`packages/fixtures` should contain reusable data and builders only. Tests remain in their owning packages. Domain-specific mocks remain close to the tests that understand them. `packages/seeding` remains responsible for populating a real environment.
+
+The preferred architecture is therefore:
+
+```text
+package/domain tests
+  ├─ local fixtures and test doubles
+  └─ shared values from @noname/fixtures when genuinely cross-package
+
+@noname/fixtures
+  └─ pure cross-package data and builders
+
+@noname/seeding
+  └─ real API/database/auth seed workflows
+```
+
+This preserves reuse without turning `packages/fixtures` into a second monolith.
