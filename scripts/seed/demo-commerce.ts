@@ -8,6 +8,7 @@ import { randomBytes, createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { seedDemoOrderEvidence as seedDemoOrderEvidenceThroughPort } from "../../packages/verticals/src/commerce";
 import { createDatabase } from "../../packages/server/src/drizzle";
 import { createEvidencePostgresService } from "../../packages/server/src/domains/evidence/adapters/postgres";
 import { loginWithCredentials } from "../../packages/server/src/seed";
@@ -345,84 +346,8 @@ async function seedDemoOrderEvidence(): Promise<void> {
   if (!databaseUrl) {
     throw new Error("DATABASE_URL is required to seed demo order evidence");
   }
-
   const db = createDatabase(databaseUrl);
-  const evidence = createEvidencePostgresService(db);
-  const occurredAt = new Date("2026-09-14T12:00:00.000Z");
-  const order = await evidence.appendRecord({
-    orgId: DEMO_ORG_ID,
-    type: "commerce.order.created",
-    schemaVersion: 1,
-    subjectType: "commerce.order",
-    subjectId: "demo-order-1001",
-    source: "commerce.demo-seed",
-    occurredAt,
-    correlationId: "demo-order-correlation-1001",
-    causationId: "demo-cart-instance-1001",
-    idempotencyKey: "commerce:demo:order:1001",
-    data: {
-      orderRef: "demo-order-1001",
-      machineInstanceId: "demo-cart-instance-1001",
-      machineName: "cart",
-      paymentRef: "demo-payment-1001",
-      amount: 9999,
-      currency: "CAD",
-      fromState: "awaiting_payment",
-      toState: "paid",
-    },
-  });
-  const payment = await evidence.appendRecord({
-    orgId: DEMO_ORG_ID,
-    type: "commerce.payment.receipt",
-    schemaVersion: 1,
-    subjectType: "commerce.payment",
-    subjectId: "demo-payment-1001",
-    source: "commerce.demo-seed",
-    occurredAt,
-    correlationId: "demo-order-correlation-1001",
-    causationId: "demo-cart-instance-1001",
-    idempotencyKey: "commerce:demo:payment:1001",
-    data: {
-      paymentRef: "demo-payment-1001",
-      orderRef: "demo-order-1001",
-      machineInstanceId: "demo-cart-instance-1001",
-      amount: 9999,
-      currency: "CAD",
-      status: "succeeded",
-    },
-  });
-  const activity = await evidence.appendActivity({
-    orgId: DEMO_ORG_ID,
-    type: "commerce.payment_succeeded",
-    actorType: "system",
-    inputRecordIds: [payment.id],
-    outputRecordIds: [order.id],
-    data: {
-      orderRef: "demo-order-1001",
-      paymentRef: "demo-payment-1001",
-      machineInstanceId: "demo-cart-instance-1001",
-    },
-    occurredAt,
-    correlationId: "demo-order-correlation-1001",
-    causationId: "demo-cart-instance-1001",
-    idempotencyKey: "commerce:demo:activity:payment-succeeded:1001",
-  });
-  const existingLinks = await evidence.listLinks(DEMO_ORG_ID, order.id);
-  if (existingLinks.length === 0) {
-    await evidence.link({
-      orgId: DEMO_ORG_ID,
-      fromId: order.id,
-      toId: payment.id,
-      relation: "paid_by",
-      metadata: { activityId: activity.id },
-    });
-    await evidence.link({
-      orgId: DEMO_ORG_ID,
-      fromId: order.id,
-      toId: activity.id,
-      relation: "caused_by",
-    });
-  }
+  await seedDemoOrderEvidenceThroughPort(createEvidencePostgresService(db), DEMO_ORG_ID);
   const client = (db as unknown as { $client?: { end?: () => Promise<void> } }).$client;
   await client?.end?.();
   console.log("Demo order evidence seeded (demo-order-1001).");
