@@ -1,4 +1,6 @@
-﻿# What We Build vs. What We Use
+# What We Build vs. What We Use
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 **We don't rebuild the internet. We build the AI layer that makes any site smarter than any single tool can.**
 

@@ -1,5 +1,7 @@
 # Visual Editor — Build Plan
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-01  
 > **Status:** Phase A ✅ · Phase B ✅ (smoke pending) · Phase C ✅ (C9 smoke pending) · Phase D ✅  
 > **Decisions:** [`VISUAL-EDITOR-GAP-ANALYSIS.md`](./VISUAL-EDITOR-GAP-ANALYSIS.md) (D7 + D8 deferred; all else locked)

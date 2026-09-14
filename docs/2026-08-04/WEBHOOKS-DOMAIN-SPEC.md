@@ -1,5 +1,7 @@
 # Webhooks domain spec (Phase I-f)
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-04 (updated 2026-08-05)  
 > **Status:** **Implemented v1** — inbound + outbound + admin UI; see E2E A4/A5 and integrations checklist  
 > **Related:** [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`WEBHOOKS-PLATFORM-RFC.md`](./WEBHOOKS-PLATFORM-RFC.md) · [`nango-domain.md`](../2026-07-04/nango-domain.md)

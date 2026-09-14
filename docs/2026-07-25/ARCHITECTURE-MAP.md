@@ -1,5 +1,7 @@
 # Architecture Map — Start Here
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Active — master index for platform docs  
 > **Current snapshot:** [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md) — where we are before the next build  

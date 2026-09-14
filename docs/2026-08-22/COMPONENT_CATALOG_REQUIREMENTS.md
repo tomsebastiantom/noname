@@ -1,4 +1,6 @@
 # Commerce Component Catalog Requirements
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## Complete Component Specification for json-render Integration
 ### As of 2026-08-22
 

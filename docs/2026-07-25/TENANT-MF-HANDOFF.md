@@ -1,5 +1,7 @@
 # Tenant MF Remotes — Implementation Handoff
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Code **reverted** (2026-07-25) — working implementation documented here for reimplementation. See [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md).  
 > **Purpose:** Per-file changelog, bugs hit, fixes applied from the session that proved MF end-to-end.

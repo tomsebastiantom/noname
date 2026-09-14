@@ -1,5 +1,7 @@
 # Roles and document scope (v2 — production target)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-03  
 > **Status:** Implementation companion — **canonical role/tag/team spec:** [`ACCESS-AND-ROLES.md`](./ACCESS-AND-ROLES.md)  
 > Supersedes merged team-on-document model in [`ROLES-AND-SCOPE.md`](./ROLES-AND-SCOPE.md)  

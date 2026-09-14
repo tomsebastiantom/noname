@@ -1,5 +1,7 @@
 # Action plan
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > Ranked recommendations from [`ARCHITECTURE.md`](./ARCHITECTURE.md), [`SCALABILITY.md`](./SCALABILITY.md), [`EFFICIENCY-PERFORMANCE.md`](./EFFICIENCY-PERFORMANCE.md), [`MAINTAINABILITY.md`](./MAINTAINABILITY.md), and [`EXPANDABILITY.md`](./EXPANDABILITY.md).
 >
 > **P0** = do now (correctness risk or actively broken). **P1** = do before the next scaling event or major feature push. **P2** = cleanup, do opportunistically. **P3** = defer / product decision, not a code smell.

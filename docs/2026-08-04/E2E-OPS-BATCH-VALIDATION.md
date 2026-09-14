@@ -1,5 +1,7 @@
 # E2E Ops Batch + Domain Validation
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 **Date:** 2026-08-05  
 **Environment:** Local Podman compose + `pnpm dev` (API `:3000`) + edge (`:8787`) + client (`yogastore.localhost:5173`)  
 **Reset:** `podman compose down -v` → `up -d` → `db:push` → `init:zitadel` → `seed:demo`

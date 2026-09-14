@@ -1,5 +1,7 @@
 # Platform palette — secrets, notifications, and tenant setup
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-04  
 > **Status:** Approved plan (no implementation in this doc)  
 > **Scope:** Which open-source / self-hosted services belong in the stack, where secrets live, how **platform communications** fit **inside noname**, and what merchants configure per org vs per user.

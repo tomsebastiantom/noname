@@ -1,5 +1,7 @@
 # Codebase Audit — Open Issues
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Updated:** 2026-07-31  
 > **Fixed items:** [`docs/archive/2026-07-30/CODEBASE-AUDIT-FIXED.md`](../archive/2026-07-30/CODEBASE-AUDIT-FIXED.md) (P1–P17) · [`docs/archive/2026-07-31/AUDIT-FIXED.md`](../archive/2026-07-31/AUDIT-FIXED.md) (2026-07-31 batch)  
 > **Domain cleanup open:** [`DOMAIN-CLEANUP-AUDIT.md`](../2026-07-31/DOMAIN-CLEANUP-AUDIT.md)  

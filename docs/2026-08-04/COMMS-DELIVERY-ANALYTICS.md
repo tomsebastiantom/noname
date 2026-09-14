@@ -1,5 +1,7 @@
 # Comms delivery analytics vs product analytics
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 **Status:** **v2 shipped (2026-08-06)** — Resend webhook ingest + delivery log engagement timeline. SMS/other providers: future adapters.
 
 ## Two different systems

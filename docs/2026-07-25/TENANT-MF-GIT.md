@@ -1,5 +1,7 @@
 # Tenant MF Catalog — Git Repo Source (Production Model)
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Planned — build pipeline exists; Git integration not implemented yet  
 > **Related:** [`TENANT-MF-SECURITY.md`](./TENANT-MF-SECURITY.md) · [`TENANT-MF-CDN.md`](./TENANT-MF-CDN.md) · [`DYNAMIC_CATALOG_BUILD.md`](../2026-07-11/DYNAMIC_CATALOG_BUILD.md) · [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md)

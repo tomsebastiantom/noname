@@ -1,5 +1,7 @@
 # Client Bundle — Frontend Setup & Local Dev Plan
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Updated 2026-07-25.** Auth provider is ZITADEL (see `docs/2026-07-13/AUTH.md`).
 
 ## What Exists (Backend + Edge + Client)

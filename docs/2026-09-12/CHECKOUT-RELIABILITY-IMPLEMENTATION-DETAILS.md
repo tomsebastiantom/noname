@@ -1,5 +1,7 @@
 # Checkout Reliability Implementation Details
 
+> **Documentation status (2026-09-14):** Historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-12  
 > **Purpose:** Detailed engineering record of the checkout reliability milestone. This is an implementation and verification document, not a pull-request summary.
 

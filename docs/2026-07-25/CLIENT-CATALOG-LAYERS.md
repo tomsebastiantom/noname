@@ -1,5 +1,7 @@
 # Client Catalog Layers — Core vs Extensions
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Implemented  
 > **Related:** [`EXTENSIONS.md`](./EXTENSIONS.md), [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md), [`ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md)

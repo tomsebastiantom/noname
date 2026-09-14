@@ -1,5 +1,7 @@
 # Agent Phase 2 — Multi-step Mastra runtime (full spec)
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **Mock orchestrate shipped** (2026-08-05) — live LLM planner run open  
 > **Prerequisite:** ✅ Phase I + mock path (E2E A5/U4)  
 > **Goal:** One merchant task (“Optimize my checkout”) → agent runs **many tool steps** on the platform → human reviews → human publishes  

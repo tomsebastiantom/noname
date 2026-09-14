@@ -1,5 +1,7 @@
 # Tenant MF Catalog — Security Model
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Design + gaps — read before Git integration or opening publish to merchants  
 > **Related:** [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) · [`TENANT-MF-CDN.md`](./TENANT-MF-CDN.md) · [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md)

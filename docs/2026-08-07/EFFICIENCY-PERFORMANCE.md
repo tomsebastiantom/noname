@@ -1,5 +1,7 @@
 # Efficiency / performance
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > Cost per request/render, not whether the system scales horizontally (see [`SCALABILITY.md`](./SCALABILITY.md) for that). See [`README.md`](./README.md) for scope/method.
 
 ---

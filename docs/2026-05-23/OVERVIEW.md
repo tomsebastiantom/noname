@@ -1,4 +1,6 @@
 # Platform Overview
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## Open Source AI Platform
 
 The platform is an **open source platform** with a CMS, AI-personalized experiences, manageable AI agents, an ML engine that collects data and runs experiments, and enterprise-grade optimization — all in one deployable codebase. It treats the user interface as data (JSON) rather than code, uses the open source json-render library (Vercel-backed, Apache 2.0) to map JSON to pixels, and wraps everything in a managed service that any store can afford.

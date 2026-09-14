@@ -1,5 +1,7 @@
 # Module Federation — Architecture & Build Plan
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## Why MF From Day 1
 
 The three-layer component catalog (platform → marketplace → tenant private) creates a dependency versioning problem the moment a second catalog exists outside the platform build. Without per-catalog dependency isolation, a marketplace package built against `@json-render/core` 0.17 breaks when the platform runs 0.19.

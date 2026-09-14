@@ -1,4 +1,6 @@
 # Current User Experience Audit
+
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## What a Visitor Actually Sees Today (Live Stack Inspection)
 ### As of 2026-08-22
 

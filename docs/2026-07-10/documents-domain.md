@@ -1,5 +1,7 @@
 # Documents Domain — Unified JSON Document Domain
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## Date: 2026-07-10
 ## Updated: 2026-07-11 (content modeling, rich text, assets, R2, permissions, webp/avif, hash dedup, id-based routing)
 ## Updated: 2026-07-25 (`tenant_id` → `org_id` — ZITADEL org id as TEXT; see [`AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md))

@@ -1,5 +1,7 @@
 # Stack: Everything We Use In Our System
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## Platform Identity: Agnostic
 
 **The platform is identity-agnostic — it can power ANY use case.** Commerce is the first vertical, not the only vertical.

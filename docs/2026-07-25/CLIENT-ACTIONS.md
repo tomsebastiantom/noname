@@ -1,5 +1,7 @@
 # Client Actions — Architecture at Scale
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Target architecture (platform split now; MF merge next)  
 > **Related:** [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md), [`catalog-loader.ts`](../../packages/client/src/catalog-loader.ts)

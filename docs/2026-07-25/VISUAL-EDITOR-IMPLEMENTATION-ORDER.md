@@ -1,5 +1,7 @@
 # Visual Editor & Permissions — Practical Implementation Order
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Active — **start here** when coding permissions + editor  
 > **Related:** [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) · [`PERMISSIONS-OSS-REFERENCES.md`](./PERMISSIONS-OSS-REFERENCES.md) · [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md)

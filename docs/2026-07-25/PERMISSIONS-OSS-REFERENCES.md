@@ -1,5 +1,7 @@
 # Open Source References — Permissions & Collaborative Edit
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Purpose:** Projects that help implement [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) + [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md)  
 > **Stack context:** **ZITADEL** = identity + org team roles in JWT; our app = documents + visual editor

@@ -1,5 +1,7 @@
 # Browser flow + agent collaboration smoke results (2026-08-22)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Environment: full local stack via podman (postgres, dragonfly, clickhouse, keto, zitadel, vault, s3, jaeger) + API :3000, worker, edge :8787 (wrangler), client :5173 (rspack). Demo org seeded via `pnpm seed:demo`. Tests driven by Playwright (headless + headed Chromium).
 
 ## 1. UI flow smoke — 13/13 PASS

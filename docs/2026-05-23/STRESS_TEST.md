@@ -1,4 +1,6 @@
-﻿# Architecture Stress Test
+# Architecture Stress Test
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Can Our System Build Auth? Rate Limiting? Scheduling? Complex Backend?
 

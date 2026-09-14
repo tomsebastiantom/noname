@@ -1,5 +1,7 @@
 # Tenant MF Remotes — CDN Delivery
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Design + proven approach documented; **code reverted** — implement via [`TENANT-MF-REIMPL.md`](./TENANT-MF-REIMPL.md)  
 > **Related:** [`TENANT-MF-GIT.md`](./TENANT-MF-GIT.md) · [`MODULE_FEDERATION.md`](../2026-07-11/MODULE_FEDERATION.md) · [`DYNAMIC_CATALOG_BUILD.md`](../2026-07-11/DYNAMIC_CATALOG_BUILD.md) · [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md)

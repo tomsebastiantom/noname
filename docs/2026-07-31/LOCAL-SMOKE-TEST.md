@@ -1,5 +1,7 @@
 # Local smoke test — post-refactor
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Infra: `podman compose up -d`. Apps on host (three terminals). Fixes: [`SMOKE-TEST-FIXES.md`](./SMOKE-TEST-FIXES.md).
 
 ## Start (every session)

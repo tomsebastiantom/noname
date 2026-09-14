@@ -1,5 +1,7 @@
 # Account Flows — Forgot Password, Sign-Up, MFA
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented (forgot password, sign-up, MFA login + TOTP enrollment)  
 > **Related:** [`EMBEDDED-LOGIN.md`](./EMBEDDED-LOGIN.md), [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md), [`LOGIN-UI.md`](./LOGIN-UI.md)

@@ -1,5 +1,7 @@
 # Per-Org Model — Who Owns What
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Active — conceptual overview (multi-tenant storefront model)  
 > **Related:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md), [`PAGE-ROUTING.md`](./PAGE-ROUTING.md), [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md)

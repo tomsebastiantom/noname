@@ -1,5 +1,7 @@
 # Product Principles & Positioning
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## The Core Thesis
 
 **The storefront should be as intelligent as the ad that sent the visitor there.**

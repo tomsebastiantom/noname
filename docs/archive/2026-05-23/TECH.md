@@ -1,4 +1,6 @@
 # Technical Architecture
+
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## How The Open Source AI Platform Actually Works
 
 > **Updated 2026-07-25.** Auth: **ZITADEL** + `@cfworker/jwt` at edge + HMAC to server. See `docs/2026-07-13/AUTH.md`.

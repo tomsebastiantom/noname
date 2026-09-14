@@ -1,5 +1,7 @@
 # Client architecture vs. upstream json-render reference patterns
 
+> **Documentation status (2026-09-14): Design/reference material — not implementation proof.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Note on scope:** at the user's request, this file deliberately sets aside the internal `skills/spec-driven-ui/SKILL.md` rules (see [`SPEC-DRIVEN-UI-COMPLIANCE.md`](./SPEC-DRIVEN-UI-COMPLIANCE.md) for that comparison) and instead checks `packages/client` against the **upstream `@json-render/*` library itself** — its README, its official example apps, and its actual shipped source (`packages/react/src/contexts/*`, `packages/react/src/hooks.ts` in [vercel-labs/json-render](https://github.com/vercel-labs/json-render), version `0.19.0`, fetched live for this audit).
 >
 > **Why this matters more than it sounds:** `packages/client/package.json` and `packages/extensions/package.json` already depend on `@json-render/core@^0.19.0` and `@json-render/react@^0.19.0` — the exact latest published version (verified via `npm view`). Every pattern below isn't "an outside library we could adopt" — it's **code already installed in `node_modules` that the client is not using**, in places where using it would directly fix findings from `ARCHITECTURE.md` and `EFFICIENCY-PERFORMANCE.md`.

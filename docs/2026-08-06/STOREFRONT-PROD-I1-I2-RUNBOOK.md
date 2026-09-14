@@ -1,5 +1,7 @@
 # Storefront production — I1 + I2 runbook
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **IDs:** **I2** R2 client deploy · **I1** Bot SSR  
 > **Related:** [`CLIENT_BUNDLE.md`](../2026-07-11/CLIENT_BUNDLE.md) · [`MASTER-STATUS.md`](./MASTER-STATUS.md)

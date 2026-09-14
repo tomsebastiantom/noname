@@ -1,4 +1,6 @@
-﻿# noname
+# noname
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## Open Source AI Platform
 
 > **Everything a site needs: CMS, AI-personalized experiences, enterprise features, and AI agents you control — all built into one open source server. No stitching 7 tools together.**

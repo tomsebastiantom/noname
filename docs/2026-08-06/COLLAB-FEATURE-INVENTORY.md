@@ -1,5 +1,7 @@
 # Visual editor & collab — feature inventory (API + UI)
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Scope:** Everything explicitly built for live editing, collab, and agent co-editing — what is **live in dev** vs **built but unverified** vs **not shipped**.  
 > **Smoke results:** [`COLLAB-LOCAL-SMOKE-RESULTS.md`](./COLLAB-LOCAL-SMOKE-RESULTS.md) · **Incident fixes:** [`COLLAB-SYNC-INCIDENT-FIXES.md`](./COLLAB-SYNC-INCIDENT-FIXES.md)  

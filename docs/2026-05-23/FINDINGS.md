@@ -1,4 +1,6 @@
-﻿# Findings & Key Insights
+# Findings & Key Insights
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Everything We Learned, Decided, and Corrected
 

@@ -1,5 +1,7 @@
 # Visual Editor UX — Google Docs–Style Editing on the Live Page
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Design target for Phase D visual editor  
 > **Related:** [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) (permissions first) · [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) (implementation)

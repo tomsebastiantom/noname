@@ -1,5 +1,7 @@
 # Maintainability
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > Test coverage, duplication, typing discipline, error handling, CI, secrets hygiene. See [`README.md`](./README.md) for scope/method.
 
 ---

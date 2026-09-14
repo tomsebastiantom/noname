@@ -1,5 +1,7 @@
 # Codebase Audit — Fixed Items
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Archived from:** [`CODEBASE-AUDIT-CLEANUP.md`](../../2026-07-30/CODEBASE-AUDIT-CLEANUP.md)
 
 | Priority | Fix | Area | Done |

@@ -1,5 +1,7 @@
 # Team Roles & Permissions — ZITADEL first, Postgres only for gaps
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** **Decided** — **no team roles or user permissions in Postgres**  
 > **Related:** [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) · [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) (Zanzibar-style doc ACL + op log) · [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md) · [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)

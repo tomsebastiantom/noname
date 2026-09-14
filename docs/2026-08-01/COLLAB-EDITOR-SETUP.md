@@ -1,5 +1,7 @@
 # Collaborative Editor — Setup & Examples
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-01  
 > **Status:** **Deferred** — solo edit ships first; live multi-user collab is Phase 3  
 > **Related:** [`VISUAL-EDITOR-GAP-ANALYSIS.md`](./VISUAL-EDITOR-GAP-ANALYSIS.md) · [`VISUAL-EDITOR-IMPLEMENTATION-ORDER.md`](../2026-07-25/VISUAL-EDITOR-IMPLEMENTATION-ORDER.md) · [`PERMISSIONS-OSS-REFERENCES.md`](../2026-07-25/PERMISSIONS-OSS-REFERENCES.md)

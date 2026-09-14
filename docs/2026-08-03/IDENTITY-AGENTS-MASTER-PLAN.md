@@ -1,5 +1,7 @@
 # Identity, Agents & Open Auth — Master Plan
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-03  
 > **Status:** **Active — canonical plan for IdP choice, agents, delegation, scoped access**  
 > **Related:** [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`PERMISSIONS-IDP-COMPARISON.md`](../2026-07-27/PERMISSIONS-IDP-COMPARISON.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md) · [`agent-domain.md`](../2026-07-04/agent-domain.md) · [`FIELD-ACL.md`](../2026-08-01/FIELD-ACL.md) · [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md) · [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) · [`KETO-IMPLEMENTATION-CHECKLIST.md`](./KETO-IMPLEMENTATION-CHECKLIST.md)

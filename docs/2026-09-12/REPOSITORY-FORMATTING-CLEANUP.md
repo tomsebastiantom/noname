@@ -1,5 +1,7 @@
 # Repository Formatting Cleanup
 
+> **Documentation status (2026-09-14):** Historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-12
 > **Purpose:** Record the repository-wide Biome cleanup completed after checkout reliability verification.
 

@@ -1,5 +1,7 @@
 # Architecture patterns — fixed (2026-07-31)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Items from [`ARCHITECTURE-PATTERNS.md`](../../2026-07-31/ARCHITECTURE-PATTERNS.md) quick wins and ranked inconsistencies, completed in this batch.
 
 ## Documents hub boundary

@@ -1,4 +1,6 @@
 # Architecture Decisions & Package Map
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## What lives where, what every package does, and what it's intended to become.
 
 > **Updated 2026-07-25.** Auth provider migrated from Logto to **ZITADEL** (2026-07-13). See `docs/2026-07-13/AUTH.md`.

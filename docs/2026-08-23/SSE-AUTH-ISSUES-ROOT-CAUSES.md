@@ -1,5 +1,7 @@
 # SSE Auth Issues — Root Causes & Fixes
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 **Date:** 2026-08-23
 **Scope:** Flags SSE 400 errors in wrangler dev + pre-existing typecheck/test failures surfaced while fixing them. All changes shipped in commit `1bdaad9 fix: flags and sse auth errors` plus the follow-up dedupe.
 

@@ -1,4 +1,6 @@
 # Build Plan: Phase 0 Implementation
+
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## System Architecture & Build Strategy
 
 > **Updated 2026-07-25.** Auth provider is **ZITADEL** (migrated from Logto, 2026-07-13). See `docs/2026-07-13/AUTH.md`.

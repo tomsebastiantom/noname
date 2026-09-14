@@ -1,5 +1,7 @@
 # Build master index — what’s next
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** **Canonical entry point** for remaining build work. Each row links to the **source doc** that owns detail, acceptance criteria, and checklists.  
 > **Status board:** [`MASTER-STATUS.md`](./MASTER-STATUS.md) — one-page shipped vs open.  

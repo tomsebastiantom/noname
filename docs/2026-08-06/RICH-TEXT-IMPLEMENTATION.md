@@ -1,5 +1,7 @@
 # R1 — Rich text implementation plan
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** **Shipped (R1 → R1.3)** — TipTap, embed resolve, constraints toolbar, tables, video, inline embeds, paste hardening, email channel  
 > **Parity gaps:** [`RICH-TEXT-PARITY.md`](./RICH-TEXT-PARITY.md)

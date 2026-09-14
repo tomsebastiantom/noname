@@ -1,5 +1,7 @@
 # Tenant MF Remotes — Reimplementation Guide
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Code **reverted**; docs retained. Use this to rebuild faster.  
 > **Companion:** [`TENANT-MF-HANDOFF.md`](./TENANT-MF-HANDOFF.md) (issues/fixes) · [`TENANT-MF-CDN.md`](./TENANT-MF-CDN.md) (architecture)

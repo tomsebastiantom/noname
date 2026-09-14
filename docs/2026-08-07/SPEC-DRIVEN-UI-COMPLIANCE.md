@@ -1,5 +1,7 @@
 # Spec-driven UI compliance
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Baseline:** [`skills/spec-driven-ui/SKILL.md`](../../skills/spec-driven-ui/SKILL.md) — the team's own stated architecture vision: *"Every org-facing page loads from layout spec + catalog — not a hand-written React route,"* components never call `fetch` directly (only action handlers do), all copy lives in `props.labels`/CMS, and mount loads use `MountAction`/`useMountAction`, never `useEffect(..., [execute])`.
 >
 > This file checks `packages/client` against that stated vision specifically — it's narrower than [`ARCHITECTURE.md`](./ARCHITECTURE.md) (which covers general code structure) and re-verifies (rather than assumes) the findings in the prior [`docs/2026-08-01/CLIENT-UI-ARCHITECTURE-AUDIT.md`](../2026-08-01/CLIENT-UI-ARCHITECTURE-AUDIT.md), which covered the same ground about a week ago. Verified against source on 2026-08-07; the violations below still exist at the same locations that audit found.

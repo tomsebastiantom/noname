@@ -1,5 +1,7 @@
 # Resolve Document Refs API
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented (verified 2026-07-25 — curl + vitest)  
 > **Related:** [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md) (includes `GET …/ref-backrefs` for delete warnings), [`documents-domain.md`](../2026-07-10/documents-domain.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)

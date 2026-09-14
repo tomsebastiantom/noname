@@ -1,5 +1,7 @@
 # Collab sync incident — root-cause fixes (2026-08-06)
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Context:** Visual editor (`?edit=true`) live layout collab — human multi-tab, agent presence, spec sync.  
 > **Principle:** Fix causes on the server/collab path; no UI band-aids that hide broken join or sync.  
 > **Parent:** [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](./E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) · [`VISUAL-EDITOR-COLLAB-CRDT.md`](../2026-08-01/VISUAL-EDITOR-COLLAB-CRDT.md)

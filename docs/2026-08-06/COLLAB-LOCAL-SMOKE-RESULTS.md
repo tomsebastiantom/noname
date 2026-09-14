@@ -1,5 +1,7 @@
 # Collab local smoke — results (7 steps)
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Environment:** local dev — API `:3000`, client `:5173`, edge `:8787` (browser WS goes **5173 → 8787 → 3000**)  
 > **Page:** home layout — `http://yogastore.localhost:5173/?edit=true`  

@@ -1,5 +1,7 @@
 # Security Handoff — Auth & Admin Hardening (2026-07-25)
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Purpose:** Security-focused issues found during the org MFA + team admin session, fixes applied, test steps, and known gaps for the next handoff.  
 > **Related:** [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md) · [`ACCOUNT-FLOWS.md`](./ACCOUNT-FLOWS.md) · [`PLATFORM-STATUS.md`](./PLATFORM-STATUS.md)

@@ -1,5 +1,7 @@
 # Scoped Public Endpoints + Guest Commerce
 
+> **Documentation status (2026-09-14):** Historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-07
 > **Status:** SUPERSEDED — kept for history. The anonymous-grant mechanism described
 > here (no-auth-header guest lane) is replaced by publishable-key verification.

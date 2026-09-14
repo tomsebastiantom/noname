@@ -1,5 +1,7 @@
 # Analytics & replay — pending work
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** P0–P2 + **P3 replay player + flags public ingest + editor nav UX shipped** (2026-07-27).  
 > **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`ANALYTICS-REPLAY-TEST-RUN.md`](./ANALYTICS-REPLAY-TEST-RUN.md)
 

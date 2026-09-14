@@ -1,5 +1,7 @@
 # Flat Props Migration
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Remove `catalogProps` split (`labels` + `config`). All props become flat (like shadcn `catalog.d.ts`).
 
 ## Status

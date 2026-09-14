@@ -1,4 +1,6 @@
-﻿# What We Build vs. What We Use
+# What We Build vs. What We Use
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 **We don't rebuild the internet. We build the AI layer that makes any site smarter than any single tool can.**
 

@@ -1,5 +1,7 @@
 # Keto + Zanzibar — Simple Roadmap
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-03  
 > **Roles & scope (read first):** [`ROLES-AND-SCOPE.md`](./ROLES-AND-SCOPE.md) · Detail: [`KETO-ZANZIBAR-SETUP.md`](./KETO-ZANZIBAR-SETUP.md) · Tasks: [`KETO-IMPLEMENTATION-CHECKLIST.md`](./KETO-IMPLEMENTATION-CHECKLIST.md)
 

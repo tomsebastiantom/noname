@@ -1,5 +1,7 @@
 # Visual Editor — Collab & CRDT
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **E3a v1 dogfood** — see [`E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md`](../2026-08-06/E3-LIVE-CRDT-COLLAB-IMPLEMENTATION.md) for shipped paths and remaining gaps (E3c, D7).
 
 > **Date:** 2026-08-01 (updated 2026-08-06)  

@@ -1,4 +1,6 @@
 # Commerce Engine Gap Analysis
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## What's Built vs. What's Missing vs. Top Platforms
 ### As of 2026-08-22
 

@@ -1,5 +1,7 @@
 # Smoke test fixes — 2026-07-31
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Issues from [`LOCAL-SMOKE-TEST.md`](./LOCAL-SMOKE-TEST.md), root cause and fix per item.
 
 ---

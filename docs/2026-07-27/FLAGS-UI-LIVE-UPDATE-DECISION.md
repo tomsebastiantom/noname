@@ -1,5 +1,7 @@
 # Flags → Live UI — Decision & Analysis
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **Implemented** (2026-07-27) — hybrid Phases 1–2 shipped. Type B layout swap **deferred** (2026-07-30) — use segments + admin preview instead. See [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md).  
 > **Date:** 2026-07-27 (updated 2026-07-30)  
 > **Related:** [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`flags-domain.md`](../2026-07-04/flags-domain.md), [`BROWSER_SDK.md`](../2026-07-11/BROWSER_SDK.md), [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md)

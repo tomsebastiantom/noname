@@ -1,6 +1,6 @@
 # Context Domain — Implementation Plan
 
-> ⚠️ **Historical plan (2026-07-04)** — context engine is **implemented**. For current behavior see [`../2026-07-11/STATUS.md`](../2026-07-11/STATUS.md) and server `packages/server/src/domains/context/`.
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 > **Framing — "commerce" is an example vertical, not the product.** The storefront/e-commerce scenario below illustrates the general personalization pattern. The platform is **identity-agnostic** and the same context engine powers any vertical (booking, membership, SaaS, content).
 

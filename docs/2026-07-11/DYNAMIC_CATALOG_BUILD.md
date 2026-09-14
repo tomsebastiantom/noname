@@ -1,5 +1,7 @@
 # Dynamic Catalog Loading — Design & Implementation
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## Status: Phase 1 Foundation Complete (2026-07-11)
 
 ---

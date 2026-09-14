@@ -1,5 +1,7 @@
 # Edge Worker — Architecture & Build Plan
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Updated 2026-07-25.** Auth: ZITADEL OIDC + `@cfworker/jwt` + HMAC to server. See `docs/2026-07-13/AUTH.md`.
 
 ## What It Is

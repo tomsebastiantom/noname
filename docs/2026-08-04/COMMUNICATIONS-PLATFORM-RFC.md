@@ -1,5 +1,7 @@
 # RFC — Platform communications: architecture review & roadmap
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **Implemented v1** (2026-08-05) — email + SMS + in-app inbox + prefs v2 + delivery admin; open: **I-c.6c**, comms delivery analytics  
 > **Date:** 2026-08-05 (updated)  
 > **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`EMAIL-TEMPLATES-REACT-EMAIL.md`](./EMAIL-TEMPLATES-REACT-EMAIL.md) · [`INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md`](./INTEGRATIONS-VAULT-NANGO-AGENTS-ROADMAP.md) · [`IN-APP-INBOX-SSE.md`](./IN-APP-INBOX-SSE.md) · [`BUILD-MASTER-INDEX.md`](../2026-08-05/BUILD-MASTER-INDEX.md)

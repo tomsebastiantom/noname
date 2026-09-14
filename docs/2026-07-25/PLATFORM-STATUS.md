@@ -1,5 +1,7 @@
 # Platform Status — Where We Are (2026-07-25)
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Purpose:** Short snapshot before the next build. Detail lives in linked docs — this file is the map, not the manual.  
 > **Index:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · **Phases:** [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md)

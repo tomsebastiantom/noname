@@ -1,4 +1,6 @@
-﻿# Findings & Key Insights
+# Findings & Key Insights
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 > **Updated 2026-07-25.** Auth provider is **ZITADEL** (migrated from Logto, 2026-07-13). See `docs/2026-07-13/AUTH.md`.
 

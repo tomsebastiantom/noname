@@ -1,5 +1,7 @@
 # Codebase Health Audit — 2026-08-07
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Scope:** Full monorepo — `packages/server`, `packages/client`, `packages/{auth,documents,shared,extensions,browser-sdk,workers,cli}`, root tooling/CI, `scripts/`.
 > **Method:** Independent static analysis (grep/glob/line counts) verified against actual source, not against prior audit docs' self-graded claims. Every finding below is backed by a file path and, where practical, a line number.
 > **Why a fresh audit:** `docs/` already contains ~15 prior audits (`ARCHITECTURE-AUDIT.md`, `CLIENT-UI-ARCHITECTURE-AUDIT.md`, `CODEBASE-AUDIT-CLEANUP.md`, etc.) that grade the codebase "A-" to "B+". This audit treats those grades as unverified and re-checks the code directly. Some prior findings hold up; several new, more severe issues (in-process collab state, unpaginated queries, zero `React.memo`, committed worker secret) were not previously flagged.

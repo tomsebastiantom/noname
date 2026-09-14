@@ -1,5 +1,7 @@
 # Client UI remediation plan
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Baseline audit:** [CLIENT-UI-ARCHITECTURE-AUDIT.md](./CLIENT-UI-ARCHITECTURE-AUDIT.md)  
 > **Out of scope:** accessibility (per product decision)  
 > **Agent rules:** [skills/spec-driven-ui/SKILL.md](../../skills/spec-driven-ui/SKILL.md)

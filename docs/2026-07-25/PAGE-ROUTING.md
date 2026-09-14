@@ -1,5 +1,7 @@
 # Page Routing — URL → Spec (Implementation Plan)
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** **Implemented** (2026-07-25) — seed, edge `?url=`, client split, admin UI, commerce URL  
 > **Related:** [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md), [`documents-domain.md`](../2026-07-10/documents-domain.md) § Page Tree

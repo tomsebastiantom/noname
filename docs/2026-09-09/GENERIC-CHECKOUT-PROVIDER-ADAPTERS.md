@@ -1,5 +1,7 @@
 # Generic Checkout Provider Adapters
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 The commerce capability does not know Stripe, Shopify, PayPal, or any provider endpoint. It resolves a provider adapter by configured integration ID and gives that adapter the generic Nango `proxyProvider` port.
 
 ```ts

@@ -1,5 +1,7 @@
 # Where Vertical Server Effects Live
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-07
 > **Status:** Active — binding; D now, C on horizon, A/B rejected
 > **Read first:** [`ADD-DOMAIN-VS-EXTENSION.md`](../2026-09-05/ADD-DOMAIN-VS-EXTENSION.md) · [`EXTERNAL-PROVIDERS-VIA-NANGO.md`](./EXTERNAL-PROVIDERS-VIA-NANGO.md)

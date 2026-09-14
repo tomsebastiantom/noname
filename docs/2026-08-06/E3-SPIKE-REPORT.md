@@ -1,5 +1,7 @@
 # E3-spike report — Automerge vs Loro (layout spec)
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** Complete (offline spike; script removed after doc capture)  
 > **Scope:** **Layout spec only** — `{ root, elements }` json-render tree  
 > **Out of scope:** CMS **rich text** fields → see [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md) (R1 + D7 Yjs)

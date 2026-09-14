@@ -1,5 +1,7 @@
 # Remaining work runbook
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** Canonical checklist for open work after validation + polish (2026-08-05).  
 > **Status board:** [`MASTER-STATUS.md`](./MASTER-STATUS.md) · **Backlog:** [`BUILD-MASTER-INDEX.md`](./BUILD-MASTER-INDEX.md)  

@@ -1,6 +1,6 @@
 # Flags Domain — Implementation Plan
 
-> ⚠️ **Historical plan (2026-07-04)** — flags domain is **fully implemented** (CRUD, evaluate, SSE). See [`../2026-07-27/FLAGS-UI-LIVE-UPDATE-DECISION.md`](../2026-07-27/FLAGS-UI-LIVE-UPDATE-DECISION.md) and [`../2026-07-11/STATUS.md`](../2026-07-11/STATUS.md).
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Date: 2026-07-04
 

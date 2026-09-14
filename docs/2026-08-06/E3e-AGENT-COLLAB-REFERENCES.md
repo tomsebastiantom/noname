@@ -1,5 +1,7 @@
 # E3e — Agent collab references (how others do it)
 
+> **Documentation status (2026-09-14): Design/reference material — not implementation proof.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Purpose:** Reference only — patterns from OSS and products for **agent + human live editing**  
 > **Our spec:** [`E3e-AGENT-FULL-COLLAB-PEER.md`](./E3e-AGENT-FULL-COLLAB-PEER.md)

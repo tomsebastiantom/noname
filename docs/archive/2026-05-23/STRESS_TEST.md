@@ -1,4 +1,6 @@
-﻿# Architecture Stress Test
+# Architecture Stress Test
+
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Can Our System Build Auth? Rate Limiting? Scheduling? Complex Backend?
 

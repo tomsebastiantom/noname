@@ -1,5 +1,7 @@
 # Store Permissions — Zanzibar-style ReBAC + document consistency
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Design target — **ZITADEL for subjects**; **Postgres for relation tuples** ZITADEL cannot express  
 > **Related:** [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) · [`VISUAL-EDITOR-PLAN.md`](./VISUAL-EDITOR-PLAN.md) · [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) · [`documents-domain.md`](../2026-07-10/documents-domain.md)

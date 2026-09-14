@@ -1,5 +1,7 @@
 # Visual Editor — Setup & Permissions (before UI)
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Planned — **permissions + gates first**, then `?edit=true` UI  
 > **Related:** [`VISUAL_EDITOR.md`](../2026-07-11/VISUAL_EDITOR.md) · [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) (Google Docs–style click flow) · [`TEAM-ROLES-ZITADEL.md`](./TEAM-ROLES-ZITADEL.md) · [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md) (Zanzibar tuples + consistency) · [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md) · [`SECURITY-HANDOFF.md`](./SECURITY-HANDOFF.md) · [`ORG-AUTH-CONFIG.md`](./ORG-AUTH-CONFIG.md)

@@ -1,5 +1,7 @@
 # Analytics & replay — manual test run
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-27  
 > **Env:** `yogastore.localhost:5173` (client), `:8787` (edge), `:3000` (server)  
 > **Tester:** agent (API curl + browser UI)  

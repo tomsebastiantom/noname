@@ -1,4 +1,6 @@
 # AI & Agentic Commerce — Future Plans
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## Where the Industry Is Going and How This Platform Wins It
 ### As of 2026-08-22 (Research-Based)
 

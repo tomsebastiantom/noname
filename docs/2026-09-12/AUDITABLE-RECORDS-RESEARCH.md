@@ -1,5 +1,7 @@
 # Auditable Records Research and Architecture Recommendation
 
+> **Documentation status (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-12  
 > **Status:** Research complete; implementation proposal, not yet implemented  
 > **Related starting point:** [`AUDITABLE-RECORDS-DESIGN-START.md`](./AUDITABLE-RECORDS-DESIGN-START.md)  

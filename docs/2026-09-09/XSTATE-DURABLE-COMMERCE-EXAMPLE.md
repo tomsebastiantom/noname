@@ -1,5 +1,7 @@
 # XState Workflow Proof — Payment with Stock Reservation
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 This example shows what XState can model and what requires a durable runtime.
 
 ## JSON machine

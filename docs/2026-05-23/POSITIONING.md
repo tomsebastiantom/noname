@@ -1,4 +1,6 @@
-﻿# Positioning: What We Actually Are
+# Positioning: What We Actually Are
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## In One Sentence
 

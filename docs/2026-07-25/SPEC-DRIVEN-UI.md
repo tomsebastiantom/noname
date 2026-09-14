@@ -1,5 +1,7 @@
 # Spec-Driven UI — How to Build Without Drift
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Active — **read this before adding any org-facing UI (admin, login, public site)**  
 > **Related:** [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`CLIENT-ACTIONS.md`](./CLIENT-ACTIONS.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md)

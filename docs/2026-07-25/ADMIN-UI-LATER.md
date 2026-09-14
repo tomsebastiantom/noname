@@ -1,5 +1,7 @@
 # Admin UI — Load & manage
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Phase C complete — shell, CMS, auth, pages, DataTable polish, delete warnings, account security link  
 > **Start with:** [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md) · [`SPEC-DRIVEN-UI.md`](./SPEC-DRIVEN-UI.md) · Login: [`LOGIN-UI.md`](./LOGIN-UI.md)  

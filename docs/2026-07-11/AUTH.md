@@ -1,6 +1,6 @@
 # Auth — ZITADEL OIDC + Edge Worker Passthrough + HMAC
 
-> **Superseded doc note:** This file was originally written for Logto (2026-07-11).
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 > Auth migrated to ZITADEL on 2026-07-13 with HMAC hardening on 2026-07-18.
 > **Canonical reference:** [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md)  
 > **Identity decision (2026-07-25):** [`docs/2026-07-25/AUTH-IDENTITY.md`](../2026-07-25/AUTH-IDENTITY.md)

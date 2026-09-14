@@ -1,5 +1,7 @@
 # E3 — Live CRDT collab (implementation guide)
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** **Live collab shipped** — always on in edit mode  
 > **automerge-repo detail:** [`E3-AUTOMERGE-REPO.md`](./E3-AUTOMERGE-REPO.md)

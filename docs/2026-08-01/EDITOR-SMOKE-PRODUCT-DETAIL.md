@@ -1,5 +1,7 @@
 # Editor smoke — product page (A5 + B6 + C9)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **URL:** `http://yogastore.localhost:5173/products/demo-sneakers?edit=true`  
 > **Login:** `admin@zitadel.localhost` (demo seed)  
 > **Last run:** 2026-08-05 — browser pass (duplicate, drag, delete, publish, exit)

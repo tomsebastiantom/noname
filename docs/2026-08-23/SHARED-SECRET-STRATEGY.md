@@ -1,5 +1,7 @@
 # Shared Edge↔Server Secret — Research & Recommended Approach
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** Proposal — not yet implemented (2026-08-23). Fix later per plan below.
 > **Scope of problem:** `WORKER_SERVER_SECRET` must match between `packages/workers` (signer) and `packages/server` (verifier).
 > **Related:** [`EDGE-STOREFRONT-FIXES.md`](./EDGE-STOREFRONT-FIXES.md)

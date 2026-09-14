@@ -1,5 +1,7 @@
 # Permissions Master Plan
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-27 (updated 2026-08-03 — document unit; field ACL cancelled)  
 > **Status:** **Active — canonical permission keys & layers**  
 > **Current v1 roles + Keto scope:** [`ROLES-AND-SCOPE.md`](../2026-08-03/ROLES-AND-SCOPE.md) (admins unscoped; editors via tags/share)  

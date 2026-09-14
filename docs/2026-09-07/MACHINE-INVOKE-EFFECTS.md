@@ -1,5 +1,7 @@
 # Machine Invoke Effects (Declared Services)
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-07
 > **Status:** Active design — implement after dispatcher proves the contract
 > **Read first:** [`VERTICAL-SERVER-EFFECTS.md`](./VERTICAL-SERVER-EFFECTS.md) · [`EXTENSION-BACKENDS.md`](./EXTENSION-BACKENDS.md)

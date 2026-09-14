@@ -1,5 +1,7 @@
 # Content Render Pipeline — CMS to Resolved Spec
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented (2026-07-25) — edge merges content into `$state` on `GET /api/edge/schema`  
 > **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md), [`DOCUMENT-REFS.md`](./DOCUMENT-REFS.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md)

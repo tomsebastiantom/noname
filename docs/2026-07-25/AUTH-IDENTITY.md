@@ -1,5 +1,7 @@
 # Auth Identity — ZITADEL as Source of Truth
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** `org_id` / `user_id` naming aligned with ZITADEL org + JWT `sub`  
 > **Related:** [`docs/2026-07-13/AUTH.md`](../2026-07-13/AUTH.md) (JWT + edge + HMAC flow)

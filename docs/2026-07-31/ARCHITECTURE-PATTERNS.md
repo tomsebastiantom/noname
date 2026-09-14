@@ -1,5 +1,7 @@
 # Architecture Patterns — Audit & Standardization
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-31  
 > **Related:** [`ARCHITECTURE-AUDIT.md`](./ARCHITECTURE-AUDIT.md) · [`ARCHITECTURE-MAP.md`](../2026-07-25/ARCHITECTURE-MAP.md) · [`SHARED-PACKAGES.md`](./SHARED-PACKAGES.md) · [`archive/2026-07-31/ARCHITECTURE-FIXED.md`](../archive/2026-07-31/ARCHITECTURE-FIXED.md)
 

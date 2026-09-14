@@ -1,5 +1,7 @@
 # E3-spike handoff — Automerge vs Loro (parallel agent)
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Owner:** Spike agent (parallel track)  
 > **Depends on:** **E3-pre** (this repo) — `document_ops` patch payloads + replay  

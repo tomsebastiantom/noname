@@ -1,5 +1,7 @@
 # Decision — Generic Checkout and Payment Boundary
 
+> **Documentation status (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-09
 > **Status:** Binding implementation plan
 > **Scope:** Checkout initiation, provider callbacks, orders, and XState

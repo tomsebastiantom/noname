@@ -1,5 +1,7 @@
 # Stack: Everything We Use In Our System
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Updated 2026-07-25.** Auth: **ZITADEL** (see `docs/2026-07-13/AUTH.md`).
 
 ## Platform Identity: Agnostic

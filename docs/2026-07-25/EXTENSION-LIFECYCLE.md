@@ -1,5 +1,7 @@
 # Extension Lifecycle — Full Bundle (Not JSON Alone)
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Adopted — documents what each profession/vision needs beyond layout JSON  
 > **Related:** [`EXTENSIONS.md`](./EXTENSIONS.md), [`CLIENT-CATALOG-LAYERS.md`](./CLIENT-CATALOG-LAYERS.md), [`ROADMAP-PHASES.md`](./ROADMAP-PHASES.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)

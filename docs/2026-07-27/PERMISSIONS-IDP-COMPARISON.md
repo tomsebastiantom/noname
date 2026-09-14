@@ -1,5 +1,7 @@
 # Permissions — IdP Comparison (ZITADEL vs others)
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-27  
 > **Status:** Reference — why we expand roles in the backend  
 > **Related:** [`PERMISSIONS-MASTER-PLAN.md`](./PERMISSIONS-MASTER-PLAN.md) · [`IDENTITY-AGENTS-MASTER-PLAN.md`](../2026-08-03/IDENTITY-AGENTS-MASTER-PLAN.md) · [`TEAM-ROLES-ZITADEL.md`](../2026-07-25/TEAM-ROLES-ZITADEL.md)

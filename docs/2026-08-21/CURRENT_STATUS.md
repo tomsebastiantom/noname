@@ -1,7 +1,7 @@
 # Current Implementation Status
 ## Historical snapshot — 2026-08-21
 
-> This document records the implementation state at the time it was written. It is retained as historical evidence and is **not current status**. Read [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md) for the current code-audited roadmap.
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ---
 

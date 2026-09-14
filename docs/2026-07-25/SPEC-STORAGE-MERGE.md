@@ -1,5 +1,7 @@
 # Layout Spec — Schema, Merge & Partial Storage
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Design + partial implementation  
 > **Related:** [`documents-domain.md`](../2026-07-10/documents-domain.md) · [`VISUAL-EDITOR-UX.md`](./VISUAL-EDITOR-UX.md) · [`PERMISSIONS-REBAC.md`](./PERMISSIONS-REBAC.md)

@@ -1,5 +1,7 @@
 # Embedded Login — Why Server Auth Exists
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** Implemented  
 > **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md)

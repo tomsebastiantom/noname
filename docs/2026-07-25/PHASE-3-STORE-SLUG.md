@@ -1,5 +1,7 @@
 # Phase 3 — Store Slug + Edge Hostname Lookup
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-25  
 > **Status:** ✅ Implemented  
 > **Depends on:** Phase 2 (PKCE login) ✅  

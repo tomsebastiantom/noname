@@ -1,5 +1,7 @@
 # Roles and document scope (v1 — superseded)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **Superseded** by [`ACCESS-AND-ROLES.md`](./ACCESS-AND-ROLES.md) and [`ROLES-AND-SCOPE-v2.md`](./ROLES-AND-SCOPE-v2.md) (2026-08-03)  
 > **Reason:** v1 merged document teams with Keto teams. Production target splits **tags** (documents), **teams** (people), and adds **publisher**, **scope_manager**, and observability roles.
 

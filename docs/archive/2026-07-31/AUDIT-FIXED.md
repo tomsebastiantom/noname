@@ -1,5 +1,7 @@
 # Audit — Fixed Items (2026-07-31 batch)
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Archived from:** [`CODEBASE-AUDIT-CLEANUP.md`](../../2026-07-30/CODEBASE-AUDIT-CLEANUP.md), [`DOMAIN-CLEANUP-AUDIT.md`](../../2026-07-31/DOMAIN-CLEANUP-AUDIT.md)  
 > **Prior fixes:** [`CODEBASE-AUDIT-FIXED.md`](../2026-07-30/CODEBASE-AUDIT-FIXED.md)
 

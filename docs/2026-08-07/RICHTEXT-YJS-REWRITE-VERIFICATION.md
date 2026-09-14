@@ -1,5 +1,7 @@
 # Verification checklist — headless rich-text/Yjs rewrite + dependency cleanup
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 **Date:** 2026-08-07
 **Status:** automated checks passing; manual checks below still to be run by a human against a real environment (browser + live server), since none of this session's automated tooling can drive a browser or a real WebSocket collab session end-to-end.
 

@@ -1,5 +1,7 @@
 # E3e — Agent as full collab peer (product spec)
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** **Canonical** — agent + human live editing  
 > **Stack:** Our E3 collab only — Automerge, Yjs, existing WS, Keto, `nag.*` — **no Liveblocks / PartyKit / vendor collab**  

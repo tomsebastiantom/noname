@@ -1,5 +1,7 @@
 # Edge Storefront 400/500 & Flags Access — Root Causes & Fixes
 
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** Fixed & verified locally (2026-08-23)
 > **Scope:** `packages/workers`, `packages/server` (flags), `packages/client`, `packages/browser-sdk`
 > **Related:** [`FLAGS-UI-LIVE-UPDATE-DECISION.md`](../2026-07-27/FLAGS-UI-LIVE-UPDATE-DECISION.md), [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md), [`BROWSER_SDK.md`](../2026-07-11/BROWSER_SDK.md)

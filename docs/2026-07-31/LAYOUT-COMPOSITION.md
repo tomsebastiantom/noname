@@ -1,5 +1,7 @@
 # Layout Composition — Full Page vs Shell + Panel
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-31  
 > **Status:** Implemented — `renderAs` + `shellRef` on layout documents; edge returns shell + panel; client composes via `AdminPlatformView`  
 > **Related:** [`CONTENT-RENDER-PIPELINE.md`](../2026-07-25/CONTENT-RENDER-PIPELINE.md), [`PAGE-ROUTING.md`](../2026-07-25/PAGE-ROUTING.md), [`SPEC-DRIVEN-UI.md`](../2026-07-25/SPEC-DRIVEN-UI.md), [`CATALOG-PROPS-MIGRATION.md`](./CATALOG-PROPS-MIGRATION.md)

@@ -1,6 +1,6 @@
 # Agent Domain
 
-> ⚠️ **Historical plan (2026-07-04)** — this domain is **implemented** today. Sections marked "Scaffolding" are outdated. See [`ARCHITECTURE_DECISIONS.md`](./ARCHITECTURE_DECISIONS.md) and [`../2026-07-11/STATUS.md`](../2026-07-11/STATUS.md).
+> **Historical record (2026-09-14):** This document is a historical record, not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Purpose
 

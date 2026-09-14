@@ -1,5 +1,7 @@
 # Permissions — Implementation Plan
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-07-27  
 > **Status:** **Active — coding checklist**  
 > **Prerequisite docs:** [`PERMISSIONS-MASTER-PLAN.md`](./PERMISSIONS-MASTER-PLAN.md) · [`PERMISSIONS-IDP-COMPARISON.md`](./PERMISSIONS-IDP-COMPARISON.md)  

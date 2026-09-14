@@ -1,5 +1,7 @@
 # Admin preview, segments, and flags — scope decision
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** **Decision recorded** — not implemented yet (preview / impersonation)  
 > **Date:** 2026-07-30  
 > **Related:** [`FLAGS-UI-LIVE-UPDATE-DECISION.md`](../2026-07-27/FLAGS-UI-LIVE-UPDATE-DECISION.md), [`FLAGS-PER-USER-TARGETING.md`](../2026-07-27/FLAGS-PER-USER-TARGETING.md), [`context-domain.md`](../2026-07-04/context-domain.md), [`documents-domain.md`](../2026-07-10/documents-domain.md)

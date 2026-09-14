@@ -1,4 +1,6 @@
-﻿# Product Principles & Positioning
+# Product Principles & Positioning
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## The Core Thesis
 

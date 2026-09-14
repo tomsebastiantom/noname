@@ -1,5 +1,7 @@
 # Client UI architecture audit
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-01  
 > **Scope:** `packages/client` — visual editor, admin catalog, host shell, auth  
 > **Baseline:** [skills/spec-driven-ui/SKILL.md](../../skills/spec-driven-ui/SKILL.md) · [props-contract.md](../../skills/spec-driven-ui/props-contract.md)  

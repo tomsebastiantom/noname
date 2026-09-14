@@ -1,5 +1,7 @@
 # Auditable Records — Generic Pattern Investigation
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-09-12  
 > **Scope correction:** Analytics storage and analytics implementation are explicitly out of scope. Noname already has a ClickHouse analytics implementation. This document focuses on reusable cross-domain record, provenance, link, audit, and evidence patterns.
 

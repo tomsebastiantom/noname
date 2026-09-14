@@ -2,6 +2,7 @@
 
 ## Current Status (Start Here)
 - **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
+- **[2026-09-14/DOCUMENTATION-AUDIT-INDEX.md](2026-09-14/DOCUMENTATION-AUDIT-INDEX.md)** — Repository-wide per-document audit index with evidence reports and status classifications.
 - **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Historical implementation snapshot. It is retained for context but is not authoritative for current status.
 
 ## Incident & Fix Reports

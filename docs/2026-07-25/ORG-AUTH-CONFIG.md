@@ -1,5 +1,7 @@
 # Per-Org Auth Configuration — Clerk-Style Vision
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Updated:** 2026-07-25 — GitHub/Apple IdP in admin, `providerIconAssets` as `{ documentId }`, login branding admin verified  
 > **Related:** [`LOGIN-UI.md`](./LOGIN-UI.md), [`AUTH-IDENTITY.md`](./AUTH-IDENTITY.md), [`ADMIN-UI-LATER.md`](./ADMIN-UI-LATER.md), [`EXTENSION-LIFECYCLE.md`](./EXTENSION-LIFECYCLE.md), [`ARCHITECTURE-MAP.md`](./ARCHITECTURE-MAP.md), [`CONTENT-RENDER-PIPELINE.md`](./CONTENT-RENDER-PIPELINE.md)
 

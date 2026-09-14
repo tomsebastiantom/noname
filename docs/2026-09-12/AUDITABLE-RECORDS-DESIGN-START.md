@@ -1,5 +1,7 @@
 # Auditable Records Design — Starting Point
 
+> **Documentation status (2026-09-14):** Design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Status:** Research starting point — not yet an implementation decision  
 > **Date:** 2026-09-12
 

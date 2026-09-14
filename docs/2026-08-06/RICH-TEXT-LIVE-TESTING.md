@@ -1,5 +1,7 @@
 # Rich text live testing — errors and fixes (2026-08-06)
 
+> **Documentation status (2026-09-14): Historical record — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 Manual browser + API smoke test notes from validating TipTap, search indexing, and Yjs collab on the yogastore demo.
 
 ## How to run the smoke test

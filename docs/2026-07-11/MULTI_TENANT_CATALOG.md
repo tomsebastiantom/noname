@@ -1,5 +1,7 @@
 # Multi-Tenant Component Catalog — Scalable Architecture
 
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## The Problem
 
 Right now `packages/client` has a single hardcoded catalog — all tenants get the same 7 components. This doesn't scale. Real tenants need:

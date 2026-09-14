@@ -1,5 +1,7 @@
 # Email templates — json-render spec + React Email
 
+> **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-04 (updated 2026-08-05)  
 > **Status:** **I-c.2 shipped** — spec-only React Email; open: wire remaining machine transitions  
 > **Related:** [`PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md`](./PLATFORM-PALETTE-SECRETS-NOTIFICATIONS.md) · [`COMMUNICATIONS-PLATFORM-RFC.md`](./COMMUNICATIONS-PLATFORM-RFC.md)

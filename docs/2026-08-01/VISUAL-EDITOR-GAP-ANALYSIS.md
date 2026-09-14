@@ -1,5 +1,7 @@
 # Visual Editor — Gap Analysis
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-01 (updated)  
 > **Status:** Phases A + B + C + D ✅ · **Smoke:** partial pass 2026-08-01 ([`EDITOR-SMOKE-PRODUCT-DETAIL.md`](./EDITOR-SMOKE-PRODUCT-DETAIL.md))  
 > **Build:** [`VISUAL-EDITOR-BUILD-PLAN.md`](./VISUAL-EDITOR-BUILD-PLAN.md)  

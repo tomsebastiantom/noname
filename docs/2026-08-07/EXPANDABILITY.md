@@ -1,5 +1,7 @@
 # Expandability
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > How much friction there is to add a new domain, feature, panel, field type, or integration. See [`README.md`](./README.md) for scope/method.
 
 ---

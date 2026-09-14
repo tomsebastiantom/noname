@@ -1,5 +1,7 @@
 # Mobile App — Architecture & Build Plan
 
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 ## Status: Design (2026-07-11)
 
 ## Stack: React Native + Expo

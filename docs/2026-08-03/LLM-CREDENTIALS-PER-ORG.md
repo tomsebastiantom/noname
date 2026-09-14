@@ -1,5 +1,7 @@
 # LLM credentials per org — reuse audit (no code)
 
+> **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-03 (updated 2026-08-04)  
 > **Question:** Can we reuse existing credential storage (Nango, login/IdP, etc.) for per-org LLM API keys (BYOK + platform fallback)?  
 > **Answer:** Reuse the **auth credential pattern**, not Nango or CMS. Store keys in **HashiCorp Vault** via **`domains/secrets`** (not Postgres).

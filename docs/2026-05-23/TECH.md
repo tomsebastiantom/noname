@@ -1,4 +1,6 @@
 # Technical Architecture
+
+> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## How The Open Source AI Platform Actually Works
 
 ---

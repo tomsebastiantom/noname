@@ -1,4 +1,6 @@
 # Differentiation Deep-Dive — With Concrete Examples
+
+> **Design/reference (2026-09-14):** This document is design/reference material, not implementation proof. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 ## Per-Visitor Commerce: Exact Scenarios, Schemas, and Competitor Contrast
 ### As of 2026-08-22
 

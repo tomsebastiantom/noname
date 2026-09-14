@@ -1,5 +1,7 @@
 # R1.1 — Rich text OSS parity & gap analysis
 
+> **Documentation status (2026-09-14): Stale claims requiring reconciliation — not current status.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+
 > **Date:** 2026-08-06  
 > **Status:** R1 + R1.1 + **R1.2/R1.3 shipped** — TipTap, embed resolve, constraints toolbar, tables, video, paste hardening, email channel  
 > **Baseline doc:** [`RICH-TEXT-IMPLEMENTATION.md`](./RICH-TEXT-IMPLEMENTATION.md)
