@@ -7,6 +7,7 @@ import { integrationsActions } from "./integrations";
 import { layoutActions } from "./layout";
 import { navigationActions } from "./navigation";
 import { notificationActions } from "./notifications";
+import { ordersActions } from "./orders";
 import { replayActions } from "./replay";
 import { routingActions } from "./routing";
 import { scopeActions } from "./scope";
@@ -29,6 +30,7 @@ export const coreActionHandlers = {
   ...flagActions,
   ...integrationsActions,
   ...notificationActions,
+  ...ordersActions,
 } satisfies CatalogActionMap;
 
 export type CoreActionName = keyof typeof coreActionHandlers;

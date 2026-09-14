@@ -57,6 +57,14 @@ export const ADMIN_STATE = {
     loading: "/admin/analytics/loading",
     error: "/admin/analytics/error",
   },
+  orders: {
+    rows: "/admin/orders/rows",
+    loading: "/admin/orders/loading",
+    error: "/admin/orders/error",
+    selected: "/admin/orders/selected",
+    links: "/admin/orders/links",
+    linksLoading: "/admin/orders/linksLoading",
+  },
   traces: {
     traces: "/admin/traces/rows",
     loading: "/admin/traces/loading",

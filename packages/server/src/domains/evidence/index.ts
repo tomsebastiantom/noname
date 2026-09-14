@@ -15,6 +15,7 @@ export type {
   EvidenceRecordInput,
   EvidenceService,
 } from "./ports";
+export { createEvidenceRoutes } from "./routes";
 
 export function createEvidenceDomain(deps: { db: Database; service?: EvidenceService }) {
   const service = deps.service ?? createEvidencePostgresService(deps.db);

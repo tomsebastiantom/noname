@@ -425,6 +425,27 @@ export const adminComponentSchemas = {
     }),
     description: "List and toggle feature flags for this org",
   },
+  OrdersAdmin: {
+    props: z.object({
+      ...panelLabels,
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      refreshLabel: z.string(),
+      refreshingLabel: z.string(),
+      forbiddenLabel: z.string(),
+      orderColumnHeader: z.string(),
+      amountColumnHeader: z.string(),
+      currencyColumnHeader: z.string(),
+      paymentColumnHeader: z.string(),
+      dateColumnHeader: z.string(),
+      detailsTitle: z.string(),
+      detailsDescription: z.string().nullable(),
+      linksTitle: z.string(),
+      linksLoadingLabel: z.string(),
+      noLinksLabel: z.string(),
+    }),
+    description: "Browse commerce orders and their evidence links",
+  },
   AnalyticsEventsAdmin: {
     props: z.object({
       ...panelLabels,

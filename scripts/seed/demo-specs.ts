@@ -11,6 +11,7 @@ import {
   agentsAdminLabels,
   analyticsEventsAdminLabels,
   authSettingsLabels,
+  ordersAdminLabels,
   contentAdminLabels,
   featureFlagsAdminLabels,
   integrationsCommsDeliveriesLabels,
@@ -562,6 +563,22 @@ export const adminAnalyticsSpec = adminPanelSpec(["loadAnalytics", "analyticsAdm
       "Analytics",
       "Browse tracked storefront events and summary counts by event type.",
       analyticsEventsAdminLabels,
+    ),
+  },
+});
+
+export const adminOrdersSpec = adminPanelSpec(["loadOrders", "ordersAdmin"], {
+  loadOrders: {
+    type: "MountAction",
+    props: specProps({ action: "loadOrdersAdmin" }, {}),
+  },
+  ordersAdmin: {
+    type: "OrdersAdmin",
+    props: panelProps(
+      {},
+      "Orders",
+      "Browse paid commerce orders and inspect their immutable evidence links.",
+      ordersAdminLabels,
     ),
   },
 });

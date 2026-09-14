@@ -27,6 +27,8 @@ export const PERMISSIONS = {
   SCOPE_MANAGE: "scope:manage",
   /** Events, dashboards, funnels. */
   ANALYTICS_VIEW: "analytics:view",
+  /** Commerce order and payment evidence read access. */
+  COMMERCE_ORDERS_VIEW: "commerce:orders_view",
   /** Jaeger-lite distributed traces in admin. */
   TRACES_VIEW: "traces:view",
   /** Watch rrweb session replays (PII — separate from analytics). */

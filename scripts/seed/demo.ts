@@ -21,6 +21,7 @@ import {
   adminAgentsSpec,
   adminAnalyticsSpec,
   adminContentSpec,
+  adminOrdersSpec,
   adminDashboardSpec,
   adminFlagsSpec,
   adminHomeSpec,
@@ -295,6 +296,10 @@ async function main() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_analytics", adminAnalyticsSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_orders", adminOrdersSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });

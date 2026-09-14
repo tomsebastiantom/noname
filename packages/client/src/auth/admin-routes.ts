@@ -8,6 +8,7 @@ export type AdminRouteId =
   | "home"
   | "pages"
   | "content"
+  | "orders"
   | "layout"
   | "auth"
   | "integrations"
@@ -27,6 +28,7 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
   home: (s) => hasStaffAdminAccess(s),
   pages: (s) => sessionHasPermission(s, PERMISSIONS.PAGE_DRAFT_WRITE),
   content: (s) => sessionHasPermission(s, PERMISSIONS.CONTENT_DRAFT_WRITE),
+  orders: (s) => sessionHasPermission(s, PERMISSIONS.COMMERCE_ORDERS_VIEW),
   layout: (s) => sessionHasPermission(s, PERMISSIONS.LAYOUT_DRAFT_WRITE),
   auth: (s) => sessionHasPermission(s, PERMISSIONS.AUTH_MANAGE),
   integrations: (s) => sessionHasPermission(s, PERMISSIONS.INTEGRATIONS_MANAGE),

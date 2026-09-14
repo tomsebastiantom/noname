@@ -8,6 +8,7 @@ export const adminShellNavConfig = {
     { id: "pages", href: "/admin/pages" },
     { id: "content", href: "/admin/content" },
     { id: "layout", href: "/admin/layout" },
+    { id: "orders", href: "/admin/orders" },
   ],
   settingsItems: [
     { id: "auth", href: "/admin/settings/auth" },
@@ -36,6 +37,7 @@ export const adminShellNavLabels = {
     pages: "Pages",
     content: "Content",
     layout: "Layouts",
+    orders: "Orders",
   },
   settings: {
     auth: "Auth settings",
@@ -351,6 +353,24 @@ export const analyticsEventsAdminLabels = {
   sourceColumnHeader: "Source",
   sessionColumnHeader: "Session",
   schemaColumnHeader: "Schema",
+};
+
+export const ordersAdminLabels = {
+  loadingLabel: "Loading orders…",
+  emptyLabel: "No paid orders yet.",
+  refreshLabel: "Refresh",
+  refreshingLabel: "Refreshing…",
+  forbiddenLabel: "Orders require the commerce orders view permission.",
+  orderColumnHeader: "Order",
+  amountColumnHeader: "Amount",
+  currencyColumnHeader: "Currency",
+  paymentColumnHeader: "Payment",
+  dateColumnHeader: "Paid at",
+  detailsTitle: "Order evidence",
+  detailsDescription: "Immutable commerce evidence linked to this order.",
+  linksTitle: "Related evidence",
+  linksLoadingLabel: "Loading related evidence…",
+  noLinksLabel: "No related evidence links.",
 };
 
 export const loginBrandingLabels = {
