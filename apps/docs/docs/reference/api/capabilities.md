@@ -22,5 +22,5 @@ Capabilities are generic server execution boundaries. Commerce checkout is a ver
 ## Related
 
 - [System overview](../../concepts/system-overview)
-- [Verify a checkout](../../how-to/verify-a-checkout)
+- [Verify a checkout](../../operations/verify-a-checkout)
 - `packages/server/src/domains/capabilities`

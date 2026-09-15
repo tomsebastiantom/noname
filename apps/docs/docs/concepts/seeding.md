@@ -42,5 +42,5 @@ pnpm seed:demo:full
 
 Server behavior tests should not import seed-profile implementation data. Shared fixture data belongs in `packages/fixtures`; seed orchestration belongs in `packages/seeding`.
 
-- [Seed demo environment](../how-to/seed-a-commerce-demo)
+- [Seed demo environment](../operations/seed-a-commerce-demo)
 - [Seed profiles reference](../reference/seed-profiles)

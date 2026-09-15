@@ -49,5 +49,5 @@ Then open the seeded storefront and admin UI.
 ## Related
 
 - [Local development](../get-started/local-development)
-- [Seed Commerce demo](../how-to/seed-a-commerce-demo)
+- [Seed Commerce demo](./seed-a-commerce-demo)
 - [Troubleshooting](./troubleshooting)

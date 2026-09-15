@@ -1,5 +1,5 @@
 ---
-title: Seed a Commerce demo environment
+title: Seed a reproducible Commerce demo environment
 sidebar_position: 1
 status: current
 owner: seeding
@@ -7,9 +7,15 @@ last_verified: 2026-09-14
 audience: [developer, ci-operator]
 ---
 
-# Seed a Commerce demo environment
+# Seed a reproducible Commerce demo environment
 
-> **How-to guide** · 5 minutes
+> **Operations guide** · 5 minutes
+
+This guide is for local demonstrations, browser verification, CI setup, and reproducible development environments. It is not the product's primary onboarding story.
+
+## Value
+
+Seeding gives every contributor the same tenant, layout, catalog, machine, and demonstration Evidence so a runtime path can be reproduced instead of described only in screenshots or prose.
 
 ## Goal
 

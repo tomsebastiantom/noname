@@ -57,6 +57,6 @@ The platform profile created the tenant, layouts, pages, users, and authorizatio
 
 ## Next steps
 
-- [Seed a Commerce environment](../how-to/seed-a-commerce-demo)
+- [Seed a Commerce environment](../operations/seed-a-commerce-demo)
 - [Understand the system](../concepts/system-overview)
-- [Verify checkout](../how-to/verify-a-checkout)
+- [Verify checkout](../operations/verify-a-checkout)

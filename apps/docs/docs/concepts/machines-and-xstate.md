@@ -34,5 +34,5 @@ Actors are ephemeral per request. Durable state is the persisted machine state a
 ## Related
 
 - [System overview](./system-overview)
-- [Verify a checkout](../how-to/verify-a-checkout)
+- [Verify a checkout](../operations/verify-a-checkout)
 - [Machines API reference](../reference/api/machines)

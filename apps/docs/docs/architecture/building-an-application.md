@@ -78,4 +78,4 @@ Verify the shortest user journey first, then failure behavior:
 - [Machines and XState](../concepts/machines-and-xstate)
 - [Package boundaries](./package-boundaries)
 - [Extension lifecycle](./extension-lifecycle)
-- [Verify a checkout](../how-to/verify-a-checkout)
+- [Verify a checkout](../operations/verify-a-checkout)

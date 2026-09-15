@@ -16,9 +16,7 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "How-to guides",
       items: [
-        "how-to/seed-a-commerce-demo",
         "how-to/create-an-extension",
-        "how-to/verify-a-checkout",
         "how-to/trace-a-feature",
       ],
     },
@@ -63,7 +61,12 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Operations",
-      items: ["operations/local-stack", "operations/troubleshooting"],
+      items: [
+        "operations/local-stack",
+        "operations/troubleshooting",
+        "operations/seed-a-commerce-demo",
+        "operations/verify-a-checkout",
+      ],
     },
     {
       type: "category",
