@@ -1,8 +1,9 @@
 ---
-title: ADR-0007 — Seeding and fixture boundaries
-sidebar_position: 5
+title: ADR-0011 — Seeding and fixture boundaries
+sidebar_position: 11
 status: accepted
 owner: testing
+recorded: 2026-09-14
 last_verified: 2026-09-14
 source_documents:
   - docs/2026-09-14/SEEDING-ARCHITECTURE-IMPLEMENTATION.md
@@ -12,7 +13,7 @@ implementation_evidence:
   - packages/fixtures
 ---
 
-# ADR-0007: Seeding and fixture boundaries
+# ADR-0011: Seeding and fixture boundaries
 
 - **Status:** accepted
 - **Date:** 2026-09-14

@@ -1,8 +1,9 @@
 ---
-title: ADR-0006 — Commerce UI stays in the Commerce extension
-sidebar_position: 4
+title: ADR-0010 — Commerce UI stays in the Commerce extension
+sidebar_position: 10
 status: accepted
 owner: commerce
+recorded: 2026-09-14
 last_verified: 2026-09-14
 source_documents:
   - docs/2026-09-12/ORDERS-ADMIN-IMPLEMENTATION.md
@@ -10,7 +11,7 @@ implementation_evidence:
   - packages/extensions/src/commerce
 ---
 
-# ADR-0006: Commerce UI stays in the Commerce extension
+# ADR-0010: Commerce UI stays in the Commerce extension
 
 - **Status:** accepted
 - **Date:** 2026-09-14

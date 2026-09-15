@@ -1,8 +1,9 @@
 ---
-title: ADR-0005 — Evidence and provenance kernel
-sidebar_position: 3
+title: ADR-0009 — Evidence and provenance kernel
+sidebar_position: 9
 status: accepted
 owner: server/evidence
+recorded: 2026-09-14
 last_verified: 2026-09-14
 source_documents:
   - docs/2026-09-12/AUDITABLE-RECORDS-DESIGN-START.md
@@ -11,7 +12,7 @@ implementation_evidence:
   - packages/verticals/src/commerce/order-projection.ts
 ---
 
-# ADR-0005: Evidence and provenance kernel
+# ADR-0009: Evidence and provenance kernel
 
 - **Status:** accepted
 - **Date:** 2026-09-14

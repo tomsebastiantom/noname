@@ -1,14 +1,15 @@
 ---
-title: ADR-0001 — Domain versus extension ownership
-sidebar_position: 1
+title: ADR-0006 — Domain versus extension ownership
+sidebar_position: 6
 status: accepted
 owner: architecture
+recorded: 2026-09-14
 last_verified: 2026-09-14
 source_documents:
   - docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md
 ---
 
-# ADR-0001: Domain versus extension ownership
+# ADR-0006: Domain versus extension ownership
 
 - **Status:** accepted
 - **Date:** 2026-09-14

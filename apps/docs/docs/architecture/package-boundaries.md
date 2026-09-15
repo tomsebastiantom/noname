@@ -45,4 +45,4 @@ Do not add Commerce-specific behavior to a generic server domain merely because 
 - Extensions can register behavior through stable integration points.
 
 - [Create an extension](../how-to/create-an-extension)
-- [Commerce UI ownership ADR](../decisions/ADR-0006-commerce-ui-ownership)
+- [Commerce UI ownership ADR](../decisions/ADR-0010-commerce-ui-ownership)

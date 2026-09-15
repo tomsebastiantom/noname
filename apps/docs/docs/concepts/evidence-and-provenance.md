@@ -40,4 +40,4 @@ GET /api/evidence/audit
 ```
 
 - [Evidence API](../reference/api/evidence)
-- [Evidence ADR](../decisions/ADR-0005-evidence-provenance-kernel)
+- [Evidence ADR](../decisions/ADR-0009-evidence-provenance-kernel)

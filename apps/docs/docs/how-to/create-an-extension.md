@@ -49,4 +49,4 @@ pnpm test
 
 - [Package boundaries](../architecture/package-boundaries)
 - [Extension lifecycle](../architecture/extension-lifecycle)
-- [Commerce ownership ADR](../decisions/ADR-0006-commerce-ui-ownership)
+- [Commerce ownership ADR](../decisions/ADR-0010-commerce-ui-ownership)
