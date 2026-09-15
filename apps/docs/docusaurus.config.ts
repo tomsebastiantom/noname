@@ -42,7 +42,7 @@ const config: Config = {
       items: [
         { type: "docSidebar", sidebarId: "docs", label: "Docs", position: "left" },
         { type: "docSidebar", sidebarId: "reference", label: "Reference", position: "left" },
-        { href: "https://github.com/noname/noname", label: "GitHub", position: "right" },
+        { href: "https://github.com/tomsebastiantom/noname", label: "GitHub", position: "right" },
       ],
     },
     footer: {

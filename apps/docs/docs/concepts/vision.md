@@ -45,7 +45,7 @@ Then the platform provides the shared runtime while the team owns its domain and
 
 ## What this page is not
 
-This is a product vision, not a claim that every future capability is implemented today. For current code status, use the [authoritative roadmap](https://github.com/noname/noname/blob/main/docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+This is a product vision, not a claim that every future capability is implemented today. For current code status, use the [authoritative roadmap](https://github.com/tomsebastiantom/noname/blob/main/docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 ## Explore
 

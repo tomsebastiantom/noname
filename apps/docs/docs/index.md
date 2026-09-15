@@ -14,6 +14,7 @@ Noname is an AI-native, declarative full-stack platform. Describe what you want,
 
 - **[Read the vision](concepts/vision)** — understand who we are building for and why.
 - **[See how people and agents build together](concepts/human-agent-loop)** — learn the collaboration model.
+- **[Orient an agent or contributor](get-started/agent-project-orientation)** — map the repository before changing code.
 - **[Build your first store](get-started/build-your-first-store)** — complete the first working journey.
 - **[Understand the architecture](concepts/system-overview)** — learn the reusable platform boundaries.
 - **[Create an extension](how-to/create-an-extension)** — add domain-owned product behavior.
@@ -31,4 +32,4 @@ Historical implementation records and audit reports are kept under [History](his
 
 ## Current implementation authority
 
-For current status and roadmap decisions, use [`AUTHORITATIVE-ROADMAP-CURRENT.md`](https://github.com/noname/noname/blob/main/docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md). The source repository and tests remain the implementation truth.
+For current status and roadmap decisions, use [`AUTHORITATIVE-ROADMAP-CURRENT.md`](https://github.com/tomsebastiantom/noname/blob/main/docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md). The source repository and tests remain the implementation truth.

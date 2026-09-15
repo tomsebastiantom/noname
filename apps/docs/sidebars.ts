@@ -6,7 +6,11 @@ const sidebars: SidebarsConfig = {
     {
       type: "category",
       label: "Get started",
-      items: ["get-started/build-your-first-store", "get-started/local-development"],
+      items: [
+        "get-started/agent-project-orientation",
+        "get-started/build-your-first-store",
+        "get-started/local-development",
+      ],
     },
     {
       type: "category",
@@ -15,6 +19,7 @@ const sidebars: SidebarsConfig = {
         "how-to/seed-a-commerce-demo",
         "how-to/create-an-extension",
         "how-to/verify-a-checkout",
+        "how-to/trace-a-feature",
       ],
     },
     {
@@ -28,12 +33,21 @@ const sidebars: SidebarsConfig = {
         "concepts/machines-and-xstate",
         "concepts/evidence-and-provenance",
         "concepts/seeding",
+        "concepts/visual-builder",
+        "concepts/edge-and-personalization",
+        "concepts/workers-and-deployment",
       ],
     },
     {
       type: "category",
       label: "Architecture",
-      items: ["architecture/package-boundaries", "architecture/extension-lifecycle"],
+      items: [
+        "architecture/package-boundaries",
+        "architecture/extension-lifecycle",
+        "architecture/building-an-application",
+        "architecture/end-to-end-runtime",
+        "architecture/decision-and-evidence-guide",
+      ],
     },
     {
       type: "category",
