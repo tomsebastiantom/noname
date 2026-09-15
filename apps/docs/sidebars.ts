@@ -21,6 +21,8 @@ const sidebars: SidebarsConfig = {
       type: "category",
       label: "Concepts",
       items: [
+        "concepts/vision",
+        "concepts/human-agent-loop",
         "concepts/system-overview",
         "concepts/documents-and-layouts",
         "concepts/machines-and-xstate",

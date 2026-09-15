@@ -12,11 +12,11 @@ Noname is an AI-native, declarative full-stack platform. Describe what you want,
 
 ## Choose a path
 
+- **[Read the vision](concepts/vision)** — understand who we are building for and why.
+- **[See how people and agents build together](concepts/human-agent-loop)** — learn the collaboration model.
 - **[Build your first store](get-started/build-your-first-store)** — complete the first working journey.
-- **[Set up local development](get-started/local-development)** — start the local stack and understand the repository.
+- **[Understand the architecture](concepts/system-overview)** — learn the reusable platform boundaries.
 - **[Create an extension](how-to/create-an-extension)** — add domain-owned product behavior.
-- **[Understand the architecture](concepts/system-overview)** — learn the platform boundaries.
-- **[Read the API reference](reference)** — look up exact generic contracts.
 
 ## Documentation types
 
