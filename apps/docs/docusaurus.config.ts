@@ -11,6 +11,7 @@ const config: Config = {
   projectName: "noname",
   onBrokenLinks: "throw",
   markdown: {
+    mermaid: true,
     hooks: {
       onBrokenMarkdownLinks: "warn",
     },
@@ -36,6 +37,7 @@ const config: Config = {
       } satisfies Preset.Options,
     ],
   ],
+  themes: ["@docusaurus/theme-mermaid"],
   themeConfig: {
     navbar: {
       title: "Noname",
@@ -49,7 +51,7 @@ const config: Config = {
       style: "dark",
       links: [
         { title: "Learn", items: [{ label: "Get started", to: "/docs/get-started/build-your-first-store" }] },
-        { title: "Build", items: [{ label: "Architecture", to: "/docs/concepts/system-overview" }] },
+        { title: "Build", items: [{ label: "Architecture", to: "/docs/architecture/overview" }] },
         { title: "Reference", items: [{ label: "Evidence API", to: "/docs/reference/api/evidence" }] },
       ],
       copyright: `Copyright © ${new Date().getFullYear()} Noname contributors.`,
