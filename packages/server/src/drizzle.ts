@@ -2,13 +2,14 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as agentSchema from "./domains/agent/schema";
 import * as aiPipelineSchema from "./domains/ai-pipeline/schema";
+import * as audienceSchema from "./domains/audiences/schema";
 import * as capabilitiesSchema from "./domains/capabilities/schema";
 import * as collabSchema from "./domains/collab/schema";
-import * as contextSchema from "./domains/context/schema";
 import * as documentSchema from "./domains/documents/schema";
 import * as evidenceSchema from "./domains/evidence/schema";
 import * as flagsSchema from "./domains/flags/schema";
 import * as providerEventSchema from "./domains/integrations/provider-event-schema";
+import * as legacyContextSchema from "./domains/legacy-context/schema";
 import * as machineSchema from "./domains/machines/schema";
 import * as notificationsSchema from "./domains/notifications/schema";
 import * as webhooksSchema from "./domains/webhooks/schema";
@@ -24,10 +25,11 @@ export function createDatabase(connectionString: string) {
       ...capabilitiesSchema,
       ...collabSchema,
       ...machineSchema,
-      ...contextSchema,
+      ...legacyContextSchema,
       ...flagsSchema,
       ...agentSchema,
       ...aiPipelineSchema,
+      ...audienceSchema,
       ...notificationsSchema,
       ...providerEventSchema,
       ...webhooksSchema,

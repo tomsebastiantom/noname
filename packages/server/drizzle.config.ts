@@ -10,6 +10,7 @@ export default defineConfig({
     "./src/domains/flags/schema.ts",
     "./src/domains/agent/schema.ts",
     "./src/domains/ai-pipeline/schema.ts",
+    "./src/domains/audiences/schema.ts",
     "./src/domains/notifications/schema.ts",
     "./src/domains/capabilities/schema.ts",
     "./src/domains/integrations/provider-event-schema.ts",
