@@ -157,7 +157,7 @@ Most stores stitch together 7+ separate tools. Each has its own login, billing, 
 | Problem with separate tools | With our platform |
 |----------------------------|------------------|
 | Analytics says "mobile conversion is low" — need a different tool to run the test | ML detects it → shows visual insight → one click assigns AI agent → fix goes live. All in one place. |
-| "Which layout variant drove this conversion?" — impossible to join across tools | Every event has schemaId + variantId + contextHash. Exact attribution. |
+| "Which layout variant drove this conversion?" — impossible to join across tools | Trusted experience events join audience/rule/binding, page/locale, schema/variant, and decision dimensions without a client-selected cohort key. |
 | Data synced between CMS, store, and analytics — often broken or delayed | Single data model. Everything is connected because it's the same system. |
 | 7 logins, 7 bills, 7 support teams | 1 login, 1 bill, 1 platform. |
 | Each tool has its own definition of "conversion" | One definition. One source of truth. |

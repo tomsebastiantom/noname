@@ -1,5 +1,7 @@
 # Feature flags — current setup & per-user targeting
 
+> **Historical snapshot (2026-09-27):** This document predates the explicit evaluation-subject and audience targeting contract. Do not use its `contextHash` examples as current API guidance; see [`PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
+
 > **Date:** 2026-07-27  
 > **Status:** Segment/layout targeting works today; **per-user targeting is supported on the server but not wired in the client SDK yet.**  
 > **Related:** [`flags-domain.md`](../2026-07-04/flags-domain.md), [`BROWSER-SDK-INTEGRATION.md`](./BROWSER-SDK-INTEGRATION.md), [`ADMIN-PREVIEW-AND-FLAGS-SCOPE.md`](../2026-07-30/ADMIN-PREVIEW-AND-FLAGS-SCOPE.md)

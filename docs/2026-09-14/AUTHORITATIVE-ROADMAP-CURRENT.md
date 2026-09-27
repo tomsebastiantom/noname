@@ -15,6 +15,8 @@ Several earlier roadmap/status documents are now stale because implementation co
 
 This document is the current planning source. Earlier documents remain historical evidence and design rationale, not current status.
 
+**Implementation update (2026-09-27):** The user-approved Audience/Experience and context-contract replacement is implemented for local source scope. Current verification, the remaining fixture-based browser journey, and production follow-ups are tracked in [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
+
 ## Current implementation baseline
 
 ### Platform infrastructure
@@ -118,6 +120,8 @@ Verified:
 - Browser console clean in the tested flows
 
 Production deployment through Wrangler/Cloudflare remains an operational release task, not an unimplemented application feature.
+
+**Personalization scope clarification (2026-09-27):** The request-signal Context resolver and routes have been retired; the local implementation now uses trusted activities, verified-account audience membership, page/locale-bound experience decisions, explicit flag evaluation subjects, and named analytics dimensions. The document field named `segment` remains only as a layout-variant selector and is mapped to an experience `variantId`; it is not customer targeting. The demo tenant has no audience/membership fixture and no provider-backed checkout was run, so a populated shopper journey remains open. See [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
 
 ### Evidence and Orders — initial slice complete
 
@@ -277,7 +281,7 @@ Not current blockers:
 - Bundles and subscriptions
 - Marketplace/multi-vendor
 - B2B commerce
-- Advanced personalization and A/B testing
+- Authenticated customer audiences (trusted event/profile facts → server-owned assignment → browser experience resolution) and advanced personalization/A/B testing
 - Additional renderers
 - Open-source distribution and app marketplace
 

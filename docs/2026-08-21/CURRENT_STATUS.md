@@ -1,4 +1,5 @@
 # Current Implementation Status
+> **[OUTDATED — HISTORICAL SNAPSHOT 2026-08-21]** — Superseded by `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`. Read the authoritative roadmap for current status.
 ## Historical snapshot — 2026-08-21
 
 > **Historical record (2026-09-14):** This document is a historical record, not current status. See [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).

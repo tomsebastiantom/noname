@@ -1,6 +1,6 @@
 # Browser SDK — Unified Frontend Observability
 
-> **Stale-needs-correction (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
+> **Historical snapshot (2026-09-27):** This document predates the current explicit flag evaluation-subject and named analytics-dimension contracts; its `contextHash` samples are not active API guidance. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md) and [`PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
 
 > **Decision (2026-07-11):** Replace `@noname/analytics-sdk` with `@noname/browser-sdk`. One `init()` call wires analytics, session replay, error monitoring, W3C trace context propagation, and feature flags. Every module shares a single session ID, single trace context, single flush lifecycle.
 

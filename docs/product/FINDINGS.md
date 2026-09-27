@@ -30,8 +30,8 @@ json-render (UI) â†’ State Machine Engine (logic) â†’ Nango (integrati
         â”‚  SSR               â”‚                            â”‚
         â–¼                    â–¼                            â–¼
                         ANALYTICS ENGINE
-                Every transition, click, conversion logged
-                schemaId + variantId + contextHash
+                Trusted experience events carry named attribution
+                audience + binding + page/locale + schema/variant
 ```
 
 | Engine | What it does | Open source | Storage |

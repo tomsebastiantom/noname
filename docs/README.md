@@ -3,11 +3,16 @@
 ## Current Status (Start Here)
 - **[Noname documentation site](../apps/docs/)** — New Docusaurus + Diátaxis documentation app. Run `pnpm docs:dev` from the repository root.
 - **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
+- **[2026-09-26/PERSONALIZATION-ARCHITECTURE-AND-VISION.md](2026-09-26/PERSONALIZATION-ARCHITECTURE-AND-VISION.md)** — Audience and experience architecture, data ownership boundaries, audience vision, and implementation sequence.
+- **[2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md](2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md)** — Authoritative implementation and verification plan for reusable platform audiences and bound experiences, including the replacement of active `contextHash` contracts with typed flag subjects, trusted analytics dimensions, tenant-admin UI/API, activities, attribution, tests, and Browser MCP.
+- **[2026-09-26/CONTEXT-HASH-AND-AUDIENCE-MIGRATION-ANALYSIS.md](2026-09-26/CONTEXT-HASH-AND-AUDIENCE-MIGRATION-ANALYSIS.md)** — Historical code-audit baseline for replacing request-signal hashing and overloaded `contextHash`; implementation status, intentional legacy-data retention, and remaining deployment checks are recorded in the companion plan.
 - **[2026-09-14/DOCUMENTATION-AUDIT-INDEX.md](2026-09-14/DOCUMENTATION-AUDIT-INDEX.md)** — Repository-wide per-document audit index with evidence reports and status classifications.
 - **[2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md](2026-09-14/DOCUMENTATION-SYSTEM-OPTIONS-AND-PLAN.md)** — Documentation platform options, professional page taxonomy, templates, ADR rules, generated references, and migration plan.
 - **[2026-09-14/DIATAXIS-DOCS-EXAMPLES.md](2026-09-14/DIATAXIS-DOCS-EXAMPLES.md)** — Short Diátaxis setup and ready-to-copy tutorial, how-to, explanation, reference, and ADR examples.
 - **[2026-09-14/DOCUSAURUS-DIATAXIS-MIGRATION-PLAN.md](2026-09-14/DOCUSAURUS-DIATAXIS-MIGRATION-PLAN.md)** — Exact repository changes, old-document preservation policy, ADR migration rules, generated API plan, and first implementation sequence.
 - **[2026-08-21/CURRENT_STATUS.md](2026-08-21/CURRENT_STATUS.md)** — Historical implementation snapshot. It is retained for context but is not authoritative for current status.
+
+> Dated 2026-05 through 2026-08 design notes are historical snapshots, not active API contracts. For current audience, experience, flag, and analytics behavior, use the 2026-09-26 implementation plan and the current code.
 
 ## Incident & Fix Reports
 - **[2026-08-23/EDGE-STOREFRONT-FIXES.md](2026-08-23/EDGE-STOREFRONT-FIXES.md)** — Why all anonymous storefront edge calls 400'd (unsigned internal HMAC call), the half-finished flags SSE ticket migration, and the new public `GET /api/flags/public` metadata endpoint (Flagsmith/Unleash pattern).
