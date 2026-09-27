@@ -134,7 +134,8 @@ services:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:8080/ui/console || exit 1"]
+      # The distroless image has no shell/wget; use its native readiness command.
+      test: ["CMD", "/app/zitadel", "ready"]
       interval: 10s
       timeout: 5s
       retries: 30
@@ -231,7 +232,8 @@ services:
       postgres-init-dbs:
         condition: service_completed_successfully
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      # Nango image includes Node but not wget; probe its HTTP health endpoint with fetch.
+      test: ["CMD", "node", "-e", "fetch('http://localhost:3003/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 20
