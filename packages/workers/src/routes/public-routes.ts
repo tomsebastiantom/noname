@@ -6,6 +6,7 @@ export interface PublicRoute {
 }
 
 export const PUBLIC_ROUTES: PublicRoute[] = [
+  /** Anonymous storefront schema; proxy validates any supplied JWT optionally. */
   { method: "GET", pattern: /^\/api\/edge\/schema\/[^/]+$/ },
   { method: "GET", pattern: /^\/api\/tenants\/resolve\/[^/]+$/ },
   { method: "GET", pattern: /^\/api\/tenants\/[^/]+\/catalog$/ },
@@ -38,7 +39,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
   { method: "POST", pattern: /^\/api\/integrations\/nango\/webhook$/ },
   /** Nango-forwarded provider events (verified by Nango signature server-side). */
   { method: "POST", pattern: /^\/api\/integrations\/nango\/incoming$/ },
-  /** Capability requests use publishable-key validation at the origin. */
+  /** Capabilities validate publishable keys at origin; checkout also accepts optional JWT identity. */
   { method: "POST", pattern: /^\/api\/capabilities\/[^/]+$/ },
 ];
 

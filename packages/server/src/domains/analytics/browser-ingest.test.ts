@@ -10,7 +10,10 @@ import type { ReplayBlobStorage } from "./replay-storage";
 function testApp(service: AnalyticsService, replayStorage: ReplayBlobStorage | null = null) {
   const app = new Hono();
   app.use("*", orgMiddleware);
-  app.route("/api/analytics", createAnalyticsRoutes(service, replayStorage));
+  app.route(
+    "/api/analytics",
+    createAnalyticsRoutes(service, replayStorage, async () => []),
+  );
   return app;
 }
 
@@ -221,11 +224,55 @@ describe("analytics browser ingest routes", () => {
     );
   });
 
+  it("POST /track strips spoofed experience attribution from event and metadata", async () => {
+    const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
+    const app = testApp({ track } as unknown as AnalyticsService);
+
+    const res = await app.request("/api/analytics/track", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-org-id": "org-1" },
+      body: JSON.stringify({
+        eventType: "page_view",
+        sessionId: "s1",
+        audienceKey: "vip",
+        audienceDefinitionVersion: 7,
+        ruleVersion: 3,
+        bindingId: "binding-spoofed",
+        bindingVersion: 4,
+        decisionId: "decision-spoofed",
+        pageKey: "/admin",
+        locale: "fr-FR",
+        requestRegion: "forged",
+        meta: {
+          url: "/",
+          audience: { key: "vip", definitionVersion: 7 },
+          ruleVersion: 3,
+          bindingId: "binding-spoofed",
+          decisionId: "decision-spoofed",
+          pageKey: "/admin",
+          locale: "fr-FR",
+          contextHash: "legacy-spoof",
+          componentId: "product.hero",
+        },
+      }),
+    });
+
+    expect(res.status).toBe(201);
+    expect(track).toHaveBeenCalledWith("org-1", {
+      eventType: "page_view",
+      sessionId: "s1",
+      meta: { url: "/", componentId: "product.hero" },
+    });
+  });
+
   it("POST /track merges x-user-id into event meta", async () => {
     const track = vi.fn(async () => ({ eventId: "e1", accepted: true }));
     const app = new Hono();
     app.use("*", orgMiddleware);
-    app.route("/api/analytics", createAnalyticsRoutes({ track } as unknown as AnalyticsService));
+    app.route(
+      "/api/analytics",
+      createAnalyticsRoutes({ track } as unknown as AnalyticsService, null, async () => []),
+    );
 
     const res = await app.request("/api/analytics/track", {
       method: "POST",

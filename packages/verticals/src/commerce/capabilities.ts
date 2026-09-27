@@ -5,6 +5,7 @@ type MachineInstance = {
   id: string;
   machineName: string;
   currentState: string;
+  context?: Record<string, unknown>;
 };
 
 type CommerceMachines = {
@@ -216,17 +217,21 @@ export function createCommerceCapabilities(deps: {
       const instance = await deps.machines.getInstance(context.orgId, input.instanceId);
       if (instance?.machineName !== "cart") throw new Error("Cart not found");
       if (instance.currentState !== "active") throw new Error("Cart is not checkout-ready");
-      const cartContext =
-        (
-          instance as MachineInstance & {
-            context?: {
-              items?: Array<{ quantity?: number; price?: number }>;
-              total?: number;
-              currency?: string;
-            };
-          }
-        ).context ?? {};
-      const items = Array.isArray(cartContext.items) ? cartContext.items : [];
+      const cartContext = instance.context ?? {};
+      const ownerUserId =
+        typeof cartContext.ownerUserId === "string" ? cartContext.ownerUserId : undefined;
+      if (context.actorId) {
+        if (ownerUserId !== context.actorId)
+          throw new Error("Cart is not owned by authenticated user");
+      } else if (ownerUserId || cartContext.guest !== true) {
+        throw new Error("Guest checkout requires an unowned guest cart");
+      }
+      const cartData = cartContext as {
+        items?: Array<{ quantity?: number; price?: number }>;
+        total?: number;
+        currency?: string;
+      };
+      const items = Array.isArray(cartData.items) ? cartData.items : [];
       const products = deps.catalog ? await deps.catalog.findByType(context.orgId, "product") : [];
       const prices = new Map(
         products.map((product) => [
@@ -243,7 +248,7 @@ export function createCommerceCapabilities(deps: {
         0,
       );
       if (items.length > 0 && amount <= 0) throw new Error("Cart prices are unavailable");
-      const currency = cartContext.currency ?? "cad";
+      const currency = typeof cartData.currency === "string" ? cartData.currency : "cad";
       if (!Number.isInteger(amount) || amount <= 0) throw new Error("Cart total is unavailable");
 
       const provider = deps.checkoutProviders[input.integrationId.trim().toLowerCase()];

@@ -9,10 +9,11 @@ import { registerAnalyticsTracesRoutes } from "./routes/traces";
 
 export function createAnalyticsRoutes(
   service: AnalyticsService,
-  replayStorage: ReplayBlobStorage | null = null,
+  replayStorage: ReplayBlobStorage | null,
+  getAudiencePerformance: AnalyticsRouteDeps["getAudiencePerformance"],
 ) {
   const routes = new Hono();
-  const deps: AnalyticsRouteDeps = { service, replayStorage };
+  const deps: AnalyticsRouteDeps = { service, replayStorage, getAudiencePerformance };
 
   registerAnalyticsIngestRoutes(routes, deps);
   registerAnalyticsQueryRoutes(routes, deps);

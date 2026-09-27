@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { getOrgId } from "../../shared/org";
-import { notFound, ok } from "../../shared/respond";
+import { getOrgId, getUserId } from "../../shared/org";
+import { error, notFound, ok } from "../../shared/respond";
 import { resolveSiteIdToOrgId } from "../../shared/site-id";
 import type { TenantSettingsService } from "../documents/ports";
 import type { EdgeService } from "./ports";
@@ -14,21 +14,39 @@ export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSet
     if (!orgId) return notFound(c);
 
     const schema = await service.getSchema(orgId, {
-      segment: c.req.query("segment") || "default",
       template: c.req.query("template") || undefined,
       url: c.req.query("url") ?? undefined,
       contentRef: c.req.query("contentRef") ?? undefined,
       locale: c.req.query("locale") ?? undefined,
+      verifiedUserId: getUserId(c) || null,
+      sessionId: c.req.header("x-session-id") ?? null,
       edit: c.req.query("edit") === "true",
     });
     return ok(c, schema);
   });
 
-  routes.post("/personalize", async (c) => {
-    const orgId = getOrgId(c);
-    const body = await c.req.json();
-    const result = await service.personalize(orgId, body);
-    return ok(c, result);
+  routes.post("/experience/rendered", async (c) => {
+    const userId = getUserId(c);
+    if (!userId) return error(c, "Verified account required", 401);
+
+    let decisionId: unknown;
+    try {
+      const body = await c.req.json<{ decisionId?: unknown }>();
+      decisionId = body.decisionId;
+    } catch {
+      return error(c, "Invalid experience render confirmation", 400);
+    }
+    if (typeof decisionId !== "string") {
+      return error(c, "Invalid experience render confirmation", 400);
+    }
+
+    const accepted = await service.recordExperienceRendered(
+      getOrgId(c),
+      userId,
+      c.req.header("x-session-id") ?? "",
+      decisionId,
+    );
+    return accepted ? ok(c, { accepted: true }) : notFound(c);
   });
 
   return routes;

@@ -2,7 +2,12 @@ import { gzipSync } from "node:zlib";
 import type { Hono } from "hono";
 import { getUserId, requireHeaderOrgId } from "../../../shared/org";
 import { created } from "../../../shared/respond";
-import { enrichEventMeta, parseErrorIngest, parseTrackIngest } from "../browser-ingest";
+import {
+  enrichEventMeta,
+  parseErrorIngest,
+  parseTrackIngest,
+  sanitizeFrontendEvent,
+} from "../browser-ingest";
 import { recordBrowserSpans } from "../browser-span-export";
 import { parseSpanIngest } from "../browser-span-ingest";
 import { isGzipBuffer, parseReplayIngestBody } from "../replay-ingest";
@@ -20,10 +25,13 @@ export function registerAnalyticsIngestRoutes(routes: Hono, deps: AnalyticsRoute
       return c.json({ error: "no events" }, 400);
     }
     const headerUserId = getUserId(c);
-    const attributed = events.map((event) => ({
-      ...event,
-      meta: enrichEventMeta(headerUserId, event.meta),
-    }));
+    const attributed = events.map((event) => {
+      const sanitized = sanitizeFrontendEvent(event);
+      return {
+        ...sanitized,
+        meta: enrichEventMeta(headerUserId, sanitized.meta),
+      };
+    });
     const results =
       attributed.length === 1
         ? [await service.track(orgId, attributed[0]!)]

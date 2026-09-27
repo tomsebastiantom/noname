@@ -1,6 +1,17 @@
 export type AnalyticsEventSource = "server" | "frontend";
 
-export interface AnalyticsEventDTO {
+/** Server-owned attribution dimensions carried by experience decisions and trusted events. */
+export interface ExperienceAttributionDimensions {
+  audienceKey: string | null;
+  audienceDefinitionVersion: number | null;
+  bindingId: string | null;
+  bindingVersion: number | null;
+  decisionId: string | null;
+  pageKey: string | null;
+  locale: string | null;
+}
+
+export interface AnalyticsEventDTO extends ExperienceAttributionDimensions {
   eventId: string;
   orgId: string;
   eventType: string;
@@ -9,20 +20,19 @@ export interface AnalyticsEventDTO {
   sessionId: string;
   schemaId: string | null;
   variantId: string | null;
-  contextHash: string | null;
   meta: Record<string, unknown>;
 }
 
-export interface TrackEventInput {
+/** Dimensions can be typed at the service boundary, but frontend ingest never trusts them. */
+export interface TrackEventInput extends Partial<ExperienceAttributionDimensions> {
   eventType: string;
   sessionId: string;
   schemaId?: string | null;
   variantId?: string | null;
-  contextHash?: string | null;
   meta?: Record<string, unknown>;
 }
 
-export interface EventQueryFilters {
+export interface EventQueryFilters extends Partial<ExperienceAttributionDimensions> {
   orgId?: string;
   eventType?: string;
   eventSource?: AnalyticsEventSource;
@@ -33,7 +43,6 @@ export interface EventQueryFilters {
   sessionIds?: string[];
   schemaId?: string;
   variantId?: string;
-  contextHash?: string;
   limit?: number;
   offset?: number;
 }
@@ -49,9 +58,22 @@ export interface ReplaySessionIdentity {
   identifiedMidSession: boolean;
 }
 
+export type AnalyticsGroupBy =
+  | "eventType"
+  | "sessionId"
+  | "schemaId"
+  | "variantId"
+  | "audienceKey"
+  | "audienceDefinitionVersion"
+  | "bindingId"
+  | "bindingVersion"
+  | "decisionId"
+  | "pageKey"
+  | "locale";
+
 export interface AggregationFilters {
   orgId: string;
-  groupBy?: "eventType" | "sessionId" | "schemaId" | "contextHash";
+  groupBy?: AnalyticsGroupBy;
   from?: Date;
   to?: Date;
   limit?: number;
@@ -77,6 +99,33 @@ export interface ConversionResult {
   rate: number;
 }
 
+export type AudiencePerformanceSampleStatus =
+  | "insufficient_exposed_accounts"
+  | "outcomes_suppressed"
+  | "available";
+
+export interface AudiencePerformanceReportBinding {
+  audienceDefinitionVersion: number | null;
+  bindingId: string;
+  bindingVersion: number;
+  sampleStatus: AudiencePerformanceSampleStatus;
+  servedDecisionCount: number | null;
+  renderedDecisionCount: number | null;
+  exposedAccountCount: number | null;
+  outcomeAccountCount: number | null;
+  outcomeRate: number | null;
+}
+
+export interface AudiencePerformanceReport {
+  audienceKey: string;
+  from: string;
+  to: string;
+  rateLabel: "observational_not_causal";
+  rateDenominator: "exposedAccountCount";
+  minimumSampleSize: number;
+  bindings: AudiencePerformanceReportBinding[];
+}
+
 export interface AnalyticsStorage {
   ingest(event: AnalyticsEventDTO): Promise<void>;
   ingestBatch(events: AnalyticsEventDTO[]): Promise<void>;
@@ -100,9 +149,10 @@ export interface SegmentEventsInput {
   limit?: number;
 }
 
-export interface SegmentCluster {
+export interface SegmentCluster extends ExperienceAttributionDimensions {
   eventType: string;
-  contextHash: string | null;
+  schemaId: string | null;
+  variantId: string | null;
   count: number;
   avgMeta: Record<string, number>;
 }

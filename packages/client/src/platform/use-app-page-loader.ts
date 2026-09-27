@@ -19,6 +19,7 @@ import {
   setCachedAdminPanel,
 } from "./admin-panel-prefetch";
 import {
+  getBrowserSessionId,
   initBrowserObservability,
   subscribeFlagLayoutRefresh,
   syncBrowserObservabilityContext,
@@ -38,7 +39,18 @@ export interface EdgeSchemaResponse {
   shell?: Spec;
   shellRef?: string | null;
   flags?: Record<string, unknown>;
-  segment?: string;
+  requestContext?: { pageKey: string; locale: string | null };
+  experience?: {
+    audienceKey: string;
+    audienceDefinitionVersion: number;
+    bindingId: string;
+    bindingVersion: number;
+    decisionId: string;
+    pageKey: string;
+    locale: string | null;
+    schemaId: string;
+    variantId: string;
+  } | null;
 }
 
 const SCHEMA_FETCH_TIMEOUT_MS = 20_000;
@@ -203,14 +215,18 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
       return manifest;
     });
 
-    const editQuery = editMode && !platformRoute ? "&edit=true" : "";
-    const schemaQuery = platformRoute
-      ? `segment=default&template=${encodeURIComponent(template)}`
-      : `segment=default&url=${encodeURIComponent(pathname)}${editQuery}`;
+    const schemaParams = new URLSearchParams();
+    if (platformRoute) schemaParams.set("template", template);
+    else schemaParams.set("url", pathname);
+    if (editMode && !platformRoute) schemaParams.set("edit", "true");
+    const schemaQuery = schemaParams.toString();
+    const schemaHeaders = new Headers(headers);
+    const sessionId = getBrowserSessionId();
+    if (sessionId) schemaHeaders.set("x-session-id", sessionId);
 
     const specPromise = fetchWithTimeout(
       `/api/edge/schema/${storeSlug}?${schemaQuery}`,
-      { headers },
+      { headers: schemaHeaders },
       SCHEMA_FETCH_TIMEOUT_MS,
     ).then((res) => {
       if (res.status === 401) {
@@ -298,10 +314,38 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
         contentRef.current = tree;
       }
 
+      const experience = body?.data?.experience;
+      const requestContext = body?.data?.requestContext;
       void syncBrowserObservabilityContext(
-        { contextHash: body?.data?.segment ?? "default" },
+        {
+          schemaId: experience?.schemaId ?? null,
+          variantId: experience?.variantId ?? null,
+          audienceKey: experience?.audienceKey ?? null,
+          audienceDefinitionVersion: experience?.audienceDefinitionVersion ?? null,
+          bindingId: experience?.bindingId ?? null,
+          bindingVersion: experience?.bindingVersion ?? null,
+          decisionId: experience?.decisionId ?? null,
+          pageKey: requestContext?.pageKey ?? null,
+          locale: requestContext?.locale ?? null,
+        },
         body?.data?.flags,
       );
+
+      if (experience?.decisionId && sessionId && !editMode) {
+        const renderHeaders = new Headers(schemaHeaders);
+        renderHeaders.set("Content-Type", "application/json");
+        window.requestAnimationFrame(() => {
+          void fetchWithTimeout(
+            "/api/edge/experience/rendered",
+            {
+              method: "POST",
+              headers: renderHeaders,
+              body: JSON.stringify({ decisionId: experience.decisionId }),
+            },
+            5_000,
+          ).catch(() => undefined);
+        });
+      }
     } catch (err) {
       if (isStale()) return;
       setError(err instanceof Error ? err.message : String(err));

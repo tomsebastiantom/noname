@@ -7,7 +7,12 @@ import { createFlagsModule } from "./modules/flags";
 import { createPerformanceModule } from "./modules/performance";
 import { createReplayModule } from "./modules/replay";
 import { createTraceModule, getCurrentTraceContext } from "./modules/trace";
-import type { BrowserSDK, BrowserSDKOptions, ObservabilityUser } from "./types";
+import type {
+  AnalyticsAttributionContext,
+  BrowserSDK,
+  BrowserSDKOptions,
+  ObservabilityUser,
+} from "./types";
 
 const DEFAULT_ANALYTICS_ENDPOINT = "/api/analytics/track";
 const DEFAULT_ERRORS_ENDPOINT = "/api/analytics/error";
@@ -32,17 +37,23 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
 
   const session = getOrCreateSession();
 
-  let schemaId: string | null = null;
-  let variantId: string | null = null;
-  let contextHash: string | null = null;
+  let analyticsContext: AnalyticsAttributionContext = {
+    schemaId: null,
+    variantId: null,
+    audienceKey: null,
+    audienceDefinitionVersion: null,
+    bindingId: null,
+    bindingVersion: null,
+    decisionId: null,
+    pageKey: null,
+    locale: null,
+  };
   let currentUser: ObservabilityUser | null = null;
   let userIdentified = false;
 
   const getAnalyticsContext = () => ({
     sessionId: session.id,
-    schemaId,
-    variantId,
-    contextHash,
+    ...analyticsContext,
   });
 
   const getHeaders = options.getHeaders ?? (() => ({}));
@@ -88,10 +99,15 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
   const flags = createFlagsModule(
     options.flags?.endpoint ?? DEFAULT_FLAGS_ENDPOINT,
     () => ({
-      contextHash: contextHash ?? "default",
-      schemaId,
-      variantId,
-      contextProperties: {},
+      subject: { kind: "session" as const, key: session.id },
+      schemaId: analyticsContext.schemaId,
+      variantId: analyticsContext.variantId,
+      contextProperties: Object.fromEntries(
+        Object.entries({
+          pageKey: analyticsContext.pageKey,
+          locale: analyticsContext.locale,
+        }).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+      ),
     }),
     getHeaders,
   );
@@ -111,10 +127,18 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
       identify(id: string) {
         session.id = id;
       },
-      setContext(sId, vId, cHash) {
-        schemaId = sId;
-        variantId = vId;
-        contextHash = cHash;
+      setContext(context) {
+        analyticsContext = {
+          schemaId: context.schemaId,
+          variantId: context.variantId,
+          audienceKey: context.audienceKey,
+          audienceDefinitionVersion: context.audienceDefinitionVersion,
+          bindingId: context.bindingId,
+          bindingVersion: context.bindingVersion,
+          decisionId: context.decisionId,
+          pageKey: context.pageKey,
+          locale: context.locale,
+        };
       },
       flush: analytics.flush.bind(analytics),
     },
@@ -171,4 +195,9 @@ export async function init(options: BrowserSDKOptions): Promise<BrowserSDK> {
   return sdk;
 }
 
-export type { BrowserSDK, BrowserSDKOptions } from "./types";
+export type {
+  AnalyticsAttributionContext,
+  BrowserSDK,
+  BrowserSDKOptions,
+  FlagEvaluationClientContext,
+} from "./types";

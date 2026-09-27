@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { FlagEvents } from "./events";
 import type {
@@ -11,22 +12,37 @@ import type {
 } from "./ports";
 import { isActive } from "./shared/flag-status";
 
-const DEFAULT_CONTEXT_HASH = "default";
+const DEFAULT_GLOBAL_SUBJECT = { kind: "global", key: "global" } as const;
 
 function optionalUuid(value: string | null | undefined): string | null {
   if (!value?.trim()) return null;
   return value;
 }
 
-/** Public evaluate may omit context before SDK setContext — never persist null context_hash. */
+/** Omitted context is explicitly global; no caller-supplied context/hash is needed. */
 export function normalizeEvaluationContext(
   orgId: string,
   context?: Partial<FlagEvaluationContext> | null,
 ): FlagEvaluationContext {
-  const hash = context?.contextHash?.trim();
+  const rawSubject = context?.subject;
+  const subject =
+    rawSubject &&
+    (rawSubject.kind === "account" ||
+      rawSubject.kind === "session" ||
+      rawSubject.kind === "global") &&
+    typeof rawSubject.key === "string" &&
+    rawSubject.key.trim()
+      ? { kind: rawSubject.kind, key: rawSubject.key.trim() }
+      : DEFAULT_GLOBAL_SUBJECT;
+
   return {
     orgId,
-    contextHash: hash || DEFAULT_CONTEXT_HASH,
+    subject,
+    audienceKeys: Array.isArray(context?.audienceKeys)
+      ? context.audienceKeys.filter(
+          (key): key is string => typeof key === "string" && key.length > 0,
+        )
+      : [],
     contextProperties: context?.contextProperties ?? {},
     schemaId: optionalUuid(context?.schemaId ?? null),
     variantId: optionalUuid(context?.variantId ?? null),
@@ -57,7 +73,7 @@ export function evaluateFlag(flag: FlagDTO, ctx: FlagEvaluationContext): Evaluat
   const sorted = [...flag.targeting].sort((a, b) => a.priority - b.priority);
   for (let i = 0; i < sorted.length; i++) {
     const rule = sorted[i]!;
-    if (conditionMatches(rule.condition, ctx, flag, i)) {
+    if (conditionMatches(rule.condition, ctx, flag)) {
       return {
         flagKey: flag.key,
         flagId: flag.id,
@@ -85,7 +101,7 @@ function toEvaluationRecord(
   return {
     flagId: flag.id,
     orgId: flag.orgId,
-    contextHash: ctx.contextHash,
+    subjectKind: ctx.subject.kind,
     value: result.value,
     matchedRule: result.matchedRule,
     reason: result.reason,
@@ -104,7 +120,7 @@ function publishEvaluated(
     flagId: flag.id,
     flagKey: flag.key,
     orgId: flag.orgId,
-    contextHash: ctx.contextHash,
+    subjectKind: ctx.subject.kind,
     value: result.value,
     reason: result.reason,
     schemaId: ctx.schemaId,
@@ -147,18 +163,17 @@ function conditionMatches(
   condition: Condition,
   ctx: FlagEvaluationContext,
   flag: FlagDTO,
-  _index: number,
 ): boolean {
   switch (condition.type) {
-    case "segment":
-      return ctx.contextHash === condition.hash;
-    case "segment_group":
-      return condition.hashes.includes(ctx.contextHash);
+    case "audience":
+      return ctx.audienceKeys.includes(condition.key);
+    case "audience_group":
+      return condition.keys.some((key) => ctx.audienceKeys.includes(key));
     case "percentage":
       return deterministicPercentage(
         ctx.orgId,
         flag.key,
-        ctx.contextHash,
+        ctx.subject,
         condition.percent,
         condition.seed,
       );
@@ -166,26 +181,32 @@ function conditionMatches(
       return propertyMatches(condition, ctx.contextProperties);
     case "always":
       return true;
-    default:
+    case "expression":
       return false;
+    default:
+      throw new ValidationError(
+        "targeting",
+        "Legacy segment/segment_group targeting cannot be migrated automatically. Replace it with a named audience/audience_group or typed property_match rule before evaluating this flag; do not reuse opaque hashes as audience keys.",
+      );
   }
 }
 
 function deterministicPercentage(
   orgId: string,
   key: string,
-  contextHash: string,
+  subject: FlagEvaluationContext["subject"],
   percent: number,
   seed = "",
 ): boolean {
-  const hash = createHash("sha256").update(`${orgId}:${key}:${contextHash}:${seed}`).digest("hex");
+  const material = JSON.stringify([orgId, key, subject.kind, subject.key, seed]);
+  const hash = createHash("sha256").update(material).digest("hex");
   const bucket = Number.parseInt(hash.slice(0, 8), 16) / 0xffffffff;
   return bucket < percent / 100;
 }
 
 function propertyMatches(
   condition: Extract<Condition, { type: "property_match" }>,
-  props: Record<string, string | number | boolean>,
+  props: FlagEvaluationContext["contextProperties"],
 ): boolean {
   const actual = props[condition.property];
   if (actual === undefined) return false;

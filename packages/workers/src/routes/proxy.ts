@@ -35,6 +35,19 @@ function hasCollabTicket(url: URL): boolean {
   return isCollabWsWithTicket(url);
 }
 
+function isOptionalAuthRoute(method: string, pathname: string): boolean {
+  if (method === "GET" && /^\/api\/edge\/schema\/[^/]+$/.test(pathname)) return true;
+  return method === "POST" && pathname.toLowerCase() === "/api/capabilities/commerce.checkout";
+}
+
+function stripAccessToken(search: string): string {
+  if (!search) return search;
+  const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
+  params.delete("access_token");
+  const next = params.toString();
+  return next ? `?${next}` : "";
+}
+
 /**
  * General anonymous lane: any request bearing a publishable key skips the
  * edge JWT requirement — no per-domain path config, ever again. The server
@@ -60,7 +73,10 @@ export function createApiProxyRoutes() {
   routes.all("/*", async (c) => {
     const incoming = new URL(c.req.url);
     const pathname = incoming.pathname;
-    const search = stripOrgFromSearch(pathname, incoming.search);
+    const optionalAuth = isOptionalAuthRoute(c.req.method, pathname);
+    const search = optionalAuth
+      ? stripAccessToken(stripOrgFromSearch(pathname, incoming.search))
+      : stripOrgFromSearch(pathname, incoming.search);
     const isPublic = routeIsPublic(c.req.method, pathname);
     const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
     const streamTicketBypass = hasStreamTicket(incoming);
@@ -80,6 +96,12 @@ export function createApiProxyRoutes() {
       if (!jwt || !canDraft(jwt.roles ?? [])) {
         return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
       }
+    } else if (optionalAuth && accessTokenFromRequest(c.req.raw)) {
+      // Public schemas and publishable-key checkout remain anonymous, but a
+      // presented credential must validate before its identity is HMAC-signed.
+      const auth = await tryParseJwt(c.req.raw, c.env);
+      if (!auth) return c.json({ error: "Unauthorized — invalid optional credential" }, 401);
+      jwt = auth;
     } else if (
       !isPublic &&
       !streamTicketBypass &&
@@ -129,12 +151,16 @@ export function createApiProxyRoutes() {
     if (traceparent) headers.set("traceparent", traceparent);
     const tracestate = c.req.header("tracestate");
     if (tracestate) headers.set("tracestate", tracestate);
-    const authorization = c.req.header("Authorization");
-    if (authorization) {
-      headers.set("Authorization", authorization);
-    } else {
-      const token = accessTokenFromRequest(c.req.raw);
-      if (token) headers.set("Authorization", `Bearer ${token}`);
+    // On the optional public routes the verified HMAC is the identity contract;
+    // never pass the raw user credential to origin as identity.
+    if (!optionalAuth) {
+      const authorization = c.req.header("Authorization");
+      if (authorization) {
+        headers.set("Authorization", authorization);
+      } else {
+        const token = accessTokenFromRequest(c.req.raw);
+        if (token) headers.set("Authorization", `Bearer ${token}`);
+      }
     }
     const publishableKey = c.req.header("x-publishable-key");
     if (publishableKey) {

@@ -1,4 +1,4 @@
-import { type BrowserSDK, init } from "@noname/browser-sdk";
+import { type AnalyticsAttributionContext, type BrowserSDK, init } from "@noname/browser-sdk";
 import { resolveOrgIdFromHostname } from "../auth/org";
 import {
   apiHeaders,
@@ -25,11 +25,7 @@ function isLocalDevHost(): boolean {
   return host === "localhost" || host.endsWith(".localhost") || host === "127.0.0.1";
 }
 
-export interface ObservabilityContext {
-  schemaId?: string | null;
-  variantId?: string | null;
-  contextHash: string;
-}
+export type ObservabilityContext = AnalyticsAttributionContext;
 
 function emitFlagsChanged(): void {
   for (const listener of flagListeners) {
@@ -138,16 +134,28 @@ export function syncObservabilityUserFromSession(): void {
 /** Drop account attribution on logout. */
 export function clearObservabilityUser(): void {
   sdk?.clearUser();
+  sdk?.analytics.setContext({
+    schemaId: null,
+    variantId: null,
+    audienceKey: null,
+    audienceDefinitionVersion: null,
+    bindingId: null,
+    bindingVersion: null,
+    decisionId: null,
+    pageKey: null,
+    locale: null,
+  });
+  void sdk?.flags.evaluate();
 }
 
-/** Push edge attribution into analytics + re-evaluate flags for the visitor segment. */
+/** Apply server-resolved experience dimensions and re-evaluate flags for the current subject. */
 export async function syncBrowserObservabilityContext(
   context: ObservabilityContext,
   edgeFlags?: Record<string, unknown>,
 ): Promise<void> {
   if (!sdk) return;
 
-  sdk.analytics.setContext(context.schemaId ?? "", context.variantId ?? "", context.contextHash);
+  sdk.analytics.setContext(context);
 
   if (edgeFlags) {
     sdk.flags.seed(edgeFlags);
@@ -155,7 +163,15 @@ export async function syncBrowserObservabilityContext(
     emitFlagsChanged();
   }
 
-  await sdk.flags.evaluate();
+  await sdk.flags.evaluate({
+    schemaId: context.schemaId,
+    variantId: context.variantId,
+    contextProperties: Object.fromEntries(
+      Object.entries({ pageKey: context.pageKey, locale: context.locale }).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    ),
+  });
   syncFlagsFromSdk();
   sdk.analytics.pageView();
 }
@@ -182,4 +198,8 @@ export function subscribeFlagLayoutRefresh(listener: () => void): () => void {
 
 export function getBrowserSdk(): BrowserSDK | null {
   return sdk;
+}
+
+export function getBrowserSessionId(): string | null {
+  return sdk?.replay.getSessionId() ?? null;
 }

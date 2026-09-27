@@ -4,6 +4,34 @@ import type { AnalyticsJobData } from "./queue";
 
 const AUDIT_EVENTS = new Set(["machine.transition", "task.failed"]);
 
+function stringDimension(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function versionDimension(value: unknown): number | null {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
+}
+
+function serverSessionId(value: unknown): string {
+  const sessionId = stringDimension(value);
+  return sessionId &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId)
+    ? sessionId
+    : "";
+}
+
+function serverAttributionDimensions(data: Record<string, unknown>) {
+  return {
+    audienceKey: stringDimension(data.audienceKey),
+    audienceDefinitionVersion: versionDimension(data.audienceDefinitionVersion),
+    bindingId: stringDimension(data.bindingId),
+    bindingVersion: versionDimension(data.bindingVersion),
+    decisionId: stringDimension(data.decisionId),
+    pageKey: stringDimension(data.pageKey),
+    locale: stringDimension(data.locale),
+  };
+}
+
 export function createAnalyticsService(
   storage: AnalyticsStorage,
   queue: Queue<AnalyticsJobData>,
@@ -20,7 +48,13 @@ export function createAnalyticsService(
         sessionId: input.sessionId,
         schemaId: input.schemaId ?? null,
         variantId: input.variantId ?? null,
-        contextHash: input.contextHash ?? null,
+        audienceKey: null,
+        audienceDefinitionVersion: null,
+        bindingId: null,
+        bindingVersion: null,
+        decisionId: null,
+        pageKey: null,
+        locale: null,
         meta: input.meta ?? {},
       };
       await queue.add("ingest", event);
@@ -45,10 +79,10 @@ export function createAnalyticsService(
         eventType,
         eventSource: "server",
         timestamp: new Date(),
-        sessionId: "",
-        schemaId: (data as any).schemaId ?? null,
-        variantId: (data as any).variantId ?? null,
-        contextHash: (data as any).contextHash ?? (data as any).hash ?? null,
+        sessionId: serverSessionId(data.sessionId),
+        schemaId: stringDimension(data.schemaId),
+        variantId: stringDimension(data.variantId),
+        ...serverAttributionDimensions(data),
         meta: data,
       };
 

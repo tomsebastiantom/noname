@@ -41,7 +41,10 @@ export const flagEvaluations = pgTable(
     id: uuid("id").defaultRandom().primaryKey(),
     flagId: uuid("flag_id").notNull(),
     orgId: text("org_id").notNull(),
-    contextHash: text("context_hash").notNull(),
+    /** Archived legacy value: retained for existing rows, never read by active APIs or new writes. */
+    legacyContextHash: text("context_hash"),
+    /** Null for retained pre-migration history whose subject cannot be determined. */
+    subjectKind: text("subject_kind"),
     value: jsonb("value").notNull(),
     matchedRule: jsonb("matched_rule"),
     reason: text("reason").notNull(),
@@ -51,6 +54,6 @@ export const flagEvaluations = pgTable(
   },
   (t) => ({
     flagTime: index("flag_evals_flag_time").on(t.flagId, t.evaluated_at),
-    contextTime: index("flag_evals_context_time").on(t.orgId, t.contextHash, t.evaluated_at),
+    subjectTime: index("flag_evals_subject_time").on(t.orgId, t.subjectKind, t.evaluated_at),
   }),
 );

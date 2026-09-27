@@ -1,11 +1,28 @@
-export interface AnalyticsEvent {
-  eventType: string;
-  sessionId: string;
+export interface AnalyticsAttributionContext {
   schemaId: string | null;
   variantId: string | null;
-  contextHash: string | null;
+  audienceKey: string | null;
+  audienceDefinitionVersion: number | null;
+  bindingId: string | null;
+  bindingVersion: number | null;
+  decisionId: string | null;
+  pageKey: string | null;
+  locale: string | null;
+}
+
+export interface AnalyticsEvent extends AnalyticsAttributionContext {
+  eventType: string;
+  sessionId: string;
   meta: Record<string, unknown>;
   timestamp: number;
+}
+
+/** Client-supplied rollout context is never authoritative; the server re-derives identity/audiences. */
+export interface FlagEvaluationClientContext {
+  subject?: { kind: "session"; key: string };
+  schemaId?: string | null;
+  variantId?: string | null;
+  contextProperties?: Record<string, string | number | boolean>;
 }
 
 export interface ErrorReport {
@@ -61,7 +78,7 @@ export interface AnalyticsModule {
   track(eventType: string, meta?: Record<string, unknown>): void;
   pageView(): void;
   identify(sessionId: string): void;
-  setContext(schemaId: string, variantId: string, contextHash: string): void;
+  setContext(context: AnalyticsAttributionContext): void;
   flush(): Promise<void>;
 }
 
@@ -88,7 +105,7 @@ export interface FlagsModule {
   seed(values: Record<string, unknown>): void;
   onUpdate(key: string, callback: (value: unknown) => void): () => void;
   onAnyUpdate(callback: (key: string, value: unknown) => void): () => void;
-  evaluate(context?: Record<string, unknown>): Promise<void>;
+  evaluate(context?: FlagEvaluationClientContext): Promise<void>;
   isReady(): boolean;
 }
 

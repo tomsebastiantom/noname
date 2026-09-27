@@ -88,7 +88,7 @@ export function createInMemoryFlagStorage(): FlagStorage {
       return list.filter((e) => {
         if (filters.from && e.evaluatedAt < filters.from) return false;
         if (filters.to && e.evaluatedAt > filters.to) return false;
-        if (filters.contextHash && e.contextHash !== filters.contextHash) return false;
+        if (filters.subjectKind && e.subjectKind !== filters.subjectKind) return false;
         return true;
       });
     },

@@ -31,7 +31,7 @@ describe("commerce checkout flow contract", () => {
           id: instanceId,
           machineName: "cart",
           currentState: state,
-          context: { currency: "usd", items: [{ productId: "p1", quantity: 1 }] },
+          context: { guest: true, currency: "usd", items: [{ productId: "p1", quantity: 1 }] },
         }),
         transition,
       },

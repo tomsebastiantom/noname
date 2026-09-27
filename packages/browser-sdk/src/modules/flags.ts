@@ -1,4 +1,4 @@
-import type { FlagsModule } from "../types";
+import type { FlagEvaluationClientContext, FlagsModule } from "../types";
 
 type FlagValue = unknown;
 type FlagMap = Map<string, FlagValue>;
@@ -9,7 +9,7 @@ type AnyChangeCallback = Array<(key: string, value: FlagValue) => void>;
 export function createFlagsModule(
   endpoint: string,
   getContext: () => {
-    contextHash: string;
+    subject: { kind: "session"; key: string };
     schemaId: string | null;
     variantId: string | null;
     contextProperties: Record<string, string | number | boolean>;
@@ -21,16 +21,20 @@ export function createFlagsModule(
   const anyListeners: AnyChangeCallback = [];
   let es: EventSource | null = null;
   let ready = false;
+  let contextOverride: Partial<FlagEvaluationClientContext> = {};
 
-  async function evaluate(flagKeys?: string[]): Promise<void> {
-    const ctx = getContext();
+  async function evaluate(
+    flagKeys?: string[],
+    suppliedContext?: Partial<FlagEvaluationClientContext>,
+  ): Promise<void> {
+    const ctx = { ...getContext(), ...contextOverride, ...suppliedContext };
     try {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...getHeaders() },
         body: JSON.stringify({
           context: {
-            contextHash: ctx.contextHash,
+            subject: ctx.subject,
             schemaId: ctx.schemaId,
             variantId: ctx.variantId,
             contextProperties: ctx.contextProperties,
@@ -157,10 +161,8 @@ export function createFlagsModule(
     },
 
     async evaluate(context) {
-      if (context) {
-        // Update context then refetch
-      }
-      await evaluate();
+      if (context) contextOverride = { ...contextOverride, ...context };
+      await evaluate(undefined, context);
     },
 
     isReady() {

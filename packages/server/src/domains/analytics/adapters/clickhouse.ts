@@ -4,6 +4,7 @@ import { coerceScalarString } from "@noname/shared";
 import { ServiceUnavailableError } from "../../../shared/domain-error";
 import type {
   AnalyticsEventDTO,
+  AnalyticsGroupBy,
   AnalyticsStorage,
   ReplaySessionIdentity,
   ReplayUserFilter,
@@ -11,14 +12,28 @@ import type {
   SegmentEventsResult,
 } from "../ports";
 
-function aggregateGroupColumn(groupBy: string | undefined): string {
+function aggregateGroupColumn(groupBy: AnalyticsGroupBy | undefined): string {
   switch (groupBy) {
     case "sessionId":
       return "session_id";
     case "schemaId":
       return "schema_id";
-    case "contextHash":
-      return "context_hash";
+    case "variantId":
+      return "variant_id";
+    case "audienceKey":
+      return "audience_key";
+    case "audienceDefinitionVersion":
+      return "audience_definition_version";
+    case "bindingId":
+      return "binding_id";
+    case "bindingVersion":
+      return "binding_version";
+    case "decisionId":
+      return "decision_id";
+    case "pageKey":
+      return "page_key";
+    case "locale":
+      return "locale";
     default:
       return "event_type";
   }
@@ -65,6 +80,14 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   session_id   UUID,
   schema_id    Nullable(UUID),
   variant_id   Nullable(UUID),
+  audience_key Nullable(String),
+  audience_definition_version Nullable(UInt32),
+  binding_id Nullable(String),
+  binding_version Nullable(UInt32),
+  decision_id Nullable(String),
+  page_key Nullable(String),
+  locale Nullable(String),
+  -- Legacy history only: retained for existing 90-day rows; new writes never populate it.
   context_hash Nullable(String),
   meta         String
 )
@@ -74,9 +97,24 @@ ORDER BY (org_id, event_type, timestamp)
 TTL timestamp + INTERVAL 90 DAY
 `;
 
+// Safe in-place upgrade for pre-existing deployments: add nullable dimensions only.
+// In particular, never drop/rename context_hash while its historical rows are retained.
+const ADDITIVE_DIMENSION_DDL = [
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS audience_key Nullable(String)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS audience_definition_version Nullable(UInt32)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS binding_id Nullable(String)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS binding_version Nullable(UInt32)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS decision_id Nullable(String)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS page_key Nullable(String)",
+  "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS locale Nullable(String)",
+];
+
 export async function ensureClickHouseTable(): Promise<void> {
   if (!client) client = getClickHouseClient();
   await client.command({ query: DDL });
+  for (const query of ADDITIVE_DIMENSION_DDL) {
+    await client.command({ query });
+  }
 }
 
 function toClickHouseTimestamp(value: Date | string): string {
@@ -123,7 +161,13 @@ function toRow(e: AnalyticsEventDTO) {
     session_id: sessionIdForRow(e.sessionId),
     schema_id: uuidOrNull(e.schemaId),
     variant_id: uuidOrNull(e.variantId),
-    context_hash: e.contextHash?.trim() ? e.contextHash : null,
+    audience_key: e.audienceKey,
+    audience_definition_version: e.audienceDefinitionVersion,
+    binding_id: e.bindingId,
+    binding_version: e.bindingVersion,
+    decision_id: e.decisionId,
+    page_key: e.pageKey,
+    locale: e.locale,
     meta: JSON.stringify(e.meta),
   };
 }
@@ -138,7 +182,14 @@ function fromRow(row: Record<string, unknown>): AnalyticsEventDTO {
     sessionId: String(row.session_id),
     schemaId: row.schema_id ? String(row.schema_id) : null,
     variantId: row.variant_id ? String(row.variant_id) : null,
-    contextHash: row.context_hash ? String(row.context_hash) : null,
+    audienceKey: row.audience_key ? String(row.audience_key) : null,
+    audienceDefinitionVersion:
+      row.audience_definition_version == null ? null : Number(row.audience_definition_version),
+    bindingId: row.binding_id ? String(row.binding_id) : null,
+    bindingVersion: row.binding_version == null ? null : Number(row.binding_version),
+    decisionId: row.decision_id ? String(row.decision_id) : null,
+    pageKey: row.page_key ? String(row.page_key) : null,
+    locale: row.locale ? String(row.locale) : null,
     meta:
       typeof row.meta === "string"
         ? JSON.parse(String(row.meta))
@@ -180,7 +231,16 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
       }
       if (filters.schemaId) conditions.push(`schema_id = {schemaId:String}`);
       if (filters.variantId) conditions.push(`variant_id = {variantId:String}`);
-      if (filters.contextHash) conditions.push(`context_hash = {contextHash:String}`);
+      if (filters.audienceKey) conditions.push(`audience_key = {audienceKey:String}`);
+      if (filters.audienceDefinitionVersion != null) {
+        conditions.push(`audience_definition_version = {audienceDefinitionVersion:UInt32}`);
+      }
+      if (filters.bindingId) conditions.push(`binding_id = {bindingId:String}`);
+      if (filters.bindingVersion != null)
+        conditions.push(`binding_version = {bindingVersion:UInt32}`);
+      if (filters.decisionId) conditions.push(`decision_id = {decisionId:String}`);
+      if (filters.pageKey) conditions.push(`page_key = {pageKey:String}`);
+      if (filters.locale) conditions.push(`locale = {locale:String}`);
 
       const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
       const limit = filters.limit ?? 100;
@@ -199,7 +259,13 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
           sessionIds: filters.sessionIds,
           schemaId: filters.schemaId,
           variantId: filters.variantId,
-          contextHash: filters.contextHash,
+          audienceKey: filters.audienceKey,
+          audienceDefinitionVersion: filters.audienceDefinitionVersion,
+          bindingId: filters.bindingId,
+          bindingVersion: filters.bindingVersion,
+          decisionId: filters.decisionId,
+          pageKey: filters.pageKey,
+          locale: filters.locale,
         },
       });
       const rows = await rs.json<Record<string, unknown>>();
@@ -242,6 +308,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
     async conversionRates(filters) {
       const conditions = [`org_id = {orgId:String}`];
       if (filters.schemaId) conditions.push(`schema_id = {schemaId:String}`);
+      if (filters.variantId) conditions.push(`variant_id = {variantId:String}`);
       if (filters.from) conditions.push(`timestamp >= {from:DateTime64(3)}`);
       if (filters.to) conditions.push(`timestamp <= {to:DateTime64(3)}`);
 
@@ -265,6 +332,7 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         query_params: {
           orgId: filters.orgId,
           schemaId: filters.schemaId,
+          variantId: filters.variantId,
           from: filters.from?.toISOString().replace("T", " ").replace("Z", ""),
           to: filters.to?.toISOString().replace("T", " ").replace("Z", ""),
         },
@@ -311,11 +379,20 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
         query: `
           SELECT
             event_type as eventType,
-            context_hash as contextHash,
+            schema_id as schemaId,
+            variant_id as variantId,
+            audience_key as audienceKey,
+            audience_definition_version as audienceDefinitionVersion,
+            binding_id as bindingId,
+            binding_version as bindingVersion,
+            decision_id as decisionId,
+            page_key as pageKey,
+            locale,
             count(*) as count
           FROM analytics_events
           WHERE ${conditions.join(" AND ")}
-          GROUP BY event_type, context_hash
+          GROUP BY event_type, schema_id, variant_id, audience_key,
+            audience_definition_version, binding_id, binding_version, decision_id, page_key, locale
           ORDER BY count DESC
           LIMIT {limit:UInt32}
         `,
@@ -329,13 +406,30 @@ export function createClickHouseAnalyticsStorage(): AnalyticsStorage {
       });
       const clusterRows = await clusterRs.json<{
         eventType: string;
-        contextHash: string | null;
+        schemaId: string | null;
+        variantId: string | null;
+        audienceKey: string | null;
+        audienceDefinitionVersion: string | number | null;
+        bindingId: string | null;
+        bindingVersion: string | number | null;
+        decisionId: string | null;
+        pageKey: string | null;
+        locale: string | null;
         count: string;
       }>();
 
       const clusters = clusterRows.map((r) => ({
         eventType: r.eventType,
-        contextHash: r.contextHash ?? null,
+        schemaId: r.schemaId ?? null,
+        variantId: r.variantId ?? null,
+        audienceKey: r.audienceKey ?? null,
+        audienceDefinitionVersion:
+          r.audienceDefinitionVersion == null ? null : Number(r.audienceDefinitionVersion),
+        bindingId: r.bindingId ?? null,
+        bindingVersion: r.bindingVersion == null ? null : Number(r.bindingVersion),
+        decisionId: r.decisionId ?? null,
+        pageKey: r.pageKey ?? null,
+        locale: r.locale ?? null,
         count: Number(r.count),
         avgMeta: {} as Record<string, number>,
       }));

@@ -114,4 +114,77 @@ describe("capability idempotency", () => {
     expect(first.status).toBe(200);
     expect(second.status).toBe(409);
   });
+
+  it("does not replay a signed-in checkout result across accounts", async () => {
+    let calls = 0;
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("orgId", "org-1");
+      c.set("userId", c.req.header("x-test-verified-user") ?? "");
+      await next();
+    });
+    registerCapabilityRoutes(
+      app,
+      createCapabilityRegistry({
+        "commerce.checkout": async (_input, context) => ({
+          actorId: context.actorId,
+          call: ++calls,
+        }),
+      }),
+      { get: async () => ({ publishableKey: "public-key" }) } as never,
+      createFakeIdempotency(),
+    );
+    const request = (userId: string) =>
+      app.request("/commerce.checkout", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-test-verified-user": userId,
+          "Idempotency-Key": "same-checkout-key",
+        },
+        body: JSON.stringify({ input: { instanceId: "cart-1" } }),
+      });
+
+    const first = await request("account-1");
+    const second = await request("account-2");
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(409);
+    expect(await first.json()).toMatchObject({ data: { actorId: "account-1" } });
+    expect(calls).toBe(1);
+  });
+
+  it("uses only server-verified HMAC identity for capability actorId", async () => {
+    let actorId: string | undefined;
+    const app = new Hono();
+    app.use("*", async (c, next) => {
+      c.set("orgId", "org-1");
+      c.set("userId", c.req.header("x-test-verified-user") ?? "");
+      await next();
+    });
+    registerCapabilityRoutes(
+      app,
+      createCapabilityRegistry({
+        "commerce.checkout": async (_input, context) => {
+          actorId = context.actorId;
+          return { ok: true };
+        },
+      }),
+      { get: async () => ({ publishableKey: "public-key" }) } as never,
+    );
+
+    const response = await app.request("/commerce.checkout", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-org-id": "org-1",
+        "x-user-id": "spoofed-header-user",
+        "x-test-verified-user": "verified-account",
+        "Idempotency-Key": "identity-check",
+      },
+      body: JSON.stringify({ input: { value: 1 } }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(actorId).toBe("verified-account");
+  });
 });

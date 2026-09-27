@@ -12,10 +12,6 @@ function normalizeSlug(slug: string): string {
     .replace(/^\/+|\/+$/g, "");
 }
 
-function normalizePath(path: string): string {
-  return path.trim().toLowerCase().replace(/\/+$/g, "") || "/";
-}
-
 function withJitter(ttl: number): number {
   const jitter = Math.floor(Math.random() * Math.min(30, Math.max(5, ttl * 0.1)));
   return ttl + jitter;
@@ -58,8 +54,4 @@ export function isMiss<T>(value: T | null): boolean {
 
 export function slugCacheKey(slug: string): string {
   return `slug:${normalizeSlug(slug)}`;
-}
-
-export function cacheKey(orgId: string, segment: string, path: string): string {
-  return `${normalizeSlug(orgId)}:${normalizeSlug(segment)}:${normalizePath(path)}`;
 }

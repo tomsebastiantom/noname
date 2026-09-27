@@ -1,6 +1,7 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { StorageError } from "../../../shared/domain-error";
+import { validateTargeting } from "../flag-validation";
 import type { EvaluationRecord, FlagDTO, FlagStorage } from "../ports";
 import { flagEvaluations, flags } from "../schema";
 
@@ -90,7 +91,9 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
         records.map((record) => ({
           flagId: record.flagId,
           orgId: record.orgId,
-          contextHash: record.contextHash,
+          // Preserve old rows in the archived column; new records never store subject keys or hashes.
+          legacyContextHash: null,
+          subjectKind: record.subjectKind,
           value: record.value as Record<string, unknown>,
           matchedRule: record.matchedRule,
           reason: record.reason,
@@ -105,8 +108,8 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
       const conditions = [eq(flagEvaluations.flagId, flagId)];
       if (filters.from) conditions.push(gte(flagEvaluations.evaluated_at, filters.from));
       if (filters.to) conditions.push(lte(flagEvaluations.evaluated_at, filters.to));
-      if (filters.contextHash)
-        conditions.push(eq(flagEvaluations.contextHash, filters.contextHash));
+      if (filters.subjectKind)
+        conditions.push(eq(flagEvaluations.subjectKind, filters.subjectKind));
       const rows = await db
         .select()
         .from(flagEvaluations)
@@ -117,6 +120,7 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
 }
 
 function mapFlag(row: typeof flags.$inferSelect): FlagDTO {
+  validateTargeting(row.targeting);
   return {
     id: row.id,
     orgId: row.orgId,
@@ -138,7 +142,10 @@ function mapEvaluation(row: typeof flagEvaluations.$inferSelect): EvaluationReco
     id: row.id,
     flagId: row.flagId,
     orgId: row.orgId,
-    contextHash: row.contextHash,
+    subjectKind:
+      row.subjectKind === "account" || row.subjectKind === "session" || row.subjectKind === "global"
+        ? row.subjectKind
+        : null,
     value: row.value,
     matchedRule: row.matchedRule as number | null,
     reason: row.reason,

@@ -97,7 +97,7 @@ export function createFlagService(storage: FlagStorage): FlagService {
         contexts.map(async (rawCtx) => {
           const ctx = normalizeEvaluationContext(orgId, rawCtx);
           return {
-            contextHash: ctx.contextHash,
+            subjectKind: ctx.subject.kind,
             evaluations: await this.evaluate(orgId, ctx, flagKeys),
           };
         }),

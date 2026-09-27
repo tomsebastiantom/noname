@@ -1,7 +1,9 @@
 import {
+  createCommerceActivityProjector,
   createCommerceContribution,
   createCommerceOrderProjector,
   createCommerceProviderEventMappings,
+  registerCommerceActivityTypes,
 } from "@noname/verticals/commerce";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
@@ -11,6 +13,7 @@ import { createMastraExecutor } from "./domains/agent/mastra/executor";
 import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notify";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
+import { createAudienceDomain } from "./domains/audiences";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
 import {
   createCapabilityIdempotencyStore,
@@ -18,7 +21,6 @@ import {
   registerCapabilityRoutes,
 } from "./domains/capabilities";
 import { createCollabDomain } from "./domains/collab";
-import { createContextDomain } from "./domains/context";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createEdgeDomain } from "./domains/edge";
@@ -121,6 +123,19 @@ export async function createApp(): Promise<Hono> {
   });
   onAuthProviderPublished = auth.onAuthProviderPublished;
 
+  const audiences = createAudienceDomain({ db });
+  registerCommerceActivityTypes(audiences.service.activityTypes);
+  const commerceAudienceActivityProjector = createCommerceActivityProjector(audiences.service);
+  app.route("/api/audiences", audiences.routes);
+
+  const flags = createFlagDomain({ db });
+  app.route("/api/flags", flags.routes);
+
+  const analytics = await createAnalyticsDomain((filters) =>
+    audiences.service.getExperiencePerformance(filters),
+  );
+  app.route("/api/analytics", analytics.routes);
+
   const evidence = createEvidenceDomain({ db });
   const commerceOrderProjector = createCommerceOrderProjector(evidence.service);
   const machines = createMachineDomain({
@@ -129,6 +144,26 @@ export async function createApp(): Promise<Hono> {
     hooks: {
       async onTransitionComplete(transition) {
         await commerceOrderProjector(transition);
+        const paidActivity = await commerceAudienceActivityProjector(transition);
+        if (paidActivity) {
+          const attribution = await audiences.service.attributeTrustedGoal(paidActivity);
+          if (attribution) {
+            await analytics.service.ingestServerEvent("experience.outcome", {
+              orgId: paidActivity.orgId,
+              sessionId: attribution.sessionId,
+              audienceKey: attribution.audienceKey,
+              audienceDefinitionVersion: attribution.audienceDefinitionVersion,
+              bindingId: attribution.bindingId,
+              bindingVersion: attribution.bindingVersion,
+              decisionId: attribution.decisionId,
+              pageKey: attribution.pageKey,
+              locale: attribution.locale,
+              schemaId: attribution.schemaId,
+              variantId: attribution.variantId,
+              goalEvent: paidActivity.type,
+            });
+          }
+        }
         const notify = parseTransitionNotify(transition.params);
         if (!notify) return;
         await notifications.service.notify(transition.orgId, notify);
@@ -173,16 +208,7 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/collab", collab.routes);
 
-  const ctx = createContextDomain({ db });
-  app.route("/api/context", ctx.routes);
-
   app.route("/api/machines", machines.routes);
-
-  const flags = createFlagDomain({ db });
-  app.route("/api/flags", flags.routes);
-
-  const analytics = await createAnalyticsDomain();
-  app.route("/api/analytics", analytics.routes);
 
   const aiPipeline = createAIPipelineDomain({ db, secrets: secrets.service });
   app.route("/api/ai", aiPipeline.routes);
@@ -235,8 +261,9 @@ export async function createApp(): Promise<Hono> {
     content: docs.service.content,
     tenantSettings: docs.service.tenantSettings,
     pages: docs.service.pages,
-    context: ctx.service,
+    audiences: audiences.service,
     flags: flags.service,
+    analytics: analytics.service,
   });
   app.route("/api/edge", edge.routes);
 

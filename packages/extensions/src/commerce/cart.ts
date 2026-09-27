@@ -111,24 +111,6 @@ export async function getOrStartCart(): Promise<string> {
 }
 
 /**
- * ZITADEL `sub` from stored token. Local decode — mirrors client
- * auth/session (extensions package can't import client code).
- */
-function sessionSub(): string | null {
-  const token = sessionStorage.getItem(STORAGE_TOKEN);
-  const part = token?.split(".")[1];
-  if (!part) return null;
-  try {
-    let base64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    while (base64.length % 4 !== 0) base64 += "=";
-    const payload = JSON.parse(atob(base64)) as { sub?: unknown };
-    return typeof payload.sub === "string" && payload.sub.trim() ? payload.sub.trim() : null;
-  } catch {
-    return null;
-  }
-}
-
-/**
  * Claim the guest cart for the signed-in user: a single atomic `claim`
  * transition stamps `ownerUserId` — no copy, no double-count on retry.
  * The guest flag clears only after success, so a post-login navigation that
@@ -142,8 +124,6 @@ export async function mergeGuestCartOnLogin(): Promise<void> {
     sessionStorage.removeItem(CART_GUEST_KEY);
     return;
   }
-  const userId = sessionSub();
-  if (!userId) return;
   const currentRes = await fetch(`/api/machines/cart/${guestId}`, { headers: authHeaders() });
   const current = await parseJson<MachineInstance>(currentRes);
   if (current.currentState !== "active") {
@@ -153,7 +133,7 @@ export async function mergeGuestCartOnLogin(): Promise<void> {
   const res = await fetch(`/api/machines/cart/${guestId}/claim`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ ownerUserId: userId }),
+    body: JSON.stringify({}),
   });
   await parseJson<MachineInstance>(res);
   sessionStorage.removeItem(CART_GUEST_KEY);

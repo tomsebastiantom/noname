@@ -24,11 +24,18 @@ describe("strip-public-org", () => {
     const out = stripOrgFromPublicJsonBody(
       "/api/flags/evaluate",
       JSON.stringify({
-        context: { orgId: "spoof", contextHash: "abc", contextProperties: {} },
+        context: {
+          orgId: "spoof",
+          subject: { kind: "session", key: "00000000-0000-4000-8000-000000000001" },
+          contextProperties: {},
+        },
       }),
     );
     expect(JSON.parse(out)).toEqual({
-      context: { contextHash: "abc", contextProperties: {} },
+      context: {
+        subject: { kind: "session", key: "00000000-0000-4000-8000-000000000001" },
+        contextProperties: {},
+      },
     });
   });
 

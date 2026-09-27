@@ -1,4 +1,5 @@
-import type { ContextService } from "../context/ports";
+import type { AnalyticsService } from "../analytics/ports";
+import type { AudienceService } from "../audiences/ports";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -14,8 +15,9 @@ export interface EdgeDomainDeps {
   content: ContentDocumentService;
   tenantSettings: TenantSettingsService;
   pages: PageTreeService;
-  context: ContextService;
+  audiences: AudienceService;
   flags: FlagService;
+  analytics: AnalyticsService;
 }
 
 export function createEdgeDomain(deps: EdgeDomainDeps) {
@@ -23,8 +25,9 @@ export function createEdgeDomain(deps: EdgeDomainDeps) {
     deps.layout,
     deps.content,
     deps.tenantSettings,
-    deps.context,
+    deps.audiences,
     deps.flags,
+    deps.analytics,
     deps.pages,
   );
   const routes = createEdgeRoutes(service, deps.tenantSettings);

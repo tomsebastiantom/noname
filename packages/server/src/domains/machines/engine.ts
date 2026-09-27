@@ -152,6 +152,42 @@ export function createMachineEngine(
       }
     },
 
+    async replayPersistedTransition(
+      orgId,
+      instanceId,
+      event,
+      expectedParams,
+      expectedFinalState,
+      expectedFromState,
+    ) {
+      if (!hooks.onTransitionComplete) return false;
+      const instance = await ensureInstance(orgId, instanceId);
+      if (instance.currentState !== expectedFinalState) return false;
+
+      const records = await storage.listTransitions(instanceId);
+      const persisted = [...records]
+        .reverse()
+        .find(
+          (record) =>
+            record.success &&
+            record.event === event &&
+            record.toState === expectedFinalState &&
+            (!expectedFromState || record.fromState === expectedFromState) &&
+            matchesExpectedParams(record.params, expectedParams),
+        );
+      if (!persisted) return false;
+
+      await hooks.onTransitionComplete({
+        orgId,
+        instance,
+        event: persisted.event,
+        fromState: persisted.fromState,
+        toState: persisted.toState,
+        params: persisted.params,
+      });
+      return true;
+    },
+
     listInstances(orgId) {
       return storage.listInstances(orgId);
     },
@@ -255,4 +291,15 @@ function stateValue(value: unknown): string {
 
 function sameContext(a: Record<string, unknown>, b: Record<string, unknown>): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
+}
+
+function matchesExpectedParams(
+  persisted: Record<string, unknown>,
+  expected: Record<string, unknown>,
+): boolean {
+  const entries = Object.entries(expected).filter(([, value]) => value !== undefined);
+  return (
+    entries.length > 0 &&
+    entries.every(([key, value]) => JSON.stringify(persisted[key]) === JSON.stringify(value))
+  );
 }

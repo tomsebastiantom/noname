@@ -3,7 +3,6 @@ export interface EdgeContext {
   userId: string;
   role: string;
   roles?: string[];
-  segment?: string;
 }
 
 export interface Env {

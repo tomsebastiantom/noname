@@ -1,11 +1,70 @@
 import type { TrackEventInput } from "./ports";
 
+const RESERVED_ATTRIBUTION_KEYS = new Set([
+  "audiencekey",
+  "audiencedefinitionversion",
+  "definitionversion",
+  "rulekey",
+  "ruleid",
+  "ruleversion",
+  "bindingid",
+  "bindingversion",
+  "decisionid",
+  "pagekey",
+  "locale",
+  "contexthash",
+  "context_hash",
+]);
+
+function isReservedAttributionKey(key: string): boolean {
+  const normalized = key.replaceAll("_", "").toLowerCase();
+  return (
+    RESERVED_ATTRIBUTION_KEYS.has(normalized) ||
+    normalized.startsWith("audience") ||
+    normalized.startsWith("rule") ||
+    normalized.startsWith("binding") ||
+    normalized.startsWith("decision")
+  );
+}
+
+/** Remove server-owned attribution claims, including claims nested in client metadata. */
+export function stripClientAttribution<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripClientAttribution(item)) as T;
+  }
+  if (value && typeof value === "object") {
+    const sanitized: Record<string, unknown> = {};
+    for (const [key, item] of Object.entries(value)) {
+      if (!isReservedAttributionKey(key)) {
+        sanitized[key] = stripClientAttribution(item);
+      }
+    }
+    return sanitized as T;
+  }
+  return value;
+}
+
+/** Keep only documented frontend event fields; attribution dimensions are server-only. */
+export function sanitizeFrontendEvent(event: TrackEventInput): TrackEventInput {
+  const candidate =
+    event && typeof event === "object" ? (event as unknown as Record<string, unknown>) : {};
+  const sanitized: TrackEventInput = {
+    eventType: typeof candidate.eventType === "string" ? candidate.eventType : "",
+    sessionId: typeof candidate.sessionId === "string" ? candidate.sessionId : "",
+    meta:
+      candidate.meta && typeof candidate.meta === "object" && !Array.isArray(candidate.meta)
+        ? stripClientAttribution(candidate.meta as Record<string, unknown>)
+        : {},
+  };
+  return sanitized;
+}
+
 /** Prefer edge-signed x-user-id; fall back to SDK meta or error report user. */
 export function enrichEventMeta(
   headerUserId: string,
   meta: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
-  const base = meta ?? {};
+  const base = stripClientAttribution(meta ?? {});
   if (headerUserId) {
     return { ...base, userId: headerUserId };
   }

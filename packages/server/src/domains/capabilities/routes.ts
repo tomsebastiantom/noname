@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { PERMISSIONS } from "@noname/auth";
 import type { Hono } from "hono";
 import { z } from "zod";
-import { getOrgId } from "../../shared/org";
+import { getOrgId, getUserId } from "../../shared/org";
 import { parseBody } from "../../shared/parse-body";
 import { requirePublicActor } from "../../shared/public-actor";
 import { error, ok } from "../../shared/respond";
@@ -22,9 +22,12 @@ export function registerCapabilityRoutes(
   routes.post("/:capability", async (c) => {
     const capability = c.req.param("capability");
     const capabilityName = capability.trim().toLowerCase();
+    const actorId = getUserId(c)?.trim() || undefined;
     const publicCheckout =
       capabilityName === "commerce.checkout" && tenantSettings
-        ? await requirePublicActor(c, getOrgId(c), tenantSettings)
+        ? actorId
+          ? true
+          : await requirePublicActor(c, getOrgId(c), tenantSettings)
         : null;
     if (!publicCheckout) {
       const denied = await denyUnless(c, PERMISSIONS.STOREFRONT_VIEW);
@@ -46,7 +49,11 @@ export function registerCapabilityRoutes(
       "capability request",
     );
     const orgId = getOrgId(c);
-    const requestHash = hashCapabilityRequest(body);
+    // Keep anonymous publishable-key idempotency byte-for-byte compatible, but
+    // prevent one verified account from replaying another account's result.
+    const requestHash = hashCapabilityRequest(
+      capabilityName === "commerce.checkout" && actorId ? { body, actorId } : body,
+    );
     if (idempotency) {
       const claim = await idempotency.claim(orgId, capabilityName, idempotencyKey, requestHash);
       if (claim.kind === "replay") return ok(c, claim.result);
@@ -58,7 +65,7 @@ export function registerCapabilityRoutes(
     try {
       const result = await handler(body.input, {
         orgId,
-        actorId: c.req.header("x-user-id")?.trim() || undefined,
+        actorId,
         requestId: c.req.header("x-request-id")?.trim() || randomUUID(),
         idempotencyKey,
       });

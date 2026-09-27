@@ -8,7 +8,7 @@ import {
 const instanceId = "00000000-0000-4000-8000-000000000001";
 
 describe("commerce checkout capability", () => {
-  it("derives the provider amount from the server catalog and starts payment", async () => {
+  it("derives the provider amount from the server catalog and starts guest payment", async () => {
     const transition = vi.fn(async () => undefined);
     const proxyMock = vi.fn(async () => ({ id: "cs_1", url: "https://checkout.test/cs_1" }));
     const proxy = proxyMock as unknown as <T = unknown>(input: unknown) => Promise<T>;
@@ -18,7 +18,11 @@ describe("commerce checkout capability", () => {
           id: instanceId,
           machineName: "cart",
           currentState: "active",
-          context: { currency: "usd", items: [{ productId: "p1", quantity: 2, price: 1 }] },
+          context: {
+            guest: true,
+            currency: "usd",
+            items: [{ productId: "p1", quantity: 2, price: 1 }],
+          },
         }),
         transition,
       },
@@ -49,6 +53,52 @@ describe("commerce checkout capability", () => {
       checkoutAmount: 2500,
       checkoutCurrency: "usd",
     });
+  });
+
+  it("binds signed-in checkout to the stored cart owner", async () => {
+    const proxy = vi.fn(async () => ({ id: "cs_owned", url: "https://checkout.test/cs_owned" }));
+    const capabilities = createCommerceCapabilities({
+      machines: {
+        getInstance: async () => ({
+          id: instanceId,
+          machineName: "cart",
+          currentState: "active",
+          context: {
+            ownerUserId: "account-1",
+            guest: false,
+            items: [{ productId: "p1", quantity: 1 }],
+          },
+        }),
+        transition: vi.fn(async () => undefined),
+      },
+      integrations: {
+        proxyProvider: proxy as unknown as <T = unknown>(input: unknown) => Promise<T>,
+      },
+      catalog: { findByType: async () => [{ data: { id: "p1", price: 12.5 } }] },
+      checkoutProviders: { stripe: createStripeCheckoutAdapter() },
+    });
+    const checkout = capabilities["commerce.checkout"];
+    const input = { instanceId, integrationId: "stripe" };
+
+    await expect(
+      checkout(input, {
+        orgId: "org-1",
+        actorId: "account-2",
+        requestId: "request-1",
+        idempotencyKey: "attempt-1",
+      }),
+    ).rejects.toThrow("Cart is not owned by authenticated user");
+    expect(proxy).not.toHaveBeenCalled();
+
+    await expect(
+      checkout(input, {
+        orgId: "org-1",
+        actorId: "account-1",
+        requestId: "request-2",
+        idempotencyKey: "attempt-2",
+      }),
+    ).resolves.toMatchObject({ externalCheckoutId: "cs_owned" });
+    expect(proxy).toHaveBeenCalledTimes(1);
   });
 });
 

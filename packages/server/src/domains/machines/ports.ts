@@ -108,4 +108,13 @@ export interface MachineEngine {
   ): Promise<MachineInstanceDTO>;
   listInstances(orgId: string): Promise<MachineInstanceDTO[]>;
   getInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
+  /** Replay the awaited post-persistence hook only for a matching successful stored transition. */
+  replayPersistedTransition?(
+    orgId: string,
+    instanceId: string,
+    event: string,
+    expectedParams: Record<string, unknown>,
+    expectedFinalState: string,
+    expectedFromState?: string,
+  ): Promise<boolean>;
 }

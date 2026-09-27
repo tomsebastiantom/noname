@@ -118,4 +118,60 @@ describe("machine engine XState execution", () => {
     const unchanged = await engine.getInstance("org-1", started.id);
     expect(unchanged?.currentState).toBe("active");
   });
+
+  it("replays only a matching successful final transition after a hook failure", async () => {
+    const paidCart: MachineDefinition = {
+      name: "cart",
+      initial: "awaiting_payment",
+      states: {
+        awaiting_payment: { on: { PAYMENT_SUCCEEDED: { target: "paid" } } },
+        paid: { final: true },
+      },
+    };
+    let hookCalls = 0;
+    const engine = createMachineEngine(createStorage(paidCart), {
+      async onTransitionComplete() {
+        hookCalls += 1;
+        if (hookCalls === 1) throw new Error("projection unavailable");
+      },
+    });
+    const started = await engine.start("org-1", "cart", { ownerUserId: "user-1" });
+
+    await expect(
+      engine.transition("org-1", started.id, "PAYMENT_SUCCEEDED", { paymentRef: "pi_1" }),
+    ).rejects.toThrow("projection unavailable");
+    expect((await engine.getInstance("org-1", started.id))?.currentState).toBe("paid");
+
+    await expect(
+      engine.replayPersistedTransition(
+        "org-1",
+        started.id,
+        "PAYMENT_SUCCEEDED",
+        { paymentRef: "other-payment" },
+        "paid",
+        "awaiting_payment",
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      engine.replayPersistedTransition(
+        "org-1",
+        started.id,
+        "PAYMENT_SUCCEEDED",
+        { paymentRef: "pi_1" },
+        "awaiting_payment",
+        "awaiting_payment",
+      ),
+    ).resolves.toBe(false);
+    await expect(
+      engine.replayPersistedTransition(
+        "org-1",
+        started.id,
+        "PAYMENT_SUCCEEDED",
+        { paymentRef: "pi_1" },
+        "paid",
+        "awaiting_payment",
+      ),
+    ).resolves.toBe(true);
+    expect(hookCalls).toBe(2);
+  });
 });

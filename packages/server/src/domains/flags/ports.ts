@@ -1,6 +1,14 @@
 export type FlagType = "boolean" | "multivariate" | "percentage";
 export type FlagStatus = "active" | "inactive" | "archived";
 
+export type EvaluationSubject = {
+  kind: "account" | "session" | "global";
+  key: string;
+};
+
+export type ContextPropertyValue = string | number | boolean;
+export type ContextProperties = Record<string, ContextPropertyValue>;
+
 export interface TargetingRule {
   priority: number;
   condition: Condition;
@@ -8,17 +16,23 @@ export interface TargetingRule {
 }
 
 export type Condition =
-  | { type: "segment"; hash: string }
-  | { type: "segment_group"; hashes: string[] }
+  | { type: "audience"; key: string }
+  | { type: "audience_group"; keys: string[] }
   | { type: "percentage"; percent: number; seed?: string }
-  | { type: "property_match"; property: string; operator: string; value: unknown }
+  | {
+      type: "property_match";
+      property: string;
+      operator: "eq" | "neq" | "in" | "gt" | "lt";
+      value: ContextPropertyValue | ContextPropertyValue[];
+    }
   | { type: "always" }
   | { type: "expression"; expr: string };
 
 export interface FlagEvaluationContext {
   orgId: string;
-  contextHash: string;
-  contextProperties: Record<string, string | number | boolean>;
+  subject: EvaluationSubject;
+  audienceKeys: string[];
+  contextProperties: ContextProperties;
   schemaId: string | null;
   variantId: string | null;
 }
@@ -50,7 +64,8 @@ export interface EvaluationRecord {
   id: string;
   flagId: string;
   orgId: string;
-  contextHash: string;
+  /** Null only for pre-subject legacy history whose subject could not be recovered. */
+  subjectKind: EvaluationSubject["kind"] | null;
   value: unknown;
   matchedRule: number | null;
   reason: string;
@@ -100,7 +115,7 @@ export interface FlagFilters {
 export interface EvaluationFilters {
   from?: Date;
   to?: Date;
-  contextHash?: string;
+  subjectKind?: EvaluationSubject["kind"];
 }
 
 export interface FlagService {
@@ -116,9 +131,9 @@ export interface FlagService {
   ): Promise<EvaluationResult[]>;
   evaluateBatch(
     orgId: string,
-    contexts: FlagEvaluationContext[],
+    contexts: Partial<FlagEvaluationContext>[],
     flagKeys?: string[],
-  ): Promise<{ contextHash: string; evaluations: EvaluationResult[] }[]>;
+  ): Promise<{ subjectKind: EvaluationSubject["kind"]; evaluations: EvaluationResult[] }[]>;
   listEvaluations(
     orgId: string,
     flagId: string,

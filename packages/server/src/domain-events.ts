@@ -1,5 +1,4 @@
 import { AgentEvents } from "./domains/agent/events";
-import { ContextEvents } from "./domains/context/events";
 import {
   AssetEvents,
   ContentEvents,
@@ -19,7 +18,6 @@ type ValueOf<T> = T[keyof T];
 /** Event constant objects wired into analytics auto-subscribe. Add a module here only when every event in it publishes. */
 export const DOMAIN_EVENT_SOURCES = [
   AgentEvents,
-  ContextEvents,
   ContentEvents,
   ContentTypeEvents,
   LayoutEvents,
@@ -36,7 +34,6 @@ export const DOMAIN_EVENT_SOURCES = [
 /** Event names with active publishers — analytics and other subscribers use this list. */
 export type DomainEventName =
   | ValueOf<typeof AgentEvents>
-  | ValueOf<typeof ContextEvents>
   | ValueOf<typeof ContentEvents>
   | ValueOf<typeof ContentTypeEvents>
   | ValueOf<typeof LayoutEvents>

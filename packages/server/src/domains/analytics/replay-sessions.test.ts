@@ -39,7 +39,13 @@ describe("groupReplayChunkEvents", () => {
     sessionId,
     schemaId: null,
     variantId: null,
-    contextHash: null,
+    audienceKey: null,
+    audienceDefinitionVersion: null,
+    bindingId: null,
+    bindingVersion: null,
+    decisionId: null,
+    pageKey: null,
+    locale: null,
     meta: { storageKey: key },
   });
 

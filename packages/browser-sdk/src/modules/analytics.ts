@@ -15,7 +15,13 @@ interface AnalyticsContext {
   sessionId: string;
   schemaId: string | null;
   variantId: string | null;
-  contextHash: string | null;
+  audienceKey: string | null;
+  audienceDefinitionVersion: number | null;
+  bindingId: string | null;
+  bindingVersion: number | null;
+  decisionId: string | null;
+  pageKey: string | null;
+  locale: string | null;
 }
 
 export function createAnalyticsModule(
@@ -27,13 +33,11 @@ export function createAnalyticsModule(
   batchSize = 50,
   flushIntervalMs = 5000,
 ): AnalyticsModule {
+  // Browser events report telemetry only. Experience attribution is supplied by trusted server events.
   const toPayload = (batch: AnalyticsEvent[]) =>
     batch.map((e) => ({
       eventType: e.eventType,
       sessionId: e.sessionId,
-      schemaId: e.schemaId,
-      variantId: e.variantId,
-      contextHash: e.contextHash,
       meta: e.meta,
     }));
 
@@ -61,7 +65,13 @@ export function createAnalyticsModule(
         sessionId: ctx.sessionId,
         schemaId: ctx.schemaId,
         variantId: ctx.variantId,
-        contextHash: ctx.contextHash,
+        audienceKey: ctx.audienceKey,
+        audienceDefinitionVersion: ctx.audienceDefinitionVersion,
+        bindingId: ctx.bindingId,
+        bindingVersion: ctx.bindingVersion,
+        decisionId: ctx.decisionId,
+        pageKey: ctx.pageKey,
+        locale: ctx.locale,
         meta: {
           ...meta,
           ...userMeta(getUser()),
@@ -81,7 +91,7 @@ export function createAnalyticsModule(
       // Override handled externally via getContext
     },
 
-    setContext(_sId, _vId, _cHash) {
+    setContext(_context) {
       // Override handled externally via getContext
     },
 

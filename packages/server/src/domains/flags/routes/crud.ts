@@ -85,11 +85,11 @@ export function registerFlagCrudRoutes(routes: Hono, deps: FlagRouteDeps): void 
     const orgId = getOrgId(c);
     const from = c.req.query("from");
     const to = c.req.query("to");
-    const contextHash = c.req.query("contextHash");
+    const subjectKind = c.req.query("subjectKind");
     const evaluationRecords = await service.listEvaluations(orgId, c.req.param("id"), {
       from: from ? new Date(from) : undefined,
       to: to ? new Date(to) : undefined,
-      contextHash: contextHash || undefined,
+      subjectKind: subjectKind as "account" | "session" | "global" | undefined,
     });
     return ok(c, evaluationRecords);
   });
