@@ -143,6 +143,12 @@ export const ROUTE_TABLE: readonly PlatformRouteEntry[] = [
     adminRouteId: "flags",
   },
   {
+    path: "/admin/settings/audiences",
+    template: "admin_audiences",
+    requiresAuth: true,
+    adminRouteId: "audiences",
+  },
+  {
     path: "/admin/settings/replay",
     template: "admin_replay",
     requiresAuth: true,

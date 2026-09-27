@@ -10,6 +10,7 @@ import {
   adminShellNavLabels,
   agentsAdminLabels,
   analyticsEventsAdminLabels,
+  audiencesAdminLabels,
   authSettingsLabels,
   contentAdminLabels,
   featureFlagsAdminLabels,
@@ -519,6 +520,22 @@ export const adminFlagsSpec = adminPanelSpec(["loadFlags", "flagsAdmin"], {
       "Feature flags",
       "Boolean flags update the site instantly. Layout-bound flags re-fetch the page.",
       featureFlagsAdminLabels,
+    ),
+  },
+});
+
+export const adminAudiencesSpec = adminPanelSpec(["loadAudiences", "audiencesAdmin"], {
+  loadAudiences: {
+    type: "MountAction",
+    props: specProps({ action: "loadAudiencesAdmin" }, {}),
+  },
+  audiencesAdmin: {
+    type: "AudiencesAdmin",
+    props: panelProps(
+      {},
+      audiencesAdminLabels.title,
+      audiencesAdminLabels.description,
+      audiencesAdminLabels,
     ),
   },
 });

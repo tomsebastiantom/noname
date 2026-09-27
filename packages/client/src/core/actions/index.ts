@@ -1,5 +1,6 @@
 import { agentActions } from "./agents";
 import { analyticsActions } from "./analytics";
+import { audienceActions } from "./audiences";
 import { authActions } from "./auth";
 import { contentActions } from "./content";
 import { flagActions } from "./flags";
@@ -17,6 +18,7 @@ import type { CatalogActionMap } from "./types";
 export const coreActionHandlers = {
   ...navigationActions,
   ...authActions,
+  ...audienceActions,
   ...contentActions,
   ...layoutActions,
   ...teamActions,

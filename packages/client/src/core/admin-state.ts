@@ -31,6 +31,16 @@ export const ADMIN_STATE = {
     loading: "/admin/flags/loading",
     error: "/admin/flags/error",
   },
+  audiences: {
+    definitions: "/admin/audiences/definitions",
+    activityTypes: "/admin/audiences/activityTypes",
+    bindings: "/admin/audiences/bindings",
+    layouts: "/admin/audiences/layouts",
+    performance: "/admin/audiences/performance",
+    validation: "/admin/audiences/validation",
+    loading: "/admin/audiences/loading",
+    error: "/admin/audiences/error",
+  },
   content: {
     loaded: "/admin/content/loaded",
     loading: "/admin/content/loading",

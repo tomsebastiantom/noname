@@ -28,6 +28,7 @@ import {
   adminAccountSecuritySpec,
   adminAgentsSpec,
   adminAnalyticsSpec,
+  adminAudiencesSpec,
   adminContentSpec,
   adminDashboardSpec,
   adminFlagsSpec,
@@ -296,6 +297,10 @@ async function runPlatformSeed() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_flags", adminFlagsSpec, { renderAs: "panel", shellRef: "admin_shell" });
+  await upsertLayout("admin_audiences", adminAudiencesSpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
   await upsertLayout("admin_traces", adminTracesSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",

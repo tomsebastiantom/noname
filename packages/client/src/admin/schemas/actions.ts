@@ -228,6 +228,68 @@ export const adminActionSchemas = {
     }),
     description: "Toggle a boolean feature flag",
   },
+  loadAudiencesAdmin: {
+    description: "Load registered audience activities and tenant definitions",
+  },
+  loadAudienceBindings: {
+    params: z.object({ audienceKey: z.string().min(1) }),
+    description: "Load versioned bindings and published experience variants for an audience",
+  },
+  createAudience: {
+    params: z.object({ key: z.string().min(2).max(64) }),
+    description: "Create a stable tenant-owned audience definition",
+  },
+  createAudienceVersion: {
+    params: z.object({
+      audienceKey: z.string().min(1),
+      activityType: z.string().min(1),
+      activityVersion: z.number().int().positive(),
+      condition: z.object({
+        field: z.string().min(1),
+        operator: z.enum(["equals", "notEquals", "in", "gt", "gte", "lt", "lte", "exists"]),
+        value: z.unknown().optional(),
+      }),
+      action: z.enum(["assign", "remove"]),
+      expiry: z
+        .object({ afterMs: z.number().positive() })
+        .or(z.object({ untilRevoked: z.literal(true) })),
+    }),
+    description: "Create an immutable draft audience rule version",
+  },
+  validateAudienceVersion: {
+    params: z.object({ audienceKey: z.string().min(1), version: z.number().int().positive() }),
+    description: "Validate a draft rule without recording sample membership",
+  },
+  activateAudienceVersion: {
+    params: z.object({ audienceKey: z.string().min(1), version: z.number().int().positive() }),
+    description: "Activate a validated audience rule version",
+  },
+  archiveAudience: {
+    params: z.object({ audienceKey: z.string().min(1) }),
+    description: "Archive a tenant audience definition",
+  },
+  createAudienceBinding: {
+    params: z.object({
+      audienceKey: z.string().min(1),
+      input: z.object({
+        pageKey: z.string().min(1),
+        locale: z.string().nullable().optional(),
+        schemaId: z.string().min(1),
+        variantId: z.string().min(1),
+        goalEvent: z.string().min(2),
+        attributionWindowMs: z.number().int().positive(),
+      }),
+    }),
+    description: "Create a draft page and locale scoped experience binding",
+  },
+  activateAudienceBinding: {
+    params: z.object({ audienceKey: z.string().min(1), version: z.number().int().positive() }),
+    description: "Activate a versioned audience experience binding",
+  },
+  loadAudiencePerformance: {
+    params: z.object({ audienceKey: z.string().min(1) }),
+    description: "Load optional aggregate-only audience outcome metrics",
+  },
   loadIntegrationsLlm: {
     description: "Load LLM integration settings (flags only, no secrets)",
   },

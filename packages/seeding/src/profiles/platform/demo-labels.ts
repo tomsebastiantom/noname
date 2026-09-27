@@ -17,6 +17,7 @@ export const adminShellNavConfig = {
     { id: "scope", href: "/admin/settings/scope" },
     { id: "login", href: "/admin/settings/login" },
     { id: "agents", href: "/admin/settings/agents" },
+    { id: "audiences", href: "/admin/settings/audiences" },
   ],
   observabilityItems: [
     { id: "analytics", href: "/admin/settings/analytics" },
@@ -46,6 +47,7 @@ export const adminShellNavLabels = {
     scope: "Content access",
     login: "Login appearance",
     agents: "Agents",
+    audiences: "Audiences",
   },
   observability: {
     analytics: "Analytics",
@@ -480,6 +482,50 @@ export const featureFlagsAdminLabels = {
   forbiddenLabel: "Feature flags require the flags manager or store admin role.",
 };
 
+export const audiencesAdminLabels = {
+  title: "Audiences",
+  description:
+    "Define reusable tenant-owned groups from trusted registered activities, then bind published experiences by page and locale.",
+  loadingLabel: "Loading audience configuration…",
+  emptyLabel: "No audiences yet. Create a stable audience key to author your first rule.",
+  forbiddenLabel: "Audience management requires tenant management access.",
+  createTitle: "Audience definition",
+  keyLabel: "Stable audience key",
+  keyPlaceholder: "recent_buyer",
+  createLabel: "Create audience",
+  createPendingLabel: "Creating…",
+  ruleTitle: "Draft rule",
+  activityLabel: "Registered activity",
+  fieldLabel: "Registered field",
+  operatorLabel: "Supported operator",
+  valueLabel: "Value",
+  valuePlaceholder: "Enter a typed value",
+  actionLabel: "Membership action",
+  assignLabel: "Assign membership",
+  removeLabel: "Remove membership",
+  expiryDaysLabel: "Expiry (days)",
+  saveDraftLabel: "Create draft version",
+  savePendingLabel: "Saving…",
+  validateLabel: "Validate draft",
+  activateLabel: "Activate",
+  archiveLabel: "Archive audience",
+  bindingsTitle: "Published experience bindings",
+  pageKeyLabel: "Normalized page or route",
+  localeLabel: "Locale (optional)",
+  layoutLabel: "Published layout variant",
+  goalEventLabel: "Approved registered goal event",
+  windowDaysLabel: "Attribution window (days)",
+  addBindingLabel: "Add binding draft",
+  observationalNotice:
+    "Observational results only. Targeted experiences have no randomized control; these aggregates do not establish causal lift.",
+  metricsTitle: "Aggregate performance",
+  servedLabel: "Served decisions",
+  renderedLabel: "Rendered decisions",
+  exposedAccountsLabel: "Distinct exposed accounts",
+  outcomesLabel: "Distinct outcome accounts",
+  outcomeRateLabel: "Outcome-account rate",
+};
+
 export const adminHomeLinkConfig = [
   { id: "pages", href: "/admin/pages" },
   { id: "auth_providers", href: "/admin/content/auth_provider" },
@@ -488,6 +534,7 @@ export const adminHomeLinkConfig = [
   { id: "scope", href: "/admin/settings/scope" },
   { id: "analytics", href: "/admin/settings/analytics" },
   { id: "flags", href: "/admin/settings/flags" },
+  { id: "audiences", href: "/admin/settings/audiences" },
   { id: "replay", href: "/admin/settings/replay" },
   { id: "auth", href: "/admin/settings/auth" },
   { id: "integrations", href: "/admin/settings/integrations" },
@@ -519,6 +566,10 @@ export const adminHomeLinkLabels: Record<string, { label: string; description: s
   flags: {
     label: "Feature flags",
     description: "Toggle storefront features live (SSE + json-render)",
+  },
+  audiences: {
+    label: "Audiences",
+    description: "Author activity-based audience rules and published experience bindings",
   },
   replay: {
     label: "Session replay",

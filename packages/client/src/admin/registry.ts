@@ -1,5 +1,6 @@
 import { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 import { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
+import { AudiencesAdmin } from "./components/audiences/AudiencesAdmin";
 import { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 import { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 import { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
@@ -24,6 +25,7 @@ import { TracesAdmin } from "./components/traces/TracesAdmin";
 
 export { AgentsAdminForm } from "./components/agents/AgentsAdminForm";
 export { AnalyticsEventsAdmin } from "./components/analytics/AnalyticsEventsAdmin";
+export { AudiencesAdmin } from "./components/audiences/AudiencesAdmin";
 export { AuthSettingsForm } from "./components/auth-settings/AuthSettingsForm";
 export { ContentEntryAdmin } from "./components/content/ContentEntryAdmin";
 export { FeatureFlagsAdmin } from "./components/flags/FeatureFlagsAdmin";
@@ -65,6 +67,7 @@ export const adminComponents = {
   AgentsAdminForm,
   ScopeAdminForm,
   FeatureFlagsAdmin,
+  AudiencesAdmin,
   ContentEntryAdmin,
   LayoutEntryAdmin,
   PageEntryAdmin,

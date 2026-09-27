@@ -17,6 +17,7 @@ export type AdminRouteId =
   | "scope"
   | "analytics"
   | "flags"
+  | "audiences"
   | "replay"
   | "traces"
   | "agents";
@@ -41,6 +42,7 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
     sessionHasPermission(s, PERMISSIONS.SCOPE_MANAGE),
   analytics: (s) => sessionHasPermission(s, PERMISSIONS.ANALYTICS_VIEW),
   flags: (s) => sessionHasPermission(s, PERMISSIONS.FLAGS_WRITE),
+  audiences: (s) => sessionHasPermission(s, PERMISSIONS.TENANT_MANAGE),
   replay: (s) => sessionHasPermission(s, PERMISSIONS.SESSION_REPLAY),
   traces: (s) => sessionHasPermission(s, PERMISSIONS.TRACES_VIEW),
   agents: (s) =>
@@ -109,6 +111,7 @@ export function adminRouteVisibleWhileLoading(routeId: AdminRouteId): boolean {
   return (
     routeId !== "replay" &&
     routeId !== "flags" &&
+    routeId !== "audiences" &&
     routeId !== "analytics" &&
     routeId !== "traces" &&
     routeId !== "login" &&

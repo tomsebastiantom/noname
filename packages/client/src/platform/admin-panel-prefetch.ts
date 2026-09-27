@@ -38,7 +38,7 @@ function panelTemplateFromHref(href: string): string | null {
 async function fetchAdminPanelSpec(storeSlug: string, template: string): Promise<Spec | null> {
   const headers = apiHeaders();
   const res = await fetchWithTimeout(
-    `/api/edge/schema/${storeSlug}?segment=default&template=${encodeURIComponent(template)}`,
+    `/api/edge/schema/${storeSlug}?template=${encodeURIComponent(template)}`,
     { headers },
     SCHEMA_FETCH_TIMEOUT_MS,
   );
