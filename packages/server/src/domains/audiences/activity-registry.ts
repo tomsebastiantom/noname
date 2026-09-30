@@ -1,4 +1,8 @@
-import type { ActivityTypeRegistry, DomainActivity, RegisteredActivityType } from "./ports";
+import type {
+  ActivityTypeRegistry,
+  DomainActivity,
+  RegisteredActivityType,
+} from "./activity-rules";
 
 export function createActivityTypeRegistry(): ActivityTypeRegistry {
   const registrations = new Map<string, RegisteredActivityType>();

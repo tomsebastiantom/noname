@@ -33,7 +33,7 @@ export interface CommercePaidOrderActivity {
 }
 
 /**
- * Structural subset of AudienceService used by Commerce. Keeping this port local
+ * Structural activity-publisher port consumed by Commerce. Keeping this port local
  * prevents the vertical package from depending on the server implementation.
  */
 export interface CommerceActivityPublisher {

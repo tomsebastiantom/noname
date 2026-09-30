@@ -1,18 +1,18 @@
 import { randomUUID } from "node:crypto";
 import { createActivityTypeRegistry } from "./activity-registry";
+import type { ActivityTypeRegistry, AudienceCondition, DomainActivity } from "./activity-rules";
 import type {
-  ActivityTypeRegistry,
-  AssignmentChange,
-  AudienceCondition,
   AudienceExperienceMatch,
-  AudienceService,
-  AudienceStorage,
-  DomainActivity,
   ExperienceBindingInput,
   ExperienceDecisionDimensions,
   ExperienceDecisionRecord,
-} from "./ports";
-import { MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS, MIN_AUDIENCE_LEDGER_RETENTION_MS } from "./ports";
+} from "./experience-attribution";
+import {
+  MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS,
+  MIN_AUDIENCE_LEDGER_RETENTION_MS,
+} from "./experience-attribution";
+import type { AssignmentChange } from "./membership";
+import type { AudienceService, AudienceStorage } from "./ports";
 import { evaluateCondition, validateDefinitionVersion } from "./rules";
 
 export function createAudienceService(

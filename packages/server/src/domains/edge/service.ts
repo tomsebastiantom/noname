@@ -1,10 +1,11 @@
 import { NotFoundError } from "../../shared/domain-error";
 import type { AnalyticsService } from "../analytics/ports";
 import type {
+  AudienceExperienceDeliveryService,
   AudienceExperienceMatch,
-  AudienceService,
   ExperienceDecisionDimensions,
-} from "../audiences/ports";
+} from "../audiences/experience-attribution";
+import type { AudienceMembershipService } from "../audiences/membership";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -25,7 +26,7 @@ export function createEdgeService(
   layout: LayoutDocumentService,
   content: ContentDocumentService,
   tenantSettings: TenantSettingsService,
-  audiences: AudienceService,
+  audiences: AudienceMembershipService & AudienceExperienceDeliveryService,
   flagService: FlagService,
   analytics: AnalyticsService,
   pages: PageTreeService,

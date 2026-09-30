@@ -3,9 +3,15 @@ import { Hono } from "hono";
 import { getOrgId, getUserId } from "../../../shared/org";
 import { created, error, ok } from "../../../shared/respond";
 import { denyUnless } from "../../auth/deny-unless";
-import type { AudienceService, DomainActivity, ExperienceBindingInput } from "../ports";
+import type { AudienceRuleService, DomainActivity } from "../activity-rules";
+import type {
+  AudienceExperienceBindingService,
+  ExperienceBindingInput,
+} from "../experience-attribution";
 
-export function createAudienceDefinitionRoutes(service: AudienceService): Hono {
+type AudienceDefinitionRoutesService = AudienceRuleService & AudienceExperienceBindingService;
+
+export function createAudienceDefinitionRoutes(service: AudienceDefinitionRoutesService): Hono {
   const routes = new Hono();
   const protect = async (c: Parameters<typeof denyUnless>[0]) =>
     denyUnless(c, PERMISSIONS.TENANT_MANAGE);

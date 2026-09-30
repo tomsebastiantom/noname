@@ -1,5 +1,6 @@
 import type { AnalyticsService } from "../analytics/ports";
-import type { AudienceService } from "../audiences/ports";
+import type { AudienceExperienceDeliveryService } from "../audiences/experience-attribution";
+import type { AudienceMembershipService } from "../audiences/membership";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -15,7 +16,7 @@ export interface EdgeDomainDeps {
   content: ContentDocumentService;
   tenantSettings: TenantSettingsService;
   pages: PageTreeService;
-  audiences: AudienceService;
+  audiences: AudienceMembershipService & AudienceExperienceDeliveryService;
   flags: FlagService;
   analytics: AnalyticsService;
 }

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AnalyticsService } from "../analytics/ports";
-import type { AudienceService } from "../audiences/ports";
+import type { AudienceExperienceDeliveryService } from "../audiences/experience-attribution";
+import type { AudienceMembershipService } from "../audiences/membership";
 import type {
   ContentDocumentService,
   LayoutDocumentService,
@@ -92,7 +93,7 @@ function createService() {
     resolveExperience: vi.fn(async () => match),
     createExperienceDecision: vi.fn(async () => dimensions),
     markExperienceDecisionRendered: vi.fn(async () => ({ dimensions, newlyRendered: true })),
-  } as unknown as AudienceService;
+  } as unknown as AudienceMembershipService & AudienceExperienceDeliveryService;
   const flags = {
     evaluate: vi.fn(async () => [{ flagKey: "sale", value: true }]),
   } as unknown as FlagService;

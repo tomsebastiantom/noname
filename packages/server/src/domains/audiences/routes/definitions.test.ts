@@ -1,14 +1,15 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { AudienceService } from "../ports";
 import { createAudienceDefinitionRoutes } from "./definitions";
 
 const { denyUnlessMock } = vi.hoisted(() => ({ denyUnlessMock: vi.fn() }));
 vi.mock("../../auth/deny-unless", () => ({ denyUnless: denyUnlessMock }));
 
 function app() {
-  const service = { activityTypes: { list: () => [] } } as unknown as AudienceService;
+  const service = { activityTypes: { list: () => [] } } as unknown as Parameters<
+    typeof createAudienceDefinitionRoutes
+  >[0];
   const routes = new Hono();
   routes.route("/api/audiences", createAudienceDefinitionRoutes(service));
   return routes;

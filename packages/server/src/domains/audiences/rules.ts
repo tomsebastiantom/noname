@@ -4,7 +4,7 @@ import type {
   AudienceOperator,
   AudienceScalar,
   RegisteredActivityField,
-} from "./ports";
+} from "./activity-rules";
 
 const operators = new Set<AudienceOperator>([
   "equals",
