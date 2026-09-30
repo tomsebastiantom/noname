@@ -79,7 +79,7 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   timestamp    DateTime64(3, 'UTC'),
   session_id   UUID,
   schema_id    Nullable(UUID),
-  variant_id   Nullable(UUID),
+  variant_id   Nullable(String),
   audience_key Nullable(String),
   audience_definition_version Nullable(UInt32),
   binding_id Nullable(String),
@@ -97,9 +97,9 @@ ORDER BY (org_id, event_type, timestamp)
 TTL timestamp + INTERVAL 90 DAY
 `;
 
-// Safe in-place upgrade for pre-existing deployments: add nullable dimensions only.
-// In particular, never drop/rename context_hash while its historical rows are retained.
-const ADDITIVE_DIMENSION_DDL = [
+// Safe in-place upgrades for pre-existing deployments. Keep historical UUID variant IDs
+// readable as canonical strings and retain context_hash while its historical rows remain.
+const SAFE_SCHEMA_UPGRADE_DDL = [
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS audience_key Nullable(String)",
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS audience_definition_version Nullable(UInt32)",
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS binding_id Nullable(String)",
@@ -107,12 +107,13 @@ const ADDITIVE_DIMENSION_DDL = [
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS decision_id Nullable(String)",
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS page_key Nullable(String)",
   "ALTER TABLE analytics_events ADD COLUMN IF NOT EXISTS locale Nullable(String)",
+  "ALTER TABLE analytics_events MODIFY COLUMN variant_id Nullable(String)",
 ];
 
 export async function ensureClickHouseTable(): Promise<void> {
   if (!client) client = getClickHouseClient();
   await client.command({ query: DDL });
-  for (const query of ADDITIVE_DIMENSION_DDL) {
+  for (const query of SAFE_SCHEMA_UPGRADE_DDL) {
     await client.command({ query });
   }
 }
@@ -125,6 +126,11 @@ function toClickHouseTimestamp(value: Date | string): string {
 function uuidOrNull(value: string | null | undefined): string | null {
   if (!value?.trim()) return null;
   return value;
+}
+
+function stringOrNull(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized || null;
 }
 
 /** ClickHouse `session_id` is non-nullable UUID — use nil UUID when absent. */
@@ -160,7 +166,7 @@ function toRow(e: AnalyticsEventDTO) {
     timestamp: toClickHouseTimestamp(e.timestamp),
     session_id: sessionIdForRow(e.sessionId),
     schema_id: uuidOrNull(e.schemaId),
-    variant_id: uuidOrNull(e.variantId),
+    variant_id: stringOrNull(e.variantId),
     audience_key: e.audienceKey,
     audience_definition_version: e.audienceDefinitionVersion,
     binding_id: e.bindingId,

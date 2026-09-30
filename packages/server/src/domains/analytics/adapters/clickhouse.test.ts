@@ -20,7 +20,7 @@ const sampleEvent = {
   timestamp: new Date("2026-08-01T12:00:00.000Z"),
   sessionId: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee",
   schemaId: "33333333-4444-4555-8666-777777777777",
-  variantId: "88888888-9999-4aaa-8bbb-cccccccccccc",
+  variantId: "buyer_smoke_1790732519554",
   audienceKey: "returning-customer",
   audienceDefinitionVersion: 12,
   bindingId: "binding-42",
@@ -44,6 +44,8 @@ describe("ClickHouse analytics dimensions", () => {
     const statements = clickhouseClient.command.mock.calls.map(([arg]) => arg.query);
     expect(statements[0]).toContain("CREATE TABLE IF NOT EXISTS analytics_events");
     expect(statements[0]).toContain("context_hash Nullable(String)");
+    expect(statements[0]).toContain("variant_id   Nullable(String)");
+    expect(statements.join("\n")).toContain("MODIFY COLUMN variant_id Nullable(String)");
     expect(statements.join("\n")).toContain(
       "ADD COLUMN IF NOT EXISTS audience_key Nullable(String)",
     );
@@ -66,6 +68,7 @@ describe("ClickHouse analytics dimensions", () => {
     const insert = clickhouseClient.insert.mock.calls[0]?.[0];
     const row = insert.values[0] as Record<string, unknown>;
     expect(row).toMatchObject({
+      variant_id: "buyer_smoke_1790732519554",
       audience_key: "returning-customer",
       audience_definition_version: 12,
       binding_id: "binding-42",
