@@ -40,6 +40,13 @@ function isOptionalAuthRoute(method: string, pathname: string): boolean {
   return method === "POST" && pathname.toLowerCase() === "/api/capabilities/commerce.checkout";
 }
 
+function forwardsSessionId(method: string, pathname: string): boolean {
+  return (
+    (method === "GET" && /^\/api\/edge\/schema\/[^/]+$/.test(pathname)) ||
+    (method === "POST" && pathname === "/api/edge/experience/rendered")
+  );
+}
+
 function stripAccessToken(search: string): string {
   if (!search) return search;
   const params = new URLSearchParams(search.startsWith("?") ? search.slice(1) : search);
@@ -151,6 +158,10 @@ export function createApiProxyRoutes() {
     if (traceparent) headers.set("traceparent", traceparent);
     const tracestate = c.req.header("tracestate");
     if (tracestate) headers.set("tracestate", tracestate);
+    const sessionId = c.req.header("x-session-id");
+    if (sessionId && forwardsSessionId(c.req.method, pathname)) {
+      headers.set("x-session-id", sessionId);
+    }
     // On the optional public routes the verified HMAC is the identity contract;
     // never pass the raw user credential to origin as identity.
     if (!optionalAuth) {

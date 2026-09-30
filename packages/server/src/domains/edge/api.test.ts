@@ -46,4 +46,22 @@ describe("Edge experience render confirmation route", () => {
       decisionId,
     );
   });
+
+  it("rejects malformed session and decision UUIDs without reaching the service", async () => {
+    const authenticated = createTestApp("verified-user");
+    const invalidSession = await authenticated.app.request("/api/edge/experience/rendered", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-session-id": "not-a-uuid" },
+      body: JSON.stringify({ decisionId }),
+    });
+    expect(invalidSession.status).toBe(400);
+
+    const invalidDecision = await authenticated.app.request("/api/edge/experience/rendered", {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-session-id": sessionId },
+      body: JSON.stringify({ decisionId: "not-a-uuid" }),
+    });
+    expect(invalidDecision.status).toBe(400);
+    expect(authenticated.service.recordExperienceRendered).not.toHaveBeenCalled();
+  });
 });

@@ -54,7 +54,12 @@ describe("API proxy optional authentication", () => {
     const app = createApiProxyRoutes();
     const response = await app.request(
       "http://store.test/api/edge/schema/site-1?access_token=raw-query-token&locale=fr",
-      { headers: { Authorization: "Bearer raw-header-token" } },
+      {
+        headers: {
+          Authorization: "Bearer raw-header-token",
+          "x-session-id": "7f9ecf82-e3be-4fca-a3e7-4ccae491a530",
+        },
+      },
       env,
     );
 
@@ -64,8 +69,38 @@ describe("API proxy optional authentication", () => {
     const headers = new Headers(init.headers);
     expect(headers.get("x-user-id")).toBe("account-1");
     expect(headers.get("x-auth-hmac")).toBeTruthy();
+    expect(headers.get("x-session-id")).toBe("7f9ecf82-e3be-4fca-a3e7-4ccae491a530");
     expect(headers.has("Authorization")).toBe(false);
     expect(target).toBe("http://origin.test/api/edge/schema/site-1?locale=fr");
+  });
+
+  it("forwards the browser session ID to authenticated render confirmation", async () => {
+    const fetchMock = mockOrigin();
+    vi.mocked(tryParseJwt).mockResolvedValue({
+      orgId: "org-1",
+      userId: "account-1",
+      role: "shopper",
+    });
+    const app = createApiProxyRoutes();
+    const response = await app.request(
+      "http://store.test/api/edge/experience/rendered",
+      {
+        method: "POST",
+        headers: {
+          Authorization: "Bearer account-token",
+          "Content-Type": "application/json",
+          "x-session-id": "7f9ecf82-e3be-4fca-a3e7-4ccae491a530",
+        },
+        body: JSON.stringify({ decisionId: "0ac94ef7-22b0-4a0d-8e5b-56c0d8a58f5c" }),
+      },
+      env,
+    );
+
+    expect(response.status).toBe(200);
+    const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
+    expect(new Headers(init.headers).get("x-session-id")).toBe(
+      "7f9ecf82-e3be-4fca-a3e7-4ccae491a530",
+    );
   });
 
   it("carries optional verified identity for signed-in capability checkout", async () => {

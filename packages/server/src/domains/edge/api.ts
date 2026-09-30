@@ -5,6 +5,8 @@ import { resolveSiteIdToOrgId } from "../../shared/site-id";
 import type { TenantSettingsService } from "../documents/ports";
 import type { EdgeService } from "./ports";
 
+const EDGE_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSettingsService) {
   const routes = new Hono();
 
@@ -28,6 +30,8 @@ export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSet
   routes.post("/experience/rendered", async (c) => {
     const userId = getUserId(c);
     if (!userId) return error(c, "Verified account required", 401);
+    const sessionId = c.req.header("x-session-id")?.trim() ?? "";
+    if (!EDGE_UUID_RE.test(sessionId)) return error(c, "Valid session id required", 400);
 
     let decisionId: unknown;
     try {
@@ -36,14 +40,14 @@ export function createEdgeRoutes(service: EdgeService, tenantSettings: TenantSet
     } catch {
       return error(c, "Invalid experience render confirmation", 400);
     }
-    if (typeof decisionId !== "string") {
+    if (typeof decisionId !== "string" || !EDGE_UUID_RE.test(decisionId)) {
       return error(c, "Invalid experience render confirmation", 400);
     }
 
     const accepted = await service.recordExperienceRendered(
       getOrgId(c),
       userId,
-      c.req.header("x-session-id") ?? "",
+      sessionId,
       decisionId,
     );
     return accepted ? ok(c, { accepted: true }) : notFound(c);
