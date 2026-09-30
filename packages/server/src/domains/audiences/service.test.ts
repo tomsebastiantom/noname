@@ -25,6 +25,7 @@ class MemoryStorage implements AudienceStorage {
   bindings: ExperienceBinding[] = [];
   decisions = new Map<string, ExperienceDecisionRecord>();
   outcomes = new Map<string, { decisionId: string; activityType: string; occurredAt: Date }>();
+  failNextCompletion = false;
   async createDefinition(orgId: string, key: string): Promise<AudienceDefinition> {
     if (this.definitions.has(`${orgId}/${key}`)) throw new Error("duplicate");
     const d = {
@@ -108,6 +109,10 @@ class MemoryStorage implements AudienceStorage {
       .flatMap((d) => d.versions!.filter((v) => v.status === "active"));
   }
   async completeActivity(orgId: string, activityId: string, changes: AssignmentChange[]) {
+    if (this.failNextCompletion) {
+      this.failNextCompletion = false;
+      throw new Error("transient completion failure");
+    }
     for (const change of changes) {
       const historyKey = `${orgId}/${activityId}/${change.audienceKey}`;
       if (this.history.has(historyKey)) continue;
@@ -446,6 +451,21 @@ describe("audience domain service", () => {
     await service.setStatus("tenant-a", "buyer", "disabled", "admin");
     expect((await service.processActivity(event("paid-while-disabled"))).changes).toEqual([]);
   });
+  it("resumes a pending activity receipt without labeling the successful retry duplicate", async () => {
+    const storage = new MemoryStorage();
+    const service = createAudienceService(storage, registry());
+    await createRule(service);
+    const paid = event("pending-retry-id");
+    storage.failNextCompletion = true;
+
+    await expect(service.processActivity(paid)).rejects.toThrow("transient completion failure");
+    const resumed = await service.processActivity(paid);
+    expect(resumed.duplicate).toBe(false);
+    expect(resumed.changes).toHaveLength(1);
+    expect((await service.processActivity(paid)).duplicate).toBe(true);
+    expect(storage.history.size).toBe(1);
+  });
+
   it("supports until-revoked membership only through its registered revocation activity", async () => {
     const service = createAudienceService(new MemoryStorage(), registry());
     await service.createDefinition("tenant-a", "persistent", "admin");

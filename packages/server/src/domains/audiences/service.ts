@@ -173,7 +173,7 @@ export function createAudienceService(
         }
       }
       await storage.completeActivity(activity.orgId, activity.activityId, changes, new Date());
-      return { duplicate: !receipt.inserted, changes };
+      return { duplicate: false, changes };
     },
     getActiveMemberships(orgId, userId, asOf = new Date()) {
       return storage.getActiveMemberships(orgId, userId, asOf);

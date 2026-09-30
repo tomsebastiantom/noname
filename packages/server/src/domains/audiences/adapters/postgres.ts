@@ -303,6 +303,8 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
       await db.transaction(async (tx) => {
         for (const change of changes) {
           if (change.action === "assign") {
+            const occurredAt = change.occurredAt.toISOString();
+            const expiresAt = change.expiresAt?.toISOString() ?? null;
             await tx
               .insert(audienceAssignments)
               .values({
@@ -323,11 +325,11 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
                   audienceAssignments.audienceKey,
                 ],
                 set: {
-                  sourceActivityId: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${change.occurredAt} THEN ${change.activityId} ELSE ${audienceAssignments.sourceActivityId} END`,
-                  definitionVersion: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${change.occurredAt} THEN ${change.definitionVersion} ELSE ${audienceAssignments.definitionVersion} END`,
-                  assignedAt: sql`GREATEST(${audienceAssignments.assignedAt}, ${change.occurredAt})`,
-                  expiresAt: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${change.occurredAt} THEN ${change.expiresAt} ELSE ${audienceAssignments.expiresAt} END`,
-                  revokedAt: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${change.occurredAt} THEN NULL ELSE ${audienceAssignments.revokedAt} END`,
+                  sourceActivityId: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${occurredAt} THEN ${change.activityId} ELSE ${audienceAssignments.sourceActivityId} END`,
+                  definitionVersion: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${occurredAt} THEN ${change.definitionVersion} ELSE ${audienceAssignments.definitionVersion} END`,
+                  assignedAt: sql`GREATEST(${audienceAssignments.assignedAt}, ${occurredAt})`,
+                  expiresAt: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${occurredAt} THEN ${expiresAt} ELSE ${audienceAssignments.expiresAt} END`,
+                  revokedAt: sql`CASE WHEN ${audienceAssignments.assignedAt} <= ${occurredAt} THEN NULL ELSE ${audienceAssignments.revokedAt} END`,
                   updatedAt: at,
                 },
               });
@@ -484,7 +486,7 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
         .set({
           renderedAt: input.renderedAt,
           expiresAt: sql`GREATEST(
-            ${input.renderedAt} + (${audienceExperienceDecisions.attributionWindowMs} * interval '1 millisecond'),
+            (${input.renderedAt.toISOString()}::timestamp) + (${audienceExperienceDecisions.attributionWindowMs} * interval '1 millisecond'),
             ${audienceExperienceDecisions.servedAt} + (${MIN_AUDIENCE_LEDGER_RETENTION_MS} * interval '1 millisecond')
           )`,
         })
