@@ -144,9 +144,13 @@ describe("Edge verified experience resolution", () => {
       expect.objectContaining({
         subject: { kind: "account", key: "user-1" },
         audienceKeys: ["recent_buyer"],
-        contextProperties: { pageKey: "/products/sku-1", locale: "en-US" },
+        contextProperties: {
+          pageKey: "/products/sku-1",
+          locale: "en-US",
+          layoutVariant: "summer-sale",
+        },
         schemaId: "product-layout",
-        variantId: "summer-sale",
+        variantId: null,
       }),
     );
     expect(analytics.ingestServerEvent).toHaveBeenCalledWith(

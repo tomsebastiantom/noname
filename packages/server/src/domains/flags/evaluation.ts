@@ -13,10 +13,11 @@ import type {
 import { isActive } from "./shared/flag-status";
 
 const DEFAULT_GLOBAL_SUBJECT = { kind: "global", key: "global" } as const;
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function optionalUuid(value: string | null | undefined): string | null {
-  if (!value?.trim()) return null;
-  return value;
+  const normalized = value?.trim();
+  return normalized && UUID_RE.test(normalized) ? normalized : null;
 }
 
 /** Omitted context is explicitly global; no caller-supplied context/hash is needed. */

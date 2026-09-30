@@ -157,6 +157,24 @@ describe("flag evaluation subject and context", () => {
     expect(serialized).not.toContain("account-private");
   });
 
+  it("drops non-UUID layout keys before writing UUID scope columns", async () => {
+    const storage = mockStorage(mockFlag());
+    const service = createFlagService(storage);
+
+    await service.evaluate("org-1", {
+      subject: { kind: "account", key: "account-private" },
+      schemaId: "home",
+      variantId: "recent_buyer",
+      contextProperties: { layoutVariant: "recent_buyer" },
+      audienceKeys: ["recent_buyer"],
+      orgId: "org-1",
+    });
+
+    expect(storage.recordEvaluations).toHaveBeenCalledWith([
+      expect.objectContaining({ subjectKind: "account", schemaId: null, variantId: null }),
+    ]);
+  });
+
   it("rejects legacy segment rules with an actionable migration error", async () => {
     const legacyFlag = mockFlag({
       targeting: [

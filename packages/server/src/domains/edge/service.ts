@@ -99,7 +99,7 @@ export function createEdgeService(
           ? { kind: "session" as const, key: sessionId }
           : { kind: "global" as const, key: "global" };
       const contextProperties = Object.fromEntries(
-        Object.entries({ pageKey, locale }).filter(
+        Object.entries({ pageKey, locale, layoutVariant: experience?.variantId }).filter(
           (entry): entry is [string, string] => typeof entry[1] === "string",
         ),
       );
@@ -110,7 +110,9 @@ export function createEdgeService(
         audienceKeys: memberships.map((membership) => membership.audienceKey),
         contextProperties,
         schemaId: experience?.schemaId ?? null,
-        variantId: experience?.variantId ?? null,
+        // Experience variantId is the string layout segment, not the UUID flag-scope ID.
+        // Expose it as the server-derived `layoutVariant` property instead.
+        variantId: null,
       });
       const flagMap = evaluationsToFlagMap(flags);
 
