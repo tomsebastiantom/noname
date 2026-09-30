@@ -1,7 +1,7 @@
 # Platform-Defined Audiences and Measured Experiences — Implementation Plan
 
-> **Plan date:** 2026-09-26 · **Implementation verification:** 2026-09-27
-> **Status:** Core implementation, no-provider Browser MCP smoke, and reviewed source/docs commits pushed to `origin/main` are complete. The demo tenant has no audience/membership fixture, so the populated personalized shopper journey remains unverified; production consumer inventory and provider-backed checkout remain follow-up.
+> **Plan date:** 2026-09-26 · **Implementation verification:** 2026-09-30
+> **Status:** Core implementation and a populated no-provider Browser MCP member/nonmember journey are verified. A local test audience/layout fixture is retained; production consumer inventory and provider-backed checkout/callback remain follow-up.
 > **Approval:** The user explicitly authorized implementation after reviewing this plan.
 > **Architecture context:** [`PERSONALIZATION-ARCHITECTURE-AND-VISION.md`](PERSONALIZATION-ARCHITECTURE-AND-VISION.md)
 > **Pre-implementation code status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
@@ -22,7 +22,7 @@ This plan began as a documentation-only proposal. The user later explicitly appr
 - Applied the additive Drizzle schema locally. Historical counts remained unchanged: 94 PostgreSQL flag evaluation rows and 392 ClickHouse analytics events, including 95 legacy context-bearing events. The seeded active demo flag has no legacy segment rule; production flag-rule inventory remains deployment follow-up.
 - Verification passed after Context retirement and account-report cleanup: 179 focused tests across 37 files; TypeScript checks for server, client, Browser SDK, Workers, seeding, verticals, and extensions; Biome check; production builds for server, Browser SDK, and client. Builds succeeded with existing SDK `import.meta`/IIFE and bundle-size warnings.
 - Browser MCP confirmed sign-in, admin dashboard, the Audience authoring page, and visual editor. The authenticated account-performance request returned HTTP 200 with `rateDenominator: exposedAccountCount`, `minimumSampleSize: 10`, and `bindings: []`, as expected because the demo tenant has no audience fixtures. The final browser console capture has zero errors and one existing editor `initSync()` deprecation warning; snapshots/logs are under `.playwright-mcp/`.
-- No real provider-backed checkout/callback was exercised. The demo tenant has no audience definitions or membership fixtures, so a populated personalized rendering/outcome journey remains unverified in-browser; deterministic service/Edge tests cover those transitions without provider credentials.
+- No real provider-backed checkout/callback was exercised. At this initial verification, the demo tenant had no audience definitions or membership fixtures, so the populated journey remained unverified; the follow-up Browser MCP verification on 2026-09-30 is recorded below and supersedes that gap.
 
 ### Cross-domain context contract audit — 2026-09-27
 
@@ -32,6 +32,15 @@ This plan began as a documentation-only proposal. The user later explicitly appr
 - `documents.segment` remains a legacy-named layout-variant key and is translated to the experience binding's `variantId`; it is not a customer audience, identity, or request-signal hash. Renaming that document schema is a separate migration and must not reintroduce segment-based targeting.
 - Historical dated documents may still describe the former design. `docs/README.md` now identifies the current implementation plan as authoritative; historical references are not runtime contracts.
 - Production tenant flag-rule inventory, external-consumer verification, and historic analytics access/retention decisions remain deployment follow-up. No data or Podman volume was deleted.
+
+### Populated Browser MCP follow-up — 2026-09-30
+
+- Added a local-only test audience `browser_smoke_1790732519554` for the verified account `390508237348864010`, bound to published layout segment `buyer_smoke_1790732519554` on `/`. The local fixture is retained for repeat verification; the test membership expires 24 hours after each internal activity replay.
+- Generated a trusted `commerce.order.paid` activity through the server-side Audience service, not a public activity endpoint, checkout, or provider callback. It assigned one membership and the service resolved the active binding for `/` and `en-US`.
+- Browser MCP signed in as the account, received the active experience decision, and visibly rendered marker `AUDIENCE EXPERIENCE ACTIVE — 2026-09-30T01:41:59.552Z`. After removing the access token, the same browser context received the default layout without the personalized marker. Snapshot/network/console evidence is under `.playwright-mcp/audience-member-experience.yml`, `.playwright-mcp/audience-member-network.log`, `.playwright-mcp/audience-member-console.log`, and `.playwright-mcp/audience-nonmember-default.yml`; the member console reported zero errors and zero warnings.
+- The end-to-end flow exposed four integration gaps and they were fixed: the Worker now forwards the browser session UUID only to Edge schema/render-confirmation routes; non-UUID layout-segment keys are kept out of UUID flag-scope columns and exposed as a trusted `layoutVariant` property; and ClickHouse `variant_id` now stores string segments with an in-place UUID-to-String migration that preserves historical IDs. Raw timestamp SQL in the experience-render update now serializes/casts ISO timestamps correctly.
+- Verified the resulting decision's `renderedAt` in Postgres and both `experience.served` and `experience.rendered` events in ClickHouse, including session, audience, variant, page, and decision dimensions. ClickHouse reports `variant_id Nullable(String)`; historical `context_hash` remains untouched.
+- Follow-up checks: 34 focused tests passed across Audience, Edge, flags, analytics, and Worker proxy; server and Worker typechecks and server build passed. No real provider credential was used and no provider callback was run. No Podman volumes were reset.
 
 ### Incremental build, verification, and commit workflow
 
@@ -167,7 +176,7 @@ The complete implementation includes a permissioned tenant-admin **UI and API**,
 
 ## 5. Step-by-step implementation phases
 
-The user approved the implementation scope after reviewing this plan. Phases 1–6 were implemented as one capability; provider-backed checkout and a populated shopper journey remain untested locally because no real provider credentials or Audience fixtures were available. The checklist below is retained as the acceptance record; unchecked items require environment-specific follow-up.
+The user approved the implementation scope after reviewing this plan. Phases 1–6 were implemented as one capability. At the initial verification, provider-backed checkout and a populated shopper journey were untested because no real provider credentials or Audience fixtures were available; the populated no-provider journey was later verified as recorded above. The checklist below is retained as the acceptance record; unchecked items require environment-specific follow-up.
 
 ### Phase 0 — Approved product and consistency contracts
 
