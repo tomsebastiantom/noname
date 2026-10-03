@@ -59,4 +59,4 @@ Follow-up evidence:
 - Signed-out default view/schema: `.playwright-mcp/e2e-final-guest-view.yml`, `.playwright-mcp/e2e-final-guest-schema.json`
 - Final console check: `.playwright-mcp/e2e-final-console.log`
 
-At the time of the original E2E, temporary helper scripts were removed and no application source files had been changed. The day-storage follow-up above later updated server/client source and added the data migration and operator notes.
+At the time of the original E2E, temporary helper scripts were removed and no application source files had been changed. The attribution-days follow-up later updated server/client source and converted the existing local dev schema and values. No migration file was retained for this dev-only change; fresh databases use the updated Drizzle schema, and production rollout requires its own reviewed migration plan.

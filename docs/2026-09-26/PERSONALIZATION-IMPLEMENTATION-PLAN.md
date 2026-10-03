@@ -1,7 +1,7 @@
 # Platform-Defined Audiences and Measured Experiences — Implementation Plan
 
 > **Plan date:** 2026-09-26 · **Implementation verification:** 2026-09-30
-> **Status:** Core implementation and a populated no-provider Browser MCP member/nonmember journey are verified. A local test audience/layout fixture is retained; production consumer inventory and provider-backed checkout/callback remain follow-up.
+> **Status (updated 2026-10-03):** Core implementation and the populated no-provider member/default Browser MCP journey are verified. The E2E proves trusted-activity membership and experience selection, but not provider-backed checkout or post-exposure aggregate-outcome reporting. The local test audience/layout fixture is retained; production consumer inventory and retention decisions remain follow-up.
 > **Approval:** The user explicitly authorized implementation after reviewing this plan.
 > **Architecture context:** [`PERSONALIZATION-ARCHITECTURE-AND-VISION.md`](PERSONALIZATION-ARCHITECTURE-AND-VISION.md)
 > **Pre-implementation code status:** [`../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)
@@ -28,10 +28,10 @@ This plan began as a documentation-only proposal. The user later explicitly appr
 
 - Active public flag and analytics contracts no longer accept, persist, or emit `contextHash`. Flags use `EvaluationSubject`, server-derived audience keys, and allow-listed typed properties; analytics uses named dimensions and the private account-level experience ledger. The former ClickHouse decision-level Audience report path was removed so a decision count cannot silently be substituted for the account-level report.
 - Remaining production-source mentions are migration-boundary guards that explicitly reject legacy `contextHash`/segment/hash aliases. Tests retain negative payloads/assertions to prove those fields cannot enter or leave the new contracts.
-- The old request-signal Context runtime/routes were unmounted and its unused resolver implementation has now been retired. `segments` and `context_cache` remain mapped only in `packages/server/src/domains/legacy-context/schema.ts` so additive Drizzle pushes preserve existing rows; do not drop those tables until retention, production-consumer, and export reviews approve it.
+- At this 2026-09-27 checkpoint, the old request-signal Context runtime/routes were unmounted and its unused resolver implementation was retired; `segments` and `context_cache` were still mapped in `packages/server/src/domains/legacy-context/schema.ts`. **Superseding update (2026-10-03):** the unused legacy-context schema/mappings were removed and those tables were dropped from the local dev database after checking for active code and foreign-key dependencies. No migration file was retained for this dev-only cleanup. This local action does not approve deleting production data; production consumer, export, and retention reviews remain required before any production cleanup.
 - `documents.segment` remains a legacy-named layout-variant key and is translated to the experience binding's `variantId`; it is not a customer audience, identity, or request-signal hash. Renaming that document schema is a separate migration and must not reintroduce segment-based targeting.
 - Historical dated documents may still describe the former design. `docs/README.md` now identifies the current implementation plan as authoritative; historical references are not runtime contracts.
-- Production tenant flag-rule inventory, external-consumer verification, and historic analytics access/retention decisions remain deployment follow-up. No data or Podman volume was deleted.
+- Production tenant flag-rule inventory, external-consumer verification, and historic analytics access/retention decisions remain deployment follow-up. No data or Podman volume was deleted during the 2026-09-27 implementation. The separate 2026-10-03 dev-only removal of `segments` and `context_cache` did not reset or delete the Podman volume; production retention remains unreviewed.
 
 ### Populated Browser MCP follow-up — 2026-09-30
 
@@ -41,6 +41,13 @@ This plan began as a documentation-only proposal. The user later explicitly appr
 - The end-to-end flow exposed four integration gaps and they were fixed: the Worker now forwards the browser session UUID only to Edge schema/render-confirmation routes; non-UUID layout-segment keys are kept out of UUID flag-scope columns and exposed as a trusted `layoutVariant` property; and ClickHouse `variant_id` now stores string segments with an in-place UUID-to-String migration that preserves historical IDs. Raw timestamp SQL in the experience-render update now serializes/casts ISO timestamps correctly.
 - Verified the resulting decision's `renderedAt` in Postgres and both `experience.served` and `experience.rendered` events in ClickHouse, including session, audience, variant, page, and decision dimensions. ClickHouse reports `variant_id Nullable(String)`; historical `context_hash` remains untouched.
 - Follow-up checks: 34 focused tests passed across Audience, Edge, flags, analytics, and Worker proxy; server and Worker typechecks and server build passed. No real provider credential was used and no provider callback was run. No Podman volumes were reset.
+
+### Reconciliation follow-up — 2026-10-03
+
+- [`../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md`](../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md) records the current local fixture and the verified state transition: authenticated default before the trusted activity, active member experience after assignment, and default after sign-out. Layout variant authoring used the authenticated API; this was not a fully UI-driven layout-edit flow.
+- The follow-up also fixed attribution-window storage to decimal days. Local PostgreSQL round-trips for 2.5 and 30 days and the 2.5-day attribution boundary were verified. The existing dev database was converted without resetting Podman volumes; no migration file was retained for this dev-only conversion.
+- This E2E did not run checkout/provider callbacks and did not complete the separate post-exposure goal-to-aggregate-performance UI acceptance. Those remain follow-up, alongside production flag/consumer inventory and production retention review.
+- The 2026-10-03 legacy-context cleanup removed the unused `legacy-context` schema/mappings and local `segments`/`context_cache` tables. This is distinct from the historical flag-evaluation and ClickHouse analytics records discussed in the migration review; do not infer production data-retention approval from the local cleanup.
 
 ### Incremental build, verification, and commit workflow
 
@@ -260,12 +267,12 @@ Do **not** add audience membership, rules, or experience bindings to the existin
 **Replace request-signal targeting and migrate flag/analytics `contextHash` contracts**
 
 - Stop ordinary storefront clients from choosing a segment for experience targeting. Never accept a browser `segment`, `tier` cookie, or `contextHash` as audience identity, membership, or experience-binding authority. Keep the normal server-side default-layout fallback.
-- **Implemented:** removed the old request-signal Context runtime/routes and its event publishers; deleted the unused resolver/cache/service code. Kept the `segments`/`context_cache` Drizzle table mappings under `domains/legacy-context/schema.ts` so existing rows survive additive pushes; destructive retention cleanup is not part of this change.
+- **Implemented:** removed the old request-signal Context runtime/routes and its event publishers; deleted the unused resolver/cache/service code. The historical 2026-09-27 implementation kept `segments`/`context_cache` mappings for additive pushes; the mappings and local dev tables were subsequently removed on 2026-10-03. This dev-only cleanup does not authorize production retention cleanup.
 - **Implemented in source:** flag evaluation now uses server-derived `audienceKeys`, allow-listed typed properties, and an explicit `evaluationSubject`; public routes reject legacy hash/segment aliases. The remaining production follow-up is to inventory deployed rules and approve mapping/retiring opaque legacy rules without guessing their semantics.
 - **Implemented in source:** active analytics contracts and clients use named dimensions and trusted server attribution; the old field/grouping path is absent from current code. Historical ClickHouse data/columns and external reports remain until the approved retention/consumer review; no volume was reset.
 - **Implemented:** Edge builds `ExperienceRequestContext` from normalized page/route and locale and passes it separately from verified identity and active memberships; it no longer calls a request-signal resolver.
 
-**Exit:** source-level old request-signal/flag/analytics contracts are removed; tenant-authored rules and route/locale-scoped bindings use explicit audience and experience contracts. Deployment-specific rule mapping, historical consumer/retention checks, and populated browser journey remain follow-up.
+**Exit:** source-level old request-signal/flag/analytics contracts are removed; tenant-authored rules and route/locale-scoped bindings use explicit audience and experience contracts. The basic populated no-provider member/default browser journey is verified (see the 2026-09-30 and 2026-10-03 records). Remaining follow-up includes route/locale fallback and post-exposure aggregate-outcome acceptance, deployment-specific rule/consumer inventory, historical retention decisions, and provider-backed checkout.
 
 ### Phase 3 — Publish typed domain activities and evaluate them generically
 
@@ -388,7 +395,7 @@ Acceptance checklist:
 | Package/files | Planned responsibility | Boundary |
 |---|---|---|
 | `packages/server/src/domains/audiences/` (new) | Rule definitions, typed activity registry, receipts, assignments/expiry, experience bindings, admin API | Platform owns reusable matching/lifecycle; no domain-specific predicates |
-| `packages/server/src/domains/legacy-context/schema.ts` | Keep historical segment/cache table mappings for safe additive schema operations | No runtime resolver/routes; drop only after approved retention and consumer review |
+| `packages/server/src/domains/legacy-context/` | Retired 2026-10-03; local `segments`/`context_cache` mappings and tables removed | Production consumer, export, and retention review remains separate and is not approved by local cleanup |
 | `packages/server/src/domains/flags/` and browser SDK | Replace `contextHash` with server-derived typed targeting inputs and explicit evaluation subject | Preserve approved targeting intent; flags remain release controls, never the audience database |
 | `packages/verticals/src/commerce/` | Register the reference Commerce activity schema and emit trusted `commerce.order.paid` facts | Commerce owns what happened; it does not choose audience or TTL |
 | Other registered domain modules | Register typed schemas and publish trusted activities through the same platform port | No Commerce-specific branches or domain-supplied audience defaults |
@@ -509,16 +516,16 @@ Use registered `mcp__browser__*` tools. If unavailable, follow the `noname-test`
 
 Capture Browser MCP snapshots and console logs plus direct API health, tenant, cart-state, and schema checks. Do not expose access tokens or provider secrets. Report automated tests, live browser checks, seeded-fixture checks, and unavailable provider tests separately.
 
-## 9. Deployment-specific follow-up
+## 9. Remaining verification and deployment follow-up
 
-The implementation was approved and completed in the local workspace. The following deployment-specific items remain:
+The local implementation is complete for the verified scope. The following product-level acceptance and environment-specific items remain:
 
-- Inventory production tenant flag rules and external analytics consumers before migration. The code rejects opaque legacy segment/hash rules with an actionable migration error; no automatic meaning is inferred from old hashes.
-- Select and verify production retention periods for legacy PostgreSQL/ClickHouse history. Local legacy fields and rows were preserved; this implementation did not delete historical data.
-- Run the provider-backed checkout/callback/retry journey with approved credentials. No real provider connection was made in this local verification.
-- For end-to-end shopper verification, create a non-production audience definition/binding and qualify a verified test account with a trusted activity; the demo tenant intentionally remains unconfigured, so its browser performance response is empty.
-- Deploy the additive schema change through the environment's reviewed release process. The local Drizzle push was additive and did not reset Podman volumes.
+- Inventory production tenant flag rules and external analytics consumers before migrating or retiring any opaque legacy rules. The code rejects opaque legacy segment/hash rules with an actionable migration error; no automatic meaning is inferred from old hashes.
+- Select and verify production retention periods for legacy PostgreSQL/ClickHouse history. The 2026-09-27 local checks recorded 94 flag-evaluation rows and 392 ClickHouse events; the 2026-10-03 cleanup removed only the separate local `segments`/`context_cache` tables and their schema mappings. This did not reset the Podman volume or approve production history deletion.
+- Run the provider-backed checkout/callback/retry journey with approved credentials. No real provider connection or callback was used in these local Audience E2E checks.
+- The basic local no-provider member/default journey is now verified. Remaining browser acceptance is to exercise route/locale fallback and a separate trusted post-exposure goal, then confirm the aggregate performance result updates; see the E2E record. Do not describe this as a live purchase journey.
+- Deploy current schema changes through the environment's reviewed release process. No migration file was retained for the dev-only attribution-day conversion or legacy-context cleanup; plan and review production schema changes explicitly.
 
-The request-signal Context runtime/routes and `tier`-cookie targeting flow have been retired. The document `segment` field remains only as a layout-variant identifier. The current resolver uses normalized page/route and locale as transient request context alongside verified audience membership. Active flags use server-derived typed targeting plus an explicit evaluation subject; active analytics uses named trusted dimensions. Legacy PostgreSQL/ClickHouse fields and rows are preserved until tenant-rule, external-consumer, and retention reviews approve cleanup.
+The request-signal Context runtime/routes and `tier`-cookie targeting flow have been retired. The document `segment` field remains only as a layout-variant identifier. The current resolver uses normalized page/route and locale as transient request context alongside verified audience membership. Active flags use server-derived typed targeting plus an explicit evaluation subject; active analytics uses named trusted dimensions. Legacy flag-evaluation and ClickHouse history remains a separate retention/consumer-review concern; the retired `segments`/`context_cache` tables were removed from the local schema and dev database on 2026-10-03.
 
-**Implementation status:** User approval was received. Core source and additive local schema are complete; the no-provider Browser MCP smoke and six reviewed Conventional Commits are published on `origin/main`. The active Context runtime is retired while legacy table mappings/data are preserved. A populated browser shopper journey, production tenant rule/consumer inventory, historical retention decision, and provider-backed checkout remain environment-specific follow-up.
+**Implementation status (updated 2026-10-03):** The core Audience/Experience source and local schema are implemented. The no-provider Browser MCP member/default journey and attribution-day storage round-trip are verified. The local test Audience/binding remains available for inspection. Production tenant-rule/consumer inventory, historical retention decisions, post-exposure aggregate-outcome acceptance, and provider-backed checkout remain follow-up. The unused `legacy-context` schema/mappings and corresponding local tables are removed; do not infer production cleanup approval from this dev-only action.

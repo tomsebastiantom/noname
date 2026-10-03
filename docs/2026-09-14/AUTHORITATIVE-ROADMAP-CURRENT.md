@@ -1,7 +1,8 @@
 # Noname Authoritative Roadmap — Current Code Truth
 
-Date: 2026-09-14
-Status: Reconciled against the current repository and verified implementation records
+Initial reconciliation: 2026-09-14
+Latest targeted update: 2026-10-03 (Audience/Experience status)
+Status: Current planning reference built on the 2026-09-14 code audit; dated updates link later evidence where available. Claims without a later update retain their source-date context.
 
 ## Why this document exists
 
@@ -15,7 +16,7 @@ Several earlier roadmap/status documents are now stale because implementation co
 
 This document is the current planning source. Earlier documents remain historical evidence and design rationale, not current status.
 
-**Implementation update (2026-09-27):** The user-approved Audience/Experience and context-contract replacement is implemented for local source scope. Current verification, the remaining fixture-based browser journey, and production follow-ups are tracked in [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
+**Implementation update (2026-10-03):** The user-approved Audience/Experience and context-contract replacement is implemented for local source scope. The populated no-provider member/default Browser MCP journey and decimal-day attribution persistence are verified; see [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md) and [`../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md`](../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md). Production tenant-rule/consumer inventory, production retention decisions, post-exposure aggregate-outcome UI verification, and provider-backed checkout remain follow-up. The 2026-09-27 notes below are historical where superseded by these records.
 
 ## Current implementation baseline
 
@@ -121,7 +122,7 @@ Verified:
 
 Production deployment through Wrangler/Cloudflare remains an operational release task, not an unimplemented application feature.
 
-**Personalization scope clarification (2026-09-27):** The request-signal Context resolver and routes have been retired; the local implementation now uses trusted activities, verified-account audience membership, page/locale-bound experience decisions, explicit flag evaluation subjects, and named analytics dimensions. The document field named `segment` remains only as a layout-variant selector and is mapped to an experience `variantId`; it is not customer targeting. The demo tenant has no audience/membership fixture and no provider-backed checkout was run, so a populated shopper journey remains open. See [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md).
+**Personalization scope clarification (updated 2026-10-03):** The retired request-signal Context path has been replaced locally by trusted activities, verified-account audience membership, page/locale-bound experience decisions, explicit flag evaluation subjects, and named analytics dimensions. The document field `segment` remains only a layout-variant selector mapped to an experience `variantId`; it is not customer targeting. A populated local Audience/binding fixture now exists. The no-provider E2E verified the signed-in account's default before a trusted service activity, member experience after assignment, and signed-out default afterward. It did not exercise a provider checkout/callback or verify a post-exposure goal updating the aggregate performance report; production rule/consumer inventory and retention decisions also remain open. See [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md) and [`../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md`](../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md).
 
 ### Evidence and Orders — initial slice complete
 
@@ -281,7 +282,7 @@ Not current blockers:
 - Bundles and subscriptions
 - Marketplace/multi-vendor
 - B2B commerce
-- Authenticated customer audiences (trusted event/profile facts → server-owned assignment → browser experience resolution) and advanced personalization/A/B testing
+- Advanced personalization beyond the implemented deterministic, verified-account Audience/Experience capability (for example, randomized A/B testing). Production tenant-rule/consumer inventory and retention decisions are release follow-ups, not missing local audience functionality.
 - Additional renderers
 - Open-source distribution and app marketplace
 
@@ -297,9 +298,9 @@ If that pass succeeds, the next feature should be selected from the Commerce pro
 
 The machine engine, capability idempotency, provider receipt path, Evidence projection, seed architecture, and Orders read view should not be reimplemented. They are already present and verified.
 
-## Verification baseline
+## Verification baseline (recorded 2026-09-14)
 
-The current repository baseline is:
+This is the historical baseline captured on the initial roadmap date; later verification is recorded in the linked implementation and dated E2E documents. The repository baseline at that time was:
 
 ```text
 pnpm exec biome check .  → pass

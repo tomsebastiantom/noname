@@ -1,6 +1,6 @@
 # Noname Codebase Audit — 2026-09-14 (Session Snapshot)
 
-> **AUTHORITY NOTICE:** This audit was interrupted by multiple subagent failures (5 background analysis agents launched; 2 completed with no output, 3 reported `ready` but results unrecoverable due to session model changes and lost messages). The user requested: (1) codebase bad-pattern/architecture analysis, (2) docs review to identify outdated/non-working docs, (3) mark outdated docs, (4) generate audit report. This file reflects manual analysis of files read directly plus what evidence remains.
+> **Historical snapshot; reconciled 2026-10-03:** This 2026-09-14 checkpoint was interrupted by subagent failures and records only the manual analysis and evidence available at that time. The later completed repository-wide documentation review is recorded in [`../2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`](../2026-09-14/DOCUMENTATION-AUDIT-INDEX.md) and its linked batch reports (225 project Markdown files in the initial manifest). Those final reports supersede this snapshot's provisional statements that assigned files were not verified or might still need auditing. This file is retained as a historical record, not as the current audit index or remaining-work list.
 
 ---
 
@@ -25,7 +25,7 @@
 
 | File / Directory | Evidence |
 |---|---|
-| `docs/README.md` | Points correctly to `apps/docs/` (Docusaurus), `AUTHORITY-ROADMAP-CURRENT.md`, audit index. |
+| `docs/README.md` | Points correctly to `apps/docs/` (Docusaurus), `AUTHORITATIVE-ROADMAP-CURRENT.md`, and the audit index. |
 | `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md` | Matches current `packages/` structure (verticals for commerce, no `packages/server/src/domains/commerce`). References live verification records. |
 | `docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md` | Describes completed audit with evidence classifications (`current`, `historical`, `design-reference`, `stale-needs-correction`, `unclear`). References audit batches. |
 | `docs/2026-09-14/SEEDING-ARCHITECTURE-IMPLEMENTATION.md` / `TEST-FIXTURE-ARCHITECTURE-ANALYSIS.md` | Referenced correctly in authoritative roadmap. |
@@ -33,11 +33,11 @@
 | `docs/2026-09-07/EXTENSION-LIFECYCLE-HOOKS.md` | References `packages/extensions/src/commerce/lifecycle.ts` and `packages/client/src/catalog-loader.ts` — verified present. |
 | `docs/2026-09-09/COMMERCE-HARDENING-IMPLEMENTATION.md` | Already labeled historical; references superseding verification docs. No additional edit needed. |
 
-### Documents that should be marked but were NOT edited (remaining work for user/audit team)
+### Provisional status when this snapshot was drafted
 
-Based on the audit index (`docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`), many older files in `docs/2026-05-23/`, `docs/2026-07-25/`, `docs/2026-08-01/` through `2026-08-23/` may contain stale claims. The audit batch reports exist (`AUDIT-EARLY-FOUNDATIONS.md`, `AUDIT-ROADMAP-ADMIN.md`, etc.) but subagent results were lost, so individual file verification was not completed.
+At the time of this interrupted 2026-09-14 snapshot, the audit batch results were not recoverable in this session, so this report treated older docs as potentially unverified. That assessment was superseded by the completed audit recorded in `docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`; its linked batch reports contain the per-document classifications and evidence. The provisional list of possibly stale directories here is historical context, not outstanding audit work.
 
-**Recommendation:** Read `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md` before using any dated doc for implementation decisions.
+**Current-use recommendation:** Read `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md` for code status and roadmap, and use the documentation audit index plus its batch reports for document classifications.
 
 ---
 
@@ -105,7 +105,7 @@ Based on the audit index (`docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`) and th
 - **Design/reference (not implementation proof):** `2026-05-23/ARCHITECTURE_DECISIONS.md`, `2026-07-04/*`, `2026-07-11/*`.
 - **Verification records (current evidence):** `2026-09-12/*` (checkout reliability, orders admin, evidence provenance, edge SEO/personalization, seeding architecture).
 
-**Recommendation for full audit:** Read the audit batch reports (`docs/2026-09-14/AUDIT-*.md`) to see per-file classifications. Given subagent failures, a complete per-file verification of all 225 markdown files was not achievable in this session.
+**Audit status:** This manual snapshot predates the finalized audit index and batch reports. The complete per-document classifications for the 225-file initial manifest are recorded there; use those reports rather than this provisional summary for detailed document status.
 
 ---
 
@@ -121,23 +121,24 @@ Based on the audit index (`docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`) and th
 
 ---
 
-## 6. DOCS THAT MAY BE OUTDATED / NEED REVIEW (not fully verified due to subagent failures)
+## 6. Provisional docs-review list at the time of this interrupted snapshot (superseded)
 
-Based on the audit index classifications (`current`, `historical`, `design-reference`, `stale-needs-correction`, `unclear`) and the dates of files:
+The following review candidates were recorded before the separate repository-wide Markdown audit was completed. The uncertainty in this section is historical: the final document classifications and evidence are in `docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md` and its linked batch reports. Do not treat this list as current unverified work.
 
-Files that reference superseding documents (already handled by banners or links):
-- `2026-08-21/CURRENT_STATUS.md` — edited ✅
-- `2026-09-09/COMMERCE-HARDENING-IMPLEMENTATION.md` — already labeled historical ✅
-- `2026-09-10/CHECKOUT-RELIABILITY-PLAN.md` — superseded by 2026-09-12 verification records (mentioned in authoritative roadmap; should be verified individually)
-- `2026-07-25/*` (older auth/roadmap docs) — audit batch `AUDIT-ROADMAP-ADMIN.md` exists; individual status not recovered
-- `2026-08-01/` through `2026-08-23/` — audit batch reports exist; verify per-file status from reports
-- `docs/archive/2026-05-23/` — intentionally preserved historical records
+At the time, the snapshot noted:
+- `2026-08-21/CURRENT_STATUS.md` — edited with an outdated banner.
+- `2026-09-09/COMMERCE-HARDENING-IMPLEMENTATION.md` — already labeled historical.
+- `2026-09-10/CHECKOUT-RELIABILITY-PLAN.md` — superseded by 2026-09-12 verification records; its final classification is in the audit reports.
+- `2026-07-25/*` and `2026-08-01/` through `2026-08-23/` — review batches were still in progress or their results were not available in this session snapshot.
+- `docs/archive/2026-05-23/` — intentionally preserved historical records.
 
-**Action for user:** Open `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md` and `docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md` to see which files have been audited and which batches remain unverified.
+**Current guidance:** Use the completed audit index and batch reports for document status; use `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md` for implementation status and roadmap.
 
 ---
 
-## 7. WHAT COULD NOT BE COMPLETED (session limitations)
+## 7. What this interrupted session snapshot could not complete (historical)
+
+These bullets describe limitations of the original 2026-09-14 session only. They do not describe the outcome of the later completed documentation audit linked above.
 
 - **5 background subagents launched** (`Analyze root docs`, `Analyze Docusaurus docs`, `Analyze server architecture`, `Analyze workers + client`, `Analyze shared packages + infra`).
 - **2 subagents failed** before finishing (`root docs` analysis agent `b5b...` and `Docusaurus docs` agent `3240...`) — no closing message, results lost.
@@ -147,13 +148,15 @@ Files that reference superseding documents (already handled by banners or links)
 
 ---
 
-## 8. NEXT STEPS (user / audit team)
+## 8. Follow-up status (reconciled 2026-10-03)
 
-1. **Confirm whether `docs/2026-09-10/CHECKOUT-RELIABILITY-PLAN.md` and other superseding-plan files need [OUTDATED] banners.** The authoritative roadmap mentions them explicitly; the audit index points to batch reports for evidence.
-2. **Read audit batch reports** (`AUDIT-EARLY-FOUNDATIONS.md`, `AUDIT-ROADMAP-ADMIN.md`, `AUDIT-ANALYTICS-PERMISSIONS-AUDITS.md`, etc.) to complete per-file verification.
-3. **If full doc audit is needed:** Launch a fresh `noname-dev` skill run (see `skills/noname-dev/SKILL.md`) to rebuild the stack and verify `docs:dev` and `docs:serve` work correctly. The Docusaurus site (`apps/docs/`) has its own `package.json` and `docusaurus.config.ts`; manual inspection of `sidebars.ts` shows the sidebar structure matches the docs files listed in the audit index.
-4. **For architecture patterns:** The `biome.json` exclusion (`packages/*` only) and `noExplicitAny: off` are policy choices; change them in `biome.json` if stricter rules are desired.
-5. **For analytics `any` casts:** Replace `(data as any).orgId` with typed input interfaces in `analytics/service.ts` when exposing the API publicly (P2 per architecture audit).
+The action list below was written for the interrupted 2026-09-14 snapshot and is superseded where noted:
+
+- **Per-document Markdown review:** Completed in `docs/2026-09-14/DOCUMENTATION-AUDIT-INDEX.md` and its linked batch reports. Do not rerun this work solely because this historical snapshot lost its original agent messages.
+- **Docusaurus site build/runtime:** This is separate from the per-document content audit. The audit index does not claim that `apps/docs/` was built or served as a live-site smoke test; verify that separately if required.
+- **Current implementation next step:** Use `docs/2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md`; its current P0 is the same-run live checkout-to-Orders verification.
+- **Architecture observations:** Findings in this report remain a dated manual snapshot, not a substitute for a current source audit.
+- **Historical code-cleanup suggestion:** The original snapshot proposed replacing `(data as any).orgId` with a typed input in the analytics service before exposing that API publicly. This report did not re-verify whether that suggestion remains applicable; check current source and audit evidence before treating it as open work.
 
 ---
 

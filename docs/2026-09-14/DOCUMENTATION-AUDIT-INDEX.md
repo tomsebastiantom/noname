@@ -56,6 +56,8 @@ Each report contains one audit entry per document in its assigned batch, includi
 
 The initial source manifest contained 225 project Markdown files. The recent batch report also saw audit reports created concurrently during this audit; those generated audit artifacts are intentionally treated as audit records, not as project status documents.
 
+**Reconciliation note (2026-10-03):** [`../2026-10-03/AUDIT-REPORT-2026-09-14.md`](../2026-10-03/AUDIT-REPORT-2026-09-14.md) is an earlier interrupted session snapshot. Its provisional claim that some assigned documents were not individually verified was superseded by this completed index and the linked batch reports. Treat that report as historical context, not as evidence that the repository-wide audit is unfinished.
+
 ## Evidence-backed corrections applied
 
 Status banners were added only where the corresponding audit report found evidence for a non-current document. The banners identify the document as one of:
