@@ -9,7 +9,6 @@ import * as documentSchema from "./domains/documents/schema";
 import * as evidenceSchema from "./domains/evidence/schema";
 import * as flagsSchema from "./domains/flags/schema";
 import * as providerEventSchema from "./domains/integrations/provider-event-schema";
-import * as legacyContextSchema from "./domains/legacy-context/schema";
 import * as machineSchema from "./domains/machines/schema";
 import * as notificationsSchema from "./domains/notifications/schema";
 import * as webhooksSchema from "./domains/webhooks/schema";
@@ -25,7 +24,6 @@ export function createDatabase(connectionString: string) {
       ...capabilitiesSchema,
       ...collabSchema,
       ...machineSchema,
-      ...legacyContextSchema,
       ...flagsSchema,
       ...agentSchema,
       ...aiPipelineSchema,
