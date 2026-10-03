@@ -272,26 +272,42 @@ export function createIntegrationsService(deps: {
       }
       const orgId = await tenantSettings.findOrgIdByOAuthConnectionId(connectionId);
       if (!orgId) return;
-      const eventType =
-        typeof body.type === "string"
-          ? body.type
-          : typeof body.eventType === "string"
-            ? body.eventType
-            : "";
-      if (!eventType) return;
-      const eventPayload =
-        body.payload && typeof body.payload === "object"
+      const providerPayload =
+        body.payload && typeof body.payload === "object" && !Array.isArray(body.payload)
           ? (body.payload as Record<string, unknown>)
-          : body.data && typeof body.data === "object"
+          : body.data && typeof body.data === "object" && !Array.isArray(body.data)
             ? (body.data as Record<string, unknown>)
             : null;
-      if (!eventPayload) return;
+      if (!providerPayload) return;
+      const nangoForward = body.type === "forward";
+      const eventType =
+        (nangoForward && typeof providerPayload.type === "string"
+          ? providerPayload.type
+          : undefined) ??
+        (typeof body.type === "string" && !nangoForward ? body.type : undefined) ??
+        (typeof body.eventType === "string" ? body.eventType : "");
+      if (!eventType) return;
+      const eventData =
+        providerPayload.data &&
+        typeof providerPayload.data === "object" &&
+        !Array.isArray(providerPayload.data)
+          ? (providerPayload.data as Record<string, unknown>)
+          : null;
+      const eventObject =
+        eventData?.object &&
+        typeof eventData.object === "object" &&
+        !Array.isArray(eventData.object)
+          ? (eventData.object as Record<string, unknown>)
+          : null;
+      const eventPayload = nangoForward && eventObject ? eventObject : providerPayload;
       const providerEventId =
         typeof body.providerEventId === "string"
           ? body.providerEventId
           : typeof body.eventId === "string"
             ? body.eventId
-            : undefined;
+            : nangoForward && typeof providerPayload.id === "string"
+              ? providerPayload.id
+              : undefined;
       const deliveryId = typeof body.deliveryId === "string" ? body.deliveryId : undefined;
       const forwarded = {
         orgId,

@@ -113,7 +113,7 @@ A local browser cannot receive a real Stripe webhook from the public Stripe serv
 5. Inject the same event again and verify the durable receipt suppresses the duplicate — completed.
 6. Query/reload the persisted machine and verify it is `paid` — completed at the database state; browser reload confirmation remains a final UI check.
 
-This is explicitly a provider-callback simulation; it is reported separately from a real Stripe webhook delivery. A real external callback can be added later with Stripe CLI/tunnel forwarding without changing the application path.
+This is explicitly a provider-callback simulation and must be reported separately from real Stripe→Nango delivery. Stripe CLI can capture a real test event, but forwarding it directly to `/api/integrations/nango/incoming` is invalid because that endpoint verifies Nango's HMAC, not Stripe's `Stripe-Signature`. Nango's [published Stripe integration page](https://docs.nango.dev/docs/integrations/all/stripe-app) currently marks real-time third-party webhooks unsupported; true provider delivery requires Nango support/configuration. See the dated rerun record below and [Nango webhook forwarding](https://docs.nango.dev/docs/guides/platform/webhook-forwarding).
 
 ### Live Postgres concurrency evidence
 
@@ -147,3 +147,36 @@ Commits:
 
 - `7f04bd3` — Complete checkout reliability hardening
 - `845296a` — Document live concurrency verification
+
+## 2026-10-03 Stripe Sandbox checkout retest
+
+### Result and observations
+
+- Stripe CLI 1.53.0 was authenticated to the sandbox. `stripe listen --events checkout.session.completed --format JSON` captured a paid event with `livemode=false`; no `--live` flag was used.
+- Signed-in storefront: Blue Sneakers → Checkout → Stripe Sandbox, CA$99.99 CAD. A public Stripe test card completed checkout and returned to `/?checkout=success`; that redirect alone showed `Payment processing` and was not treated as payment confirmation.
+- A local `type: "forward"` envelope, signed with the configured Nango webhook key and populated from the captured event, was accepted (`200`). An unsigned request was rejected (`401`). The cart persisted as `paid`; one correlated `commerce.order.created` evidence record appeared in `/admin/orders`.
+- Replaying the same event left one correlated order. Browser console checks were clean; API, edge, client, Zitadel, and Nango health checks returned HTTP 200.
+- Nango had stopped cleanly (exit 0, no OOM) while Compose restart policy was `no`; the stop actor is unknown. Policy is now `unless-stopped`; no volumes were reset. The Nango dashboard's dev Integrations/Connections pages appeared empty even though the Nango API proxy checkout worked; that UI/environment visibility mismatch remains unresolved.
+- Browser MCP showed `Payment processing` before the callback; `/admin/orders` showed the paid order after it. Temporary browser snapshots were removed and are intentionally not committed.
+
+### Rerun checklist
+
+1. Check the five health URLs above. Start the test listener with `stripe listen --events checkout.session.completed --format JSON` (test mode is the default; never add `--live` or forward Stripe's signature directly to Noname). Do not publish the ephemeral `whsec_...` printed by the CLI.
+2. In Browser MCP, sign in at `http://yogastore.localhost:5173/login`, add Blue Sneakers, open Checkout, and pay in Sandbox (public test card `4242 4242 4242 4242`, expiry `12/34`, CVC `123`). Record the cart `machineInstanceId` from the event's `client_reference_id`/metadata.
+3. To test the app callback boundary, wrap the captured Stripe event in Nango's documented `{ from: "stripe", providerConfigKey: "stripe", type: "forward", connectionId: "yogastore-stripe-test", payload: <Stripe event> }` envelope. Sign the exact raw JSON with the local `NANGO_WEBHOOK_SIGNING_KEY` (HMAC-SHA256 hex; header `X-Nango-Hmac-Sha256`) and POST it to `http://localhost:3000/api/integrations/nango/incoming`. Do not print the key or log the full Checkout URL.
+
+   ```js
+   import "dotenv/config";
+   import { createHmac } from "node:crypto";
+   const rawBody = JSON.stringify(envelope);
+   const signature = createHmac("sha256", process.env.NANGO_WEBHOOK_SIGNING_KEY)
+     .update(rawBody).digest("hex");
+   const response = await fetch("http://localhost:3000/api/integrations/nango/incoming", {
+     method: "POST",
+     headers: { "Content-Type": "application/json", "X-Nango-Hmac-Sha256": signature },
+     body: rawBody,
+   });
+   ```
+4. Expect signed `200` / unsigned `401`; reload the cart as its owner and expect `paid`; confirm one order for the machine in `/admin/orders`; replay the same event and confirm no second order.
+
+**Boundary caveat:** The Stripe payment/event was real in test mode, but callback delivery was simulated locally with the configured Nango signing key. Nango's published Stripe integration page currently marks real-time third-party webhooks unsupported; this run does not prove Stripe→Nango webhook delivery. See [Nango Stripe support](https://docs.nango.dev/docs/integrations/all/stripe-app) and [Nango forwarding format](https://docs.nango.dev/docs/guides/platform/webhook-forwarding). One earlier test Checkout session was left unpaid during an incomplete-URL attempt; only one test payment completed.

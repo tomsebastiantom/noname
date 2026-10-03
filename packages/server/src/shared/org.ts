@@ -5,6 +5,11 @@ export const ORG_ID_KEY = "orgId";
 export const USER_ID_KEY = "userId";
 export const ROLE_KEY = "role";
 
+const NANGO_WEBHOOK_PATHS = new Set([
+  "/api/integrations/nango/incoming",
+  "/api/integrations/nango/webhook",
+]);
+
 declare module "hono" {
   interface ContextVariableMap {
     orgId: string;
@@ -32,7 +37,11 @@ function verifyHmac(orgId: string, userId: string, role: string, providedHmac: s
 }
 
 export const orgMiddleware: MiddlewareHandler = async (c, next) => {
-  if (c.req.path === "/health") {
+  // These public service callbacks validate Nango's own HMAC in their route handlers.
+  if (
+    c.req.path === "/health" ||
+    (c.req.method === "POST" && NANGO_WEBHOOK_PATHS.has(c.req.path))
+  ) {
     await next();
     return;
   }

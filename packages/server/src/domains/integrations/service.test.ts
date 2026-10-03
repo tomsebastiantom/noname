@@ -195,6 +195,44 @@ describe("createIntegrationsService", () => {
     publish.mockRestore();
   });
 
+  it("unwraps Nango-forwarded external provider event envelopes", async () => {
+    const enqueueProviderEvent = vi.fn(async () => undefined);
+    const service = createIntegrationsService({
+      secrets: mockSecrets(),
+      tenantSettings: mockTenantSettings(),
+      oauth: mockOAuth(),
+      enqueueProviderEvent,
+    });
+    const checkoutSession = {
+      id: "cs_test_123",
+      metadata: { machineInstanceId: "inst-1" },
+      amount_total: 9999,
+      currency: "cad",
+    };
+
+    await service.handleProviderWebhook({
+      from: "stripe",
+      providerConfigKey: "stripe",
+      type: "forward",
+      connectionId: "conn-1",
+      payload: {
+        id: "evt_test_123",
+        type: "checkout.session.completed",
+        data: { object: checkoutSession },
+      },
+    });
+
+    expect(enqueueProviderEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orgId: "org-1",
+        eventType: "checkout.session.completed",
+        providerEventId: "evt_test_123",
+        payload: checkoutSession,
+      }),
+      "conn-1%3Aevt_test_123",
+    );
+  });
+
   it("does not normalize an unregistered provider event", async () => {
     const enqueueProviderEvent = vi.fn(async () => undefined);
     const service = createIntegrationsService({

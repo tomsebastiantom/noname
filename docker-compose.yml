@@ -203,6 +203,7 @@ services:
   nango:
     image: nangohq/nango-server:hosted
     platform: linux/amd64
+    restart: unless-stopped
     ports:
       - "3003:3003"
       - "3009:3009"
