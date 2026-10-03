@@ -140,7 +140,7 @@ export function createAudienceDefinitionRoutes(service: AudienceDefinitionRoutes
         schemaId: body.schemaId,
         variantId: body.variantId,
         goalEvent: body.goalEvent,
-        attributionWindowMs: body.attributionWindowMs,
+        attributionWindowDays: body.attributionWindowDays,
       };
       return created(
         c,

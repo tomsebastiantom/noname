@@ -35,7 +35,7 @@ const match = {
     schemaId: "product-layout",
     variantId: "summer-sale",
     goalEvent: "commerce.order.paid",
-    attributionWindowMs: 30 * 24 * 60 * 60 * 1000,
+    attributionWindowDays: 30,
     status: "active",
     createdBy: "admin-1",
     createdAt: new Date("2026-09-01T00:00:00Z"),

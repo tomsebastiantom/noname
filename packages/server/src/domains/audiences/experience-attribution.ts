@@ -1,8 +1,17 @@
 import type { DomainActivity } from "./activity-rules";
 import type { AudienceAssignment } from "./membership";
 
-export const MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
-export const MIN_AUDIENCE_LEDGER_RETENTION_MS = 31 * 24 * 60 * 60 * 1000;
+export const MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS = 30;
+export const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1000;
+export const MIN_AUDIENCE_LEDGER_RETENTION_MS = 31 * MILLISECONDS_PER_DAY;
+
+export function attributionWindowDaysToMilliseconds(days: number): number {
+  return Math.round(days * MILLISECONDS_PER_DAY);
+}
+
+export function normalizeAttributionWindowDays(days: number): number {
+  return Number(days.toFixed(12));
+}
 
 export interface ExperienceBindingInput {
   pageKey: string;
@@ -10,7 +19,7 @@ export interface ExperienceBindingInput {
   schemaId: string;
   variantId: string;
   goalEvent: string;
-  attributionWindowMs: number;
+  attributionWindowDays: number;
 }
 
 export interface ExperienceBinding extends ExperienceBindingInput {
@@ -48,7 +57,7 @@ export interface ExperienceDecisionRecord {
   schemaId: string;
   variantId: string;
   goalEvent: string;
-  attributionWindowMs: number;
+  attributionWindowDays: number;
   servedAt: Date;
   renderedAt: Date | null;
   renderDeadlineAt: Date;

@@ -430,7 +430,7 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
         gte(audienceExperienceOutcomes.occurredAt, filters.from),
         lte(audienceExperienceOutcomes.occurredAt, filters.to),
       );
-      const goalAttributionDeadline = sql`${audienceExperienceDecisions.renderedAt} + (${audienceExperienceDecisions.attributionWindowMs} * interval '1 millisecond')`;
+      const goalAttributionDeadline = sql`${audienceExperienceDecisions.renderedAt} + (round(${audienceExperienceDecisions.attributionWindowDays} * 86400000)::double precision * interval '1 millisecond')`;
       const rows = await db
         .select({
           audienceDefinitionVersion: audienceExperienceDecisions.audienceDefinitionVersion,
@@ -486,7 +486,7 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
         .set({
           renderedAt: input.renderedAt,
           expiresAt: sql`GREATEST(
-            (${input.renderedAt.toISOString()}::timestamp) + (${audienceExperienceDecisions.attributionWindowMs} * interval '1 millisecond'),
+            (${input.renderedAt.toISOString()}::timestamp) + (round(${audienceExperienceDecisions.attributionWindowDays} * 86400000)::double precision * interval '1 millisecond'),
             ${audienceExperienceDecisions.servedAt} + (${MIN_AUDIENCE_LEDGER_RETENTION_MS} * interval '1 millisecond')
           )`,
         })
@@ -523,7 +523,7 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
     async attributeTrustedGoal(activity, at) {
       const userId = activity.subjectUserId;
       if (!userId) return null;
-      const goalAttributionDeadline = sql`${audienceExperienceDecisions.renderedAt} + (${audienceExperienceDecisions.attributionWindowMs} * interval '1 millisecond')`;
+      const goalAttributionDeadline = sql`${audienceExperienceDecisions.renderedAt} + (round(${audienceExperienceDecisions.attributionWindowDays} * 86400000)::double precision * interval '1 millisecond')`;
       return db.transaction(async (tx) => {
         const [prior] = await tx
           .select()
@@ -563,8 +563,8 @@ export function createPostgresAudienceStorage(db: Database): AudienceStorage {
               eq(audienceExperienceDecisions.goalEvent, activity.type),
               isNotNull(audienceExperienceDecisions.renderedAt),
               lte(audienceExperienceDecisions.renderedAt, activity.occurredAt),
-              gt(goalAttributionDeadline, activity.occurredAt),
-              gt(goalAttributionDeadline, at),
+              sql`${goalAttributionDeadline} > ${activity.occurredAt.toISOString()}::timestamp`,
+              sql`${goalAttributionDeadline} > ${at.toISOString()}::timestamp`,
             ),
           )
           .orderBy(
@@ -660,7 +660,7 @@ function mapExperienceDecision(
     schemaId: row.schemaId,
     variantId: row.variantId,
     goalEvent: row.goalEvent,
-    attributionWindowMs: row.attributionWindowMs,
+    attributionWindowDays: row.attributionWindowDays,
     servedAt: row.servedAt,
     renderedAt: row.renderedAt,
     renderDeadlineAt: row.renderDeadlineAt,
@@ -721,7 +721,7 @@ function mapBinding(row: typeof audienceExperienceBindings.$inferSelect): Experi
     schemaId: row.schemaId,
     variantId: row.variantId,
     goalEvent: row.goalEvent,
-    attributionWindowMs: row.attributionWindowMs,
+    attributionWindowDays: row.attributionWindowDays,
     status: row.status as ExperienceBinding["status"],
     createdBy: row.createdBy,
     createdAt: row.createdAt,

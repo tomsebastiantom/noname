@@ -277,7 +277,7 @@ export const adminActionSchemas = {
         schemaId: z.string().min(1),
         variantId: z.string().min(1),
         goalEvent: z.string().min(2),
-        attributionWindowMs: z.number().int().positive(),
+        attributionWindowDays: z.number().finite().min(1).max(30),
       }),
     }),
     description: "Create a draft page and locale scoped experience binding",

@@ -35,6 +35,16 @@ export function buildAudienceCondition(draft: AudienceConditionDraft): AudienceC
   return { field: draft.field, operator, value };
 }
 
+const MAX_ATTRIBUTION_DAYS = 30;
+const ATTRIBUTION_DAY_DECIMAL_PLACES = 12;
+
+export function formatAttributionWindowDays(attributionWindowDays: number): string {
+  if (!Number.isFinite(attributionWindowDays) || attributionWindowDays <= 0) return "—";
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: ATTRIBUTION_DAY_DECIMAL_PLACES,
+  }).format(attributionWindowDays);
+}
+
 export function buildAudienceExpiry(days: number): AudienceExpiry {
   if (!Number.isInteger(days) || days < 1 || days > 365) {
     throw new Error("Audience membership expiry must be between 1 and 365 days");
@@ -62,19 +72,22 @@ export function buildExperienceBinding(input: {
     throw new Error("Experience bindings require a published schema and variant");
   }
   if (
-    !Number.isInteger(input.attributionDays) ||
+    !Number.isFinite(input.attributionDays) ||
     input.attributionDays < 1 ||
-    input.attributionDays > 30
+    input.attributionDays > MAX_ATTRIBUTION_DAYS
   ) {
-    throw new Error("Attribution window must be between 1 and 30 days");
+    throw new Error(`Attribution window must be between 1 and ${MAX_ATTRIBUTION_DAYS} days`);
   }
+  const attributionWindowDays = Number(
+    input.attributionDays.toFixed(ATTRIBUTION_DAY_DECIMAL_PLACES),
+  );
   return {
     pageKey,
     locale,
     schemaId: input.schemaId.trim(),
     variantId: input.variantId.trim(),
     goalEvent: input.goalEvent,
-    attributionWindowMs: input.attributionDays * 24 * 60 * 60 * 1000,
+    attributionWindowDays,
   };
 }
 

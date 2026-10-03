@@ -11,7 +11,12 @@ import type {
   ExperienceDecisionRecord,
   ExperienceOutcomeAttribution,
 } from "./ports";
-import { MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS, MIN_AUDIENCE_LEDGER_RETENTION_MS } from "./ports";
+import {
+  MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
+  MILLISECONDS_PER_DAY,
+  MIN_AUDIENCE_LEDGER_RETENTION_MS,
+  attributionWindowDaysToMilliseconds,
+} from "./ports";
 import { createAudienceService } from "./service";
 
 class MemoryStorage implements AudienceStorage {
@@ -195,7 +200,7 @@ class MemoryStorage implements AudienceStorage {
       d.renderedAt = input.renderedAt;
       d.expiresAt = new Date(
         Math.max(
-          input.renderedAt.getTime() + d.attributionWindowMs,
+          input.renderedAt.getTime() + attributionWindowDaysToMilliseconds(d.attributionWindowDays),
           d.servedAt.getTime() + MIN_AUDIENCE_LEDGER_RETENTION_MS,
         ),
       );
@@ -229,8 +234,10 @@ class MemoryStorage implements AudienceStorage {
           d.goalEvent === activity.type &&
           d.renderedAt &&
           d.renderedAt <= activity.occurredAt &&
-          d.renderedAt.getTime() + d.attributionWindowMs > activity.occurredAt.getTime() &&
-          d.renderedAt.getTime() + d.attributionWindowMs > at.getTime(),
+          d.renderedAt.getTime() + attributionWindowDaysToMilliseconds(d.attributionWindowDays) >
+            activity.occurredAt.getTime() &&
+          d.renderedAt.getTime() + attributionWindowDaysToMilliseconds(d.attributionWindowDays) >
+            at.getTime(),
       )
       .sort(
         (a, b) =>
@@ -326,7 +333,7 @@ async function createRule(
   await service.activateVersion("tenant-a", "buyer", v.version);
 }
 
-async function prepareLedger(attributionWindowMs = 60_000) {
+async function prepareLedger(attributionWindowDays = 60_000 / MILLISECONDS_PER_DAY) {
   const storage = new MemoryStorage();
   const service = createAudienceService(storage, registry());
   await createRule(service);
@@ -340,7 +347,7 @@ async function prepareLedger(attributionWindowMs = 60_000) {
     schemaId: "layout-1",
     variantId: "variant-1",
     goalEvent: "sample.order.paid",
-    attributionWindowMs,
+    attributionWindowDays,
   });
   await service.activateBinding("tenant-a", "buyer", binding.version);
   const match = await service.resolveExperience(
@@ -533,7 +540,7 @@ describe("audience domain service", () => {
       schemaId: "layout-1",
       variantId: "variant-1",
       goalEvent: "sample.order.paid",
-      attributionWindowMs: 1000,
+      attributionWindowDays: 1_000 / MILLISECONDS_PER_DAY,
     });
     await service.activateBinding("tenant-a", "buyer", binding.version);
     expect(
@@ -558,7 +565,7 @@ describe("audience domain service", () => {
     ).toBeNull();
   });
   it("creates only active verified snapshots and rejects unknown, foreign, and expired render decisions", async () => {
-    const { storage, service, match, now } = await prepareLedger(2_000);
+    const { storage, service, match, now } = await prepareLedger(2_000 / MILLISECONDS_PER_DAY);
     await expect(
       service.createExperienceDecision("tenant-a", "user-1", "not-a-uuid", match, now),
     ).rejects.toThrow(/sessionId must be a UUID/);
@@ -644,7 +651,7 @@ describe("audience domain service", () => {
     ).rejects.toThrow(/no longer active/);
   });
   it("marks rendered once, attributes the latest eligible decision, and deduplicates trusted goals", async () => {
-    const { service, match, now } = await prepareLedger(60_000);
+    const { service, match, now } = await prepareLedger(60_000 / MILLISECONDS_PER_DAY);
     const older = await service.createExperienceDecision(
       "tenant-a",
       "user-1",
@@ -709,7 +716,7 @@ describe("audience domain service", () => {
     ).toBeNull();
   });
   it("validates goal event registration and attribution windows, and does not attribute outside the rendered window", async () => {
-    const { storage, service, match, now } = await prepareLedger(1_000);
+    const { storage, service, match, now } = await prepareLedger(1_000 / MILLISECONDS_PER_DAY);
     await expect(
       service.createBinding("tenant-a", "buyer", "admin", {
         pageKey: "/products",
@@ -717,9 +724,30 @@ describe("audience domain service", () => {
         schemaId: "s",
         variantId: "v",
         goalEvent: "unregistered.goal",
-        attributionWindowMs: 1_000,
+        attributionWindowDays: 1_000 / MILLISECONDS_PER_DAY,
       }),
     ).rejects.toThrow(/Invalid experience binding/);
+    const maximumWindowBinding = await service.createBinding("tenant-a", "buyer", "admin", {
+      pageKey: "/products",
+      locale: null,
+      schemaId: "s",
+      variantId: "v",
+      goalEvent: "sample.order.paid",
+      attributionWindowDays: MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
+    });
+    expect(maximumWindowBinding.attributionWindowDays).toBe(MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS);
+    const fractionalWindowBinding = await service.createBinding("tenant-a", "buyer", "admin", {
+      pageKey: "/products/fractional",
+      locale: null,
+      schemaId: "s",
+      variantId: "v",
+      goalEvent: "sample.order.paid",
+      attributionWindowDays: 2.5,
+    });
+    expect(fractionalWindowBinding.attributionWindowDays).toBe(2.5);
+    expect(attributionWindowDaysToMilliseconds(fractionalWindowBinding.attributionWindowDays)).toBe(
+      216_000_000,
+    );
     await expect(
       service.createBinding("tenant-a", "buyer", "admin", {
         pageKey: "/products",
@@ -727,7 +755,7 @@ describe("audience domain service", () => {
         schemaId: "s",
         variantId: "v",
         goalEvent: "sample.order.paid",
-        attributionWindowMs: MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS + 1,
+        attributionWindowDays: MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS + 1,
       }),
     ).rejects.toThrow(/Invalid experience binding/);
     const decision = await service.createExperienceDecision(

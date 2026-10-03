@@ -8,6 +8,7 @@ import {
   buildAudienceExpiry,
   buildExperienceBinding,
   canActivateAudienceVersion,
+  formatAttributionWindowDays,
   isAggregateAudienceMetrics,
   isRegisteredPredicate,
 } from "./audience-authoring";
@@ -122,7 +123,7 @@ describe("Audience admin surface", () => {
       schemaId: "published-layout-id",
       variantId: "default",
       goalEvent: "commerce.order.refunded",
-      attributionWindowMs: 30 * 24 * 60 * 60 * 1000,
+      attributionWindowDays: 30,
     });
     expect(() =>
       buildExperienceBinding({
@@ -157,6 +158,22 @@ describe("Audience admin surface", () => {
         approvedGoalEvents: ["commerce.order.refunded"],
       }),
     ).toThrow(/approved registered outcome event/);
+  });
+
+  it("preserves fractional attribution days in the day-based binding contract", () => {
+    const binding = buildExperienceBinding({
+      pageKey: "/products",
+      locale: "",
+      schemaId: "layout",
+      variantId: "member",
+      goalEvent: "commerce.order.paid",
+      attributionDays: 2.5,
+      approvedGoalEvents: ["commerce.order.paid"],
+    });
+
+    expect(binding.attributionWindowDays).toBe(2.5);
+    expect(formatAttributionWindowDays(binding.attributionWindowDays)).toBe("2.5");
+    expect(formatAttributionWindowDays(30)).toBe("30");
   });
 
   it("accepts aggregate-only decision summaries and rejects identifiers or invalid rates", () => {

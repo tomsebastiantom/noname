@@ -63,7 +63,7 @@ export interface ExperienceBindingInput {
   schemaId: string;
   variantId: string;
   goalEvent: string;
-  attributionWindowMs: number;
+  attributionWindowDays: number;
 }
 
 export interface ExperienceBinding extends ExperienceBindingInput {

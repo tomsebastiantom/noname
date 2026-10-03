@@ -8,8 +8,10 @@ import type {
   ExperienceDecisionRecord,
 } from "./experience-attribution";
 import {
-  MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS,
+  MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
   MIN_AUDIENCE_LEDGER_RETENTION_MS,
+  attributionWindowDaysToMilliseconds,
+  normalizeAttributionWindowDays,
 } from "./experience-attribution";
 import type { AssignmentChange } from "./membership";
 import type { AudienceService, AudienceStorage } from "./ports";
@@ -99,12 +101,21 @@ export function createAudienceService(
         !input.variantId ||
         !/^[a-z][a-z0-9_.-]{1,127}$/.test(input.goalEvent) ||
         !activityTypes.list().some((activity) => activity.type === input.goalEvent) ||
-        !Number.isSafeInteger(input.attributionWindowMs) ||
-        input.attributionWindowMs < 1 ||
-        input.attributionWindowMs > MAX_AUDIENCE_ATTRIBUTION_WINDOW_MS
+        !Number.isFinite(input.attributionWindowDays) ||
+        input.attributionWindowDays <= 0 ||
+        input.attributionWindowDays > MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS
       )
         throw new Error("Invalid experience binding");
-      return storage.createBinding({ ...input, orgId, audienceKey: key, createdBy: actorId });
+      const attributionWindowDays = normalizeAttributionWindowDays(input.attributionWindowDays);
+      if (attributionWindowDaysToMilliseconds(attributionWindowDays) < 1)
+        throw new Error("Attribution window must resolve to at least one millisecond");
+      return storage.createBinding({
+        ...input,
+        attributionWindowDays,
+        orgId,
+        audienceKey: key,
+        createdBy: actorId,
+      });
     },
     listBindings(orgId, key) {
       return storage.listBindings(orgId, key);
@@ -244,7 +255,10 @@ export function createAudienceService(
         throw new Error("Resolved membership or binding is no longer active");
       assertUuid(currentBinding.id, "bindingId");
       await storage.cleanupExpiredExperienceDecisions(new Date());
-      const renderDeadlineAt = new Date(servedAt.getTime() + currentBinding.attributionWindowMs);
+      const attributionWindowMs = attributionWindowDaysToMilliseconds(
+        currentBinding.attributionWindowDays,
+      );
+      const renderDeadlineAt = new Date(servedAt.getTime() + attributionWindowMs);
       const decision: ExperienceDecisionRecord = {
         decisionId: randomUUID(),
         orgId,
@@ -259,7 +273,7 @@ export function createAudienceService(
         schemaId: currentBinding.schemaId,
         variantId: currentBinding.variantId,
         goalEvent: currentBinding.goalEvent,
-        attributionWindowMs: currentBinding.attributionWindowMs,
+        attributionWindowDays: currentBinding.attributionWindowDays,
         servedAt,
         renderedAt: null,
         renderDeadlineAt,

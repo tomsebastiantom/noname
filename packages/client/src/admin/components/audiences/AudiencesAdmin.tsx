@@ -22,6 +22,7 @@ import {
   buildAudienceExpiry,
   buildExperienceBinding,
   canActivateAudienceVersion,
+  formatAttributionWindowDays,
   isRegisteredPredicate,
 } from "../../audience-authoring";
 import type {
@@ -733,6 +734,7 @@ function AudienceDefinitionPanel(props: DefinitionPanelProps) {
                   type="number"
                   min="1"
                   max="30"
+                  step="any"
                   value={props.attributionDays}
                   onChange={(event) => props.setAttributionDays(event.target.value)}
                 />
@@ -762,7 +764,7 @@ function AudienceDefinitionPanel(props: DefinitionPanelProps) {
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {binding.schemaId} / {binding.variantId} · goal: {binding.goalEvent} ·{" "}
-                          {Math.round(binding.attributionWindowMs / 86400000)} days
+                          {formatAttributionWindowDays(binding.attributionWindowDays)} days
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
