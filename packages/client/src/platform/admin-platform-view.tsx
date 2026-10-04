@@ -5,6 +5,7 @@ import {
   JSONUIProvider,
   type SetState,
 } from "@json-render/react";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { useDeferredValue, useMemo } from "react";
 import { AdminShell } from "../admin/components/shell/AdminShell";
 import { mergeAdminShellWithPanelChrome } from "./admin-layout";
@@ -18,10 +19,12 @@ function AdminPanelContent({
   panelSpec,
   panelKey,
   registry,
+  actionHandlerFactories,
 }: Readonly<{
   panelSpec: Spec | null;
   panelKey: string;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
 }>) {
   const deferredSpec = useDeferredValue(panelSpec);
   const deferredKey = useDeferredValue(panelKey);
@@ -37,7 +40,12 @@ function AdminPanelContent({
           aria-hidden
         />
       ) : null}
-      <CatalogUiShell key={deferredKey} spec={deferredSpec} registry={registry} />
+      <CatalogUiShell
+        key={deferredKey}
+        spec={deferredSpec}
+        registry={registry}
+        actionHandlerFactories={actionHandlerFactories}
+      />
     </div>
   );
 }
@@ -51,11 +59,13 @@ export function AdminPlatformView({
   panelSpec,
   panelKey,
   registry,
+  actionHandlerFactories,
 }: Readonly<{
   baseShellProps: AdminShellProps;
   panelSpec: Spec | null;
   panelKey: string;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
 }>) {
   const deferredPanelSpec = useDeferredValue(panelSpec);
   const shellStore = useMemo(() => createStateStore({}), []);
@@ -82,7 +92,12 @@ export function AdminPlatformView({
       navigate={navigate}
     >
       <AdminShell props={shellProps as never} emit={() => {}}>
-        <AdminPanelContent panelSpec={panelSpec} panelKey={panelKey} registry={registry} />
+        <AdminPanelContent
+          panelSpec={panelSpec}
+          panelKey={panelKey}
+          registry={registry}
+          actionHandlerFactories={actionHandlerFactories}
+        />
       </AdminShell>
     </JSONUIProvider>
   );

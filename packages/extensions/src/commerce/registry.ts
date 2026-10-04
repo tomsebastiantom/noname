@@ -12,7 +12,7 @@ const catalog = defineCatalog(schema, {
   actions: commerceActionSchemas,
 });
 
-export const { registry } = defineRegistry(catalog, {
+export const { registry, handlers } = defineRegistry(catalog, {
   components: commerceComponents,
   actions: commerceActions,
 });

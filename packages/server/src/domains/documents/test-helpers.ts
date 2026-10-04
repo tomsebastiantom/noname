@@ -86,6 +86,7 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
     findOrgIdByOAuthConnectionId: async () => null,
     upsertTenantSettings: async () => tenantSettings,
     listDocuments: async () => [],
+    listPublishedContent: async () => [],
     findDocument: async () => null,
     updateDocument: async () => {
       throw new Error("not used");

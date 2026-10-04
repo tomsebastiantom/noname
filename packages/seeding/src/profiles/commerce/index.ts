@@ -19,6 +19,8 @@ const DEMO_STORE_SLUG = "yogastore";
 
 const API_BASE = process.env.API_BASE ?? "http://localhost:3000";
 
+const publicRead = { read: ["public"], write: [] };
+
 const productContentType = {
   fields: [
     {
@@ -27,17 +29,40 @@ const productContentType = {
       required: true,
       isLocalizable: false,
       label: "Product ID",
+      permissions: publicRead,
     },
-    { key: "title", type: "text", required: true, isLocalizable: true, label: "Title" },
-    { key: "price", type: "number", required: true, isLocalizable: false, label: "Price" },
+    {
+      key: "title",
+      type: "text",
+      required: true,
+      isLocalizable: true,
+      label: "Title",
+      permissions: publicRead,
+    },
+    {
+      key: "price",
+      type: "number",
+      required: true,
+      isLocalizable: false,
+      label: "Price",
+      permissions: publicRead,
+    },
     {
       key: "description",
       type: "richText",
       required: false,
       isLocalizable: true,
       label: "Description",
+      permissions: publicRead,
     },
-    { key: "image", type: "text", required: false, isLocalizable: false, label: "Image URL" },
+    {
+      key: "image",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Image URL",
+      permissions: publicRead,
+    },
   ],
 };
 
@@ -54,7 +79,7 @@ const commerceSpec = {
     main: {
       type: "StackBase",
       props: specProps({ direction: "column", gap: 24, align: "stretch" }, {}),
-      children: ["hero", "intro", "products", "cart"],
+      children: ["hero", "intro", "products", "cart", "cartDrawer"],
     },
     hero: {
       type: "Hero",
@@ -79,8 +104,11 @@ const commerceSpec = {
       ),
     },
     products: {
-      type: "GridBase",
-      props: specProps({ columns: 2, gap: 16 }, {}),
+      type: "ProductGrid",
+      props: specProps(
+        { minColumnWidthPx: 260, gap: 20 },
+        { title: "Featured products", description: null },
+      ),
       children: ["product1"],
     },
     cart: {
@@ -92,8 +120,12 @@ const commerceSpec = {
           viewCartLabel: "View cart",
           hideCartLabel: "Hide cart",
           loadingLabel: "Loading cart…",
+          emptyLabel: "Your cart is empty",
           itemLabel: "item",
           itemsLabel: "items",
+          removeItemLabel: "Remove",
+          decreaseQuantityLabel: "Decrease quantity",
+          increaseQuantityLabel: "Increase quantity",
           priceUnavailableLabel: "Price unavailable",
           signInLabel: "Sign in",
           signInRequiredLabel: "Sign in to view your cart",
@@ -103,6 +135,24 @@ const commerceSpec = {
         },
         {},
       ),
+    },
+    cartDrawer: {
+      type: "CartDrawer",
+      props: {
+        title: "Your cart",
+        openLabel: "Open cart",
+        closeLabel: "Close cart",
+        loadingLabel: "Loading cart…",
+        emptyLabel: "Your cart is empty",
+        errorLabel: "Your cart could not be updated",
+        subtotalLabel: "Subtotal",
+        removeItemLabel: "Remove",
+        decreaseQuantityLabel: "Decrease quantity",
+        increaseQuantityLabel: "Increase quantity",
+        checkoutLabel: "Checkout",
+        priceUnavailableLabel: "Price unavailable",
+        currency: "CAD",
+      },
     },
     product1: {
       type: "ProductCard",
@@ -121,6 +171,194 @@ const commerceSpec = {
           addFailed: "Could not add to cart",
         },
       ),
+    },
+  },
+};
+
+const productDetailSpec = {
+  root: "main",
+  elements: {
+    main: {
+      type: "StackBase",
+      props: { direction: "column", gap: 24, align: "stretch" },
+      children: ["productInfo", "cart"],
+    },
+    productInfo: {
+      type: "ProductInfo",
+      props: {
+        productId: { $state: "productId" },
+        title: { $state: "title" },
+        price: { $state: "price" },
+        image: { $state: "image" },
+        imageAlt: null,
+        description: { $state: "description" },
+        currency: "CAD",
+        maxQuantity: 99,
+        quantityLabel: "Quantity",
+        decreaseQuantityLabel: "Decrease quantity",
+        increaseQuantityLabel: "Increase quantity",
+        addToCartLabel: "Add to Cart",
+        addingLabel: "Adding…",
+        addedToCartMessage: "Added to cart",
+        addFailedMessage: "Could not add to cart",
+      },
+    },
+    cart: {
+      type: "CartSummary",
+      props: {
+        title: "Your cart",
+        checkoutLabel: "Checkout",
+        viewCartLabel: "View cart",
+        hideCartLabel: "Hide cart",
+        loadingLabel: "Loading cart…",
+        emptyLabel: "Your cart is empty",
+        itemLabel: "item",
+        itemsLabel: "items",
+        removeItemLabel: "Remove",
+        decreaseQuantityLabel: "Decrease quantity",
+        increaseQuantityLabel: "Increase quantity",
+        priceUnavailableLabel: "Price unavailable",
+        signInLabel: "Sign in",
+        signInRequiredLabel: "Sign in to view your cart",
+        paymentPendingLabel: "Payment processing",
+        paymentSuccessLabel: "Payment successful",
+        paymentFailedLabel: "Payment failed",
+      },
+    },
+  },
+};
+
+const collectionSpec = {
+  root: "main",
+  elements: {
+    main: {
+      type: "StackBase",
+      props: { direction: "column", gap: 20, align: "stretch" },
+      children: ["collection", "pagination", "cartDrawer", "checkoutButton"],
+    },
+    collection: {
+      type: "CollectionPage",
+      props: {
+        listingKey: "all-products",
+        contentType: "product",
+        collectionSlug: null,
+        pageSize: 12,
+        currency: "CAD",
+        productIdField: "productId",
+        titleField: "title",
+        priceField: "price",
+        imageField: "image",
+        descriptionField: "description",
+        title: "All products",
+        loadingLabel: "Loading products…",
+        emptyLabel: "No products found",
+        errorLabel: "Products could not be loaded",
+        priceUnavailableLabel: "Price unavailable",
+        addToCartLabel: "Add to Cart",
+        addingLabel: "Adding…",
+        addedToCartMessage: "Added to cart",
+        addFailedMessage: "Could not add to cart",
+      },
+    },
+    pagination: {
+      type: "Pagination",
+      props: {
+        listingKey: "all-products",
+        previousLabel: "Previous",
+        nextLabel: "Next",
+        pageLabel: "Page",
+      },
+    },
+    cartDrawer: {
+      type: "CartDrawer",
+      props: {
+        title: "Your cart",
+        openLabel: "Open cart",
+        closeLabel: "Close cart",
+        loadingLabel: "Loading cart…",
+        emptyLabel: "Your cart is empty",
+        errorLabel: "Your cart could not be updated",
+        subtotalLabel: "Subtotal",
+        removeItemLabel: "Remove",
+        decreaseQuantityLabel: "Decrease quantity",
+        increaseQuantityLabel: "Increase quantity",
+        checkoutLabel: "Checkout",
+        priceUnavailableLabel: "Price unavailable",
+        currency: "CAD",
+      },
+    },
+    checkoutButton: {
+      type: "CheckoutButton",
+      props: {
+        checkoutLabel: "Continue to checkout",
+        loadingLabel: "Preparing checkout…",
+        errorLabel: "Could not start checkout",
+        variant: "outline",
+      },
+    },
+  },
+};
+
+const searchSpec = {
+  root: "main",
+  elements: {
+    main: {
+      type: "StackBase",
+      props: { direction: "column", gap: 20, align: "stretch" },
+      children: ["results", "pagination", "cartDrawer"],
+    },
+    results: {
+      type: "SearchResults",
+      props: {
+        listingKey: "product-search",
+        contentType: "product",
+        collectionSlug: null,
+        pageSize: 12,
+        currency: "CAD",
+        productIdField: "productId",
+        titleField: "title",
+        priceField: "price",
+        imageField: "image",
+        descriptionField: "description",
+        title: "Search products",
+        searchPlaceholder: "Search products",
+        searchButtonLabel: "Search",
+        loadingLabel: "Searching…",
+        emptyLabel: "No products found",
+        errorLabel: "Products could not be loaded",
+        priceUnavailableLabel: "Price unavailable",
+        addToCartLabel: "Add to Cart",
+        addingLabel: "Adding…",
+        addedToCartMessage: "Added to cart",
+        addFailedMessage: "Could not add to cart",
+      },
+    },
+    pagination: {
+      type: "Pagination",
+      props: {
+        listingKey: "product-search",
+        previousLabel: "Previous",
+        nextLabel: "Next",
+        pageLabel: "Page",
+      },
+    },
+    cartDrawer: {
+      type: "CartDrawer",
+      props: {
+        title: "Your cart",
+        openLabel: "Open cart",
+        closeLabel: "Close cart",
+        loadingLabel: "Loading cart…",
+        emptyLabel: "Your cart is empty",
+        errorLabel: "Your cart could not be updated",
+        subtotalLabel: "Subtotal",
+        removeItemLabel: "Remove",
+        decreaseQuantityLabel: "Decrease quantity",
+        increaseQuantityLabel: "Increase quantity",
+        checkoutLabel: "Checkout",
+        priceUnavailableLabel: "Price unavailable",
+        currency: "CAD",
+      },
     },
   },
 };
@@ -222,14 +460,15 @@ async function ensureProductContentType(): Promise<void> {
     "/api/documents/content-types",
   );
   if (types.some((t) => t.name === "product")) {
-    console.log("Product content type already exists.");
+    await api("PUT", "/api/documents/content-types/product", { schema: productContentType });
+    console.log("Product content type updated with public storefront fields.");
     return;
   }
   await api("POST", "/api/documents/content-types", {
     name: "product",
     schema: productContentType,
   });
-  console.log("Product content type created.");
+  console.log("Product content type created with public storefront fields.");
 }
 
 const demoProductDescription = {
@@ -285,12 +524,16 @@ async function seedDemoProduct(): Promise<string> {
   return created.id;
 }
 
-async function publishHomeLayout(spec: Record<string, unknown>, contentRef: string): Promise<void> {
+async function publishCommerceLayout(
+  templateName: string,
+  spec: Record<string, unknown>,
+  contentRef: string | null,
+): Promise<void> {
   const { data: layouts } = await api<{ data: LayoutRow[] }>(
     "GET",
-    "/api/documents/layout?segment=default&templateName=home",
+    `/api/documents/layout?segment=default&templateName=${encodeURIComponent(templateName)}`,
   );
-  const existing = layouts.find((row) => row.key === "home");
+  const existing = layouts.find((row) => row.key === templateName);
 
   if (existing) {
     await api("PUT", `/api/documents/layout/${existing.id}`, {
@@ -301,57 +544,69 @@ async function publishHomeLayout(spec: Record<string, unknown>, contentRef: stri
     if (existing.status !== "published") {
       await api("PUT", `/api/documents/layout/${existing.id}/publish`);
     }
-    console.log("Home layout updated with commerce spec + contentRef.");
+    console.log(`${templateName} layout updated with commerce spec + contentRef.`);
     return;
   }
 
   const { data: created } = await api<{ data: { id: string } }>("POST", "/api/documents/layout", {
-    templateName: "home",
+    templateName,
     segment: "default",
     spec,
     renderAs: "standalone",
   });
   await api("PUT", `/api/documents/layout/${created.id}`, { spec, contentRef });
   await api("PUT", `/api/documents/layout/${created.id}/publish`);
-  console.log("Home layout created and published with contentRef.");
+  console.log(`${templateName} layout created and published with contentRef.`);
 }
 
 async function ensureCommercePageRouting(productId: string): Promise<void> {
   const productPath = "/products/demo-sneakers";
   const productContentRef = `product:${productId}`;
+  const routes = [
+    {
+      key: "product-demo",
+      path: productPath,
+      layoutRef: "product_detail",
+      contentRef: productContentRef,
+    },
+    { key: "collection-all", path: "/collections/all", layoutRef: "collection", contentRef: null },
+    { key: "product-search", path: "/search", layoutRef: "search", contentRef: null },
+  ];
 
-  // Home layout binds ProductCard to product $state fields — route contentRef must be product too.
-  // demo.ts seeds home → page:uuid (title/body only); that overrides layout contentRef and breaks price.
+  // The home grid and detail page bind the demo product; collection/search pages load published content.
   await api("PUT", "/api/documents/page/home", {
     layoutRef: "home",
     contentRef: productContentRef,
   });
-  await api("PUT", "/api/documents/page/product-demo", {
-    layoutRef: "home",
-    contentRef: productContentRef,
-  });
+  for (const route of routes) {
+    await api("PUT", `/api/documents/page/${route.key}`, {
+      layoutRef: route.layoutRef,
+      contentRef: route.contentRef,
+    });
+  }
 
   const { data: tree } = await api<{
     data: { pages: Array<{ id: string; slug: Record<string, string>; pageId: string }> } | null;
   }>("GET", "/api/documents/page_tree/main");
   const pages = tree?.pages ?? [];
-  const hasProduct = pages.some(
-    (entry) =>
-      entry.pageId === "product-demo" ||
-      entry.slug["en-US"] === productPath ||
-      Object.values(entry.slug).includes(productPath),
-  );
-
-  if (!hasProduct) {
-    pages.push({
-      id: "pg-product-demo",
-      slug: { "en-US": productPath },
-      pageId: "product-demo",
-    });
+  for (const route of routes) {
+    const exists = pages.some(
+      (entry) =>
+        entry.pageId === route.key ||
+        entry.slug["en-US"] === route.path ||
+        Object.values(entry.slug).includes(route.path),
+    );
+    if (!exists) {
+      pages.push({
+        id: `pg-${route.key}`,
+        slug: { "en-US": route.path },
+        pageId: route.key,
+      });
+    }
   }
 
   await api("PUT", "/api/documents/page_tree/main", { pages });
-  console.log(`Page routing: ${productPath} → product-demo → product:${productId}`);
+  console.log(`Page routing: ${routes.map((route) => `${route.path} → ${route.key}`).join(", ")}`);
 }
 
 async function seedDemoOrderEvidence(): Promise<void> {
@@ -403,47 +658,105 @@ async function runCommerceSeed() {
   await ensureProductContentType();
   const productId = await seedDemoProduct();
   const contentRef = `product:${productId}`;
+  const storefrontKey = rotated?.publishableKey;
+  if (!storefrontKey) throw new Error("Publishable key was not returned by the tenant API");
+  const catalogResponse = await fetch(`${API_BASE}/api/storefront/content/product?limit=10`, {
+    headers: { ...orgHeaders(), "x-publishable-key": storefrontKey },
+  });
+  if (!catalogResponse.ok) {
+    throw new Error(`Published storefront content fetch failed: ${catalogResponse.status}`);
+  }
+  const catalogBody = (await catalogResponse.json()) as {
+    data?: { items?: Array<{ id: string; data: Record<string, unknown> }> };
+  };
+  if (
+    !catalogBody.data?.items?.some(
+      (item) => item.id === productId && item.data.productId === "demo-sneakers",
+    )
+  ) {
+    throw new Error(
+      "Published product was not returned by the generic storefront content endpoint",
+    );
+  }
 
-  await publishHomeLayout(commerceSpec, contentRef);
+  await publishCommerceLayout("home", commerceSpec, contentRef);
+  await publishCommerceLayout("product_detail", productDetailSpec, contentRef);
+  await publishCommerceLayout("collection", collectionSpec, null);
+  await publishCommerceLayout("search", searchSpec, null);
   await ensureCommercePageRouting(productId);
   await seedDemoOrderEvidence();
 
   const { data: productSchema } = await api<{
-    data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } };
+    data: { layout: ResolvedLayout; templateName?: string };
   }>(
     "GET",
     `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/products/demo-sneakers")}`,
   );
 
-  const assertProductCard = (
-    layout: { elements?: Record<string, { props?: Record<string, unknown> }> } | undefined,
+  type ResolvedLayout = {
+    elements?: Record<string, { type?: string; props?: Record<string, unknown> }>;
+  };
+  const assertProductData = (
+    layout: ResolvedLayout | undefined,
+    componentKey: string,
+    componentName: string,
     label: string,
     url: string,
   ) => {
-    const productProps = layout?.elements?.product1?.props as
-      | { title?: unknown; price?: unknown }
-      | undefined;
+    const productProps = layout?.elements?.[componentKey]?.props;
     const title = productProps?.title;
     const price = productProps?.price;
     if (title !== "Blue Sneakers" || typeof price !== "number") {
       throw new Error(
-        `${label} ProductCard not resolved at ${url} — title: ${String(title ?? "missing")}, price: ${String(price ?? "missing")}`,
+        `${label} ${componentName} not resolved at ${url} — title: ${String(title ?? "missing")}, price: ${String(price ?? "missing")}`,
       );
     }
   };
 
   const { data: homeSchema } = await api<{
-    data: { layout: { elements?: Record<string, { props?: Record<string, unknown> }> } };
+    data: { layout: ResolvedLayout };
   }>("GET", `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/")}`);
-  assertProductCard(homeSchema.layout, "Home", "/");
-  assertProductCard(productSchema.layout, "Product", "/products/demo-sneakers");
+  assertProductData(homeSchema.layout, "product1", "ProductCard", "Home", "/");
+  assertProductData(
+    productSchema.layout,
+    "productInfo",
+    "ProductInfo",
+    "Product",
+    "/products/demo-sneakers",
+  );
+  if (productSchema.templateName !== "product_detail") {
+    throw new Error(`Product route uses unexpected layout ${productSchema.templateName}`);
+  }
+
+  const [collectionSchema, searchSchema] = await Promise.all([
+    api<{ data: { layout: ResolvedLayout; templateName: string } }>(
+      "GET",
+      `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/collections/all")}`,
+    ),
+    api<{ data: { layout: ResolvedLayout; templateName: string } }>(
+      "GET",
+      `/api/edge/schema/${DEMO_STORE_SLUG}?url=${encodeURIComponent("/search")}`,
+    ),
+  ]);
+  if (
+    collectionSchema.data.templateName !== "collection" ||
+    collectionSchema.data.layout.elements?.collection?.type !== "CollectionPage"
+  ) {
+    throw new Error("Collection route did not resolve the published CollectionPage spec");
+  }
+  if (
+    searchSchema.data.templateName !== "search" ||
+    searchSchema.data.layout.elements?.results?.type !== "SearchResults"
+  ) {
+    throw new Error("Search route did not resolve the published SearchResults spec");
+  }
 
   console.log("Commerce extension demo seed complete.");
   console.log(`  Org:         ${DEMO_ORG_ID}`);
   console.log(`  Extensions:  commerce`);
   console.log(`  Content:     ${contentRef}`);
-  console.log(`  Layout:      home (Hero + ProductCard with $state)`);
-  console.log(`  URL:         /products/demo-sneakers (via page_tree)`);
+  console.log(`  Layouts:     home, product_detail, collection, search`);
+  console.log(`  URLs:        /products/demo-sneakers, /collections/all, /search`);
   console.log(`  Client:      http://yogastore.localhost:5173/products/demo-sneakers`);
 }
 

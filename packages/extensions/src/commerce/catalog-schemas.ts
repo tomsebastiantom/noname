@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+const productListingFields = {
+  productIdField: z.string().min(1),
+  titleField: z.string().min(1),
+  priceField: z.string().min(1),
+  imageField: z.string().min(1),
+  descriptionField: z.string().min(1),
+};
+
 export const commerceComponentSchemas = {
   OrdersAdmin: {
     props: z.object({
@@ -23,6 +31,27 @@ export const commerceComponentSchemas = {
     }),
     description: "Browse commerce orders and their evidence links",
   },
+  CartDrawer: {
+    props: z.object({
+      title: z.string(),
+      openLabel: z.string(),
+      closeLabel: z.string(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      errorLabel: z.string(),
+      subtotalLabel: z.string(),
+      removeItemLabel: z.string(),
+      decreaseQuantityLabel: z.string(),
+      increaseQuantityLabel: z.string(),
+      checkoutLabel: z.string(),
+      priceUnavailableLabel: z.string(),
+      currency: z
+        .string()
+        .regex(/^[A-Z]{3}$/)
+        .default("CAD"),
+    }),
+    description: "Accessible cart drawer with item controls and checkout",
+  },
   CartSummary: {
     props: z.object({
       title: z.string(),
@@ -30,8 +59,12 @@ export const commerceComponentSchemas = {
       viewCartLabel: z.string(),
       hideCartLabel: z.string(),
       loadingLabel: z.string(),
+      emptyLabel: z.string(),
       itemLabel: z.string(),
       itemsLabel: z.string(),
+      removeItemLabel: z.string(),
+      decreaseQuantityLabel: z.string(),
+      increaseQuantityLabel: z.string(),
       priceUnavailableLabel: z.string(),
       signInLabel: z.string(),
       signInRequiredLabel: z.string(),
@@ -39,6 +72,15 @@ export const commerceComponentSchemas = {
       paymentSuccessLabel: z.string(),
       paymentFailedLabel: z.string(),
     }),
+  },
+  CheckoutButton: {
+    props: z.object({
+      checkoutLabel: z.string(),
+      loadingLabel: z.string(),
+      errorLabel: z.string(),
+      variant: z.enum(["primary", "outline", "link"]).default("primary"),
+    }),
+    description: "Configurable checkout action button",
   },
   Hero: {
     props: z.object({
@@ -51,6 +93,87 @@ export const commerceComponentSchemas = {
     }),
     description: "Full-width hero banner with title, image, and CTA",
   },
+  ProductGrid: {
+    props: z.object({
+      title: z.string(),
+      description: z.string().nullable(),
+      minColumnWidthPx: z.number().int().min(180).max(800).default(260),
+      gap: z.number().min(0).max(96).default(20),
+    }),
+    slots: ["default"],
+    description: "Responsive grid section for product cards",
+  },
+  ProductInfo: {
+    props: z.object({
+      productId: z.string().min(1),
+      title: z.string(),
+      price: z.number().nonnegative(),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+      image: z.string().nullable(),
+      imageAlt: z.string().nullable(),
+      description: z.unknown().nullable(),
+      quantityLabel: z.string(),
+      decreaseQuantityLabel: z.string(),
+      increaseQuantityLabel: z.string(),
+      addToCartLabel: z.string(),
+      addingLabel: z.string(),
+      addedToCartMessage: z.string(),
+      addFailedMessage: z.string(),
+      maxQuantity: z.number().int().min(1).max(999).default(99),
+    }),
+    description: "Product detail with image, price, quantity, and add-to-cart action",
+  },
+  CollectionPage: {
+    props: z.object({
+      listingKey: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+      contentType: z.string().min(1),
+      collectionSlug: z.string().nullable(),
+      pageSize: z.number().int().min(1).max(100),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+      title: z.string(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      errorLabel: z.string(),
+      priceUnavailableLabel: z.string(),
+      addToCartLabel: z.string(),
+      addingLabel: z.string(),
+      addedToCartMessage: z.string(),
+      addFailedMessage: z.string(),
+      ...productListingFields,
+    }),
+    description: "Published content collection rendered as storefront product cards",
+  },
+  SearchResults: {
+    props: z.object({
+      listingKey: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+      contentType: z.string().min(1),
+      collectionSlug: z.string().nullable(),
+      pageSize: z.number().int().min(1).max(100),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+      title: z.string(),
+      searchPlaceholder: z.string(),
+      searchButtonLabel: z.string(),
+      loadingLabel: z.string(),
+      emptyLabel: z.string(),
+      errorLabel: z.string(),
+      priceUnavailableLabel: z.string(),
+      addToCartLabel: z.string(),
+      addingLabel: z.string(),
+      addedToCartMessage: z.string(),
+      addFailedMessage: z.string(),
+      ...productListingFields,
+    }),
+    description: "Search published content through the tenant storefront API",
+  },
+  Pagination: {
+    props: z.object({
+      listingKey: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+      previousLabel: z.string(),
+      nextLabel: z.string(),
+      pageLabel: z.string(),
+    }),
+    description: "Previous/next controls for a loaded storefront listing",
+  },
   ProductCard: {
     props: z.object({
       addToCart: z.string(),
@@ -60,8 +183,12 @@ export const commerceComponentSchemas = {
       productId: z.string(),
       title: z.string(),
       price: z.number(),
+      currency: z
+        .string()
+        .regex(/^[A-Z]{3}$/)
+        .default("CAD"),
       image: z.string().nullable(),
-      description: z.string().nullable(),
+      description: z.unknown().nullable(),
     }),
     description: "Product card with image, title, price, and description",
   },
@@ -71,9 +198,34 @@ export const commerceActionSchemas = {
   addToCart: {
     params: z.object({
       productId: z.string(),
-      quantity: z.number().min(1).default(1),
+      quantity: z.number().int().min(1).max(999).default(1),
     }),
     description: "Add product to cart",
+  },
+  updateCartItem: {
+    params: z.object({
+      productId: z.string().min(1),
+      quantity: z.number().int().min(0).max(999),
+    }),
+    description: "Set a cart item quantity, or remove it with zero",
+  },
+  loadPublishedContent: {
+    params: z.object({
+      listingKey: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+      contentType: z.string().min(1),
+      collectionSlug: z.string().nullable(),
+      query: z.string().nullable(),
+      locale: z.string().nullable(),
+      limit: z.number().int().min(1).max(100),
+      offset: z.number().int().min(0),
+      productIdField: z.string().min(1),
+      titleField: z.string().min(1),
+      priceField: z.string().min(1),
+      imageField: z.string().min(1),
+      descriptionField: z.string().min(1),
+      currency: z.string().regex(/^[A-Z]{3}$/),
+    }),
+    description: "Load published tenant content into catalog renderer state",
   },
   checkout: {
     description: "Create a hosted checkout session and redirect",

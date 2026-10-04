@@ -23,6 +23,7 @@ import {
 import { createCollabDomain } from "./domains/collab";
 import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
+import { createStorefrontContentRoutes } from "./domains/documents/routes/storefront-content";
 import { createEdgeDomain } from "./domains/edge";
 import { createEvidenceDomain } from "./domains/evidence";
 import { createFlagDomain } from "./domains/flags";
@@ -198,6 +199,14 @@ export async function createApp(): Promise<Hono> {
   });
 
   app.route("/api/documents", docs.routes);
+  app.route(
+    "/api/storefront/content",
+    createStorefrontContentRoutes({
+      contentTypes: docs.service.contentTypes,
+      storage,
+      tenantSettings: docs.service.tenantSettings,
+    }),
+  );
 
   const collab = createCollabDomain({
     storage,

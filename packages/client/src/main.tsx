@@ -35,6 +35,7 @@ function App() {
     adminPanelSpec,
     adminBaseShellProps,
     registry,
+    actionHandlerFactories,
     shellKey,
     layoutTemplateName,
     pageContentRef,
@@ -97,6 +98,7 @@ function App() {
         panelSpec={adminPanelSpec}
         panelKey={template}
         registry={registry}
+        actionHandlerFactories={actionHandlerFactories}
       />
     );
   } else if (editorRoute && spec && editorShellSpec && layoutTemplateName) {
@@ -109,6 +111,7 @@ function App() {
             templateName={layoutTemplateName}
             pageContentRef={pageContentRef}
             registry={registry}
+            actionHandlerFactories={actionHandlerFactories}
             onReload={() => void loadPage()}
           />
         </Suspense>
@@ -121,7 +124,12 @@ function App() {
           isLoginTemplate(template) ? "flex min-h-0 flex-1 flex-col overflow-hidden" : undefined
         }
       >
-        <CatalogUiShell key={shellRouteKey} spec={spec} registry={registry} />
+        <CatalogUiShell
+          key={shellRouteKey}
+          spec={spec}
+          registry={registry}
+          actionHandlerFactories={actionHandlerFactories}
+        />
       </div>
     );
   }

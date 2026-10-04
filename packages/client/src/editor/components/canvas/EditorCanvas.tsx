@@ -1,5 +1,6 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import {
   type DragEvent,
   type KeyboardEvent,
@@ -97,6 +98,7 @@ const PREVIEW_MAX_WIDTH: Record<Exclude<CanvasPreviewWidth, "full">, number> = {
 export function EditorCanvas({
   previewSpec,
   registry,
+  actionHandlerFactories = [],
   routeKey,
   storedSpec,
   pendingElementId,
@@ -118,6 +120,7 @@ export function EditorCanvas({
 }: {
   previewSpec: Spec;
   registry: ComponentRegistry;
+  actionHandlerFactories?: ExtensionActionHandlerFactory[];
   /** Stable per template+document — remounts the preview shell only on route switch, never per keystroke. */
   routeKey: string;
   storedSpec: Spec | null;
@@ -542,7 +545,12 @@ export function EditorCanvas({
       onMouseMove={onCollabPointerMove ? handleCollabPointerMove : undefined}
       onMouseLeave={onCollabPointerMove ? handleCollabPointerLeave : undefined}
     >
-      <CatalogUiShell key={routeKey} spec={previewSpec} registry={registry} />
+      <CatalogUiShell
+        key={routeKey}
+        spec={previewSpec}
+        registry={registry}
+        actionHandlerFactories={actionHandlerFactories}
+      />
 
       {selectionChip ? (
         <div

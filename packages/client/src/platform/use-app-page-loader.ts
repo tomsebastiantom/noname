@@ -1,6 +1,7 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { fetchWithTimeout } from "@noname/auth";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import {
   apiHeaders,
@@ -98,6 +99,7 @@ export interface AppPageLoader {
   adminPanelSpec: Spec | null;
   adminBaseShellProps: AdminShellProps | null;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
   shellKey: string;
   layoutTemplateName: string;
   pageContentRef: string | null;
@@ -117,6 +119,9 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
   const [adminPanelSpec, setAdminPanelSpec] = useState<Spec | null>(null);
   const [adminBaseShellProps, setAdminBaseShellProps] = useState<AdminShellProps | null>(null);
   const [registry, setRegistry] = useState<ComponentRegistry>(platformRegistry);
+  const [actionHandlerFactories, setActionHandlerFactories] = useState<
+    ExtensionActionHandlerFactory[]
+  >([]);
   const [shellKey, setShellKey] = useState("");
   const [layoutTemplateName, setLayoutTemplateName] = useState("");
   const [pageContentRef, setPageContentRef] = useState<string | null>(null);
@@ -248,6 +253,7 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
         const loaded = await loadCatalogs(manifest);
         if (isStale()) return;
         setRegistry(loaded.registry);
+        setActionHandlerFactories(loaded.actionHandlerFactories);
       }
 
       const renderAs = body?.data?.renderAs ?? "standalone";
@@ -379,6 +385,7 @@ export function useAppPageLoader(input: AppRouteInput): AppPageLoader {
     adminPanelSpec,
     adminBaseShellProps,
     registry,
+    actionHandlerFactories,
     shellKey,
     layoutTemplateName,
     pageContentRef,

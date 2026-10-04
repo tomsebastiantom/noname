@@ -43,17 +43,23 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
   });
 
   routes.get("/:type", async (c) => {
+    const reader = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (reader instanceof Response) return reader;
     const orgId = getOrgId(c);
     return ok(c, await content.findByType(orgId, c.req.param("type")));
   });
 
   routes.get("/:type/search", async (c) => {
+    const reader = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (reader instanceof Response) return reader;
     const orgId = getOrgId(c);
     const query = c.req.query("q") ?? "";
     return ok(c, await content.search(orgId, c.req.param("type"), query));
   });
 
   routes.get("/:type/:id", async (c) => {
+    const reader = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (reader instanceof Response) return reader;
     const orgId = getOrgId(c);
     const { type: _type, id } = c.req.param();
     const found = await content.findById(orgId, id, {
@@ -63,6 +69,8 @@ export function registerContentRoutes(routes: Hono, deps: DocumentsRouteDeps): v
   });
 
   routes.get("/:type/:id/resolve", async (c) => {
+    const reader = await requireActorPermission(c, PERMISSIONS.CONTENT_DRAFT_WRITE);
+    if (reader instanceof Response) return reader;
     const orgId = getOrgId(c);
     const { type, id } = c.req.param();
     const resolved = await content.resolve(orgId, type, id, c.req.query("locale") || "en-US");

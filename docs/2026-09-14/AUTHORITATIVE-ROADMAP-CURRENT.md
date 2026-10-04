@@ -18,6 +18,8 @@ This document is the current planning source. Earlier documents remain historica
 
 **Implementation update (2026-10-03):** The user-approved Audience/Experience and context-contract replacement is implemented for local source scope. The populated no-provider member/default Browser MCP journey and decimal-day attribution persistence are verified; see [`../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md`](../2026-09-26/PERSONALIZATION-IMPLEMENTATION-PLAN.md) and [`../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md`](../2026-10-03/E2E-AUDIENCE-PAGE-FLOW.md). Production tenant-rule/consumer inventory, production retention decisions, post-exposure aggregate-outcome UI verification, and provider-backed checkout remain follow-up. The 2026-09-27 notes below are historical where superseded by these records.
 
+**Commerce storefront update (2026-10-04):** The second storefront slice adds `CartDrawer`, `CheckoutButton`, `CollectionPage`, `SearchResults`, and `Pagination`, enhances `CartSummary`, and introduces a generic, publishable-key-protected `/api/storefront/content/:type` read path. It returns only published records and explicitly public fields, tenant-scopes collection slugs, resolves enabled locales, and filters/searches before stable pagination. The extension has 11 Commerce catalog components total; see the complete inventory below. The new collection and search layouts exercise the published-content action and `$state` results. Focused endpoint/component tests, package typechecks, the client production build, and live seed/browser verification pass. Product, collection, search, cart quantity/removal, admin, and editor flows were exercised; payment-provider checkout/callback was not.
+
 ## Current implementation baseline
 
 ### Platform infrastructure
@@ -72,7 +74,8 @@ Current Commerce capabilities include:
 - Immutable order/payment Evidence records
 - `paid_by` and `caused_by` Evidence links
 - Commerce-owned read-only Orders admin UI
-- Live Stripe Sandbox checkout and signed callback-to-paid verification
+- Responsive `ProductGrid` and CMS-bound `ProductInfo` storefront components
+- Live Stripe Sandbox checkout and signed callback-to-paid verification (local Nango-boundary callback; see the dated verification record for the external-webhook caveat)
 
 ## Completed roadmap milestones
 
@@ -182,7 +185,7 @@ Stripe Sandbox checkout
 → /admin/orders row and detail
 ```
 
-The Orders page has been verified with deterministic seeded Evidence. The remaining proof is the live paid checkout result appearing in the Orders projection in the same run.
+**Verified 2026-10-03:** a Stripe Sandbox payment, locally Nango-HMAC-signed provider-envelope callback, persisted `paid` cart, correlated Evidence order, and `/admin/orders` row were observed in the same run. The callback was a local Nango-boundary simulation, not an actual Stripe→Nango webhook; track that external-delivery gap under item 2.
 
 #### 2. Real external webhook verification
 
@@ -215,20 +218,27 @@ These are the actual product features still absent or intentionally deferred.
 
 #### 4. Commerce catalog expansion
 
-Current extension components are intentionally small. Remaining likely components:
+The following is the complete Commerce extension catalog inventory in this checkout (not the full platform catalog):
 
-```text
-ProductGrid
-ProductInfo
-CartDrawer
-CartSummary enhancements
-CheckoutButton variants
-CollectionPage
-SearchResults
-Pagination
-```
+| Catalog component | Status | Notes |
+|---|---|---|
+| `Hero` | Implemented | Storefront banner |
+| `ProductCard` | Implemented | Product summary and add-to-cart |
+| `ProductGrid` | Implemented | Responsive composition slot for product cards |
+| `ProductInfo` | Implemented | CMS-bound detail, price, quantity, and add-to-cart |
+| `CartSummary` | Implemented; enhanced 2026-10-03 | Inline totals, quantity adjustment/removal, checkout and payment state |
+| `CartDrawer` | Implemented 2026-10-03 | Accessible side panel with item controls and subtotal |
+| `CheckoutButton` | Implemented 2026-10-03 | Primary, outline, and link variants |
+| `CollectionPage` | Implemented 2026-10-03 | Renders published CMS products from renderer state |
+| `SearchResults` | Implemented 2026-10-03 | Searches public published content through catalog action |
+| `Pagination` | Implemented 2026-10-03 | Offset-based previous/next controls |
+| `OrdersAdmin` | Implemented | Read-only order/evidence view |
 
-Each component must remain Commerce extension-owned and use catalog edit metadata.
+**Count:** 11 Commerce catalog components total; 2 were created in the first storefront slice and 5 in the second slice.
+
+The generic published-content read path is `GET /api/storefront/content/:type`. It is tenant-scoped by the edge-signed organization, requires that tenant's publishable key, returns only published entries, and projects only schema fields explicitly marked with `permissions.read: ["public"]`. Search is restricted to those fields and the selected/default enabled locale; collection slugs resolve within the tenant. The response uses a narrow `{ id, data }` shape with bounded limit/offset and a `nextOffset` cursor hint—never a raw `DocumentDTO`. The generic raw document list/search/record-resolution routes remain staff-only, so possession of a publishable key cannot bypass the storefront projection. Listing actions place results in renderer `$state`; product records are not embedded as static layout props.
+
+All component additions remain Commerce extension-owned, use flat catalog props, and include visual-editor metadata. The demo seeds `/collections/all` and `/search` layouts to exercise dynamic content loading. Follow-up work: expose public-field permissions cleanly in content-type editing, add total-count/cursor pagination if catalog scale requires it, and verify these layouts against a running stack.
 
 #### 5. Order operations
 
@@ -288,13 +298,12 @@ Not current blockers:
 
 ## Correct next implementation
 
-The next implementation should be a focused **live checkout-to-Orders verification and release evidence pass**, not another foundational rewrite.
+**Update 2026-10-04:** The local checkout-to-Orders evidence pass and the 11-component Commerce storefront expansion are complete. The callback previously verified was locally Nango-signed; real provider delivery remains separate under P0 item 2. The current storefront pass verifies published product loading in ProductInfo, collection, and search, plus cart quantity/removal; it did not exercise payment-provider checkout/callback.
 
-If that pass succeeds, the next feature should be selected from the Commerce product backlog:
+Select the next feature from the remaining Commerce product backlog:
 
 1. Inventory/order operations if operational correctness is the priority.
-2. ProductGrid/ProductInfo/storefront components if merchant storefront completeness is the priority.
-3. Real public Stripe webhook/deployment work if preparing for external environments.
+2. Real public Stripe webhook/deployment work to complete external payment delivery.
 
 The machine engine, capability idempotency, provider receipt path, Evidence projection, seed architecture, and Orders read view should not be reimplemented. They are already present and verified.
 

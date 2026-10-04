@@ -1,6 +1,10 @@
 import type { ComponentRegistry } from "@json-render/react";
 import { loadRemote, registerRemotes } from "@module-federation/runtime";
-import { type ExtensionLifecycle, extensionLoaders } from "@noname/extensions";
+import {
+  type ExtensionActionHandlerFactory,
+  type ExtensionLifecycle,
+  extensionLoaders,
+} from "@noname/extensions";
 import { LOGIN_EVENT } from "./auth/session";
 import { initMfRuntime } from "./mf-init";
 import { registry as platformRegistry } from "./platform/registry";
@@ -24,11 +28,13 @@ export interface CatalogManifest {
 
 export interface LoadedCatalogs {
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
 }
 
 let catalogCache: {
   key: string;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
   lifecycles: Array<{ name: string; onLogin: () => void }>;
 } | null = null;
 
@@ -104,9 +110,11 @@ function wireExtensionLifecycle(name: string, lifecycle?: ExtensionLifecycle): v
 
 async function loadExtensionRegistries(extensions: string[]): Promise<{
   registries: ComponentRegistry[];
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
   lifecycles: Array<{ name: string; onLogin: () => void }>;
 }> {
   const registries: ComponentRegistry[] = [];
+  const actionHandlerFactories: ExtensionActionHandlerFactory[] = [];
   const lifecycles: Array<{ name: string; onLogin: () => void }> = [];
 
   for (const name of extensions) {
@@ -115,6 +123,7 @@ async function loadExtensionRegistries(extensions: string[]): Promise<{
     try {
       const mod = await loader();
       registries.push(mod.registry);
+      if (mod.handlers) actionHandlerFactories.push(mod.handlers);
       if (mod.lifecycle?.onLogin) {
         lifecycles.push({ name, onLogin: mod.lifecycle.onLogin });
       }
@@ -123,7 +132,7 @@ async function loadExtensionRegistries(extensions: string[]): Promise<{
     }
   }
 
-  return { registries, lifecycles };
+  return { registries, actionHandlerFactories, lifecycles };
 }
 
 export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCatalogs> {
@@ -132,14 +141,19 @@ export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCat
     for (const lifecycle of catalogCache.lifecycles) {
       wireExtensionLifecycle(lifecycle.name, lifecycle);
     }
-    return { registry: catalogCache.registry };
+    return {
+      registry: catalogCache.registry,
+      actionHandlerFactories: catalogCache.actionHandlerFactories,
+    };
   }
 
   initMfRuntime();
 
-  const { registries: extensionRegistries, lifecycles } = await loadExtensionRegistries(
-    manifest.extensions ?? [],
-  );
+  const {
+    registries: extensionRegistries,
+    actionHandlerFactories,
+    lifecycles,
+  } = await loadExtensionRegistries(manifest.extensions ?? []);
   const registries: ComponentRegistry[] = [platformRegistry, ...extensionRegistries];
 
   const marketplace = manifest.marketplace ?? [];
@@ -161,8 +175,8 @@ export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCat
   }
 
   const registry = mergeRegistries(registries);
-  catalogCache = { key: cacheKey, registry, lifecycles };
-  return { registry };
+  catalogCache = { key: cacheKey, registry, actionHandlerFactories, lifecycles };
+  return { registry, actionHandlerFactories };
 }
 
 /** Clear memoized catalog (tests or hot reload). */

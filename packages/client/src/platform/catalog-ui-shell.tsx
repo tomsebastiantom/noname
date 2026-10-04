@@ -6,6 +6,7 @@ import {
   Renderer,
   type SetState,
 } from "@json-render/react";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { navigateApp } from "./app-navigation";
 import { getFlagsSnapshot, subscribeFlags } from "./browser-observability";
@@ -29,21 +30,38 @@ import { handlers as createHandlers } from "./registry";
 export function CatalogUiShell({
   spec,
   registry,
+  actionHandlerFactories = [],
 }: Readonly<{
   spec: Spec;
   registry: ComponentRegistry;
+  actionHandlerFactories?: ExtensionActionHandlerFactory[];
 }>) {
   const flags = useSyncExternalStore(subscribeFlags, getFlagsSnapshot, getFlagsSnapshot);
   const store = useMemo(() => createStateStore({}), []);
 
-  const actionHandlers = useMemo(
-    () =>
-      createHandlers(
-        () => store.set.bind(store) as unknown as SetState,
-        () => store.getSnapshot(),
-      ),
-    [store],
-  );
+  const actionHandlers = useMemo(() => {
+    const getState = () => store.getSnapshot();
+    const getPathSetState = () => store.set.bind(store) as unknown as SetState;
+    const handlers = createHandlers(getPathSetState, getState);
+    const getUpdaterSetState =
+      () => (updater: (previous: Record<string, unknown>) => Record<string, unknown>) => {
+        const previous = store.getSnapshot() as Record<string, unknown>;
+        const next = updater(previous);
+        const updates: Record<string, unknown> = {};
+        const keys = new Set([...Object.keys(previous), ...Object.keys(next)]);
+        for (const key of keys) {
+          if (previous[key] !== next[key]) {
+            const escapedKey = key.replace(/~/g, "~0").replace(/\//g, "~1");
+            updates[`/${escapedKey}`] = next[key];
+          }
+        }
+        if (Object.keys(updates).length > 0) store.update(updates);
+      };
+    for (const createExtensionHandlers of actionHandlerFactories) {
+      Object.assign(handlers, createExtensionHandlers(getUpdaterSetState, getState));
+    }
+    return handlers;
+  }, [store, actionHandlerFactories]);
 
   const navigate = useMemo(() => (path: string) => navigateApp(path), []);
 

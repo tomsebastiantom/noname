@@ -1,4 +1,6 @@
-import type { ComponentRegistry } from "@json-render/react";
+import type { ComponentRegistry, DefineRegistryResult } from "@json-render/react";
+
+export type ExtensionActionHandlerFactory = DefineRegistryResult["handlers"];
 
 /**
  * Platform-owned lifecycle surface for extensions. The loader (platform)
@@ -12,6 +14,7 @@ export interface ExtensionLifecycle {
 
 export interface ExtensionModule {
   registry: ComponentRegistry;
+  handlers?: ExtensionActionHandlerFactory;
   componentSchemas?: Record<string, unknown>;
   actionSchemas?: Record<string, unknown>;
   lifecycle?: ExtensionLifecycle;

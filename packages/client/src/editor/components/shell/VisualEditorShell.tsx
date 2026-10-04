@@ -138,6 +138,7 @@ export function EditorCanvasSlot() {
   const {
     previewSpec,
     registry,
+    actionHandlerFactories,
     storedSpec,
     pendingAdd,
     selection,
@@ -169,6 +170,7 @@ export function EditorCanvasSlot() {
       <EditorCanvas
         previewSpec={previewSpec}
         registry={registry}
+        actionHandlerFactories={actionHandlerFactories ?? []}
         routeKey={`${templateName}:${layoutDocumentId ?? "draft"}`}
         storedSpec={storedSpec}
         pendingElementId={pendingAdd?.tempElementId ?? null}

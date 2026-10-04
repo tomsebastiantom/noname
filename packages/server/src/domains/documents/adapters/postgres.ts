@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, or, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { NotFoundError, StorageError } from "../../../shared/domain-error";
 import type {
@@ -7,6 +7,7 @@ import type {
   DocumentDTO,
   DocumentOpDTO,
   DocumentStorage,
+  PublishedContentFilters,
   TenantSettingsDTO,
 } from "../ports";
 import { parseDocumentRef } from "../refs";
@@ -169,12 +170,42 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       if (filters.collectionId) {
         conditions.push(eq(documents.collectionId, filters.collectionId));
       }
-      const limit = Math.min(Math.max((filters as { limit?: number }).limit ?? 200, 1), 500);
-      const offset = Math.max((filters as { offset?: number }).offset ?? 0, 0);
+      const limit = Math.min(Math.max(filters.limit ?? 200, 1), 500);
+      const offset = Math.max(filters.offset ?? 0, 0);
       const rows = await db
         .select()
         .from(documents)
         .where(and(...conditions))
+        .limit(limit)
+        .offset(offset);
+      return rows.map(mapDocument);
+    },
+    async listPublishedContent(filters: PublishedContentFilters) {
+      const conditions = [
+        eq(documents.orgId, filters.orgId),
+        eq(documents.type, filters.type),
+        eq(documents.status, "published"),
+      ];
+      if (filters.collectionId) {
+        conditions.push(eq(documents.collectionId, filters.collectionId));
+      }
+      const query = filters.query?.trim();
+      if (query) {
+        const pattern = `%${query.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`;
+        const searchPredicates = filters.searchFields.map((field) =>
+          field.isLocalizable
+            ? sql`((${documents.data} -> ${field.key} ->> ${filters.locale}) ILIKE ${pattern} ESCAPE '\\' OR (${documents.data} -> ${field.key} ->> ${filters.defaultLocale}) ILIKE ${pattern} ESCAPE '\\')`
+            : sql`(${documents.data} ->> ${field.key}) ILIKE ${pattern} ESCAPE '\\'`,
+        );
+        conditions.push(or(...searchPredicates) ?? sql`false`);
+      }
+      const limit = Math.min(Math.max(filters.limit, 1), 101);
+      const offset = Math.max(filters.offset, 0);
+      const rows = await db
+        .select()
+        .from(documents)
+        .where(and(...conditions))
+        .orderBy(desc(documents.created_at), asc(documents.id))
         .limit(limit)
         .offset(offset);
       return rows.map(mapDocument);

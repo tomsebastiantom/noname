@@ -76,6 +76,10 @@ function testApp(authorization: AuthorizationPort) {
   };
   const content = {
     updateById: vi.fn(async () => ({ id: "entry-1" })),
+    findByType: vi.fn(async () => []),
+    search: vi.fn(async () => []),
+    findById: vi.fn(async () => null),
+    resolve: vi.fn(async () => null),
   };
   const service = { layout, content } as unknown as DocumentService;
   const storage = mockStorage();
@@ -91,6 +95,22 @@ function testApp(authorization: AuthorizationPort) {
 describe("documents API permission guards", () => {
   beforeEach(() => {
     vi.stubEnv("ZITADEL_PROJECT_ID", "proj-123");
+  });
+
+  it("does not allow a publishable key to read the raw document list", async () => {
+    const { app, content } = testApp(mockAuthorization());
+    const publicRead = await app.request("/api/documents/product", {
+      headers: { "x-org-id": "org-1", "x-publishable-key": "store-key" },
+    });
+
+    expect(publicRead.status).toBe(401);
+    expect(content.findByType).not.toHaveBeenCalled();
+
+    const staffRead = await app.request("/api/documents/product", {
+      headers: { "x-org-id": "org-1", Authorization: `Bearer ${editorToken()}` },
+    });
+    expect(staffRead.status).toBe(200);
+    expect(content.findByType).toHaveBeenCalledWith("org-1", "product");
   });
 
   it("returns 401 on layout publish without JWT", async () => {

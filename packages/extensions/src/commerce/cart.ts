@@ -4,6 +4,8 @@ const CART_GUEST_KEY = "noname:cart_guest";
 
 const PUBLISHABLE_KEY_KEY = "noname:publishable_key";
 
+export const CART_UPDATED_EVENT = "noname:cart-updated";
+
 function authHeaders(): HeadersInit {
   const token = sessionStorage.getItem(STORAGE_TOKEN);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -173,23 +175,39 @@ export async function checkout(): Promise<void> {
   window.location.assign(result.redirectUrl);
 }
 
-export async function addProductToCart(productId: string, quantity: number): Promise<void> {
-  const instanceId = await getOrStartCart();
-
-  const getRes = await fetch(`/api/machines/cart/${instanceId}`, {
-    headers: authHeaders(),
-  });
-  const instance = await parseJson<MachineInstance>(getRes);
-  const items = Array.isArray(instance.context.items) ? [...instance.context.items] : [];
-  items.push({ productId, quantity });
-
+async function saveCartItems(instanceId: string, items: CartItem[]): Promise<void> {
   const res = await fetch(`/api/machines/cart/${instanceId}/addToCart`, {
     method: "POST",
     headers: authHeaders(),
     body: JSON.stringify({ items }),
   });
   const updated = await parseJson<MachineInstance>(res);
-  if (!Array.isArray(updated.context.items)) {
-    throw new Error("Cart update failed");
+  if (!Array.isArray(updated.context.items)) throw new Error("Cart update failed");
+}
+
+export async function addProductToCart(productId: string, quantity: number): Promise<void> {
+  if (!productId.trim() || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
+    throw new Error("Invalid cart quantity");
   }
+  const cart = await getCart();
+  if (cart.currentState !== "active") throw new Error("Cart is not editable");
+  const items = Array.isArray(cart.context.items) ? cart.context.items : [];
+  const existingQuantity = items
+    .filter((item) => item.productId === productId)
+    .reduce((total, item) => total + item.quantity, 0);
+  const retained = items.filter((item) => item.productId !== productId);
+  retained.push({ productId, quantity: Math.min(999, existingQuantity + quantity) });
+  await saveCartItems(cart.id, retained);
+}
+
+export async function setCartItemQuantity(productId: string, quantity: number): Promise<void> {
+  if (!productId.trim() || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
+    throw new Error("Invalid cart quantity");
+  }
+  const cart = await getCart();
+  if (cart.currentState !== "active") throw new Error("Cart is not editable");
+  const previous = Array.isArray(cart.context.items) ? cart.context.items : [];
+  const retained = previous.filter((item) => item.productId !== productId);
+  if (quantity > 0) retained.push({ productId, quantity });
+  await saveCartItems(cart.id, retained);
 }

@@ -1,5 +1,6 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { createContext, type ReactNode, useContext, useMemo, useRef } from "react";
 import type { LayoutAgentActivity } from "../collab/collab-peer-display";
 import type { CollabPeerPresence } from "../collab/presence";
@@ -20,6 +21,7 @@ export type EditorSessionData = {
   templateName: string;
   pageContentRef: string | null;
   registry: ComponentRegistry;
+  actionHandlerFactories?: ExtensionActionHandlerFactory[];
   shellLabels: EditorShellLabels;
   previewSpec: Spec;
   storedSpec: Spec | null;

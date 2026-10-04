@@ -1,6 +1,7 @@
 import type { Spec } from "@json-render/core";
 import type { ComponentRegistry } from "@json-render/react";
 import { JSONUIProvider, Renderer } from "@json-render/react";
+import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { EditorGate } from "../../../platform/editor-gate";
 import { EditorSessionProvider } from "../../hooks/editor-session";
 import { useEditPageOrchestration } from "../../hooks/use-edit-page-orchestration";
@@ -17,6 +18,7 @@ function EditPageBody({
   storedSpec,
   templateName,
   registry,
+  actionHandlerFactories,
   editorShellStore,
   sessionActions,
   editorActionHandlers,
@@ -30,6 +32,7 @@ function EditPageBody({
   storedSpec: Spec | null;
   templateName: string;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
   editorShellStore: ReturnType<typeof useEditPageOrchestration>["editorShellStore"];
   sessionActions: ReturnType<typeof useEditPageOrchestration>["sessionActions"];
   editorActionHandlers: ReturnType<typeof useEditPageOrchestration>["editorActionHandlers"];
@@ -45,7 +48,10 @@ function EditPageBody({
   }
 
   return (
-    <EditorSessionProvider data={sessionData} actions={sessionActions}>
+    <EditorSessionProvider
+      data={{ ...sessionData, actionHandlerFactories }}
+      actions={sessionActions}
+    >
       <EditorPrefsProvider templateName={templateName} registry={registry}>
         <JSONUIProvider
           registry={editorRegistry}
@@ -65,6 +71,7 @@ export function EditPageView({
   templateName,
   pageContentRef,
   registry,
+  actionHandlerFactories,
   onReload,
 }: Readonly<{
   displaySpec: Spec;
@@ -72,6 +79,7 @@ export function EditPageView({
   templateName: string;
   pageContentRef: string | null;
   registry: ComponentRegistry;
+  actionHandlerFactories: ExtensionActionHandlerFactory[];
   onReload: () => void;
 }>) {
   const orchestration = useEditPageOrchestration({
@@ -95,6 +103,7 @@ export function EditPageView({
         storedSpec={orchestration.storedSpec}
         templateName={templateName}
         registry={registry}
+        actionHandlerFactories={actionHandlerFactories}
         editorShellStore={orchestration.editorShellStore}
         sessionActions={orchestration.sessionActions}
         editorActionHandlers={orchestration.editorActionHandlers}

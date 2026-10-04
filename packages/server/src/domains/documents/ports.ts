@@ -281,6 +281,25 @@ export interface DocumentFilters {
   status?: DocumentStatus;
   key?: string;
   collectionId?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface PublicContentSearchField {
+  key: string;
+  isLocalizable: boolean;
+}
+
+export interface PublishedContentFilters {
+  orgId: string;
+  type: string;
+  collectionId?: string;
+  locale: string;
+  defaultLocale: string;
+  query?: string;
+  searchFields: PublicContentSearchField[];
+  limit: number;
+  offset: number;
 }
 
 export interface CreateDocumentInput {
@@ -319,6 +338,7 @@ export interface DocumentStorage {
   // generic document CRUD (unified table)
   createDocument(input: CreateDocumentInput): Promise<DocumentDTO>;
   listDocuments(orgId: string, filters?: DocumentFilters): Promise<DocumentDTO[]>;
+  listPublishedContent(filters: PublishedContentFilters): Promise<DocumentDTO[]>;
   findDocument(
     orgId: string,
     type: string,
