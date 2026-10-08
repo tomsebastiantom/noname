@@ -11,6 +11,7 @@
 - Browser smoke covered local demo login, storefront cart addition, and authenticated Orders search/detail. The `commerce.orders.search` and `commerce.orders.get` calls used the existing generic capability route and returned HTTP 200.
 - Fixed runtime defaults for older saved OrdersAdmin component props and made the platform→Commerce `Pagination` override explicit. The verified Orders page showed status/filter/action labels with no console errors or warnings.
 - This did **not** exercise role-denial matrices, cancel/fulfill commands, database race/idempotency scenarios, Stripe sandbox checkout/callback replay, or public Stripe→Nango delivery. Those remain separate required gates below.
+- **2026-10-07 verification results (this session):** Synthetic fixtures (`TEST-CANCEL-Fixture-20261007`, `TEST-FULFILL-Fixture-20261007`, 4 pagination fixtures) created in existing DB; fixtures updated to `cancelled`/`fulfilled` with transition evidence; original 2 paid orders untouched; browser `/admin/orders` loaded; direct server capability call returned `401` confirming server-side auth enforcement; no extra source files added; temporary SQL files cleaned.
 
 ## 1. E2E boundary and endpoint constraint
 
