@@ -64,6 +64,12 @@ export const commerceComponentSchemas = {
       trackingNumberLabel: z.string().default("Tracking number"),
       fulfillConfirmLabel: z.string().default("Mark this order as fulfilled?"),
       fulfillingLabel: z.string().default("Saving fulfillment…"),
+      refundButtonLabel: z.string().default("Request refund"),
+      refundConfirmLabel: z.string().default("Request a refund for this order?"),
+      refundReasonLabel: z.string().default("Refund reason"),
+      refundAmountLabel: z.string().default("Refund amount (minor units)"),
+      refundingLabel: z.string().default("Submitting refund…"),
+      refundFormCloseLabel: z.string().default("Close"),
       actionSuccessLabel: z.string().default("Order updated."),
       reasonRequiredLabel: z
         .string()

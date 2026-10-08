@@ -4,6 +4,7 @@ import {
   fetchCommerceOrder,
   fetchCommerceOrders,
   fulfillCommerceOrder,
+  refundCommerceOrder,
 } from "./orders-admin-api";
 import { cacheProduct } from "./product-catalog";
 import { fetchPublishedContent } from "./product-content-api";
@@ -151,6 +152,8 @@ export const commerceActions = {
     cancelCommerceOrder(input),
   fulfillOrder: async (input: Parameters<typeof fulfillCommerceOrder>[0]) =>
     fulfillCommerceOrder(input),
+  refundOrder: async (input: Parameters<typeof refundCommerceOrder>[0]) =>
+    refundCommerceOrder(input),
 };
 
 export type StorefrontListingState = {

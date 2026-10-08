@@ -26,11 +26,19 @@
     "paid": {
       "on": {
         "CANCEL_ORDER": { "target": "cancelled" },
-        "MARK_FULFILLED": { "target": "fulfilled" }
+        "MARK_FULFILLED": { "target": "fulfilled" },
+        "REFUND_ORDER": { "target": "refund_pending" }
+      }
+    },
+    "refund_pending": {
+      "on": {
+        "REFUND_CONFIRMED": { "target": "refunded" },
+        "REFUND_FAILED": { "target": "paid" }
       }
     },
     "cancelled": { "final": true },
     "fulfilled": { "final": true },
+    "refunded": { "final": true },
     "payment_failed": { "final": true }
   }
 }

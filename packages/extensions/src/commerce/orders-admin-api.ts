@@ -1,4 +1,4 @@
-export type CommerceOrderStatus = "paid" | "cancelled" | "fulfilled";
+export type CommerceOrderStatus = "paid" | "cancelled" | "fulfilled" | "refunded" | "refund_pending";
 
 export type CommerceOrderSearchInput = {
   search?: string;
@@ -43,6 +43,13 @@ export type CancelCommerceOrderInput = {
   orderId: string;
   expectedRevision: number;
   reason: string;
+};
+
+export type RefundCommerceOrderInput = {
+  orderId: string;
+  expectedRevision: number;
+  amountMinor?: number;
+  reason?: string;
 };
 
 export type FulfillCommerceOrderInput = {
@@ -115,6 +122,17 @@ export async function fulfillCommerceOrder(
 ): Promise<CommerceOrderSummary> {
   const order = await callCommerceCapability<CommerceOrderSummary>(
     "commerce.orders.fulfill",
+    input,
+    true,
+  );
+  return normalizeOrderSummary(order);
+}
+
+export async function refundCommerceOrder(
+  input: RefundCommerceOrderInput,
+): Promise<CommerceOrderSummary> {
+  const order = await callCommerceCapability<CommerceOrderSummary>(
+    "commerce.orders.refund",
     input,
     true,
   );

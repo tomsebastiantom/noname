@@ -213,6 +213,12 @@ export function createCommerceContribution(deps: CommerceContributionDeps) {
       PERMISSIONS.COMMERCE_ORDERS_MANAGE,
       { extension, authorize: authorizeOrder },
     ),
+    "commerce.orders.refund": capabilityDescriptor(
+      handlers["commerce.orders.refund"]!,
+      "command",
+      PERMISSIONS.COMMERCE_ORDERS_MANAGE,
+      { extension, authorize: authorizeOrder },
+    ),
   };
 }
 
@@ -469,6 +475,12 @@ const fulfillOrderInput = z.object({
   carrier: z.string().trim().max(100).optional(),
   trackingNumber: z.string().trim().max(200).optional(),
 });
+const refundOrderInput = z.object({
+  orderId: z.string().uuid(),
+  expectedRevision: z.number().int().min(1),
+  amountMinor: z.number().int().min(0).optional(),
+  reason: z.string().trim().max(500).optional(),
+});
 
 type OrderSnapshot = {
   currency: string;
@@ -607,12 +619,12 @@ async function changeOrderState(
   context: CapabilityContext,
   orderId: string,
   expectedRevision: number,
-  event: "CANCEL_ORDER" | "MARK_FULFILLED",
+  event: "CANCEL_ORDER" | "MARK_FULFILLED" | "REFUND_ORDER",
   params: Record<string, unknown>,
 ) {
   const instance = await machines.getInstance(context.orgId, orderId);
   if (!instance || !isOrderInstance(instance)) throw new Error("Order not found");
-  const targetState = event === "CANCEL_ORDER" ? "cancelled" : "fulfilled";
+  const targetState = event === "CANCEL_ORDER" ? "cancelled" : event === "MARK_FULFILLED" ? "fulfilled" : "refund_pending";
   if (instance.currentState === targetState && machines.replayPersistedTransition) {
     const replayed = await machines.replayPersistedTransition(
       context.orgId,
@@ -863,6 +875,22 @@ export function createCommerceCapabilities(deps: {
           fulfillmentReference: input.fulfillmentReference,
           carrier: input.carrier,
           trackingNumber: input.trackingNumber,
+          operationId: context.idempotencyKey,
+        },
+      );
+    },
+    "commerce.orders.refund": async (rawInput, context) => {
+      const input = refundOrderInput.parse(rawInput);
+      return changeOrderState(
+        deps.machines,
+        context,
+        input.orderId,
+        input.expectedRevision,
+        "REFUND_ORDER",
+        {
+          actorId: context.actorId,
+          amountMinor: input.amountMinor,
+          reason: input.reason,
           operationId: context.idempotencyKey,
         },
       );

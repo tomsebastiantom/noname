@@ -66,6 +66,12 @@ type OrdersAdminProps = {
   trackingNumberLabel: string;
   fulfillConfirmLabel: string;
   fulfillingLabel: string;
+  refundButtonLabel?: string;
+  refundConfirmLabel?: string;
+  refundReasonLabel?: string;
+  refundAmountLabel?: string;
+  refundingLabel?: string;
+  refundFormCloseLabel?: string;
   actionSuccessLabel: string;
   reasonRequiredLabel: string;
   evidenceRecordsLabel: string;
@@ -109,10 +115,13 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
   const [actionSuccess, setActionSuccess] = useState<string | null>(null);
   const [cancelFormOpen, setCancelFormOpen] = useState(false);
   const [fulfillFormOpen, setFulfillFormOpen] = useState(false);
+  const [refundFormOpen, setRefundFormOpen] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [fulfillmentReference, setFulfillmentReference] = useState("");
   const [carrier, setCarrier] = useState("");
   const [trackingNumber, setTrackingNumber] = useState("");
+  const [refundReason, setRefundReason] = useState("");
+  const [refundAmountMinor, setRefundAmountMinor] = useState<number | undefined>(undefined);
 
   const activeCursor = cursorStack[pageIndex];
 
@@ -277,9 +286,44 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
     }
   }
 
+  async function submitRefund(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selected || actionLoading) return;
+    if (!window.confirm(props.refundConfirmLabel ?? "Refund this order?")) return;
+
+    setActionLoading(true);
+    setDetailError(null);
+    setActionSuccess(null);
+    try {
+      const updated = await commerceActions.refundOrder({
+        orderId: selected.id,
+        expectedRevision: selected.revision,
+        amountMinor: refundAmountMinor,
+        reason: refundReason.trim() || undefined,
+      });
+      setSelected({ ...selected, ...updated });
+      setRows((current) => current.map((row) => (row.id === updated.id ? updated : row)));
+      setRefundReason("");
+      setRefundAmountMinor(undefined);
+      setRefundFormOpen(false);
+      try {
+        setSelected(await commerceActions.loadOrderDetail(updated.id));
+      } catch (detailCause) {
+        setDetailError(errorMessage(detailCause, props.forbiddenLabel));
+      }
+      await loadOrders();
+      setActionSuccess(props.actionSuccessLabel);
+    } catch (cause) {
+      await handleActionError(cause, selected.id);
+    } finally {
+      setActionLoading(false);
+    }
+  }
+
   function closeActionForms() {
     setCancelFormOpen(false);
     setFulfillFormOpen(false);
+    setRefundFormOpen(false);
     setDetailError(null);
   }
 
@@ -287,6 +331,7 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
     selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() !== "fulfilled";
   const canFulfill =
     selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() !== "fulfilled";
+  const canRefund = selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() === "fulfilled";
 
   return (
     <div className="space-y-6">
@@ -547,6 +592,19 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
                 {props.fulfillButtonLabel}
               </button>
             ) : null}
+            {canRefund && !cancelFormOpen && !fulfillFormOpen && !refundFormOpen ? (
+              <button
+                type="button"
+                className="rounded-md border border-emerald-600 px-3 py-2 text-sm text-emerald-600 disabled:opacity-50"
+                disabled={actionLoading}
+                onClick={() => {
+                  setDetailError(null);
+                  setRefundFormOpen(true);
+                }}
+              >
+                {props.refundButtonLabel ?? "Refund"}
+              </button>
+            ) : null}
           </div>
           {cancelFormOpen ? (
             <form className="mt-4 grid max-w-xl gap-3" onSubmit={submitCancellation}>
@@ -600,6 +658,48 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
                   disabled={actionLoading}
                 >
                   {actionLoading ? props.fulfillingLabel : props.fulfillButtonLabel}
+                </button>
+                <button
+                  className="rounded-md border px-3 py-2 text-sm"
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={closeActionForms}
+                >
+                  {props.cancelFormCloseLabel}
+                </button>
+              </div>
+            </form>
+          ) : null}
+          {refundFormOpen ? (
+            <form className="mt-4 grid max-w-xl gap-3" onSubmit={submitRefund}>
+              <label className="grid gap-1 text-sm">
+                <span>{props.refundReasonLabel}</span>
+                <textarea
+                  className="min-h-16 rounded-md border bg-background px-3 py-2"
+                  maxLength={500}
+                  required
+                  value={refundReason}
+                  onChange={(event) => setRefundReason(event.target.value)}
+                />
+              </label>
+              <label className="grid gap-1 text-sm">
+                <span>{props.refundAmountLabel}</span>
+                <input
+                  className="rounded-md border bg-background px-3 py-2"
+                  type="number"
+                  min={0}
+                  step={1}
+                  value={refundAmountMinor || ""}
+                  onChange={(event) => setRefundAmountMinor(Number(event.target.value) || undefined)}
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  className="rounded-md border px-3 py-2 text-sm disabled:opacity-50"
+                  type="submit"
+                  disabled={actionLoading}
+                >
+                  {actionLoading ? props.refundingLabel : props.refundButtonLabel}
                 </button>
                 <button
                   className="rounded-md border px-3 py-2 text-sm"
