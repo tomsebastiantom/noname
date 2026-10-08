@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { commerceActionSchemas, commerceComponentSchemas } from "./catalog-schemas";
 import { commerceComponents } from "./components";
-import { formatProductPrice } from "./product-catalog";
+import { formatMinorAmount, formatProductPrice } from "./product-catalog";
 
 describe("Commerce storefront component catalog", () => {
   it("accepts flat ProductGrid props and rejects unsafe sizing values", () => {
@@ -164,5 +164,40 @@ describe("Commerce storefront component catalog", () => {
     const formatted = formatProductPrice(99.99, "CAD", "en-CA");
     expect(formatted).toContain("CAD");
     expect(formatted).toContain("99.99");
+  });
+
+  it("formats minor amounts using the order currency exponent", () => {
+    expect(formatMinorAmount(1234, "CAD", 2, "en-CA")).toContain("12.34");
+    expect(formatMinorAmount(1234, "JPY", 0, "en-US")).toContain("1,234");
+    expect(formatMinorAmount(12345, "KWD", 3, "en-US")).toContain("12.345");
+  });
+
+  it("keeps existing seeded OrdersAdmin props compatible with defaults for new controls", () => {
+    const parsed = commerceComponentSchemas.OrdersAdmin.props.parse({
+      title: "Orders",
+      description: null,
+      loadingLabel: "Loading orders…",
+      emptyLabel: "No paid orders yet.",
+      refreshLabel: "Refresh",
+      refreshingLabel: "Refreshing…",
+      forbiddenLabel: "Orders are unavailable.",
+      orderColumnHeader: "Order",
+      amountColumnHeader: "Amount",
+      currencyColumnHeader: "Currency",
+      paymentColumnHeader: "Payment",
+      dateColumnHeader: "Paid at",
+      detailsTitle: "Order evidence",
+      detailsDescription: null,
+      linksTitle: "Related evidence",
+      linksLoadingLabel: "Loading evidence…",
+      noLinksLabel: "No links.",
+    });
+
+    expect(parsed.searchLabel).toBe("Search orders");
+    expect(parsed.cancelFormCloseLabel).toBe("Close");
+    expect(parsed.nextPageLabel).toBe("Next page");
+    expect(parsed.unfulfilledStatusLabel).toBe("Unfulfilled");
+    expect(parsed.partialDetailsLabel).toContain("partial snapshot");
+    expect(parsed.staleRevisionLabel).toContain("order changed");
   });
 });

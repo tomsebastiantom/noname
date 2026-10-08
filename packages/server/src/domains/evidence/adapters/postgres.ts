@@ -159,6 +159,15 @@ export function createEvidencePostgresService(db: Database): EvidenceService {
       return rows.map(mapRecord);
     },
 
+    async findRecord(orgId, recordId) {
+      const [row] = await db
+        .select()
+        .from(evidenceRecords)
+        .where(and(eq(evidenceRecords.orgId, orgId), eq(evidenceRecords.id, recordId)))
+        .limit(1);
+      return row ? mapRecord(row) : null;
+    },
+
     async listLinks(orgId, recordId) {
       const rows = await db
         .select()

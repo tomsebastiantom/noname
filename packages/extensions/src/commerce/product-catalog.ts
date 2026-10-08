@@ -24,3 +24,20 @@ export function formatProductPrice(price: number, currency: string, locale?: str
     currencyDisplay: "code",
   }).format(price);
 }
+
+export function formatMinorAmount(
+  amountMinor: number,
+  currency: string,
+  exponent?: number,
+  locale?: string,
+): string {
+  if (!Number.isSafeInteger(amountMinor)) return "—";
+  const minorUnitExponent =
+    exponent ??
+    new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
+      .maximumFractionDigits ?? 2;
+  if (!Number.isInteger(minorUnitExponent) || minorUnitExponent < 0 || minorUnitExponent > 3) {
+    return "—";
+  }
+  return formatProductPrice(amountMinor / 10 ** minorUnitExponent, currency, locale);
+}

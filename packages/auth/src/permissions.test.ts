@@ -18,6 +18,7 @@ describe("permissions", () => {
     expect(perms).toContain(PERMISSIONS.AUTH_MANAGE);
     expect(perms).toContain(PERMISSIONS.ANALYTICS_VIEW);
     expect(perms).toContain(PERMISSIONS.TRACES_VIEW);
+    expect(perms).toContain(PERMISSIONS.COMMERCE_ORDERS_MANAGE);
   });
 
   it("trace_viewer role includes traces view only", () => {
@@ -26,6 +27,7 @@ describe("permissions", () => {
     expect(perms).toContain(PERMISSIONS.STOREFRONT_VIEW);
     expect(perms).not.toContain(PERMISSIONS.ANALYTICS_VIEW);
     expect(perms).not.toContain(PERMISSIONS.CONTENT_DRAFT_WRITE);
+    expect(perms).not.toContain(PERMISSIONS.COMMERCE_ORDERS_MANAGE);
   });
 
   it("editor role includes draft keys but not publish or analytics view", () => {
@@ -36,6 +38,12 @@ describe("permissions", () => {
     expect(perms).not.toContain(PERMISSIONS.LAYOUT_PUBLISH);
     expect(perms).not.toContain(PERMISSIONS.AUTH_MANAGE);
     expect(perms).not.toContain(PERMISSIONS.ANALYTICS_VIEW);
+  });
+
+  it("analyst can view orders but cannot manage them", () => {
+    const perms = expandPermissions(["analyst"]);
+    expect(perms).toContain(PERMISSIONS.COMMERCE_ORDERS_VIEW);
+    expect(perms).not.toContain(PERMISSIONS.COMMERCE_ORDERS_MANAGE);
   });
 
   it("customer role is storefront view only", () => {

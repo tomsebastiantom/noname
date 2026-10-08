@@ -6,18 +6,31 @@
       "on": {
         "addToCart": { "target": "active" },
         "clear": { "target": "active" },
-        "checkout_started": { "target": "awaiting_payment" },
+        "checkout_reserving": { "target": "checkout_pending" },
         "checkout": { "target": "awaiting_payment" },
         "claim": { "target": "active" }
       }
     },
+    "checkout_pending": {
+      "on": { "checkout_started": { "target": "awaiting_payment" } }
+    },
     "awaiting_payment": {
       "on": {
-        "PAYMENT_SUCCEEDED": { "target": "paid" },
+        "PAYMENT_SUCCEEDED": {
+          "target": "paid",
+          "guard": { "type": "commerce.payment.matches-checkout" }
+        },
         "PAYMENT_FAILED": { "target": "payment_failed" }
       }
     },
-    "paid": { "final": true },
+    "paid": {
+      "on": {
+        "CANCEL_ORDER": { "target": "cancelled" },
+        "MARK_FULFILLED": { "target": "fulfilled" }
+      }
+    },
+    "cancelled": { "final": true },
+    "fulfilled": { "final": true },
     "payment_failed": { "final": true }
   }
 }

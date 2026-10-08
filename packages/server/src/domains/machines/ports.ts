@@ -28,8 +28,32 @@ export interface MachineInstanceDTO {
   machineName: string;
   currentState: string;
   context: Record<string, unknown>;
+  /** Monotonic optimistic-concurrency revision; absent only in legacy test adapters. */
+  revision?: number;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface MachineInstanceSearch {
+  machineName?: string;
+  states?: string[];
+  contextEquals?: Record<string, string | number | boolean>;
+  contextAnyOf?: Record<string, Array<string | number | boolean>>;
+  contextExists?: string[];
+  search?: string;
+  searchContextFields?: string[];
+  createdAfter?: Date;
+  createdBefore?: Date;
+  contextDateField?: string;
+  contextDateAfter?: Date;
+  contextDateBefore?: Date;
+  cursor?: string;
+  limit?: number;
+}
+
+export interface MachineInstancePage {
+  items: MachineInstanceDTO[];
+  nextCursor: string | null;
 }
 
 export interface TransitionResult {
@@ -58,8 +82,16 @@ export interface MachineStorage {
     context: Record<string, unknown>,
   ): Promise<MachineInstanceDTO>;
   findInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
-  updateInstance(instance: MachineInstanceDTO): Promise<MachineInstanceDTO>;
+  /** Atomically compare-and-swap the state and append its successful transition record. */
+  commitTransition(
+    instance: MachineInstanceDTO,
+    expectedRevision: number,
+    event: string,
+    result: TransitionResult,
+    params: Record<string, unknown>,
+  ): Promise<MachineInstanceDTO>;
   listInstances(orgId: string): Promise<MachineInstanceDTO[]>;
+  searchInstances?(orgId: string, query: MachineInstanceSearch): Promise<MachineInstancePage>;
 
   logTransition(
     instanceId: string,
@@ -105,8 +137,10 @@ export interface MachineEngine {
     instanceId: string,
     event: string,
     params?: Record<string, unknown>,
+    expectedRevision?: number,
   ): Promise<MachineInstanceDTO>;
   listInstances(orgId: string): Promise<MachineInstanceDTO[]>;
+  searchInstances(orgId: string, query: MachineInstanceSearch): Promise<MachineInstancePage>;
   getInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
   /** Replay the awaited post-persistence hook only for a matching successful stored transition. */
   replayPersistedTransition?(

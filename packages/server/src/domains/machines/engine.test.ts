@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ValidationError } from "../../shared/domain-error";
+import { ConflictError, ValidationError } from "../../shared/domain-error";
 import { createMachineEngine, registerGuard } from "./engine";
 import type {
   MachineDefinition,
@@ -30,6 +30,7 @@ function createStorage(definition: MachineDefinition): MachineStorage {
         machineName,
         currentState: initialState,
         context,
+        revision: 1,
         createdAt: new Date(),
         updatedAt: new Date(),
       };
@@ -39,9 +40,25 @@ function createStorage(definition: MachineDefinition): MachineStorage {
     async findInstance(_orgId, id) {
       return instances.get(id) ?? null;
     },
-    async updateInstance(instance) {
-      instances.set(instance.id, instance);
-      return instance;
+    async commitTransition(instance, expectedRevision, event, result, params) {
+      const current = instances.get(instance.id);
+      if ((current?.revision ?? 1) !== expectedRevision) {
+        throw new ConflictError("Machine instance revision is stale");
+      }
+      const saved = { ...instance, revision: expectedRevision + 1 };
+      instances.set(instance.id, saved);
+      transitions.push({
+        id: `transition-${transitions.length + 1}`,
+        instanceId: instance.id,
+        event,
+        fromState: result.fromState,
+        toState: result.toState,
+        params,
+        guardResult: {},
+        success: true,
+        createdAt: new Date(),
+      });
+      return saved;
     },
     async listInstances() {
       return [...instances.values()];
@@ -119,6 +136,27 @@ describe("machine engine XState execution", () => {
     expect(unchanged?.currentState).toBe("active");
   });
 
+  it("allows only one concurrent transition against the same revision", async () => {
+    const simpleDefinition: MachineDefinition = {
+      name: "machine-cas-test",
+      initial: "paid",
+      states: { paid: { on: { CANCEL: { target: "cancelled" } } }, cancelled: { final: true } },
+    };
+    const engine = createMachineEngine(createStorage(simpleDefinition));
+    const started = await engine.start("org-1", simpleDefinition.name, {});
+    const attempts = await Promise.allSettled([
+      engine.transition("org-1", started.id, "CANCEL", { reason: "operator" }, 1),
+      engine.transition("org-1", started.id, "CANCEL", { reason: "operator" }, 1),
+    ]);
+    expect(attempts.filter((attempt) => attempt.status === "fulfilled")).toHaveLength(1);
+    const rejected = attempts.find((attempt) => attempt.status === "rejected");
+    expect(rejected?.status === "rejected" ? rejected.reason : null).toBeInstanceOf(ConflictError);
+    expect(await engine.getInstance("org-1", started.id)).toMatchObject({
+      currentState: "cancelled",
+      revision: 2,
+    });
+  });
+
   it("replays only a matching successful final transition after a hook failure", async () => {
     const paidCart: MachineDefinition = {
       name: "cart",
@@ -173,5 +211,51 @@ describe("machine engine XState execution", () => {
       ),
     ).resolves.toBe(true);
     expect(hookCalls).toBe(2);
+  });
+
+  it("filters and orders by a generic context date with legacy createdAt fallback", async () => {
+    const engine = createMachineEngine(createStorage(definition));
+    const laterPaid = await engine.start("org-1", definition.name, {
+      paidAt: "2099-01-03T12:00:00.000Z",
+      orderRef: "order-later-paid",
+    });
+    await engine.start("org-1", definition.name, {
+      paidAt: "2099-01-01T12:00:00.000Z",
+      orderRef: "order-earlier-paid",
+    });
+    const legacy = await engine.start("org-1", definition.name, {
+      orderRef: "order-legacy",
+    });
+
+    const page = await engine.searchInstances("org-1", {
+      machineName: definition.name,
+      contextDateField: "paidAt",
+      contextDateAfter: new Date("2099-01-02T00:00:00.000Z"),
+      limit: 10,
+    });
+
+    expect(page.items.map((instance) => instance.id)).toContain(laterPaid.id);
+    expect(page.items.map((instance) => instance.context.orderRef)).not.toContain(
+      "order-earlier-paid",
+    );
+    expect(page.items.map((instance) => instance.id)).not.toContain(legacy.id);
+  });
+
+  it("applies generic context-presence filters in the search fallback", async () => {
+    const engine = createMachineEngine(createStorage(definition));
+    const withOrder = await engine.start("org-1", definition.name, {
+      checkoutSnapshot: { totalMinor: 100 },
+      checkoutCurrency: "usd",
+    });
+    await engine.start("org-1", definition.name, { guest: true });
+
+    const page = await engine.searchInstances("org-1", {
+      machineName: definition.name,
+      contextExists: ["checkoutSnapshot"],
+      contextAnyOf: { checkoutCurrency: ["USD", "usd"] },
+      limit: 10,
+    });
+
+    expect(page.items.map((instance) => instance.id)).toEqual([withOrder.id]);
   });
 });

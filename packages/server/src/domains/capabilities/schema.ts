@@ -4,6 +4,7 @@ export const capabilityIdempotency = pgTable(
   "capability_idempotency",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    attemptId: uuid("attempt_id").notNull().defaultRandom(),
     orgId: text("org_id").notNull(),
     capability: text("capability").notNull(),
     idempotencyKey: text("idempotency_key").notNull(),

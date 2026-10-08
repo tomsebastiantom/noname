@@ -51,12 +51,20 @@ export const machineInstances = pgTable(
     machineName: text("machine_name").notNull(),
     currentState: text("current_state").notNull(),
     context: jsonb("context").notNull().default({}),
+    revision: integer("revision").notNull().default(1),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
     orgNameIdx: index("machine_instances_org_name_idx").on(t.orgId, t.machineName),
     orgIdx: index("machine_instances_org_idx").on(t.orgId),
+    orgNameStateCreatedIdx: index("machine_instances_org_name_state_created_idx").on(
+      t.orgId,
+      t.machineName,
+      t.currentState,
+      t.created_at,
+      t.id,
+    ),
   }),
 );
 

@@ -1,5 +1,10 @@
 import { addProductToCart, checkout, mergeGuestCartOnLogin, setCartItemQuantity } from "./cart";
-import { fetchCommerceEvidenceLinks, fetchCommerceOrders } from "./orders-admin-api";
+import {
+  cancelCommerceOrder,
+  fetchCommerceOrder,
+  fetchCommerceOrders,
+  fulfillCommerceOrder,
+} from "./orders-admin-api";
 import { cacheProduct } from "./product-catalog";
 import { fetchPublishedContent } from "./product-content-api";
 
@@ -52,8 +57,16 @@ function priceValue(value: unknown): number | null {
 
 export const commerceActions = {
   addToCart: async (params: unknown) => {
-    const { productId, quantity = 1 } = params as { productId: string; quantity?: number };
-    await addProductToCart(productId, quantity);
+    const {
+      productId,
+      quantity = 1,
+      currency = "CAD",
+    } = params as {
+      productId: string;
+      quantity?: number;
+      currency?: string;
+    };
+    await addProductToCart(productId, quantity, currency);
   },
   updateCartItem: async (params: unknown) => {
     const { productId, quantity } = params as { productId: string; quantity: number };
@@ -92,15 +105,16 @@ export const commerceActions = {
         const price = priceValue(item.data[request.priceField]);
         const imageValue = item.data[request.imageField];
         const image = typeof imageValue === "string" ? imageValue : null;
-        if (price !== null)
-          cacheProduct({ productId, title, price, currency: request.currency, image });
+        const rawCurrency = stringValue(item.data.currency, request.currency).toUpperCase();
+        const currency = /^[A-Z]{3}$/.test(rawCurrency) ? rawCurrency : request.currency;
+        if (price !== null) cacheProduct({ productId, title, price, currency, image });
         return {
           id: item.id,
           data: item.data,
           productId,
           title,
           price,
-          currency: request.currency,
+          currency,
           image,
           description: item.data[request.descriptionField] ?? null,
         };
@@ -130,8 +144,13 @@ export const commerceActions = {
       );
     }
   },
-  loadOrdersAdmin: async () => fetchCommerceOrders(),
-  loadOrderEvidenceLinks: async (recordId: string) => fetchCommerceEvidenceLinks(recordId),
+  loadOrdersAdmin: async (input?: Parameters<typeof fetchCommerceOrders>[0]) =>
+    fetchCommerceOrders(input),
+  loadOrderDetail: async (orderId: string) => fetchCommerceOrder(orderId),
+  cancelOrder: async (input: Parameters<typeof cancelCommerceOrder>[0]) =>
+    cancelCommerceOrder(input),
+  fulfillOrder: async (input: Parameters<typeof fulfillCommerceOrder>[0]) =>
+    fulfillCommerceOrder(input),
 };
 
 export type StorefrontListingState = {

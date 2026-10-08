@@ -48,6 +48,14 @@ const productContentType = {
       permissions: publicRead,
     },
     {
+      key: "currency",
+      type: "text",
+      required: false,
+      isLocalizable: false,
+      label: "Currency (ISO 4217)",
+      permissions: publicRead,
+    },
+    {
       key: "description",
       type: "richText",
       required: false,
@@ -163,6 +171,7 @@ const commerceSpec = {
           price: { $state: "price" },
           image: { $state: "image" },
           description: { $state: "description" },
+          currency: { $state: "currency" },
         },
         {
           addToCart: "Add to Cart",
@@ -192,7 +201,7 @@ const productDetailSpec = {
         image: { $state: "image" },
         imageAlt: null,
         description: { $state: "description" },
-        currency: "CAD",
+        currency: { $state: "currency" },
         maxQuantity: 99,
         quantityLabel: "Quantity",
         decreaseQuantityLabel: "Decrease quantity",
@@ -516,6 +525,7 @@ async function seedDemoProduct(): Promise<string> {
       productId: "demo-sneakers",
       title: "Blue Sneakers",
       price: 99.99,
+      currency: "CAD",
       description: demoProductDescription,
     },
   );

@@ -1,6 +1,8 @@
+import { PERMISSIONS } from "@noname/auth";
 import {
   createCommerceActivityProjector,
   createCommerceContribution,
+  createCommerceMachineGuards,
   createCommerceOrderProjector,
   createCommerceProviderEventMappings,
   registerCommerceActivityTypes,
@@ -137,11 +139,26 @@ export async function createApp(): Promise<Hono> {
   );
   app.route("/api/analytics", analytics.routes);
 
-  const evidence = createEvidenceDomain({ db });
+  const evidence = createEvidenceDomain({
+    db,
+    routeOptions: {
+      permissionsByRecordType: {
+        "commerce.order.created": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+        "commerce.order.cancelled": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+        "commerce.order.fulfilled": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+        "commerce.payment.receipt": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+      },
+      permissionsBySubjectType: {
+        "commerce.order": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+        "commerce.payment": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+      },
+    },
+  });
   const commerceOrderProjector = createCommerceOrderProjector(evidence.service);
   const machines = createMachineDomain({
     db,
     tenantSettings: docs.service.tenantSettings,
+    guards: createCommerceMachineGuards(),
     hooks: {
       async onTransitionComplete(transition) {
         await commerceOrderProjector(transition);
@@ -184,6 +201,7 @@ export async function createApp(): Promise<Hono> {
     machines: machines.engine,
     integrations: integrations.service,
     catalog: docs.service.content,
+    evidence: evidence.service,
   });
 
   const webhooks = createWebhooksDomain({
@@ -279,18 +297,19 @@ export async function createApp(): Promise<Hono> {
   const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
   app.route("/api/tenants", tenant.routes);
 
+  const isExtensionInstalled = async (orgId: string, extension: string): Promise<boolean> => {
+    try {
+      const manifest = await tenant.service.getManifest(orgId);
+      return manifest.extensions?.includes(extension) ?? false;
+    } catch {
+      return false;
+    }
+  };
   registerExtensionDispatcher({
     subscribe: (event: string, handler: (payload: unknown) => Promise<void>) => {
       eventBus.subscribe(event, handler);
     },
-    isExtensionInstalled: async (orgId, extension) => {
-      try {
-        const manifest = await tenant.service.getManifest(orgId);
-        return manifest.extensions?.includes(extension) ?? false;
-      } catch {
-        return false;
-      }
-    },
+    isExtensionInstalled,
   });
 
   const capabilities = createCapabilityRegistry(commerce);
@@ -300,6 +319,7 @@ export async function createApp(): Promise<Hono> {
     capabilities,
     docs.service.tenantSettings,
     createCapabilityIdempotencyStore(db),
+    { isExtensionInstalled },
   );
 
   app.route("/api/capabilities", capabilityRoutes);

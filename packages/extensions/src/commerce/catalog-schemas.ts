@@ -28,8 +28,59 @@ export const commerceComponentSchemas = {
       linksTitle: z.string(),
       linksLoadingLabel: z.string(),
       noLinksLabel: z.string(),
+      searchLabel: z.string().default("Search orders"),
+      searchPlaceholder: z.string().default("Order reference or customer"),
+      statusFilterLabel: z.string().default("Status"),
+      allStatusLabel: z.string().default("All statuses"),
+      paidStatusLabel: z.string().default("Paid"),
+      cancelledStatusLabel: z.string().default("Cancelled"),
+      fulfilledStatusLabel: z.string().default("Fulfilled"),
+      unfulfilledStatusLabel: z.string().default("Unfulfilled"),
+      currencyFilterLabel: z.string().default("Currency"),
+      createdAfterLabel: z.string().default("Created after"),
+      createdBeforeLabel: z.string().default("Created before"),
+      applyFiltersLabel: z.string().default("Apply filters"),
+      clearFiltersLabel: z.string().default("Clear filters"),
+      cancelFormCloseLabel: z.string().default("Close"),
+      nextPageLabel: z.string().default("Next page"),
+      previousPageLabel: z.string().default("Previous page"),
+      orderRefLabel: z.string().default("Order reference"),
+      statusLabel: z.string().default("Order status"),
+      paymentStatusLabel: z.string().default("Payment status"),
+      fulfillmentStatusLabel: z.string().default("Fulfillment status"),
+      lineItemsTitle: z.string().default("Purchased items"),
+      itemLabel: z.string().default("Item"),
+      quantityLabel: z.string().default("Quantity"),
+      unitPriceLabel: z.string().default("Unit price"),
+      lineTotalLabel: z.string().default("Line total"),
+      noLineItemsLabel: z.string().default("No line items are available."),
+      cancelButtonLabel: z.string().default("Cancel order"),
+      cancelReasonLabel: z.string().default("Cancellation reason"),
+      cancelConfirmLabel: z.string().default("Cancel this order? This does not issue a refund."),
+      cancellingLabel: z.string().default("Cancelling…"),
+      fulfillButtonLabel: z.string().default("Mark fulfilled"),
+      fulfillmentReferenceLabel: z.string().default("Fulfillment reference"),
+      carrierLabel: z.string().default("Carrier"),
+      trackingNumberLabel: z.string().default("Tracking number"),
+      fulfillConfirmLabel: z.string().default("Mark this order as fulfilled?"),
+      fulfillingLabel: z.string().default("Saving fulfillment…"),
+      actionSuccessLabel: z.string().default("Order updated."),
+      reasonRequiredLabel: z
+        .string()
+        .default("Enter a cancellation reason of at least 3 characters."),
+      evidenceRecordsLabel: z.string().default("Order evidence records"),
+      partialDetailsLabel: z
+        .string()
+        .default(
+          "This legacy order has a partial snapshot; some totals or items may be unavailable.",
+        ),
+      staleRevisionLabel: z
+        .string()
+        .default(
+          "The order changed since it was opened. Latest details and results were refreshed.",
+        ),
     }),
-    description: "Browse commerce orders and their evidence links",
+    description: "Search orders, inspect evidence, and perform eligible order actions",
   },
   CartDrawer: {
     props: z.object({
@@ -108,7 +159,10 @@ export const commerceComponentSchemas = {
       productId: z.string().min(1),
       title: z.string(),
       price: z.number().nonnegative(),
-      currency: z.string().regex(/^[A-Z]{3}$/),
+      currency: z
+        .string()
+        .regex(/^[A-Z]{3}$/)
+        .default("CAD"),
       image: z.string().nullable(),
       imageAlt: z.string().nullable(),
       description: z.unknown().nullable(),
@@ -199,6 +253,10 @@ export const commerceActionSchemas = {
     params: z.object({
       productId: z.string(),
       quantity: z.number().int().min(1).max(999).default(1),
+      currency: z
+        .string()
+        .regex(/^[A-Z]{3}$/)
+        .default("CAD"),
     }),
     description: "Add product to cart",
   },

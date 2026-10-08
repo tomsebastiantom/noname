@@ -29,6 +29,8 @@ export const PERMISSIONS = {
   ANALYTICS_VIEW: "analytics:view",
   /** Commerce order and payment evidence read access. */
   COMMERCE_ORDERS_VIEW: "commerce:orders_view",
+  /** Cancel/fulfill Commerce orders; does not imply refunds. */
+  COMMERCE_ORDERS_MANAGE: "commerce:orders_manage",
   /** Jaeger-lite distributed traces in admin. */
   TRACES_VIEW: "traces:view",
   /** Watch rrweb session replays (PII — separate from analytics). */
@@ -91,6 +93,7 @@ const ACCESS_MANAGER_PERMISSIONS: readonly PermissionKey[] = [
 const ANALYST_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.STOREFRONT_VIEW,
   PERMISSIONS.ANALYTICS_VIEW,
+  PERMISSIONS.COMMERCE_ORDERS_VIEW,
 ];
 
 const REPLAY_VIEWER_PERMISSIONS: readonly PermissionKey[] = [

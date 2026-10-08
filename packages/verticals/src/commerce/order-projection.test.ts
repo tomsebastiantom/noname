@@ -27,7 +27,27 @@ describe("commerce order evidence projection", () => {
         id: "machine-1",
         machineName: "cart",
         currentState: "paid",
-        context: { orderRef: "order-1", checkoutAmount: 4200, checkoutCurrency: "cad" },
+        context: {
+          orderRef: "order-1",
+          paidAt: "2026-09-10T12:00:00.000Z",
+          checkoutAmount: 4200,
+          checkoutCurrency: "CAD",
+          checkoutSnapshot: {
+            currency: "CAD",
+            minorUnitExponent: 2,
+            totalMinor: 4200,
+            lines: [
+              {
+                productId: "p1",
+                title: "Item",
+                quantity: 2,
+                unitAmountMinor: 2100,
+                lineAmountMinor: 4200,
+              },
+            ],
+          },
+        },
+        revision: 3,
         updatedAt: new Date("2026-09-12T12:00:00Z"),
       },
       event: "PAYMENT_SUCCEEDED",
@@ -42,7 +62,23 @@ describe("commerce order evidence projection", () => {
       expect.objectContaining({
         type: "commerce.order.created",
         subjectId: "order-1",
+        occurredAt: new Date("2026-09-10T12:00:00.000Z"),
         idempotencyKey: "commerce:order:machine-1",
+        data: expect.objectContaining({
+          amountMinor: 4200,
+          currency: "CAD",
+          minorUnitExponent: 2,
+          detailCompleteness: "complete",
+          lineItems: [
+            {
+              productId: "p1",
+              title: "Item",
+              quantity: 2,
+              unitAmountMinor: 2100,
+              lineAmountMinor: 4200,
+            },
+          ],
+        }),
       }),
     );
     expect(store.appendRecord).toHaveBeenNthCalledWith(
@@ -85,5 +121,42 @@ describe("commerce order evidence projection", () => {
     expect(store.appendRecord).not.toHaveBeenCalled();
     expect(store.appendActivity).not.toHaveBeenCalled();
     expect(store.link).not.toHaveBeenCalled();
+  });
+
+  it("appends actor/reason evidence for manual cancellation and fulfillment", async () => {
+    const store = evidence();
+    const project = createCommerceOrderProjector(store);
+    const instance = {
+      id: "machine-1",
+      machineName: "cart",
+      currentState: "cancelled",
+      context: { orderRef: "order-1" },
+      revision: 4,
+      updatedAt: new Date("2026-09-12T12:00:00Z"),
+    };
+
+    await project({
+      orgId: "org-test",
+      instance,
+      event: "CANCEL_ORDER",
+      fromState: "paid",
+      toState: "cancelled",
+      params: { actorId: "staff-1", reason: "Customer request" },
+    });
+
+    expect(store.appendRecord).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "commerce.order.cancelled",
+        subjectId: "order-1",
+        data: expect.objectContaining({ actorId: "staff-1", reason: "Customer request" }),
+      }),
+    );
+    expect(store.appendActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "commerce.order.cancelled",
+        actorType: "user",
+        actorId: "staff-1",
+      }),
+    );
   });
 });

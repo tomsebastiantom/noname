@@ -6,7 +6,11 @@ export {
 } from "./idempotency";
 export {
   type CapabilityContext,
+  type CapabilityDefinition,
   type CapabilityHandler,
+  type CapabilityKind,
+  type CapabilityPolicy,
+  type CapabilityRegistration,
   type CapabilityRegistry,
   createCapabilityRegistry,
   normalizeCapabilityName,

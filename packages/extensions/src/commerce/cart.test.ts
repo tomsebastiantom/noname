@@ -41,7 +41,7 @@ describe("storefront cart item actions", () => {
     await setCartItemQuantity("sku-1", 0);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ items: [] });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ items: [], currency: "CAD" });
   });
 
   it("merges repeated add-to-cart clicks into one line item", async () => {
@@ -60,6 +60,19 @@ describe("storefront cart item actions", () => {
 
     expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
       items: [{ productId: "sku-1", quantity: 5 }],
+      currency: "CAD",
     });
+  });
+
+  it("blocks mixing product currencies in a non-empty cart", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(
+      response(activeCart([{ productId: "sku-cad", quantity: 1 }])),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(addProductToCart("sku-usd", 1, "USD")).rejects.toThrow(
+      "A cart can contain products in one currency",
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 });

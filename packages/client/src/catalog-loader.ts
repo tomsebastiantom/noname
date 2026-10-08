@@ -57,17 +57,27 @@ function manifestCacheKey(manifest: CatalogManifest): string {
   return parts.join("|");
 }
 
-function mergeRegistries(registries: ComponentRegistry[]): ComponentRegistry {
-  if (registries.length === 1) return registries[0]!;
+type NamedRegistry = { name: string; registry: ComponentRegistry };
+
+function mergeRegistries(registries: NamedRegistry[]): ComponentRegistry {
+  if (registries.length === 1) return registries[0]!.registry;
 
   const merged: ComponentRegistry = {};
+  const sourceByKey = new Map<string, string>();
 
-  for (const reg of registries) {
-    for (const key of Object.keys(reg)) {
+  for (const { name, registry } of registries) {
+    for (const key of Object.keys(registry)) {
       if (merged[key]) {
-        console.warn(`[catalog-loader] component "${key}" overwritten by later registry`);
+        // Commerce intentionally supplies listing-aware Pagination in place of shadcn's generic
+        // control. Keep that precedence for existing saved storefront specs without a false alarm.
+        const intentionalCommercePagination =
+          key === "Pagination" && sourceByKey.get(key) === "platform" && name === "commerce";
+        if (!intentionalCommercePagination) {
+          console.warn(`[catalog-loader] component "${key}" overwritten by later registry`);
+        }
       }
-      merged[key] = reg[key]!;
+      merged[key] = registry[key]!;
+      sourceByKey.set(key, name);
     }
   }
 
@@ -109,11 +119,11 @@ function wireExtensionLifecycle(name: string, lifecycle?: ExtensionLifecycle): v
 }
 
 async function loadExtensionRegistries(extensions: string[]): Promise<{
-  registries: ComponentRegistry[];
+  registries: NamedRegistry[];
   actionHandlerFactories: ExtensionActionHandlerFactory[];
   lifecycles: Array<{ name: string; onLogin: () => void }>;
 }> {
-  const registries: ComponentRegistry[] = [];
+  const registries: NamedRegistry[] = [];
   const actionHandlerFactories: ExtensionActionHandlerFactory[] = [];
   const lifecycles: Array<{ name: string; onLogin: () => void }> = [];
 
@@ -122,7 +132,7 @@ async function loadExtensionRegistries(extensions: string[]): Promise<{
     if (!loader) continue;
     try {
       const mod = await loader();
-      registries.push(mod.registry);
+      registries.push({ name, registry: mod.registry });
       if (mod.handlers) actionHandlerFactories.push(mod.handlers);
       if (mod.lifecycle?.onLogin) {
         lifecycles.push({ name, onLogin: mod.lifecycle.onLogin });
@@ -154,20 +164,25 @@ export async function loadCatalogs(manifest: CatalogManifest): Promise<LoadedCat
     actionHandlerFactories,
     lifecycles,
   } = await loadExtensionRegistries(manifest.extensions ?? []);
-  const registries: ComponentRegistry[] = [platformRegistry, ...extensionRegistries];
+  const registries: NamedRegistry[] = [
+    { name: "platform", registry: platformRegistry },
+    ...extensionRegistries,
+  ];
 
   const marketplace = manifest.marketplace ?? [];
   const marketplaceRegistries = await Promise.all(
     marketplace.map((pkg) => loadRemoteRegistry(pkg.name, pkg.url, "marketplace")),
   );
-  for (const registry of marketplaceRegistries) {
-    if (registry) registries.push(registry);
+  for (const [index, registry] of marketplaceRegistries.entries()) {
+    if (registry) {
+      registries.push({ name: marketplace[index]!.name, registry });
+    }
   }
 
   if (manifest.private) {
     const { name, url } = manifest.private;
     const registry = await loadRemoteRegistry(name, url, name);
-    if (registry) registries.push(registry);
+    if (registry) registries.push({ name, registry });
   }
 
   for (const lifecycle of lifecycles) {

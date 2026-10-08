@@ -1,5 +1,5 @@
 import { assign, createActor, createMachine } from "xstate";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { ConflictError, NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { MachineEvents } from "./events";
 import { normalizeMachineDefinition } from "./machine-config";
@@ -8,6 +8,7 @@ import type {
   MachineDefinition,
   MachineEngine,
   MachineInstanceDTO,
+  MachineInstancePage,
   MachineStorage,
   TransitionResult,
 } from "./ports";
@@ -87,8 +88,15 @@ export function createMachineEngine(
       }
     },
 
-    async transition(orgId, instanceId, event, params = {}) {
+    async transition(orgId, instanceId, event, params = {}, expectedRevision) {
       const instance = await ensureInstance(orgId, instanceId);
+      const currentRevision = instance.revision ?? 1;
+      if (expectedRevision !== undefined && expectedRevision !== currentRevision) {
+        throw new ConflictError("Machine instance revision is stale", {
+          expectedRevision,
+          currentRevision,
+        });
+      }
       const definition = await ensureDefinition(orgId, instance.machineName);
       const execution = startActor(definition, instance.context, instance.currentState);
       const fromState = execution.state;
@@ -119,14 +127,21 @@ export function createMachineEngine(
         }
 
         const result: TransitionResult = { success: true, fromState, toState };
-        await storage.logTransition(instanceId, event, result, params);
+        const expectedVersion = instance.revision ?? 1;
         const updated: MachineInstanceDTO = {
           ...instance,
           currentState: toState,
           context: nextContext,
+          revision: expectedVersion + 1,
           updatedAt: new Date(),
         };
-        const saved = await storage.updateInstance(updated);
+        const saved = await storage.commitTransition(
+          updated,
+          expectedVersion,
+          event,
+          result,
+          params,
+        );
         eventBus.publish(MachineEvents.TRANSITION, {
           orgId,
           instanceId,
@@ -190,6 +205,114 @@ export function createMachineEngine(
 
     listInstances(orgId) {
       return storage.listInstances(orgId);
+    },
+
+    async searchInstances(orgId, query): Promise<MachineInstancePage> {
+      const limit = query.limit ?? 50;
+      if (!Number.isInteger(limit) || limit < 1 || limit > 200) {
+        throw new ValidationError("limit", "must be an integer between 1 and 200");
+      }
+      if (query.search && query.search.trim().length > 200) {
+        throw new ValidationError("search", "must be at most 200 characters");
+      }
+      if (query.cursor && query.cursor.length > 512) {
+        throw new ValidationError("cursor", "is too long");
+      }
+      if (
+        (query.contextExists?.length ?? 0) > 10 ||
+        Object.keys(query.contextEquals ?? {}).length > 10
+      ) {
+        throw new ValidationError("context filters", "too many filters");
+      }
+      const anyOf = Object.entries(query.contextAnyOf ?? {});
+      if (
+        anyOf.length > 10 ||
+        anyOf.some(([, values]) => values.length < 1 || values.length > 10)
+      ) {
+        throw new ValidationError("contextAnyOf", "filters must contain at most 10 values");
+      }
+      if ((query.searchContextFields?.length ?? 0) > 8) {
+        throw new ValidationError("searchContextFields", "too many fields");
+      }
+      if ((query.contextDateAfter || query.contextDateBefore) && !query.contextDateField) {
+        throw new ValidationError("contextDateField", "required with context date bounds");
+      }
+      const contextKeys = [
+        ...(query.contextExists ?? []),
+        ...Object.keys(query.contextEquals ?? {}),
+        ...anyOf.map(([key]) => key),
+        ...(query.searchContextFields ?? []),
+        ...(query.contextDateField ? [query.contextDateField] : []),
+      ];
+      if (contextKeys.some((key) => !/^[A-Za-z][A-Za-z0-9_]{0,62}$/.test(key))) {
+        throw new ValidationError("context field", "invalid field name");
+      }
+      if (storage.searchInstances) {
+        return storage.searchInstances(orgId, { ...query, limit });
+      }
+      const all = await storage.listInstances(orgId);
+      const filtered = all.filter((instance) => {
+        if (query.machineName && instance.machineName !== query.machineName) return false;
+        if (query.states?.length && !query.states.includes(instance.currentState)) return false;
+        if (query.createdAfter && instance.createdAt < query.createdAfter) return false;
+        if (query.createdBefore && instance.createdAt > query.createdBefore) return false;
+        const contextDateValue = query.contextDateField
+          ? instance.context[query.contextDateField]
+          : undefined;
+        const parsedContextDate =
+          typeof contextDateValue === "string" ? new Date(contextDateValue) : undefined;
+        const sortDate =
+          parsedContextDate && Number.isFinite(parsedContextDate.getTime())
+            ? parsedContextDate
+            : instance.createdAt;
+        if (query.contextDateAfter && sortDate < query.contextDateAfter) return false;
+        if (query.contextDateBefore && sortDate > query.contextDateBefore) return false;
+        if (query.contextExists?.some((key) => !(key in instance.context))) {
+          return false;
+        }
+        if (
+          query.contextEquals &&
+          !Object.entries(query.contextEquals).every(
+            ([key, value]) => String(instance.context[key]) === String(value),
+          )
+        ) {
+          return false;
+        }
+        if (
+          query.contextAnyOf &&
+          !Object.entries(query.contextAnyOf).every(([key, values]) =>
+            values.some((value) => String(instance.context[key]) === String(value)),
+          )
+        ) {
+          return false;
+        }
+        if (query.search) {
+          const searchText = query.search.toLocaleLowerCase();
+          const values = [
+            instance.id,
+            ...(query.searchContextFields ?? []).map((key) => instance.context[key]),
+          ];
+          if (
+            !values.some((value) =>
+              String(value ?? "")
+                .toLocaleLowerCase()
+                .includes(searchText),
+            )
+          ) {
+            return false;
+          }
+        }
+        return true;
+      });
+      const dateValue = (instance: MachineInstanceDTO): number => {
+        const value = query.contextDateField ? instance.context[query.contextDateField] : undefined;
+        const parsed = typeof value === "string" ? new Date(value) : undefined;
+        return parsed && Number.isFinite(parsed.getTime())
+          ? parsed.getTime()
+          : instance.createdAt.getTime();
+      };
+      filtered.sort((a, b) => dateValue(b) - dateValue(a) || b.id.localeCompare(a.id));
+      return { items: filtered.slice(0, limit), nextCursor: null };
     },
 
     getInstance(orgId, id) {

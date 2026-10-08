@@ -84,6 +84,7 @@ export interface EvidenceService {
   link(input: EvidenceLinkInput): Promise<EvidenceLink>;
   audit(input: EvidenceAuditInput): Promise<EvidenceAuditEvent>;
   listRecords(query: EvidenceListQuery): Promise<EvidenceRecord[]>;
+  findRecord(orgId: string, recordId: string): Promise<EvidenceRecord | null>;
   listLinks(orgId: string, recordId: string): Promise<EvidenceLink[]>;
   listAudit(orgId: string, subjectType?: string, subjectId?: string): Promise<EvidenceAuditEvent[]>;
 }

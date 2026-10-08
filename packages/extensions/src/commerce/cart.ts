@@ -175,29 +175,39 @@ export async function checkout(): Promise<void> {
   window.location.assign(result.redirectUrl);
 }
 
-async function saveCartItems(instanceId: string, items: CartItem[]): Promise<void> {
+async function saveCartItems(instanceId: string, items: CartItem[], currency: string): Promise<void> {
   const res = await fetch(`/api/machines/cart/${instanceId}/addToCart`, {
     method: "POST",
     headers: authHeaders(),
-    body: JSON.stringify({ items }),
+    body: JSON.stringify({ items, currency }),
   });
   const updated = await parseJson<MachineInstance>(res);
   if (!Array.isArray(updated.context.items)) throw new Error("Cart update failed");
 }
 
-export async function addProductToCart(productId: string, quantity: number): Promise<void> {
+export async function addProductToCart(
+  productId: string,
+  quantity: number,
+  currency = "CAD",
+): Promise<void> {
   if (!productId.trim() || !Number.isInteger(quantity) || quantity < 1 || quantity > 999) {
     throw new Error("Invalid cart quantity");
   }
+  const normalizedCurrency = currency.trim().toUpperCase();
+  if (!/^[A-Z]{3}$/.test(normalizedCurrency)) throw new Error("Invalid product currency");
   const cart = await getCart();
   if (cart.currentState !== "active") throw new Error("Cart is not editable");
   const items = Array.isArray(cart.context.items) ? cart.context.items : [];
+  const cartCurrency = (cart.context.currency ?? "CAD").toUpperCase();
+  if (items.length > 0 && cartCurrency !== normalizedCurrency) {
+    throw new Error("A cart can contain products in one currency");
+  }
   const existingQuantity = items
     .filter((item) => item.productId === productId)
     .reduce((total, item) => total + item.quantity, 0);
   const retained = items.filter((item) => item.productId !== productId);
   retained.push({ productId, quantity: Math.min(999, existingQuantity + quantity) });
-  await saveCartItems(cart.id, retained);
+  await saveCartItems(cart.id, retained, normalizedCurrency);
 }
 
 export async function setCartItemQuantity(productId: string, quantity: number): Promise<void> {
@@ -209,5 +219,5 @@ export async function setCartItemQuantity(productId: string, quantity: number): 
   const previous = Array.isArray(cart.context.items) ? cart.context.items : [];
   const retained = previous.filter((item) => item.productId !== productId);
   if (quantity > 0) retained.push({ productId, quantity });
-  await saveCartItems(cart.id, retained);
+  await saveCartItems(cart.id, retained, (cart.context.currency ?? "CAD").toUpperCase());
 }

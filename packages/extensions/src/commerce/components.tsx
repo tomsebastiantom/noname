@@ -90,7 +90,7 @@ export function ProductCard({ props }: ComponentCtx<ProductCardProps>) {
     try {
       await execute({
         action: "addToCart",
-        params: { productId: props.productId, quantity: 1 },
+        params: { productId: props.productId, quantity: 1, currency: props.currency ?? "CAD" },
       });
       window.dispatchEvent(new Event(CART_UPDATED_EVENT));
       setStatus(labels.addedToCart);
@@ -197,7 +197,7 @@ export function ProductInfo({ props }: ComponentCtx<ProductInfoProps>) {
     try {
       await execute({
         action: "addToCart",
-        params: { productId: props.productId, quantity },
+        params: { productId: props.productId, quantity, currency: props.currency },
       });
       window.dispatchEvent(new Event(CART_UPDATED_EVENT));
       setStatus(props.addedToCartMessage);

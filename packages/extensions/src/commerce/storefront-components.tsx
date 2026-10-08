@@ -357,7 +357,7 @@ function ListingCards({
         <ListingProductCard
           key={item.id}
           item={item}
-          currency={props.currency}
+          currency={item.currency}
           addToCartLabel={props.addToCartLabel}
           addingLabel={props.addingLabel}
           addedToCartMessage={props.addedToCartMessage}
@@ -394,7 +394,10 @@ function ListingProductCard({
     setLoading(true);
     setStatus(null);
     try {
-      await execute({ action: "addToCart", params: { productId: item.productId, quantity: 1 } });
+      await execute({
+        action: "addToCart",
+        params: { productId: item.productId, quantity: 1, currency: item.currency },
+      });
       window.dispatchEvent(new Event(CART_UPDATED_EVENT));
       setStatus(addedToCartMessage);
     } catch {

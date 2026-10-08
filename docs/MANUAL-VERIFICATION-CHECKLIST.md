@@ -10,6 +10,46 @@ A running log of manual API/UI checks needed after architecture fixes and cleanu
 
 ---
 
+## 2026-10-07 — Commerce local smoke and Orders compatibility fix
+
+A targeted local browser smoke was run after applying the current Drizzle schema to the existing Podman test database. Volumes were preserved and no reseed was run. The client→edge→API path successfully created a cart, added the demo product, and loaded paid-order search/detail through the generic capability route. The saved OrdersAdmin block had missing newer labels; runtime parsing now applies schema defaults. The platform→Commerce Pagination override is explicitly recognized, eliminating the spurious warning. Existing order state was not changed.
+
+**API (server-side):**
+- [x] Apply the current schema with `pnpm --filter @noname/server db:push` to the existing local database; the missing machine revision issue was resolved without a volume reset or reseed.
+- [x] Verify `commerce.orders.search` and `commerce.orders.get` through the existing edge-routed capability endpoint; both returned HTTP 200 in the browser session.
+- [ ] Run role-denial/cross-tenant checks, real Postgres checkout/idempotency races, cursor-boundary checks, and Stripe sandbox/callback replay.
+- [ ] Treat public Stripe→Nango delivery as a separate external proof gate.
+
+**UI (client-side):**
+- [x] Sign in with the local demo account, load the storefront, and add the demo product; cart shows one CAD 99.99 item with no browser console errors.
+- [x] Load `/admin/orders`, search and open an existing order; status/filter labels and named cancel/fulfill controls now render. Browser console reported zero errors and warnings.
+- [ ] Do not submit cancel/fulfill against existing orders during smoke verification; use a disposable order for those state-changing scenarios.
+- [ ] Complete sandbox checkout/callback and persisted machine-state verification.
+
+---
+
+## 2026-10-06 — Commerce Order Operations first release
+
+The Commerce vertical and extension now provide paid-order search/detail, currency-safe checkout snapshots, manual cancellation without implied refund, and manual fulfillment over the existing generic capability route. Focused automated tests cover currency math, capability policy/idempotency, machine CAS/date search, Evidence access filters, the Orders UI adapter, and a component integration of Commerce event mapping → provider worker → generic XState engine using in-memory storage. This is not real Postgres/BullMQ or browser E2E. On 2026-10-06, live health checks found API `localhost:3000` and client `localhost:5173` unavailable/time out, while Zitadel `:8080` and Nango `:3003` returned HTTP 200. Browser checks could not run; the documented clean restart that wipes compose volumes was not attempted. No schema push, Stripe sandbox callback, or public Stripe→Nango proof has been performed.
+
+**API (server-side):**
+- [ ] Apply the existing Drizzle schema push only in an authorized local/test database; confirm machine revision/search support and `capability_idempotency.attempt_id` are present. Do not treat a local schema push as production migration approval.
+- [ ] Through the supported edge/public routing topology, verify `analyst` can search/open orders but cannot cancel/fulfill; verify `admin` can run only eligible manual commands; verify anonymous callers, uninstalled Commerce, cross-tenant IDs, and direct generic Evidence reads/links are denied or filtered.
+- [ ] Against real Postgres, race two checkout commands with different capability keys for one active cart: exactly one CAS reservation and one provider session; retry a reserved cart and confirm the stable provider idempotency key returns the same session.
+- [ ] Against real Postgres, paginate orders whose timestamps differ below millisecond precision; confirm no skips/duplicates, paid-date bounds use immutable `paidAt`, and legacy orders use the documented creation-date fallback.
+- [ ] Across two server processes, race failed/expired command-idempotency claims and allow a stale handler to finish late; confirm one current claim owns the result and stale completion/failure is fenced.
+- [ ] Exercise a provider sandbox settled Checkout Session with matching amount/currency, unpaid `checkout.session.completed`, asynchronous success/failure, expired session, duplicate delivery, and mismatched amount/currency. Confirm only settled matching events make the machine paid and Evidence projection is retryable.
+- [ ] Treat public Stripe→Nango→application delivery as a separate external proof gate. Record local/sandbox callback tests separately; do not claim public delivery without evidence from the deployed topology.
+
+**UI (client-side):**
+- [ ] In a real browser, log in as view-only staff and admin; check search by order/payment reference, status/currency/date filters, pagination, paid order date, CAD/USD amounts, and partial legacy detail messaging.
+- [ ] As admin, cancel an eligible order with a reason and manually fulfill another with optional tracking fields; reload detail and verify state plus immutable evidence. Try stale revision from a second tab and confirm list/detail refresh.
+- [ ] Verify view-only buttons are hidden/disabled and that direct invocation still receives server 403; check 401/403, 409, loading, empty, and provider-unavailable states at desktop and narrow viewport widths.
+
+Plan: [`2026-10-04/ORDER-OPERATIONS-IMPLEMENTATION-PLAN.md`](./2026-10-04/ORDER-OPERATIONS-IMPLEMENTATION-PLAN.md). E2E scenarios: [`2026-10-04/ORDER-OPERATIONS-E2E-TEST-PLAN.md`](./2026-10-04/ORDER-OPERATIONS-E2E-TEST-PLAN.md).
+
+---
+
 ## 2026-08-07 — Separate worker process (`worker.ts`) + configurable worker concurrency
 
 Extracted `index.ts`'s domain-wiring into `bootstrap.ts`'s `createApp()`; added `worker.ts` (same domain graph, never calls `serve()`). Every `startXWorker` (agent, webhook inbound/outbound, notifications/email, tenant catalog, analytics) now checks `shared/worker-runtime.ts`'s `workersEnabled()` (`RUN_WORKERS` env, default `true`) and returns `null` before constructing a BullMQ `Worker`, and reads concurrency from a per-queue env var. Automated tests (`worker-runtime.test.ts`, `domains/worker-disable.test.ts`) cover the env-parsing logic and the `RUN_WORKERS=false` guard clause in isolation — none of them start a real BullMQ `Worker` against a real Redis, boot the actual `index.ts`/`worker.ts` processes, or exercise the "route mounted in a process that never binds a port" shape of `worker.ts`, so this is one of the more test-blind changes in this log.

@@ -1,7 +1,7 @@
 import type { Database } from "../../drizzle";
 import { createEvidencePostgresService } from "./adapters/postgres";
 import type { EvidenceService } from "./ports";
-import { createEvidenceRoutes } from "./routes";
+import { createEvidenceRoutes, type EvidenceRouteOptions } from "./routes";
 
 export type {
   EvidenceActivity,
@@ -17,7 +17,11 @@ export type {
 } from "./ports";
 export { createEvidenceRoutes } from "./routes";
 
-export function createEvidenceDomain(deps: { db: Database; service?: EvidenceService }) {
+export function createEvidenceDomain(deps: {
+  db: Database;
+  service?: EvidenceService;
+  routeOptions?: EvidenceRouteOptions;
+}) {
   const service = deps.service ?? createEvidencePostgresService(deps.db);
-  return { service, routes: createEvidenceRoutes(service) };
+  return { service, routes: createEvidenceRoutes(service, deps.routeOptions) };
 }
