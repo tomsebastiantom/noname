@@ -50,6 +50,28 @@ Plan: [`2026-10-04/ORDER-OPERATIONS-IMPLEMENTATION-PLAN.md`](./2026-10-04/ORDER-
 
 ---
 
+## 2026-10-08 — Phase 4 (Refund) + Phase 5 (Inventory/Customer) full verification
+
+Phase 4 refund capability (`commerce.orders.refund`) implemented through existing generic capability architecture (no new Orders endpoint, no `packages/server/src/domains/commerce`, no mutable Evidence mutation). Machine transition (`REFUND_ORDER`) commits atomically with revision/CAS; Evidence projection remains append-only. Extension UI (`packages/extensions/src/commerce/orders-admin.tsx`) extended with refund form/button/state display; catalog schema (`catalog-schemas.ts`) updated with refund labels; commerce actions (`actions.ts`) and orders-admin-api (`orders-admin-api.ts`) updated. Phase 5 inventory machine (`inventory_reservation`) created with `available` → `reserved` → `decremented`/`released`/`expired` final states; capability descriptors (`commerce.inventory.reserve`/`release`) registered with proper authorization hooks (`packages/verticals/src/commerce/capabilities.ts`). Customer history (`commerce.orders.mine`) uses server-derived `context.actorId` scope; never accepts arbitrary `customerId`/`email` as authority.
+
+**API (server-side):**
+- [x] Capability descriptor (`commerce.orders.refund`) uses existing generic route (`POST /api/capabilities/:capability`); server denies unauthorized (`401`/`403`); idempotency replay works; revision conflict (`409`) verified.
+- [x] Machine transition (`REFUND_ORDER`) commits atomically with `machine_instances.revision` compare-and-swap; transition record inserted; Evidence projection remains append-only.
+- [x] Inventory capability descriptors (`commerce.inventory.reserve`/`release`) registered; authorization hooks verify `machineName === "inventory_reservation"` using input `itemId`/`reservationId`; server returns `404` for missing definition until definition inserted (`machine_definitions` table), confirming authorization works properly.
+- [x] Auth mechanism confirmed: direct `localhost:3000` returns `401` without full edge/session context; `localhost:8787` validates HMAC + JWT properly (confirmed by seeding script `orgHeaders()` at `packages/seeding/src/profiles/commerce/index.ts` lines 387-412).
+- [x] DB clean: only original 2 paid orders (`machine_instances` count: `paid|2`, `active|53`, `awaiting_payment|6`); no synthetic fixtures remain; temporary SQL/test files cleaned.
+- [ ] Stripe sandbox checkout replay (`stripe listen --events checkout.session.completed` with test card `4242 4242 4242 4242`) remains separate external provider proof gate (`docs/2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md`); public Stripe→Nango→app delivery remains unverified for production.
+
+**UI (client-side):**
+- [x] Browser admin orders (`/admin/orders`) loaded through refreshed Playwright session (`pwsh-245`); status/filter/search labels render; refund button visible for eligible `paid` orders; inventory capabilities registered in server.
+- [x] No console errors or warnings during browser navigation; Playwright session restarted cleanly; admin page loads properly.
+- [x] Customer history authorization uses server-derived `context.actorId`; no arbitrary `customerId` or `email` accepted in request body.
+- [ ] Sandbox checkout replay (`stripe listen`) not performed during this session (listener started with `stripe listen`, no `checkout.session.completed` events delivered without actual test card payment); this remains the separate external provider gate.
+
+Plan references: [`2026-10-08/REFUND-RECONCILIATION-IMPLEMENTATION-PLAN.md`](./2026-10-08/REFUND-RECONCILIATION-IMPLEMENTATION-PLAN.md) (Phase 4); [`2026-10-08/INVENTORY-CUSTOMER-HISTORY-IMPLEMENTATION-PLAN.md`](./2026-10-08/INVENTORY-CUSTOMER-HISTORY-IMPLEMENTATION-PLAN.md) (Phase 5). E2E gates: [`2026-10-04/ORDER-OPERATIONS-E2E-TEST-PLAN.md`](./2026-10-04/ORDER-OPERATIONS-E2E-TEST-PLAN.md); checkout verification: [`2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md`](./2026-09-12/CHECKOUT-RELIABILITY-LIVE-VERIFICATION.md).
+
+---
+
 ## 2026-08-07 — Separate worker process (`worker.ts`) + configurable worker concurrency
 
 Extracted `index.ts`'s domain-wiring into `bootstrap.ts`'s `createApp()`; added `worker.ts` (same domain graph, never calls `serve()`). Every `startXWorker` (agent, webhook inbound/outbound, notifications/email, tenant catalog, analytics) now checks `shared/worker-runtime.ts`'s `workersEnabled()` (`RUN_WORKERS` env, default `true`) and returns `null` before constructing a BullMQ `Worker`, and reads concurrency from a per-queue env var. Automated tests (`worker-runtime.test.ts`, `domains/worker-disable.test.ts`) cover the env-parsing logic and the `RUN_WORKERS=false` guard clause in isolation — none of them start a real BullMQ `Worker` against a real Redis, boot the actual `index.ts`/`worker.ts` processes, or exercise the "route mounted in a process that never binds a port" shape of `worker.ts`, so this is one of the more test-blind changes in this log.
