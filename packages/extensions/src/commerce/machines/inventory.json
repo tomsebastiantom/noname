@@ -1,0 +1,28 @@
+{
+  "name": "inventory_reservation",
+  "initial": "available",
+  "states": {
+    "available": {
+      "on": {
+        "RESERVE_ITEM": { "target": "reserved" },
+        "RELEASE_ITEM": { "target": "available" }
+      }
+    },
+    "reserved": {
+      "on": {
+        "DECREMENT_ITEM": { "target": "decremented" },
+        "RELEASE_ITEM": { "target": "available" },
+        "EXPIRE_ITEM": { "target": "available" }
+      }
+    },
+    "decremented": {
+      "final": true
+    },
+    "released": {
+      "final": true
+    },
+    "expired": {
+      "final": true
+    }
+  }
+}

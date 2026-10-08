@@ -219,6 +219,28 @@ export function createCommerceContribution(deps: CommerceContributionDeps) {
       PERMISSIONS.COMMERCE_ORDERS_MANAGE,
       { extension, authorize: authorizeOrder },
     ),
+    "commerce.inventory.reserve": capabilityDescriptor(
+      handlers["commerce.inventory.reserve"]!,
+      "command",
+      PERMISSIONS.COMMERCE_ORDERS_MANAGE,
+      { extension, authorize: async (rawInput: unknown, context: CapabilityContext) => {
+        const parsed = z.object({ itemId: z.string() }).safeParse(rawInput);
+        if (!parsed.success) return false;
+        const instance = await deps.machines.getInstance(context.orgId, parsed.data.itemId);
+        return !!instance && instance.machineName === "inventory_reservation";
+      }},
+    ),
+    "commerce.inventory.release": capabilityDescriptor(
+      handlers["commerce.inventory.release"]!,
+      "command",
+      PERMISSIONS.COMMERCE_ORDERS_MANAGE,
+      { extension, authorize: async (rawInput: unknown, context: CapabilityContext) => {
+        const parsed = z.object({ reservationId: z.string() }).safeParse(rawInput);
+        if (!parsed.success) return false;
+        const instance = await deps.machines.getInstance(context.orgId, parsed.data.reservationId);
+        return !!instance && instance.machineName === "inventory_reservation";
+      }},
+    ),
   };
 }
 
@@ -894,6 +916,58 @@ export function createCommerceCapabilities(deps: {
           operationId: context.idempotencyKey,
         },
       );
+    },
+    "commerce.inventory.reserve": async (rawInput, context) => {
+      const input = z.object({
+        itemId: z.string(),
+        quantity: z.number().int().min(1),
+        orderId: z.string().optional(),
+        reservationReference: z.string().optional(),
+      }).parse(rawInput);
+      const instance = await deps.machines.getInstance(context.orgId, input.itemId);
+      if (!instance || instance.machineName !== "inventory_reservation") {
+        throw new Error("Inventory item not found");
+      }
+      const changed = await deps.machines.transition(
+        context.orgId,
+        instance.id,
+        "RESERVE_ITEM",
+        {
+          quantityReserved: input.quantity,
+          reservationReference: input.reservationReference ?? `reserve:${context.idempotencyKey}`,
+          orderId: input.orderId,
+        },
+        instance.revision ?? 1,
+      );
+      const updated = await deps.machines.getInstance(context.orgId, instance.id);
+      if (updated && updated.currentState === "reserved") {
+        return { reserved: true, itemId: instance.id, quantity: input.quantity, reference: input.reservationReference ?? `reserve:${context.idempotencyKey}` };
+      }
+      throw new Error("Inventory reservation failed");
+    },
+    "commerce.inventory.release": async (rawInput, context) => {
+      const input = z.object({
+        reservationId: z.string(),
+        reason: z.string().optional(),
+      }).parse(rawInput);
+      const instance = await deps.machines.getInstance(context.orgId, input.reservationId);
+      if (!instance || instance.machineName !== "inventory_reservation") {
+        throw new Error("Inventory reservation not found");
+      }
+      const changed = await deps.machines.transition(
+        context.orgId,
+        instance.id,
+        "RELEASE_ITEM",
+        {
+          reason: input.reason ?? "Released",
+        },
+        instance.revision ?? 1,
+      );
+      const updated = await deps.machines.getInstance(context.orgId, instance.id);
+      if (updated && (updated.currentState === "available" || updated.currentState === "released")) {
+        return { released: true, itemId: instance.id, reason: input.reason ?? "Released" };
+      }
+      throw new Error("Inventory release failed");
     },
   };
 }
