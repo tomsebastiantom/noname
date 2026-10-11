@@ -128,6 +128,50 @@ agent → Authorization: Bearer nag.<payload>.<sig>
 
 **Where the model is inconsistent.** Flows 4 and 5 are the same idea implemented twice with different scope (org-only versus resource-bound) over the same shared secret. Flow 6 already implements the target shape that D3 proposes for humans — a signed principal carrying its own permissions and expiry. Flow 1 performs the same JWKS verification twice, once per layer. And only flow 2 has no user identity at all, which is the case the audit found is already handled correctly.
 
+## Prior art
+
+Two established projects solve the same problems, and both were checked against their current documentation on 2026-10-10.
+
+### Supabase — public key identifies the *application*, JWT identifies the *user*
+
+Supabase's model is the closest published analogue to this platform's split. It separates:
+
+| Credential | Question it answers | Privileges |
+|---|---|---|
+| Publishable key (`sb_publishable_…`) | **What** is accessing the project? (web page, mobile app, server) | Low — reaches only what Row Level Security allows |
+| Auth JWT | **Who** is accessing the project? | Per-user, via Postgres RLS policies |
+
+Documented explicitly: *"An API key doesn't distinguish between users but between applications"*, and *"Using a publishable key doesn't mean your user is anonymous: your application authenticates with the publishable key while your user authenticates separately … with their own JWT."*
+
+Three lessons transfer directly:
+
+1. **The publishable-key concept is validated.** `requirePublicActor` (`shared/public-actor.ts`) is the same idea, and the audit found it correct. Supabase has since renamed `anon`/`service_role` to publishable/secret keys, which matches the naming instinct here.
+2. **Supabase's model is AND, this project's is OR.** `requirePublicActor`'s own comment reads *"routes accept either a signed-in user or a key-holding storefront caller. No key + no JWT = deny."* Supabase presents **both** simultaneously — key identifies the app, JWT identifies the user. That difference matters: in this platform a signed-in storefront caller currently cannot be both key-identified *and* user-identified on the same request.
+3. **Tenancy is enforced in the database, not by callers.** Supabase maps each key to a Postgres role and lets RLS policies do the filtering, so a caller that forgets a tenant filter cannot leak data. **This is the single largest divergence in the whole comparison, and it is exactly audit finding #2** — the cross-tenant document read exists because tenancy here is enforced by caller discipline (`documents/services/document-guards.ts`) rather than at the data-access boundary.
+
+### oauth2-proxy — the gateway pattern, and what it strips
+
+This platform's edge→origin relationship is the classic authenticating-proxy pattern. `oauth2-proxy` is the reference implementation, and its defaults are directly instructive:
+
+| oauth2-proxy behaviour | Relevance here |
+|---|---|
+| `--skip-auth-strip-headers` **defaults to true** — it strips incoming `X-Forwarded-*`-style auth headers **and `Authorization`** before injecting its own (`--set-xauthrequest` sets `X-Auth-Request-User`, `-Groups`, `-Email`) | The industry default is the **opposite** of this platform's edge, which forwards the caller's `Authorization` on public routes. The strip is not an exotic hardening step; it is the norm. |
+| `--skip-jwt-bearer-tokens` only skips auth for a **verified** JWT whose `aud` matches the client id or a configured extra audience | Matches D1 and the `aud` check in `packages/auth/src/jwt/verify.ts` |
+| `--bearer-token-login-fallback`: an invalid JWT (expired, malformed, **missing required audiences**) either falls back to login or returns **403** — it never silently passes | Matches the fail-closed behaviour added in `646b90e` |
+| Documented warning: *"a client that can reach OAuth2 Proxy directly may be able to spoof forwarded headers"*, with the requirement to ensure clients cannot reach it directly | Independently confirms that **direct-to-origin must fail** — the requirement already satisfied by `orgMiddleware` (`shared/org.ts:59-61`) |
+| Audience is a first-class, separately configurable concern (`--oidc-audience-claim`, `--oidc-extra-audience`) | Supports D5 (audience-bound tickets) |
+
+### Where this platform is ahead
+
+The comparison is not uniformly unfavourable, and two points are worth recording so they are not lost during unification:
+
+- **The HMAC-signed identity headers are stronger than the industry default.** `oauth2-proxy` injects *plain* `X-Auth-Request-User` headers; anything that can reach the upstream can forge them. This platform **HMAC-signs** `orgId:userId:role` (`workers/src/hmac.ts:21-40`) and the origin verifies with `timingSafeEqual` (`shared/org.ts:27-37`). A signed header set survives direct-origin exposure that a plain header set would not. The gap is replay protection, not integrity.
+- **Collab tickets are resource-bound**, which is better than what most streaming integrations do. `collab-ticket.ts` binds `layoutDocumentId`; `richtext-collab-ticket.ts` binds `contentDocumentId + fieldKey + locale`; and the room is *derived* from the ticket rather than compared against the request. Stream tickets are the ones that lack this, and D5 generalises the better pattern rather than inventing one.
+
+### The pattern across the wider field
+
+Stated as established practice rather than from a specific check on each project: commerce platforms separate a public storefront key from a secret admin credential (Medusa's publishable API key being the closest analogue to `x-publishable-key`); feature-flag and analytics products do the same (a public/environment/client key that is write-only and safe to ship, versus a private admin key); and applications that federate to an OIDC provider conventionally mint **their own** session credential after the IdP handshake rather than reusing the IdP's token as the application credential. That last point is the direct precedent for D3, and `shared/agent-token.ts` already implements it locally.
+
 ## Decision proposal
 
 **D1 — Verify at the accepting layer.** Every layer that accepts a credential verifies it. Transit through a trusted component is not evidence of validity. This is the rule the incident in Context §1 violated, and it is non-negotiable.
