@@ -146,13 +146,37 @@ Highest-impact undocumented variables: `ZITADEL_PROJECT_ID`, `ZITADEL_MACHINE_KE
 
 Combined with **zero boot-time env validation** (report 05 §12), a production deployment missing `REDIS_URL` silently connects to localhost, and several webhook signing secrets silently fall back to dev behaviour.
 
+### 6.1 Case study — a decision that was made, recorded, and never propagated
+
+`REQUIRE_EDGE_HMAC` was the clearest single example of the repository's core failure mode, and it was **already decided and resolved once** — the cleanup simply never reached the configuration.
+
+`docs/2026-08-23/SSE-AUTH-ISSUES-ROOT-CAUSES.md:96-104` records the decision verbatim:
+
+> **Root cause:** Three tests described a `REQUIRE_EDGE_HMAC` dev escape hatch that was **never implemented** in `orgMiddleware`. **Decision: strict edge-HMAC enforcement is the source of truth — no dev bypass anywhere.** **Fix:** Removed the three stale tests.
+
+The tests were deleted. The flag was not. It survived in five live places, and `orgMiddleware` (`shared/org.ts:39-67`) has never read it:
+
+| Location | Form | Status |
+|---|---|---|
+| `packages/server/.env.example:12-13` | comment + `REQUIRE_EDGE_HMAC=false` | **removed 2026-10-10** |
+| `packages/server/.env:14` | `REQUIRE_EDGE_HMAC=false` (live local config) | **removed 2026-10-10** |
+| `.env.example:26-27` | two comments implying a bypass exists | **removed 2026-10-10** |
+| `.env.example:34` | referenced as an analogy for `KETO_GRPC_INSECURE` | **reference removed 2026-10-10** |
+| `.tools/build-server.bat:6` | `set REQUIRE_EDGE_HMAC=false` | left — untracked, harness-generated local script |
+
+This mattered more than a stale comment normally would: because the **documented default was `false`**, a contributor reading `packages/server/.env.example` would reasonably conclude that direct `:3000` access is permitted in local development. It never was. The env var is a documented affordance for a bypass that the project had already decided must not exist — and the gap between "we decided" and "the artifacts say" is precisely the pattern that produced 64% of this repo's documentation drift.
+
+Also left in place deliberately: dated docs that reference the flag (`docs/2026-07-27/ANALYTICS-REPLAY-PENDING.md`, `docs/2026-07-31/LOCAL-SMOKE-TEST.md:11`, `docs/2026-07-31/SMOKE-TEST-FIXES.md:41,69`, `docs/2026-08-03/KETO-ZANZIBAR-SETUP.md:117`). These are historical records under the repository's own dated-docs convention, and the 2026-08-23 document is the record of the decision. Two of them (`LOCAL-SMOKE-TEST.md`, `SMOKE-TEST-FIXES.md`) do give actionable instructions to export the flag; those are covered by the Phase 3 documentation-archive work rather than edited in place.
+
+**Incidental finding while tracing this:** `.tools/build-server.bat:5` contains a plaintext live-looking API credential (`sk-or-v1-…`), the same value as the `key` file at the repository root. `.tools/` is gitignored and untracked, so this is not a git leak — but the credential now exists in two plaintext locations on disk in addition to the committed `WORKER_SERVER_SECRET` (report 05 §8).
+
 ---
 
 ## 7. Quality gates and CI
 
 | Gate | State |
 |---|---|
-| `pnpm lint` / `format` / `check` (Biome, recommended preset) | Exists; `noExplicitAny: off` (`biome.json:26`); covers `packages/**` only — `scripts/`, `apps/docs/`, `skills/` never linted |
+| `pnpm lint` / `format` / `check` (Biome, recommended preset) | **Currently FAILS: 12 errors + 2 warnings** across `packages/verticals/src/commerce/{capabilities,money}.ts`, `packages/extensions/src/commerce/*`, and `packages/server/src/domains/audiences/{ports,service,service.test}.ts` — all in files unmodified since before this audit. `README.md:183` advertises "Biome — lint all packages (0 errors)" and the 2026-09-14 baseline records `biome check . → pass`, so the gate has regressed since. `noExplicitAny: off` (`biome.json:26`); covers `packages/**` only — `scripts/`, `apps/docs/`, `skills/` never linted |
 | `pnpm -r typecheck` | Exists; packages only (root `tsconfig.json` includes `scripts/**/*.ts` with no project references) |
 | `pnpm test` | **167 tracked test files**; currently clean for the client (`tsc --noEmit` exit 0) |
 | Coverage | Reporters configured, **no thresholds**; `coverage.include` = `./packages/server/src/**/*.ts` only → **11 of 12 packages report nothing** |
