@@ -54,4 +54,72 @@ describe("resolveSiteId", () => {
 
     vi.unstubAllGlobals();
   });
+
+  it("returns null without caching when the origin is unreachable", async () => {
+    // Regression: this await was unguarded, so an origin outage threw out of the
+    // worker and killed the wrangler dev process instead of degrading.
+    const put = vi.fn();
+    const env = {
+      API_ORIGIN: "http://localhost:3000",
+      WORKER_SERVER_SECRET: "test-secret",
+      KV: {
+        get: vi.fn(async () => null),
+        put,
+      },
+    } as unknown as Env;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new Error("Network connection lost");
+      }),
+    );
+
+    await expect(resolveSiteId(env, "unreachable-store")).resolves.toBeNull();
+    // A transient outage must not be negative-cached, or the next request would
+    // serve a stale miss for the full window after the origin recovered.
+    expect(put).not.toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("does not negative-cache a 5xx from the origin", async () => {
+    // Regression: any non-ok response used to be miss-cached, so a brief API
+    // restart returned 400 for a valid tenant until the miss TTL expired.
+    const put = vi.fn();
+    const env = {
+      API_ORIGIN: "http://localhost:3000",
+      WORKER_SERVER_SECRET: "test-secret",
+      KV: { get: vi.fn(async () => null), put },
+    } as unknown as Env;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("boom", { status: 503 })),
+    );
+
+    await expect(resolveSiteId(env, "origin-outage-store")).resolves.toBeNull();
+    expect(put).not.toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
+
+  it("negative-caches a definitive 404 miss", async () => {
+    const put = vi.fn();
+    const env = {
+      API_ORIGIN: "http://localhost:3000",
+      WORKER_SERVER_SECRET: "test-secret",
+      KV: { get: vi.fn(async () => null), put },
+    } as unknown as Env;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response("nope", { status: 404 })),
+    );
+
+    await expect(resolveSiteId(env, "no-such-store")).resolves.toBeNull();
+    expect(put).toHaveBeenCalled();
+
+    vi.unstubAllGlobals();
+  });
 });

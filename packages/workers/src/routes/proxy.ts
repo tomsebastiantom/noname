@@ -78,138 +78,145 @@ export function createApiProxyRoutes() {
   const routes = new Hono<{ Bindings: Env }>();
 
   routes.all("/*", async (c) => {
-    const incoming = new URL(c.req.url);
-    const pathname = incoming.pathname;
-    const optionalAuth = isOptionalAuthRoute(c.req.method, pathname);
-    const search = optionalAuth
-      ? stripAccessToken(stripOrgFromSearch(pathname, incoming.search))
-      : stripOrgFromSearch(pathname, incoming.search);
-    const isPublic = routeIsPublic(c.req.method, pathname);
-    const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
-    const streamTicketBypass = hasStreamTicket(incoming);
-    const collabTicketBypass = hasCollabTicket(incoming);
-    const flagsTicketBypass = streamTicketBypass;
-    const publishableKeyBypass = hasPublishableKey(c.req.raw);
-    const editMode = isEditModeUrl(incoming);
-    const apiOrigin = c.env.API_ORIGIN;
-    const target = `${apiOrigin}${pathname}${search}`;
+    try {
+      const incoming = new URL(c.req.url);
+      const pathname = incoming.pathname;
+      const optionalAuth = isOptionalAuthRoute(c.req.method, pathname);
+      const search = optionalAuth
+        ? stripAccessToken(stripOrgFromSearch(pathname, incoming.search))
+        : stripOrgFromSearch(pathname, incoming.search);
+      const isPublic = routeIsPublic(c.req.method, pathname);
+      const webSocketUpgrade = isWebSocketUpgrade(c.req.header("upgrade"));
+      const streamTicketBypass = hasStreamTicket(incoming);
+      const collabTicketBypass = hasCollabTicket(incoming);
+      const flagsTicketBypass = streamTicketBypass;
+      const publishableKeyBypass = hasPublishableKey(c.req.raw);
+      const editMode = isEditModeUrl(incoming);
+      const apiOrigin = c.env.API_ORIGIN;
+      const target = `${apiOrigin}${pathname}${search}`;
 
-    let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
+      let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
-    if (editMode) {
-      const auth = await resolveJwt(c.req.raw, c.env);
-      if (auth instanceof Response) return auth;
-      jwt = auth;
-      if (!jwt || !canDraft(jwt.roles ?? [])) {
-        return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
+      if (editMode) {
+        const auth = await resolveJwt(c.req.raw, c.env);
+        if (auth instanceof Response) return auth;
+        jwt = auth;
+        if (!jwt || !canDraft(jwt.roles ?? [])) {
+          return c.json({ error: EDIT_MODE_FORBIDDEN_ERROR }, 403);
+        }
+      } else if (optionalAuth && accessTokenFromRequest(c.req.raw)) {
+        // Public schemas and publishable-key checkout remain anonymous, but a
+        // presented credential must validate before its identity is HMAC-signed.
+        const auth = await tryParseJwt(c.req.raw, c.env);
+        if (!auth) return c.json({ error: "Unauthorized — invalid optional credential" }, 401);
+        jwt = auth;
+      } else if (
+        !isPublic &&
+        !streamTicketBypass &&
+        !collabTicketBypass &&
+        !flagsTicketBypass &&
+        !publishableKeyBypass
+      ) {
+        const auth = await resolveJwt(c.req.raw, c.env);
+        if (auth instanceof Response) return auth;
+        jwt = auth;
       }
-    } else if (optionalAuth && accessTokenFromRequest(c.req.raw)) {
-      // Public schemas and publishable-key checkout remain anonymous, but a
-      // presented credential must validate before its identity is HMAC-signed.
-      const auth = await tryParseJwt(c.req.raw, c.env);
-      if (!auth) return c.json({ error: "Unauthorized — invalid optional credential" }, 401);
-      jwt = auth;
-    } else if (
-      !isPublic &&
-      !streamTicketBypass &&
-      !collabTicketBypass &&
-      !flagsTicketBypass &&
-      !publishableKeyBypass
-    ) {
-      const auth = await resolveJwt(c.req.raw, c.env);
-      if (auth instanceof Response) return auth;
-      jwt = auth;
-    }
 
-    const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "";
-    const orgId = await resolveProxyOrgId(
-      c.env,
-      pathname,
-      host,
-      jwt?.orgId,
-      c.req.header("x-org-id") ?? undefined,
-    );
+      const host = c.req.header("x-forwarded-host") ?? c.req.header("host") ?? "";
+      const orgId = await resolveProxyOrgId(
+        c.env,
+        pathname,
+        host,
+        jwt?.orgId,
+        c.req.header("x-org-id") ?? undefined,
+      );
 
-    if (!orgId && !isResolveSlugPath(pathname)) {
-      if (streamTicketBypass || collabTicketBypass || flagsTicketBypass || publishableKeyBypass) {
-        return c.json({ error: "Invalid ticket, key, or org id required" }, 401);
+      if (!orgId && !isResolveSlugPath(pathname)) {
+        if (streamTicketBypass || collabTicketBypass || flagsTicketBypass || publishableKeyBypass) {
+          return c.json({ error: "Invalid ticket, key, or org id required" }, 401);
+        }
+        return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
       }
-      return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
-    }
 
-    if (!orgId) {
-      // resolve-slug path with no org — preserve null, do not sign empty org as valid
-      return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
-    }
-
-    const signed = await hmacHeaders(orgId, jwt?.userId ?? "", jwt?.role ?? "", c.env);
-
-    if (webSocketUpgrade) {
-      return proxyWebSocketToOrigin(target, c.req.raw.headers, signed);
-    }
-
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(signed)) {
-      headers.set(key, value);
-    }
-    const contentType = c.req.header("Content-Type");
-    if (contentType) headers.set("Content-Type", contentType);
-    const traceparent = c.req.header("traceparent");
-    if (traceparent) headers.set("traceparent", traceparent);
-    const tracestate = c.req.header("tracestate");
-    if (tracestate) headers.set("tracestate", tracestate);
-    const sessionId = c.req.header("x-session-id");
-    if (sessionId && forwardsSessionId(c.req.method, pathname)) {
-      headers.set("x-session-id", sessionId);
-    }
-    // On the optional public routes the verified HMAC is the identity contract;
-    // never pass the raw user credential to origin as identity.
-    if (!optionalAuth) {
-      const authorization = c.req.header("Authorization");
-      if (authorization) {
-        headers.set("Authorization", authorization);
-      } else {
-        const token = accessTokenFromRequest(c.req.raw);
-        if (token) headers.set("Authorization", `Bearer ${token}`);
+      if (!orgId) {
+        // resolve-slug path with no org — preserve null, do not sign empty org as valid
+        return c.json({ error: "org id required (JWT, URL path, or Host)" }, 400);
       }
-    }
-    const publishableKey = c.req.header("x-publishable-key");
-    if (publishableKey) {
-      headers.set("x-publishable-key", publishableKey);
-    }
-    const webhookSignature = c.req.header("x-webhook-signature");
-    if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);
-    const stripeSignature = c.req.header("stripe-signature");
-    if (stripeSignature) headers.set("stripe-signature", stripeSignature);
-    const nangoSignature = c.req.header("x-nango-hmac-sha256");
-    if (nangoSignature) headers.set("x-nango-hmac-sha256", nangoSignature);
-    const idempotencyKey = c.req.header("idempotency-key");
-    if (idempotencyKey) headers.set("idempotency-key", idempotencyKey);
 
-    const init: RequestInit = {
-      method: c.req.method,
-      headers,
-    };
-    if (c.req.method !== "GET" && c.req.method !== "HEAD") {
-      const stripOrg = shouldStripBodyOrg(pathname, c.req.method);
-      const contentType = c.req.header("Content-Type") ?? "";
-      const gzipReplay =
-        pathname === "/api/analytics/replay" && contentType.includes("application/gzip");
-      if (stripOrg && !gzipReplay) {
-        let body = await c.req.raw.clone().text();
-        body = stripOrgFromPublicJsonBody(pathname, body);
-        init.body = body;
-      } else {
-        init.body = c.req.raw.body;
+      const signed = await hmacHeaders(orgId, jwt?.userId ?? "", jwt?.role ?? "", c.env);
+
+      if (webSocketUpgrade) {
+        return proxyWebSocketToOrigin(target, c.req.raw.headers, signed);
       }
-    }
 
-    const response = await fetchWithTimeout(target, init);
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: response.headers,
-    });
+      const headers = new Headers();
+      for (const [key, value] of Object.entries(signed)) {
+        headers.set(key, value);
+      }
+      const contentType = c.req.header("Content-Type");
+      if (contentType) headers.set("Content-Type", contentType);
+      const traceparent = c.req.header("traceparent");
+      if (traceparent) headers.set("traceparent", traceparent);
+      const tracestate = c.req.header("tracestate");
+      if (tracestate) headers.set("tracestate", tracestate);
+      const sessionId = c.req.header("x-session-id");
+      if (sessionId && forwardsSessionId(c.req.method, pathname)) {
+        headers.set("x-session-id", sessionId);
+      }
+      // On the optional public routes the verified HMAC is the identity contract;
+      // never pass the raw user credential to origin as identity.
+      if (!optionalAuth) {
+        const authorization = c.req.header("Authorization");
+        if (authorization) {
+          headers.set("Authorization", authorization);
+        } else {
+          const token = accessTokenFromRequest(c.req.raw);
+          if (token) headers.set("Authorization", `Bearer ${token}`);
+        }
+      }
+      const publishableKey = c.req.header("x-publishable-key");
+      if (publishableKey) {
+        headers.set("x-publishable-key", publishableKey);
+      }
+      const webhookSignature = c.req.header("x-webhook-signature");
+      if (webhookSignature) headers.set("x-webhook-signature", webhookSignature);
+      const stripeSignature = c.req.header("stripe-signature");
+      if (stripeSignature) headers.set("stripe-signature", stripeSignature);
+      const nangoSignature = c.req.header("x-nango-hmac-sha256");
+      if (nangoSignature) headers.set("x-nango-hmac-sha256", nangoSignature);
+      const idempotencyKey = c.req.header("idempotency-key");
+      if (idempotencyKey) headers.set("idempotency-key", idempotencyKey);
+
+      const init: RequestInit = {
+        method: c.req.method,
+        headers,
+      };
+      if (c.req.method !== "GET" && c.req.method !== "HEAD") {
+        const stripOrg = shouldStripBodyOrg(pathname, c.req.method);
+        const contentType = c.req.header("Content-Type") ?? "";
+        const gzipReplay =
+          pathname === "/api/analytics/replay" && contentType.includes("application/gzip");
+        if (stripOrg && !gzipReplay) {
+          let body = await c.req.raw.clone().text();
+          body = stripOrgFromPublicJsonBody(pathname, body);
+          init.body = body;
+        } else {
+          init.body = c.req.raw.body;
+        }
+      }
+
+      const response = await fetchWithTimeout(target, init);
+      return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    } catch (error) {
+      // An unreachable or misbehaving origin must degrade into a gateway error.
+      // An escaped throw here previously killed the `wrangler dev` worker process.
+      console.error("[proxy] upstream request failed", error);
+      return c.json({ error: "Upstream unavailable" }, 502);
+    }
   });
 
   return routes;

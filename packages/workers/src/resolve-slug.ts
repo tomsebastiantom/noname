@@ -19,13 +19,29 @@ export async function resolveSiteId(env: Env, siteId: string): Promise<string | 
 
   // Upstream orgMiddleware rejects unsigned calls when WORKER_SERVER_SECRET is set —
   // internal edge→API service calls must carry the same HMAC the proxy adds.
-  const res = await fetchWithTimeout(
-    `${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`,
-    { headers: await hmacHeaders("", "", "", env) },
-  );
+  let res: Response;
+  try {
+    res = await fetchWithTimeout(
+      `${env.API_ORIGIN}/api/tenants/resolve/${encodeURIComponent(slug)}`,
+      { headers: await hmacHeaders("", "", "", env) },
+    );
+  } catch (error) {
+    // An origin outage must never throw out of the worker — an unguarded await
+    // here previously killed the wrangler dev process outright. Deliberately do
+    // NOT negative-cache: a transient outage must be retried on the next request
+    // rather than serving a stale miss for the whole miss-cache window.
+    console.warn(`[resolve-slug] ${slug} upstream unreachable — not caching, will retry`, error);
+    return null;
+  }
   if (!res.ok) {
-    console.warn(`[resolve-slug] ${slug} upstream ${res.status} — returning null, miss-cached`);
-    await setMissCache(env, slugCacheKey(slug));
+    // Only a definitive "no such slug" is worth negative-caching. An origin
+    // outage (5xx) previously poisoned the cache for the whole miss window, so a
+    // brief API restart turned into ~60s of 400s for a perfectly valid tenant.
+    if (res.status === 404) {
+      await setMissCache(env, slugCacheKey(slug));
+      return null;
+    }
+    console.warn(`[resolve-slug] ${slug} upstream ${res.status} — not caching, will retry`);
     return null;
   }
 
