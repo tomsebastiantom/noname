@@ -73,6 +73,7 @@ const sidebars: SidebarsConfig = {
         "decisions/ADR-0009-evidence-provenance-kernel",
         "decisions/ADR-0010-commerce-ui-ownership",
         "decisions/ADR-0011-seeding-and-fixture-boundaries",
+        "decisions/ADR-0012-unified-credential-verification",
       ],
     },
     {
