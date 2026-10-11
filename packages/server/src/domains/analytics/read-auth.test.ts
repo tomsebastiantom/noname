@@ -2,6 +2,7 @@ import { PERMISSIONS, zitadelProjectRolesClaimKey } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
+import { installTestJwks, signTestToken } from "../auth/testing/test-tokens";
 import { createAnalyticsRoutes } from "./api";
 import type { AnalyticsEventDTO, AnalyticsService } from "./ports";
 import { assertReplayStorageKey } from "./read-guards";
@@ -12,17 +13,14 @@ vi.mock("../auth/adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: vi.fn(() => "proj-123"),
 }));
 
-function jwt(payload: Record<string, unknown>): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `header.${body}.sig`;
-}
+installTestJwks();
 
-const adminToken = jwt({
+const adminToken = signTestToken({
   sub: "user-admin",
   [zitadelProjectRolesClaimKey("proj-123")]: { admin: {} },
 });
 
-const editorToken = jwt({
+const editorToken = signTestToken({
   sub: "user-editor",
   [zitadelProjectRolesClaimKey("proj-123")]: { editor: {} },
 });

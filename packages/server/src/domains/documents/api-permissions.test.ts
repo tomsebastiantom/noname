@@ -3,6 +3,7 @@ import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { orgMiddleware } from "../../shared/org";
 import type { AuthorizationPort } from "../auth/authorization-port";
+import { installTestJwks, signTestToken } from "../auth/testing/test-tokens";
 import { createDocumentsRoutes } from "./api";
 import type { AssetBinaryStorage } from "./assets/binary";
 import type { DocumentService, DocumentStorage } from "./ports";
@@ -11,20 +12,17 @@ vi.mock("../auth/adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: vi.fn(() => "proj-123"),
 }));
 
-function jwt(payload: Record<string, unknown>): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `header.${body}.sig`;
-}
+installTestJwks();
 
 function editorToken(): string {
-  return jwt({
+  return signTestToken({
     sub: "user-editor",
     [zitadelProjectRolesClaimKey("proj-123")]: { editor: {} },
   });
 }
 
 function adminToken(): string {
-  return jwt({
+  return signTestToken({
     sub: "user-admin",
     [zitadelProjectRolesClaimKey("proj-123")]: { admin: {} },
   });

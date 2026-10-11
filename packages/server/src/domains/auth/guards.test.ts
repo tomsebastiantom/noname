@@ -2,15 +2,11 @@ import { PERMISSIONS, zitadelProjectRolesClaimKey } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { requirePermission } from "./guards";
+import { installTestJwks, signTestToken } from "./testing/test-tokens";
 
 vi.mock("./adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: vi.fn(() => "proj-123"),
 }));
-
-function jwt(payload: Record<string, unknown>): string {
-  const body = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  return `header.${body}.sig`;
-}
 
 function appWithGuard() {
   const app = new Hono();
@@ -24,6 +20,7 @@ function appWithGuard() {
 
 describe("requirePermission", () => {
   beforeEach(() => {
+    installTestJwks();
     vi.stubEnv("ZITADEL_PROJECT_ID", "proj-123");
   });
 
@@ -33,7 +30,7 @@ describe("requirePermission", () => {
   });
 
   it("returns 403 when JWT lacks auth:manage", async () => {
-    const token = jwt({
+    const token = signTestToken({
       sub: "user-1",
       [zitadelProjectRolesClaimKey("proj-123")]: { editor: {} },
     });
@@ -44,7 +41,7 @@ describe("requirePermission", () => {
   });
 
   it("allows admin JWT with auth:manage", async () => {
-    const token = jwt({
+    const token = signTestToken({
       sub: "user-admin",
       [zitadelProjectRolesClaimKey("proj-123")]: { admin: {} },
     });
@@ -54,5 +51,21 @@ describe("requirePermission", () => {
     expect(res.status).toBe(200);
     const body = (await res.json()) as { userId: string };
     expect(body.userId).toBe("user-admin");
+  });
+
+  it("rejects a token with a fabricated signature", async () => {
+    const body = Buffer.from(
+      JSON.stringify({
+        sub: "attacker",
+        iss: "https://issuer.test",
+        aud: "test-client",
+        exp: Math.floor(Date.now() / 1000) + 3600,
+        [zitadelProjectRolesClaimKey("proj-123")]: { admin: {} },
+      }),
+    ).toString("base64url");
+    const res = await appWithGuard().request("/protected", {
+      headers: { Authorization: `Bearer header.${body}.sig` },
+    });
+    expect(res.status).toBe(401);
   });
 });

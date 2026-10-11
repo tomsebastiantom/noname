@@ -19,10 +19,16 @@ export {
   rolesFromTokenPayload,
   zitadelProjectRolesClaimKey,
 } from "./jwt/roles";
-
+export {
+  type AccessTokenHeader,
+  type JwkResolver,
+  type VerifyAccessTokenOptions,
+  verifyAccessToken,
+} from "./jwt/verify";
 export {
   permissionsFromJwt,
   resolveAuthContextFromAccessToken,
+  resolveAuthContextFromVerifiedPayload,
   resolveIdentityFromTokenPayload,
   resolveRolesFromTokenPayload,
   rolesFromJwt,

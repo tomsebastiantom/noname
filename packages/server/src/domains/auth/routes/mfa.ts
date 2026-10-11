@@ -12,7 +12,7 @@ export function registerAuthMfaRoutes(routes: Hono, deps: AuthRouteDeps): void {
   routes.post("/:orgId/mfa/totp/register", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
     return ok(
@@ -27,7 +27,7 @@ export function registerAuthMfaRoutes(routes: Hono, deps: AuthRouteDeps): void {
   routes.post("/:orgId/mfa/totp/confirm", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
     const body = parseBody(

@@ -10,23 +10,16 @@ import type { Context } from "hono";
 import { ValidationError } from "../../../shared/domain-error";
 import { zitadelIssuer } from "../adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "../adapters/zitadel/project-id";
-import { bearerToken, requireAuthenticatedUser } from "../guards";
+import { requireAuthenticatedUser } from "../guards";
 
 export async function assignerPlatformRoles(c: Context): Promise<PlatformRole[]> {
-  const auth = requireAuthenticatedUser(c);
+  const auth = await requireAuthenticatedUser(c);
   if (auth instanceof Response) return [];
 
-  const token = bearerToken(c);
-  if (!token) return [];
-
-  const payload = await resolveRolesFromTokenPayload(
-    token,
-    {},
-    {
-      projectId: zitadelProjectIdOrNull() ?? undefined,
-      issuer: zitadelIssuer(),
-    },
-  );
+  const payload = await resolveRolesFromTokenPayload(auth.userToken, auth.payload, {
+    projectId: zitadelProjectIdOrNull() ?? undefined,
+    issuer: zitadelIssuer(),
+  });
   return payload.filter(isPlatformRole);
 }
 

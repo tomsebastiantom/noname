@@ -86,3 +86,18 @@ export async function resolveAuthContextFromAccessToken(
   const roles = await resolveRolesFromTokenPayload(accessToken, payload, options);
   return { roles, permissions: expandPermissions(roles) };
 }
+
+/**
+ * Same as {@link resolveAuthContextFromAccessToken} but for a payload that has
+ * already been signature-verified. Callers that derive permissions from a raw
+ * token must verify it first (`verifyAccessToken`) and use this overload so the
+ * unverified decode path is never the source of truth.
+ */
+export async function resolveAuthContextFromVerifiedPayload(
+  accessToken: string,
+  payload: Record<string, unknown>,
+  options?: { projectId?: string; issuer?: string },
+): Promise<{ roles: PlatformRole[]; permissions: PermissionKey[] }> {
+  const roles = await resolveRolesFromTokenPayload(accessToken, payload, options);
+  return { roles, permissions: expandPermissions(roles) };
+}

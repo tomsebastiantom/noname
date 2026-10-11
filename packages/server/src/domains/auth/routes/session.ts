@@ -1,4 +1,4 @@
-import { primaryTeamRole, resolveAuthContextFromAccessToken } from "@noname/auth";
+import { primaryTeamRole, resolveAuthContextFromVerifiedPayload } from "@noname/auth";
 import type { Hono } from "hono";
 import { notFound, ok } from "../../../shared/respond";
 import { resolveRouteOrgId } from "../../../shared/site-id";
@@ -13,15 +13,19 @@ export function registerAuthSessionRoutes(routes: Hono, deps: AuthRouteDeps): vo
   routes.get("/:orgId/session", async (c) => {
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("orgId"));
     if (!orgId) return notFound(c);
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
     const status = await service.getSessionStatus(orgId, auth.userId);
     const projectId = zitadelProjectIdOrNull() ?? undefined;
-    const { roles, permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
-      projectId,
-      issuer: zitadelIssuer(),
-    });
+    const { roles, permissions } = await resolveAuthContextFromVerifiedPayload(
+      auth.userToken,
+      auth.payload,
+      {
+        projectId,
+        issuer: zitadelIssuer(),
+      },
+    );
     const teamRole = primaryTeamRole(roles);
     return ok(c, {
       ...status,

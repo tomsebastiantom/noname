@@ -1,8 +1,9 @@
-import { resolveAuthContextFromAccessToken } from "@noname/auth";
+import { resolveAuthContextFromVerifiedPayload } from "@noname/auth";
 import type { Database } from "../../drizzle";
 import { zitadelIssuer } from "../auth/adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "../auth/adapters/zitadel/project-id";
 import type { AuthorizationPort } from "../auth/authorization-port";
+import { verifyTokenPayload } from "../auth/verified-token";
 import type { LayoutCollabRoomManager } from "../collab/layout-room";
 import type { LayoutDocumentService } from "../documents/ports";
 import { createPostgresAgentTaskStorage } from "./adapters/postgres";
@@ -37,7 +38,9 @@ export function createAgentDomain(deps: AgentDomainDeps) {
     authorization: deps.authorization,
     tokenSecret,
     resolveCreatorPermissions: async (_userId, userToken) => {
-      const { permissions } = await resolveAuthContextFromAccessToken(userToken, {
+      const payload = await verifyTokenPayload(userToken);
+      if (!payload) return [];
+      const { permissions } = await resolveAuthContextFromVerifiedPayload(userToken, payload, {
         projectId: zitadelProjectIdOrNull() ?? undefined,
         issuer: zitadelIssuer(),
       });

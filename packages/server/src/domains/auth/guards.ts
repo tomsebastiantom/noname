@@ -4,8 +4,7 @@ import {
   hasPermission,
   PERMISSIONS,
   type PermissionKey,
-  resolveAuthContextFromAccessToken,
-  userIdFromAccessToken,
+  resolveAuthContextFromVerifiedPayload,
 } from "@noname/auth";
 import type { Context } from "hono";
 import { verifyAgentToken } from "../../shared/agent-token";
@@ -13,20 +12,10 @@ import { getOrgId, getUserId } from "../../shared/org";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";
+import { bearerToken, resolveAccessToken } from "./token-source";
+import { verifiedTokenPayload } from "./verified-token";
 
-export function bearerToken(c: Context): string | null {
-  const auth = c.req.header("Authorization") ?? "";
-  const match = auth.match(/^Bearer\s+(.+)$/i);
-  return match?.[1]?.trim() || null;
-}
-
-/** Bearer header, or `?access_token=` for EventSource (cannot set Authorization). */
-export function resolveAccessToken(c: Context): string | null {
-  const header = bearerToken(c);
-  if (header) return header;
-  const query = c.req.query("access_token");
-  return typeof query === "string" && query.trim() ? query.trim() : null;
-}
+export { bearerToken, resolveAccessToken } from "./token-source";
 
 export function authSubjectFromActor(actor: AuthActor): AuthSubject {
   if (actor.type === "agent") {
@@ -35,24 +24,37 @@ export function authSubjectFromActor(actor: AuthActor): AuthSubject {
   return { type: "User", id: actor.userId };
 }
 
-export function requireAuthenticatedUser(
+/**
+ * Require a token whose signature, issuer, audience, and expiry verify.
+ *
+ * Identity comes from the edge-signed `x-user-id` when present, otherwise from
+ * the verified `sub`. The unverified decode path is never a source of identity.
+ */
+export async function requireAuthenticatedUser(
   c: Context,
-): { userId: string; userToken: string } | Response {
-  const userToken = bearerToken(c);
+): Promise<{ userId: string; userToken: string; payload: Record<string, unknown> } | Response> {
+  const userToken = resolveAccessToken(c);
   if (!userToken) {
     return c.json({ error: "Authentication required" }, 401);
   }
-  const userId = getUserId(c) || userIdFromAccessToken(userToken) || "";
+
+  const payload = await verifiedTokenPayload(c, userToken);
+  if (!payload) {
+    return c.json({ error: "Authentication required" }, 401);
+  }
+
+  const sub = typeof payload.sub === "string" ? payload.sub.trim() : "";
+  const userId = getUserId(c) || sub;
   if (!userId) {
     return c.json({ error: "Authentication required" }, 401);
   }
-  return { userId, userToken };
+  return { userId, userToken, payload };
 }
 
 export async function requireAuthenticatedActor(
   c: Context,
 ): Promise<(AuthActor & { userToken: string }) | Response> {
-  const token = bearerToken(c);
+  const token = resolveAccessToken(c);
   if (!token) {
     return c.json({ error: "Authentication required" }, 401);
   }
@@ -75,14 +77,19 @@ export async function requireAuthenticatedActor(
     };
   }
 
-  const auth = requireAuthenticatedUser(c);
+  const auth = await requireAuthenticatedUser(c);
   if (auth instanceof Response) return auth;
 
   const projectId = zitadelProjectIdOrNull() ?? undefined;
-  const { permissions } = await resolveAuthContextFromAccessToken(auth.userToken, {
-    projectId,
-    issuer: zitadelIssuer(),
-  });
+  // Permissions come only from the signature-verified payload.
+  const { permissions } = await resolveAuthContextFromVerifiedPayload(
+    auth.userToken,
+    auth.payload,
+    {
+      projectId,
+      issuer: zitadelIssuer(),
+    },
+  );
   return {
     type: "human",
     userId: auth.userId,
@@ -126,3 +133,6 @@ export async function requireHumanPermission(
 export function isStoreAdmin(permissions: Iterable<PermissionKey>): boolean {
   return hasPermission(permissions, PERMISSIONS.AUTH_MANAGE);
 }
+
+/** Re-exported for callers that only need the raw token. */
+export { bearerToken as rawBearerToken };

@@ -33,7 +33,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
   const routes = new Hono();
 
   routes.get("/preferences", async (c) => {
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
     const userId = getUserId(c) || auth.userId;
@@ -44,7 +44,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
   });
 
   routes.put("/preferences", async (c) => {
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
     const userId = getUserId(c) || auth.userId;
@@ -96,7 +96,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
   });
 
   routes.get("/inbox", async (c) => {
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
     const userId = getUserId(c) || auth.userId;
@@ -117,7 +117,7 @@ export function createNotificationsRoutes(service: NotificationsService) {
   });
 
   routes.post("/inbox/:itemId/read", async (c) => {
-    const auth = requireAuthenticatedUser(c);
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
     const orgId = getOrgId(c);
     const userId = getUserId(c) || auth.userId;

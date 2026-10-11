@@ -1,6 +1,7 @@
 import { PERMISSIONS, zitadelProjectRolesClaimKey } from "@noname/auth";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
+import { installTestJwks, signTestToken } from "../auth/testing/test-tokens";
 import type { CapabilityIdempotencyStore, IdempotencyClaim } from "./idempotency";
 import { createCapabilityRegistry } from "./registry";
 import { registerCapabilityRoutes } from "./routes";
@@ -9,14 +10,13 @@ vi.mock("../auth/adapters/zitadel/project-id", () => ({
   zitadelProjectIdOrNull: () => "proj-123",
 }));
 
+installTestJwks();
+
 function jwt(userId: string, role = "admin"): string {
-  const body = Buffer.from(
-    JSON.stringify({
-      sub: userId,
-      [zitadelProjectRolesClaimKey("proj-123")]: { [role]: {} },
-    }),
-  ).toString("base64url");
-  return `header.${body}.sig`;
+  return signTestToken({
+    sub: userId,
+    [zitadelProjectRolesClaimKey("proj-123")]: { [role]: {} },
+  });
 }
 
 function createFakeIdempotency(): CapabilityIdempotencyStore {

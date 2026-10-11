@@ -1,13 +1,15 @@
-import { userIdFromAccessToken } from "@noname/auth";
 import type { Context, Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { getOrgId, getUserId } from "../../../shared/org";
 import { ok } from "../../../shared/respond";
 import { addClient } from "../../../shared/sse-manager";
 import { requireAuthenticatedUser, resolveAccessToken } from "../../auth/guards";
+import { verifiedTokenPayload } from "../../auth/verified-token";
 import { mintStreamTicket, verifyStreamTicket } from "../stream-ticket";
 
-function resolveStreamAuth(c: Context): { userId: string; orgId: string } | Response {
+async function resolveStreamAuth(
+  c: Context,
+): Promise<{ userId: string; orgId: string } | Response> {
   const streamTicket = c.req.query("stream_ticket")?.trim();
   if (streamTicket) {
     const parsed = verifyStreamTicket(streamTicket);
@@ -26,7 +28,11 @@ function resolveStreamAuth(c: Context): { userId: string; orgId: string } | Resp
     return c.json({ error: "Authentication required" }, 401);
   }
 
-  const userId = getUserId(c) || userIdFromAccessToken(userToken) || "";
+  // The `?access_token=` form is readable by the caller, so it must be
+  // signature-verified before it becomes a stream identity.
+  const payload = await verifiedTokenPayload(c, userToken);
+  const verifiedSub = typeof payload?.sub === "string" ? payload.sub.trim() : "";
+  const userId = getUserId(c) || verifiedSub;
   if (!userId) {
     return c.json({ error: "Authentication required" }, 401);
   }
@@ -41,8 +47,8 @@ function resolveStreamAuth(c: Context): { userId: string; orgId: string } | Resp
 
 /** Authenticated SSE — inbox updates for the signed-in user (admin or storefront account). */
 export function registerNotificationsStreamRoutes(routes: Hono): void {
-  routes.post("/stream/ticket", (c) => {
-    const auth = requireAuthenticatedUser(c);
+  routes.post("/stream/ticket", async (c) => {
+    const auth = await requireAuthenticatedUser(c);
     if (auth instanceof Response) return auth;
 
     const orgId = getOrgId(c);
@@ -59,8 +65,8 @@ export function registerNotificationsStreamRoutes(routes: Hono): void {
     }
   });
 
-  routes.get("/stream", (c) => {
-    const auth = resolveStreamAuth(c);
+  routes.get("/stream", async (c) => {
+    const auth = await resolveStreamAuth(c);
     if (auth instanceof Response) return auth;
     const { userId, orgId } = auth;
 
