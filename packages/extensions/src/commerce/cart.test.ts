@@ -41,7 +41,10 @@ describe("storefront cart item actions", () => {
     await setCartItemQuantity("sku-1", 0);
 
     expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({ items: [], currency: "CAD" });
+    expect(JSON.parse(String(fetchMock.mock.calls[1]?.[1]?.body))).toEqual({
+      items: [],
+      currency: "CAD",
+    });
   });
 
   it("merges repeated add-to-cart clicks into one line item", async () => {
@@ -65,9 +68,9 @@ describe("storefront cart item actions", () => {
   });
 
   it("blocks mixing product currencies in a non-empty cart", async () => {
-    const fetchMock = vi.fn().mockResolvedValueOnce(
-      response(activeCart([{ productId: "sku-cad", quantity: 1 }])),
-    );
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(response(activeCart([{ productId: "sku-cad", quantity: 1 }])));
     vi.stubGlobal("fetch", fetchMock);
 
     await expect(addProductToCart("sku-usd", 1, "USD")).rejects.toThrow(

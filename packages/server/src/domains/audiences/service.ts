@@ -8,9 +8,9 @@ import type {
   ExperienceDecisionRecord,
 } from "./experience-attribution";
 import {
+  attributionWindowDaysToMilliseconds,
   MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
   MIN_AUDIENCE_LEDGER_RETENTION_MS,
-  attributionWindowDaysToMilliseconds,
   normalizeAttributionWindowDays,
 } from "./experience-attribution";
 import type { AssignmentChange } from "./membership";

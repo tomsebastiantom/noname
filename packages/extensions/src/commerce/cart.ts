@@ -175,7 +175,11 @@ export async function checkout(): Promise<void> {
   window.location.assign(result.redirectUrl);
 }
 
-async function saveCartItems(instanceId: string, items: CartItem[], currency: string): Promise<void> {
+async function saveCartItems(
+  instanceId: string,
+  items: CartItem[],
+  currency: string,
+): Promise<void> {
   const res = await fetch(`/api/machines/cart/${instanceId}/addToCart`, {
     method: "POST",
     headers: authHeaders(),

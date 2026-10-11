@@ -12,10 +12,10 @@ import type {
   ExperienceOutcomeAttribution,
 } from "./ports";
 import {
+  attributionWindowDaysToMilliseconds,
   MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
   MILLISECONDS_PER_DAY,
   MIN_AUDIENCE_LEDGER_RETENTION_MS,
-  attributionWindowDaysToMilliseconds,
 } from "./ports";
 import { createAudienceService } from "./service";
 

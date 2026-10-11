@@ -331,7 +331,8 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
     selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() !== "fulfilled";
   const canFulfill =
     selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() !== "fulfilled";
-  const canRefund = selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() === "fulfilled";
+  const canRefund =
+    selected?.status === "paid" && selected.fulfillmentStatus.toLowerCase() === "fulfilled";
 
   return (
     <div className="space-y-6">
@@ -690,7 +691,9 @@ export function OrdersAdmin({ props: rawProps }: ComponentCtx<OrdersAdminProps>)
                   min={0}
                   step={1}
                   value={refundAmountMinor || ""}
-                  onChange={(event) => setRefundAmountMinor(Number(event.target.value) || undefined)}
+                  onChange={(event) =>
+                    setRefundAmountMinor(Number(event.target.value) || undefined)
+                  }
                 />
               </label>
               <div className="flex gap-2">

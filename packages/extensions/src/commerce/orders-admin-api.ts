@@ -1,4 +1,9 @@
-export type CommerceOrderStatus = "paid" | "cancelled" | "fulfilled" | "refunded" | "refund_pending";
+export type CommerceOrderStatus =
+  | "paid"
+  | "cancelled"
+  | "fulfilled"
+  | "refunded"
+  | "refund_pending";
 
 export type CommerceOrderSearchInput = {
   search?: string;

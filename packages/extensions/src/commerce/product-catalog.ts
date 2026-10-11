@@ -35,7 +35,8 @@ export function formatMinorAmount(
   const minorUnitExponent =
     exponent ??
     new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions()
-      .maximumFractionDigits ?? 2;
+      .maximumFractionDigits ??
+    2;
   if (!Number.isInteger(minorUnitExponent) || minorUnitExponent < 0 || minorUnitExponent > 3) {
     return "—";
   }

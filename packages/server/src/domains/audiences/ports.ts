@@ -39,10 +39,10 @@ export type {
   MarkedExperienceDecision,
 } from "./experience-attribution";
 export {
+  attributionWindowDaysToMilliseconds,
   MAX_AUDIENCE_ATTRIBUTION_WINDOW_DAYS,
   MILLISECONDS_PER_DAY,
   MIN_AUDIENCE_LEDGER_RETENTION_MS,
-  attributionWindowDaysToMilliseconds,
   normalizeAttributionWindowDays,
 } from "./experience-attribution";
 export type {

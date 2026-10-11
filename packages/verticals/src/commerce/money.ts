@@ -39,7 +39,8 @@ export function toMinorUnits(price: number, currency: string): number {
 }
 
 export function fromMinorUnits(amountMinor: number, currency: string, exponent?: number): number {
-  if (!Number.isSafeInteger(amountMinor)) throw new Error("Amount must be an integer in minor units");
+  if (!Number.isSafeInteger(amountMinor))
+    throw new Error("Amount must be an integer in minor units");
   const digits = exponent ?? currencyExponent(currency);
   if (!Number.isInteger(digits) || digits < 0 || digits > 3) {
     throw new Error("Invalid currency exponent");
