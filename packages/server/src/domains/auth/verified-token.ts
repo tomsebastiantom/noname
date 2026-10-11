@@ -28,13 +28,28 @@ declare module "hono" {
 }
 
 /**
+ * Audiences this API accepts as its own identity.
+ *
+ * ZITADEL access tokens carry several audiences — the OIDC client id, the
+ * project id, and the resource owner. Accepting both of our identifiers keeps
+ * verification correct regardless of which one the deployment happens to put
+ * in `aud`, instead of failing closed on a single-value mismatch.
+ */
+function acceptableAudiences(): string[] | undefined {
+  const ids = [process.env.ZITADEL_CLIENT_ID, process.env.ZITADEL_PROJECT_ID]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+  return ids.length > 0 ? ids : undefined;
+}
+
+/**
  * Verify a token with no request context available (e.g. a callback that only
  * receives a raw bearer string).
  */
 export async function verifyTokenPayload(token: string): Promise<Record<string, unknown> | null> {
   return verifyAccessToken(token, {
     issuer: zitadelIssuer(),
-    audience: process.env.ZITADEL_CLIENT_ID?.trim() || undefined,
+    audience: acceptableAudiences(),
     resolveKey: resolveZitadelJwk,
   });
 }

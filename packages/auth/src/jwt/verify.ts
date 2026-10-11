@@ -22,8 +22,13 @@ export type JwkResolver = (
 export interface VerifyAccessTokenOptions {
   /** Expected `iss`. Required. */
   issuer: string;
-  /** Expected `aud`. When omitted or empty, `aud` is not checked (local dev). */
-  audience?: string;
+  /**
+   * Acceptable `aud` values. The token passes when its `aud` contains ANY of
+   * them. ZITADEL access tokens carry several audiences (client id, project id,
+   * resource owner), so a resource server accepts its own identifiers rather
+   * than exactly one. Omitted or empty means `aud` is not checked.
+   */
+  audience?: string | string[];
   resolveKey: JwkResolver;
   /** Clock-skew tolerance in seconds. Defaults to 60. */
   clockToleranceSec?: number;
@@ -92,10 +97,19 @@ function decodeJsonPart(part: string): Record<string, unknown> | null {
   }
 }
 
-function audienceMatches(aud: unknown, expected: string): boolean {
-  if (typeof aud === "string") return aud === expected;
-  if (Array.isArray(aud)) return aud.some((entry) => entry === expected);
-  return false;
+/**
+ * Pass when the token's `aud` contains ANY acceptable audience.
+ * ZITADEL access tokens carry several (client id, project id, resource owner),
+ * so a resource server accepts its own identifiers rather than exactly one.
+ */
+function audienceMatches(aud: unknown, expected: string[]): boolean {
+  const presented =
+    typeof aud === "string"
+      ? [aud]
+      : Array.isArray(aud)
+        ? aud.filter((entry): entry is string => typeof entry === "string")
+        : [];
+  return presented.some((entry) => expected.includes(entry));
 }
 
 function numericDate(value: unknown): number | null {
@@ -169,8 +183,11 @@ export async function verifyAccessToken(
   if (!verified) return null;
 
   if (payload.iss !== options.issuer) return null;
-  if (options.audience) {
-    if (!audienceMatches(payload.aud, options.audience)) return null;
+  const expectedAudiences = (
+    Array.isArray(options.audience) ? options.audience : [options.audience]
+  ).filter((entry): entry is string => typeof entry === "string" && entry.length > 0);
+  if (expectedAudiences.length > 0) {
+    if (!audienceMatches(payload.aud, expectedAudiences)) return null;
   }
 
   const now = options.now ? options.now() : Math.floor(Date.now() / 1000);

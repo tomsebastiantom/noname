@@ -176,6 +176,21 @@ describe("origin-side access token verification", () => {
     expect(await callProbe(token)).toBe(401);
   });
 
+  it("accepts a token whose audience list contains the project id but not the client id", async () => {
+    // Regression: ZITADEL access tokens carry several audiences. Accepting only
+    // the client id rejected every real token once a stale duplicate of
+    // ZITADEL_CLIENT_ID diverged from the issuer in packages/server/.env.
+    vi.stubEnv("ZITADEL_PROJECT_ID", "project-42");
+    const token = await signToken(baseClaims({ aud: ["resource-owner", "project-42"] }));
+    expect(await callProbe(token)).toBe(200);
+  });
+
+  it("rejects a token whose audience matches none of our identifiers", async () => {
+    vi.stubEnv("ZITADEL_PROJECT_ID", "project-42");
+    const token = await signToken(baseClaims({ aud: ["resource-owner", "someone-else"] }));
+    expect(await callProbe(token)).toBe(401);
+  });
+
   it("rejects a garbage bearer token", async () => {
     expect(await callProbe("not-a-jwt")).toBe(401);
   });
