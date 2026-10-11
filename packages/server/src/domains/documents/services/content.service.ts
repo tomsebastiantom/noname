@@ -75,10 +75,13 @@ export function createContentService(
       return storage.findDocumentsBySearchText(orgId, type, trimmed);
     },
 
-    findById: async (_orgId, id, opts) => {
+    findById: async (orgId, id, opts) => {
       const found = await storage.findDocumentById(id);
-      if (!found) return null;
-      const schema = await storage.findContentTypeByName(_orgId, found.type);
+      // Tenant boundary. A document id belonging to another org must be
+      // indistinguishable from a missing one, and this is enforced here rather
+      // than trusting every caller to re-check it.
+      if (!found || found.orgId !== orgId) return null;
+      const schema = await storage.findContentTypeByName(orgId, found.type);
       if (!schema) return found;
       return filterReadFields(found, schema.schema.fields, opts?.role);
     },
@@ -175,7 +178,8 @@ export function createContentService(
 
     async resolve(orgId, type, id, locale) {
       const existing = await storage.findDocumentById(id);
-      if (!existing || existing.type !== type) return null;
+      // Tenant boundary: see findById above.
+      if (!existing || existing.orgId !== orgId || existing.type !== type) return null;
       const schema = await storage.findContentTypeByName(orgId, type);
       const { defaultLocale } = await resolveTenantLocales(storage, orgId);
 

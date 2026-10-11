@@ -17,13 +17,12 @@ export async function requireAssetDocument(
 export async function requireLayoutDocument(
   storage: DocumentStorage,
   documentId: string,
-  orgId?: string,
+  // Required, not optional: an omitted org used to skip the tenant check
+  // entirely, which is worse than no check because it reads as guarded.
+  orgId: string,
 ): Promise<DocumentDTO> {
   const existing = await storage.findDocumentById(documentId);
-  if (existing?.type !== "layout") {
-    throw new NotFoundError("LayoutDocument", documentId);
-  }
-  if (orgId !== undefined && existing.orgId !== orgId) {
+  if (!existing || existing.orgId !== orgId || existing.type !== "layout") {
     throw new NotFoundError("LayoutDocument", documentId);
   }
   return existing;

@@ -59,3 +59,36 @@ describe("content search indexing", () => {
     expect(saved.meta.searchText).toBe("Trail Runner Lightweight mesh upper");
   });
 });
+
+describe("content tenant boundary", () => {
+  // Regression: findById ignored its org argument and resolve checked only the
+  // type, so any staff user could read another tenant's document by id via
+  // GET /api/documents/:type/:id and .../:id/resolve.
+  const OWN_ID = "own-product-1";
+  const FOREIGN_ID = "foreign-product-1";
+
+  function serviceUnderTest() {
+    return createDocumentsService(
+      mockStorage({
+        [OWN_ID]: documentRow(OWN_ID, "product"),
+        [FOREIGN_ID]: documentRow(FOREIGN_ID, "product", "org-other"),
+      }),
+    );
+  }
+
+  it("findById refuses a document owned by a different org", async () => {
+    const { content } = serviceUnderTest();
+    expect(await content.findById(ORG, FOREIGN_ID)).toBeNull();
+  });
+
+  it("resolve refuses a document owned by a different org", async () => {
+    const { content } = serviceUnderTest();
+    expect(await content.resolve(ORG, "product", FOREIGN_ID, "en-US")).toBeNull();
+  });
+
+  it("findById still returns a document owned by the caller org", async () => {
+    const { content } = serviceUnderTest();
+    const found = await content.findById(ORG, OWN_ID);
+    expect(found?.id).toBe(OWN_ID);
+  });
+});
