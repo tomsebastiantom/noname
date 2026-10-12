@@ -8,46 +8,33 @@ import type { AnalyticsJobData } from "./queue";
 
 const tracer = trace.getTracer("analytics-worker");
 
-const BATCH_SIZE = 50;
-const FLUSH_INTERVAL_MS = 2000;
-
 export function startAnalyticsWorker(storage: AnalyticsStorage): Worker<AnalyticsJobData> | null {
   if (!workersEnabled()) return null;
-
-  let batch: AnalyticsJobData[] = [];
-  let flushTimer: ReturnType<typeof setTimeout> | null = null;
-
-  async function flush() {
-    if (batch.length === 0) return;
-    const current = batch;
-    batch = [];
-    if (flushTimer) {
-      clearTimeout(flushTimer);
-      flushTimer = null;
-    }
-    await tracer.startActiveSpan("analytics.ingest.batch", async (span) => {
-      try {
-        span.setAttribute("analytics.batch_size", current.length);
-        await storage.ingestBatch(current);
-      } catch (err) {
-        span.recordException(err as Error);
-        span.setStatus({ code: SpanStatusCode.ERROR });
-      } finally {
-        span.end();
-      }
-    });
-  }
 
   const worker = new Worker<AnalyticsJobData>(
     BULLMQ_QUEUES.ANALYTICS,
     async (job) => {
-      batch.push(job.data);
-
-      if (batch.length >= BATCH_SIZE) {
-        await flush();
-      } else if (!flushTimer) {
-        flushTimer = setTimeout(flush, FLUSH_INTERVAL_MS);
-      }
+      // Ingest inside the job and await it.
+      //
+      // The previous design buffered events in process memory and returned before the
+      // write completed, so BullMQ marked the job complete while the data was still
+      // only in RAM — and the failure path only recorded a span. A crash (or a
+      // ClickHouse error) silently dropped the buffered events: at-most-once.
+      //
+      // Awaiting keeps the job open until the write lands, and letting the error
+      // propagate lets the queue's retry/backoff actually run.
+      await tracer.startActiveSpan("analytics.ingest.batch", async (span) => {
+        try {
+          span.setAttribute("analytics.batch_size", 1);
+          await storage.ingestBatch([job.data]);
+        } catch (error) {
+          span.recordException(error as Error);
+          span.setStatus({ code: SpanStatusCode.ERROR });
+          throw error;
+        } finally {
+          span.end();
+        }
+      });
     },
     {
       connection: getRedisConnection(),

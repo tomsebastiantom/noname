@@ -6,7 +6,12 @@ export type AnalyticsJobData = AnalyticsEventDTO;
 
 export function getAnalyticsQueue() {
   return getBullmqQueue<AnalyticsJobData>(BULLMQ_QUEUES.ANALYTICS, {
-    defaultJobOptions: { attempts: 1 },
+    defaultJobOptions: {
+      // A single attempt made ingest at-most-once: any ClickHouse error dropped the
+      // event silently. Retry with backoff before giving up.
+      attempts: 5,
+      backoff: { type: "exponential", delay: 1_000 },
+    },
   });
 }
 
