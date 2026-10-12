@@ -9,6 +9,7 @@ import { createApp } from "./bootstrap";
 import { initCollabRedisRelay } from "./domains/collab/collab-redis-relay";
 import { closeAllBullmqQueues } from "./shared/bullmq-queue";
 import { initEventBus } from "./shared/event-bus";
+import { listenWithRetry } from "./shared/listen-with-retry";
 import { startRedisFanoutMonitor } from "./shared/redis-fanout-status";
 import { initSseManager } from "./shared/sse-manager";
 
@@ -23,26 +24,40 @@ startRedisFanoutMonitor();
 const app = await createApp();
 
 const port = Number(process.env.PORT) || 3000;
-const wss = new WebSocketServer({ noServer: true });
-const server = serve({
-  fetch: app.fetch,
-  port,
-  websocket: { server: wss },
-});
 
-/**
- * A stale listener is the difference between a clean reload and a process that
- * dies on start (EADDRINUSE) while the supervisor believes it is healthy.
- */
-server.on("error", (error: NodeJS.ErrnoException) => {
+// A restart can overlap the previous process's drain, so the port may be held
+// briefly. Retrying the bind keeps a dev reload from dying and leaving nothing
+// listening while the supervisor still believes the service is up.
+const PORT_RETRY_ATTEMPTS = Number(process.env.PORT_RETRY_ATTEMPTS) || 10;
+const PORT_RETRY_DELAY_MS = Number(process.env.PORT_RETRY_DELAY_MS) || 300;
+
+const wss = new WebSocketServer({ noServer: true });
+
+const server = await listenWithRetry({
+  createServer: () => serve({ fetch: app.fetch, port, websocket: { server: wss } }),
+  attempts: PORT_RETRY_ATTEMPTS,
+  delayMs: PORT_RETRY_DELAY_MS,
+  onRetry: (attempt) =>
+    console.warn(
+      `[startup] port ${port} is busy (attempt ${attempt}/${PORT_RETRY_ATTEMPTS}); ` +
+        `retrying in ${PORT_RETRY_DELAY_MS}ms`,
+    ),
+}).catch((error: NodeJS.ErrnoException) => {
   if (error.code === "EADDRINUSE") {
     console.error(
-      `[startup] Port ${port} is already in use by another process. ` +
+      `[startup] Port ${port} is still in use after ${PORT_RETRY_ATTEMPTS} attempts. ` +
         "Stop the process holding the port (or change PORT) before restarting.",
     );
-    process.exit(1);
+  } else {
+    console.error(`[startup] failed to bind port ${port}: ${error.message}`);
   }
-  throw error;
+  process.exit(1);
+});
+
+// The bind succeeded, so this is no longer a port conflict: log rather than kill
+// an otherwise healthy listener on a transient socket error.
+server.on("error", (error: NodeJS.ErrnoException) => {
+  console.error(`[server] error${error.code ? ` (${error.code})` : ""}: ${error.message}`);
 });
 
 console.log(`Server running at http://localhost:${port}`);
