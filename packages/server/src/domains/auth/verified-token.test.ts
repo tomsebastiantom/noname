@@ -18,6 +18,7 @@ import { requireActorPermission } from "./guards";
 
 const ISSUER = "https://issuer.test";
 const CLIENT_ID = "client-id";
+const PROJECT_ID = "project-1";
 
 interface KeyPair {
   privateKey: CryptoKey;
@@ -56,8 +57,11 @@ function baseClaims(overrides: Record<string, unknown> = {}): Record<string, unk
     sub: "attacker",
     iat: now,
     exp: now + 3600,
-    // The claim the exploit relied on: honoured with no project check.
-    "urn:zitadel:iam:org:projects:roles": ["admin"],
+    // Roles come from the PROJECT-SCOPED claim only. The aggregate
+    // `urn:zitadel:iam:org:projects:roles` claim is deliberately not used: it
+    // aggregates role NAMES across every project in the token, so it is no longer
+    // trusted (see the dedicated regression test below).
+    [`urn:zitadel:iam:org:project:${PROJECT_ID}:roles`]: { admin: {} },
     ...overrides,
   };
 }
@@ -104,6 +108,7 @@ beforeEach(() => {
   resetZitadelJwksCache();
   vi.stubEnv("ZITADEL_ISSUER", ISSUER);
   vi.stubEnv("ZITADEL_CLIENT_ID", CLIENT_ID);
+  vi.stubEnv("ZITADEL_PROJECT_ID", PROJECT_ID);
   vi.stubEnv("AGENT_TOKEN_SECRET", "test-agent-secret");
   vi.stubGlobal(
     "fetch",
@@ -124,6 +129,19 @@ describe("origin-side access token verification", () => {
   it("accepts a properly signed token and grants its role permissions", async () => {
     const token = await signToken(baseClaims());
     expect(await callProbe(token)).toBe(200);
+  });
+
+  it("ignores the aggregate projects-roles claim on a correctly signed token", async () => {
+    // `urn:zitadel:iam:org:projects:roles` aggregates role NAMES across every
+    // project the token can see, so a role called `admin` in an unrelated project
+    // must not be read as the platform admin — even with a valid signature.
+    const token = await signToken(
+      baseClaims({
+        [`urn:zitadel:iam:org:project:${PROJECT_ID}:roles`]: {},
+        "urn:zitadel:iam:org:projects:roles": ["admin"],
+      }),
+    );
+    expect(await callProbe(token)).toBe(403);
   });
 
   it("rejects an unsigned token that claims the admin project role (the reported exploit)", async () => {
@@ -181,7 +199,12 @@ describe("origin-side access token verification", () => {
     // the client id rejected every real token once a stale duplicate of
     // ZITADEL_CLIENT_ID diverged from the issuer in packages/server/.env.
     vi.stubEnv("ZITADEL_PROJECT_ID", "project-42");
-    const token = await signToken(baseClaims({ aud: ["resource-owner", "project-42"] }));
+    const token = await signToken(
+      baseClaims({
+        aud: ["resource-owner", "project-42"],
+        "urn:zitadel:iam:org:project:project-42:roles": { admin: {} },
+      }),
+    );
     expect(await callProbe(token)).toBe(200);
   });
 
