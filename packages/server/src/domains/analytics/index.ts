@@ -1,4 +1,4 @@
-import { createClickHouseAnalyticsStorage, ensureClickHouseTable } from "./adapters/clickhouse";
+import { createClickHouseAnalyticsStorage, startClickHouseEnsure } from "./adapters/clickhouse";
 import { createAnalyticsRoutes } from "./api";
 import { registerAnalyticsListeners } from "./listeners";
 import { getAnalyticsQueue } from "./queue";
@@ -10,7 +10,9 @@ import { startAnalyticsWorker } from "./worker";
 export async function createAnalyticsDomain(
   getAudiencePerformance: AnalyticsRouteDeps["getAudiencePerformance"],
 ) {
-  await ensureClickHouseTable();
+  // Deliberately not awaited: ClickHouse is a sink. Boot must succeed without it,
+  // and the schema ensure retries in the background (readiness via `/health`).
+  void startClickHouseEnsure();
 
   const storage = createClickHouseAnalyticsStorage();
   const queue = getAnalyticsQueue();

@@ -15,6 +15,7 @@ import { createMastraExecutor } from "./domains/agent/mastra/executor";
 import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notify";
 import { createAIPipelineDomain } from "./domains/ai-pipeline";
 import { createAnalyticsDomain } from "./domains/analytics";
+import { getClickHouseReadiness } from "./domains/analytics/adapters/clickhouse";
 import { createAudienceDomain } from "./domains/audiences";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
 import {
@@ -77,7 +78,15 @@ export async function createApp(): Promise<Hono> {
     // unhealthy (it's still serving requests), so we don't want liveness probes restarting it.
     // `redis` is for alerting/dashboards to poll and page on, not for the orchestrator to act on.
     const { degraded, subsystems } = getRedisFanoutStatus();
-    return c.json({ status: "ok", version: "0.0.1", redis: { degraded, subsystems } });
+    // Same reasoning for analytics: ClickHouse being unreachable degrades event ingest, not
+    // request serving, so it is reported rather than treated as replica unhealthiness.
+    const ch = getClickHouseReadiness();
+    return c.json({
+      status: "ok",
+      version: "0.0.1",
+      redis: { degraded, subsystems },
+      analytics: { ready: ch.ready, attempts: ch.attempts, lastError: ch.lastError },
+    });
   });
 
   const databaseUrl = process.env.DATABASE_URL;

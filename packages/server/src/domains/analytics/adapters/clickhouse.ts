@@ -118,6 +118,56 @@ export async function ensureClickHouseTable(): Promise<void> {
   }
 }
 
+export type ClickHouseReadiness = {
+  ready: boolean;
+  lastError: string | null;
+  attempts: number;
+};
+
+let readiness: ClickHouseReadiness = { ready: false, lastError: null, attempts: 0 };
+let ensureLoop: Promise<boolean> | null = null;
+
+/** Readiness is reported through `/health`; it must never gate application boot. */
+export function getClickHouseReadiness(): ClickHouseReadiness {
+  return { ...readiness };
+}
+
+/**
+ * Analytics is a sink, not a dependency of serving traffic. A ClickHouse outage
+ * must not stop the API from booting, nor make every replica crash-loop.
+ * Ensures the schema opportunistically in the background, retrying until it
+ * succeeds (or until CLICKHOUSE_ENSURE_MAX_ATTEMPTS, when set).
+ */
+export function startClickHouseEnsure(): Promise<boolean> {
+  if (ensureLoop) return ensureLoop;
+  const retryMs = Number(process.env.CLICKHOUSE_ENSURE_RETRY_MS) || 15_000;
+  const maxAttempts = Number(process.env.CLICKHOUSE_ENSURE_MAX_ATTEMPTS) || 0;
+
+  ensureLoop = (async () => {
+    for (;;) {
+      readiness = { ...readiness, attempts: readiness.attempts + 1 };
+      try {
+        await ensureClickHouseTable();
+        readiness = { ready: true, lastError: null, attempts: readiness.attempts };
+        return true;
+      } catch (error) {
+        readiness = {
+          ready: false,
+          lastError: error instanceof Error ? error.message : String(error),
+          attempts: readiness.attempts,
+        };
+        console.error(
+          `[analytics] ClickHouse not ready (attempt ${readiness.attempts}): ${readiness.lastError}`,
+        );
+        if (maxAttempts > 0 && readiness.attempts >= maxAttempts) return false;
+        await new Promise((resolve) => setTimeout(resolve, retryMs));
+      }
+    }
+  })();
+
+  return ensureLoop;
+}
+
 function toClickHouseTimestamp(value: Date | string): string {
   const date = value instanceof Date ? value : new Date(value);
   return date.toISOString().replace("T", " ").replace("Z", "");
