@@ -142,6 +142,63 @@ export function createCheckoutProviderRegistry(
   );
 }
 
+export interface RefundRequest {
+  orgId: string;
+  integrationId: string;
+  /** Provider payment reference to refund against (Stripe: the payment intent). */
+  paymentReference: string;
+  /** Omitted means a full refund. */
+  amountMinor?: number;
+  idempotencyKey: string;
+  machineInstanceId: string;
+  orderRef: string;
+}
+
+export interface RefundResult {
+  refundReference: string;
+  /** Provider-reported status; confirmation still requires a normalized event. */
+  status: string;
+}
+
+export interface RefundProviderAdapter {
+  createRefund(request: RefundRequest, proxy: ProviderProxy): Promise<RefundResult>;
+}
+
+export function createStripeRefundAdapter(): RefundProviderAdapter {
+  return {
+    async createRefund(request, proxy) {
+      const form = new URLSearchParams({ payment_intent: request.paymentReference });
+      if (request.amountMinor !== undefined) form.set("amount", String(request.amountMinor));
+      // Correlation metadata: the refund event must be attributable to this machine
+      // instance, otherwise it cannot be applied to the right order.
+      form.set("metadata[machineInstanceId]", request.machineInstanceId);
+      form.set("metadata[orderRef]", request.orderRef);
+
+      const result = await proxy<{ id?: string; status?: string }>({
+        orgId: request.orgId,
+        integrationId: request.integrationId,
+        method: "POST",
+        endpoint: "/v1/refunds",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Idempotency-Key": request.idempotencyKey,
+        },
+        data: form.toString(),
+      });
+      if (!result.id) throw new Error("Stripe returned an invalid refund");
+      return { refundReference: result.id, status: readString(result.status) ?? "pending" };
+    },
+  };
+}
+
+export function createRefundProviderRegistry(
+  adapters: Record<string, RefundProviderAdapter>,
+): Record<string, RefundProviderAdapter> {
+  return Object.fromEntries(
+    Object.entries(adapters).map(([name, adapter]) => [name.trim().toLowerCase(), adapter]),
+  );
+}
+
 type ProviderForwardedEvent = {
   orgId: string;
   integrationId: string;
@@ -163,6 +220,7 @@ export function createCommerceContribution(deps: CommerceContributionDeps) {
   const handlers = createCommerceCapabilities({
     ...deps,
     checkoutProviders: createCheckoutProviderRegistry({ stripe: createStripeCheckoutAdapter() }),
+    refundProviders: createRefundProviderRegistry({ stripe: createStripeRefundAdapter() }),
     supportedCurrencies: DEFAULT_CHECKOUT_CURRENCIES,
   });
   const authorizeOrder = async (rawInput: unknown, context: CapabilityContext) => {
@@ -260,6 +318,30 @@ export type CommerceProviderMappingOptions = {
   failureEventType: string;
   expiredEventType?: string;
   requirePaidStatus?: boolean;
+  /**
+   * Provider refund event types. Refunds reach a terminal state only through a
+   * normalized provider outcome; without these a `refund_pending` order has no
+   * path to `refunded` and is stuck forever.
+   */
+  refundEventTypes?: string[];
+};
+
+/**
+ * Local structural view of a provider event mapping. Deliberately not imported
+ * from `@noname/server`: the commerce vertical must not depend on the server
+ * package (audit report 03 section 4). The shape is structurally compatible with
+ * the integrations domain's `ProviderEventMapping`.
+ */
+type CommerceNormalizedEvent = {
+  event: string;
+  params: Record<string, unknown>;
+  machineInstanceId?: string;
+};
+
+type CommerceProviderEventMapping = {
+  integrationId: string;
+  eventType: string;
+  normalize: (event: ProviderForwardedEvent) => CommerceNormalizedEvent | null;
 };
 
 export function createCommerceProviderEventMappings(
@@ -270,6 +352,7 @@ export function createCommerceProviderEventMappings(
     failureEventType: "checkout.session.async_payment_failed",
     expiredEventType: "checkout.session.expired",
     requirePaidStatus: true,
+    refundEventTypes: ["charge.refunded", "refund.created", "refund.updated", "refund.failed"],
   },
 ) {
   const requirePaidStatus =
@@ -311,7 +394,7 @@ export function createCommerceProviderEventMappings(
     };
   };
 
-  const mappings = [
+  const mappings: CommerceProviderEventMapping[] = [
     {
       integrationId: options.integrationId,
       eventType: options.successEventType,
@@ -339,6 +422,55 @@ export function createCommerceProviderEventMappings(
       normalize: (event: ProviderForwardedEvent) => normalizePaymentEvent(event, "PAYMENT_FAILED"),
     });
   }
+
+  /**
+   * Refund outcomes. Deliberately stricter than the payment path:
+   * - the machine instance must come from metadata we set when submitting the
+   *   refund (a payment_intent alone cannot identify the order if one payment
+   *   ever maps to several orders), and
+   * - a merely "pending" refund produces no transition, so an order is never
+   *   marked refunded before the provider confirms it.
+   */
+  const normalizeRefundEvent = (event: ProviderForwardedEvent) => {
+    const payload = event.payload;
+    const metadata =
+      payload.metadata && typeof payload.metadata === "object"
+        ? (payload.metadata as Record<string, unknown>)
+        : {};
+    const machineInstanceId = readString(
+      metadata.machineInstanceId ?? metadata.machine_instance_id,
+    );
+    if (!machineInstanceId) return null;
+
+    const status = readString(payload.status)?.toLowerCase();
+    const confirmedByStatus = status === "succeeded";
+    const confirmedByCharge = event.eventType === "charge.refunded" && payload.refunded === true;
+    const failedByStatus = status === "failed" || status === "canceled";
+    if (!confirmedByStatus && !confirmedByCharge && !failedByStatus) return null;
+
+    const confirmed = confirmedByStatus || confirmedByCharge;
+    return {
+      event: confirmed ? "REFUND_CONFIRMED" : "REFUND_FAILED",
+      params: {
+        refundReference: readString(payload.id) ?? event.providerEventId,
+        paymentRef: readString(payload.payment_intent ?? payload.charge) ?? undefined,
+        amount: payload.amount_refunded ?? payload.amount,
+        currency: payload.currency,
+        refundedAt: confirmed ? new Date().toISOString() : undefined,
+        reason: confirmed ? undefined : (status ?? event.eventType),
+      },
+      machineInstanceId,
+    };
+  };
+
+  for (const eventType of options.refundEventTypes ?? []) {
+    mappings.push({
+      integrationId: options.integrationId,
+      eventType,
+      normalize: normalizeRefundEvent,
+    });
+  }
+
   return mappings;
 }
 
@@ -696,6 +828,8 @@ export function createCommerceCapabilities(deps: {
   integrations: CommerceIntegrations;
   catalog?: CommerceCatalog;
   checkoutProviders: Record<string, CheckoutProviderAdapter>;
+  /** Supplied by `createCommerceContribution`; absent means refunds are unavailable. */
+  refundProviders?: Record<string, RefundProviderAdapter>;
   supportedCurrencies?: readonly string[];
   evidence?: CommerceEvidencePort;
 }): Record<string, CapabilityHandler> {
@@ -917,6 +1051,57 @@ export function createCommerceCapabilities(deps: {
     },
     "commerce.orders.refund": async (rawInput, context) => {
       const input = refundOrderInput.parse(rawInput);
+      const instance = await deps.machines.getInstance(context.orgId, input.orderId);
+      if (!instance || !isOrderInstance(instance)) throw new Error("Order not found");
+      if (instance.currentState !== "paid") {
+        throw new Error("Only a paid order can be refunded");
+      }
+
+      const orderContext = instance.context ?? {};
+      const paymentReference = readString(orderContext.paymentRef);
+      if (!paymentReference) {
+        // Fail closed. Entering `refund_pending` without a provider reference would
+        // create an order whose refund can never be confirmed — it would sit in
+        // that state forever, because only a provider event can complete it.
+        throw new Error("Order has no provider payment reference; refund cannot be confirmed");
+      }
+
+      const snapshot = orderSnapshot(instance);
+      const currency = snapshot?.currency ?? readString(orderContext.checkoutCurrency) ?? "CAD";
+      const capturedMinor =
+        snapshot?.totalMinor ??
+        (Number.isSafeInteger(orderContext.checkoutAmount)
+          ? Number(orderContext.checkoutAmount)
+          : null);
+      const amountMinor = input.amountMinor ?? capturedMinor ?? undefined;
+      if (amountMinor !== undefined) {
+        if (!Number.isSafeInteger(amountMinor) || amountMinor <= 0) {
+          throw new Error("Refund amount must be a positive integer in minor units");
+        }
+        if (capturedMinor !== null && amountMinor > capturedMinor) {
+          throw new Error("Refund amount exceeds the captured amount");
+        }
+      }
+
+      const providerName = (readString(orderContext.checkoutProvider) ?? "stripe").toLowerCase();
+      const provider = deps.refundProviders?.[providerName];
+      if (!provider) throw new Error("Refund provider is not configured");
+
+      const orderRef = readString(orderContext.orderRef) ?? `order:${instance.id}`;
+      const result = await provider.createRefund(
+        {
+          orgId: context.orgId,
+          integrationId: providerName,
+          paymentReference,
+          amountMinor,
+          // Stable per revision: a retry of the same command cannot double-refund.
+          idempotencyKey: `commerce-refund:${instance.id}:${instance.revision ?? 1}`,
+          machineInstanceId: instance.id,
+          orderRef,
+        },
+        deps.integrations.proxyProvider,
+      );
+
       return changeOrderState(
         deps.machines,
         context,
@@ -925,7 +1110,9 @@ export function createCommerceCapabilities(deps: {
         "REFUND_ORDER",
         {
           actorId: context.actorId,
-          amountMinor: input.amountMinor,
+          amountMinor,
+          currency,
+          refundReference: result.refundReference,
           reason: input.reason,
           operationId: context.idempotencyKey,
         },

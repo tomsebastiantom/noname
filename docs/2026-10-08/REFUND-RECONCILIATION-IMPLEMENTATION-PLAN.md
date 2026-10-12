@@ -1,8 +1,50 @@
 # Commerce Refund and Reconciliation — Implementation Plan
 
 **Plan date:** 2026-10-08 (America/New_York)
-**Status:** Planned (Phase 4 — separate provider-gated release after first-release order operations)
+**Status:** Partially implemented 2026-10-12 — provider submission and the completion mapping are in; live provider confirmation is unverified.
 **Scope:** Refund operations through the existing generic capability architecture; no new Orders-specific endpoint, no `packages/server/src/domains/commerce`, no direct provider SDK in Commerce handlers.
+
+## Implementation status (2026-10-12)
+
+**Implemented**
+
+- `createStripeRefundAdapter` — posts to `/v1/refunds` through the injected `ProviderProxy`, with
+  `metadata[machineInstanceId]`/`metadata[orderRef]` for correlation and a per-revision
+  `Idempotency-Key` (`commerce-refund:<instance>:<revision>`), so a retry cannot double-refund.
+- `createRefundProviderRegistry`, wired into `createCommerceContribution` (the capability dep is
+  optional, so other call sites are unaffected).
+- `commerce.orders.refund` now **submits before transitioning** and fails closed:
+  - no provider payment reference → error, **no** transition (previously it entered
+    `refund_pending` with no way out, since only a provider event can complete it),
+  - amount must be a positive integer and cannot exceed the captured amount,
+  - only a `paid` order is refundable,
+  - a missing provider registry produces a clear error rather than a silent state change.
+- Provider refund events (`charge.refunded`, `refund.created`, `refund.updated`, `refund.failed`)
+  are normalized to `REFUND_CONFIRMED` / `REFUND_FAILED` and applied by the existing
+  provider-event worker. A **pending** refund deliberately produces no transition, so an order is
+  never reported refunded before the provider confirms.
+
+**Verified**
+
+- 14 unit tests in `packages/verticals/src/commerce/refund-flow.test.ts`: the fail-closed guard, the
+  submission payload (endpoint, idempotency key, correlation metadata), over-refund rejection,
+  non-paid rejection, missing-registry error, adapter response handling, and the refund
+  normalizers (confirmed / failed / pending / unattributable / `charge.refunded`).
+- The stored `cart` definition in the local database accepts `REFUND_ORDER`, `REFUND_CONFIRMED`
+  and `REFUND_FAILED`.
+- Package typechecks and the full suite pass.
+
+**Not verified**
+
+- **No live provider round-trip.** The adapter is exercised only against a fake proxy; a real
+  Stripe test-mode refund has not been submitted, and no real `charge.refunded` event has been
+  received. Treat provider confirmation as unproven.
+- Cumulative/partial refund accounting is not implemented: the guard prevents a single refund
+  exceeding the captured amount, but two partial refunds that together exceed it are not prevented.
+- Reconciliation of missing/out-of-order/duplicate provider outcomes, and refund Evidence
+  projection, are still outstanding (§1.4, §1.8).
+- A refund requested from a `fulfilled` order is rejected by the machine definition (the
+  transition is only declared from `paid`); whether that is the intended policy is undecided.
 
 **Architecture constraints (same as first-release):**
 - Reuse `POST /api/capabilities/:capability` for the refund command.
