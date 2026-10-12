@@ -44,7 +44,7 @@ Still outstanding. `packages/workers/.dev.vars` is **tracked and still contains 
 origin deriving identity only from HMAC headers) assume that secret is private. Anyone holding it can
 mint valid `x-user-id`/`x-role` headers directly and bypass both.
 
-### 0.4 — scope tenant reads at the data-access boundary (remaining)
+### 0.4 — scope tenant reads at the data-access boundary (COMPLETE — 2026-10-12)
 
 `packages/server/src/domains/documents/adapters/postgres.ts` still exposes unscoped reads/writes:
 
@@ -73,6 +73,31 @@ port declaration at `documents/ports.ts:348`; plus test fakes that implement the
 (e.g. `documents/refs/resolve.test.ts`, `agent/mastra/mock-orchestrate.ts`). Change shape: add
 `orgId` as the first parameter to those five methods, filter with `and(eq(documents.orgId, orgId), …)`,
 and keep the existing service-level checks as the second layer.
+
+**Done (2026-10-12).** `orgId` is now the first parameter of all five methods
+(`documents/ports.ts:348-367`) and every statement filters with
+`and(eq(documents.orgId, orgId), eq(documents.id, id))`. 35 call sites across `documents`, `collab`,
+`auth`, and `agent` were threaded; the compiler enumerated every one, so none could be missed.
+
+The trap the compiler does **not** catch, and which is worth remembering for any future signature
+change of this shape: a test fake written as `(id) => docs[id]` keeps compiling but silently receives
+`orgId` as its first argument. Five such fakes existed and were rewritten to be org-aware, mirroring
+the SQL, so the tests now exercise the real contract rather than a looser one.
+
+Proven directly against Postgres, bypassing the service guards that already checked:
+
+```text
+read as owner            -> row
+read as attacker org     -> null
+attacker updateDocument  -> NotFoundError
+attacker publishDocument -> NotFoundError
+attacker archiveDocument -> NotFoundError
+attacker deleteDocument  -> NotFoundError
+owner doc afterwards     -> status=published, no injected field (nothing was mutated)
+```
+
+Live API confirmation on the same document: owner read `200`; cross-tenant read / resolve / update /
+ops read all `404`.
 
 ---
 

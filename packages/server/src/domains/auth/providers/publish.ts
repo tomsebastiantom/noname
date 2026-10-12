@@ -18,7 +18,7 @@ export async function publishAuthProviderSideEffect(
   orgId: string,
   documentId: string,
 ): Promise<void> {
-  const row = await storage.findDocumentById(documentId);
+  const row = await storage.findDocumentById(orgId, documentId);
   if (!row || row.type !== AUTH_PROVIDER_CONTENT_TYPE) return;
 
   const display = parseAuthProviderDisplayData(row.data);

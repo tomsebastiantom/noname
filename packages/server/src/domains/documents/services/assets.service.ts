@@ -53,7 +53,7 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
     },
 
     get: async (orgId, documentId) => {
-      const found = await storage.findDocumentById(documentId);
+      const found = await storage.findDocumentById(orgId, documentId);
       if (!found || found.orgId !== orgId || found.type !== "asset") return null;
       return enrichAssetUrls(found as unknown as AssetDTO);
     },
@@ -73,25 +73,25 @@ export function createAssetsService(storage: DocumentStorage): AssetDocumentServ
         data.variants = input.variants;
         emitAssetProcessed(orgId, existing.id, String(existing.data.mimeType ?? ""));
       }
-      const updated = await storage.updateDocument(existing.id, data);
+      const updated = await storage.updateDocument(orgId, existing.id, data);
       return enrichAssetUrls(updated as unknown as AssetDTO);
     },
 
     async archive(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
-      const archived = (await storage.archiveDocument(existing.id)) as unknown as AssetDTO;
+      const archived = (await storage.archiveDocument(orgId, existing.id)) as unknown as AssetDTO;
       void eventBus.publish(AssetEvents.ARCHIVED, { orgId, id: archived.id });
       return archived;
     },
 
     async delete(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
-      await storage.deleteDocument(existing.id);
+      await storage.deleteDocument(orgId, existing.id);
     },
 
     async publish(orgId, documentId) {
       const existing = await requireAssetDocument(storage, orgId, documentId);
-      const published = (await storage.publishDocument(existing.id)) as unknown as AssetDTO;
+      const published = (await storage.publishDocument(orgId, existing.id)) as unknown as AssetDTO;
       void eventBus.publish(AssetEvents.PUBLISHED, { orgId, id: published.id });
       return published;
     },

@@ -8,7 +8,10 @@ const CATEGORY_ID = "cat-row-1";
 
 function mockAssetsStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
   return {
-    findDocumentById: async (id) => docs[id] ?? null,
+    findDocumentById: async (orgId, id) => {
+      const doc = docs[id];
+      return doc && doc.orgId === orgId ? doc : null;
+    },
   } as DocumentStorage;
 }
 

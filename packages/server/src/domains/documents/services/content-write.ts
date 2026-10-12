@@ -95,7 +95,7 @@ async function checkDocumentRef(
   const documentId = documentIdFromRef(value);
   if (!documentId) return;
 
-  const found = await storage.findDocumentById(documentId);
+  const found = await storage.findDocumentById(orgId, documentId);
   if (!found || found.orgId !== orgId) {
     throw new ValidationError(fieldKey, `referenced document '${documentId}' does not exist`);
   }

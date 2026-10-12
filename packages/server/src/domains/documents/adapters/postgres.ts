@@ -223,11 +223,14 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
         .where(and(...conditions));
       return row ? mapDocument(row) : null;
     },
-    async findDocumentById(id) {
-      const [row] = await db.select().from(documents).where(eq(documents.id, id));
+    async findDocumentById(orgId, id) {
+      const [row] = await db
+        .select()
+        .from(documents)
+        .where(and(eq(documents.orgId, orgId), eq(documents.id, id)));
       return row ? mapDocument(row) : null;
     },
-    async updateDocument(id, data, meta, collectionId) {
+    async updateDocument(orgId, id, data, meta, collectionId) {
       const patch: {
         data: Record<string, unknown>;
         updated_at: Date;
@@ -236,13 +239,17 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       } = { data, updated_at: new Date() };
       if (meta !== undefined) patch.meta = meta;
       if (collectionId !== undefined) patch.collectionId = collectionId;
-      const [row] = await db.update(documents).set(patch).where(eq(documents.id, id)).returning();
-      if (!row) throw new StorageError("Failed to update document");
+      const [row] = await db
+        .update(documents)
+        .set(patch)
+        .where(and(eq(documents.orgId, orgId), eq(documents.id, id)))
+        .returning();
+      if (!row) throw new NotFoundError("Document", id);
       return mapDocument(row);
     },
-    async publishDocument(id) {
+    async publishDocument(orgId, id) {
       const existing = await findById(db, id);
-      if (!existing) throw new NotFoundError("Document", id);
+      if (!existing || existing.orgId !== orgId) throw new NotFoundError("Document", id);
 
       // Archive any currently-published sibling of the same (type, key, segment).
       await db
@@ -262,22 +269,26 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
       const [row] = await db
         .update(documents)
         .set({ status: "published", updated_at: new Date() })
-        .where(eq(documents.id, id))
+        .where(and(eq(documents.orgId, orgId), eq(documents.id, id)))
         .returning();
-      if (!row) throw new StorageError("Failed to publish document");
+      if (!row) throw new NotFoundError("Document", id);
       return mapDocument(row);
     },
-    async archiveDocument(id) {
+    async archiveDocument(orgId, id) {
       const [row] = await db
         .update(documents)
         .set({ status: "archived", updated_at: new Date() })
-        .where(eq(documents.id, id))
+        .where(and(eq(documents.orgId, orgId), eq(documents.id, id)))
         .returning();
-      if (!row) throw new StorageError("Failed to archive document");
+      if (!row) throw new NotFoundError("Document", id);
       return mapDocument(row);
     },
-    async deleteDocument(id) {
-      await db.delete(documents).where(eq(documents.id, id));
+    async deleteDocument(orgId, id) {
+      const rows = await db
+        .delete(documents)
+        .where(and(eq(documents.orgId, orgId), eq(documents.id, id)))
+        .returning({ id: documents.id });
+      if (rows.length === 0) throw new NotFoundError("Document", id);
     },
 
     async findDocumentsWithDataMentioning(orgId, needle) {

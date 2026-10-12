@@ -55,7 +55,7 @@ export async function requireDocumentInOrg(
   orgId: string,
   documentId: string,
 ): Promise<void> {
-  const doc = await storage.findDocumentById(documentId);
+  const doc = await storage.findDocumentById(orgId, documentId);
   if (!doc || doc.orgId !== orgId) {
     throw new NotFoundError("Document", documentId);
   }

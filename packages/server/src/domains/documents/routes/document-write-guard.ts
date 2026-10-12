@@ -17,7 +17,7 @@ export async function denyUnlessDocumentWrite(
   if (!documentId) {
     return denyUnless(c, platformPermission);
   }
-  const doc = await storage.findDocumentById(documentId);
+  const doc = await storage.findDocumentById(orgId, documentId);
   if (!doc || doc.orgId !== orgId) {
     return c.json({ error: "Not found" }, 404);
   }
@@ -44,7 +44,7 @@ export async function denyUnlessDocumentPublish(
   orgId: string,
   documentId: string,
 ): Promise<Response | null> {
-  const doc = await storage.findDocumentById(documentId);
+  const doc = await storage.findDocumentById(orgId, documentId);
   if (!doc || doc.orgId !== orgId) {
     return c.json({ error: "Not found" }, 404);
   }

@@ -35,7 +35,7 @@ const mockAssetBinary: AssetBinaryStorage = {
 
 function mockStorage(): DocumentStorage {
   return {
-    findDocumentById: vi.fn(async (id: string) => ({
+    findDocumentById: vi.fn(async (_orgId: string, id: string) => ({
       id,
       orgId: "org-1",
       type: "layout",

@@ -145,7 +145,7 @@ export function createRichTextYjsRoomManager(deps: RichTextYjsRoomManagerDeps) {
     if (room.persisting) return;
     room.persisting = true;
     try {
-      const row = await deps.storage.findDocumentById(room.meta.contentDocumentId);
+      const row = await deps.storage.findDocumentById(room.meta.orgId, room.meta.contentDocumentId);
       if (!row || row.orgId !== room.meta.orgId || row.status !== "draft") return;
 
       if (!room.snapshotEditor) {

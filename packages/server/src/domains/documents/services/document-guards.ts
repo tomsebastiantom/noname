@@ -7,7 +7,7 @@ export async function requireAssetDocument(
   orgId: string,
   documentId: string,
 ): Promise<DocumentDTO> {
-  const existing = await storage.findDocumentById(documentId);
+  const existing = await storage.findDocumentById(orgId, documentId);
   if (!existing || existing.orgId !== orgId || existing.type !== "asset") {
     throw new NotFoundError("Asset", documentId);
   }
@@ -21,7 +21,7 @@ export async function requireLayoutDocument(
   // entirely, which is worse than no check because it reads as guarded.
   orgId: string,
 ): Promise<DocumentDTO> {
-  const existing = await storage.findDocumentById(documentId);
+  const existing = await storage.findDocumentById(orgId, documentId);
   if (!existing || existing.orgId !== orgId || existing.type !== "layout") {
     throw new NotFoundError("LayoutDocument", documentId);
   }
@@ -47,7 +47,7 @@ export async function requireContentEntry(
   type: string,
   documentId: string,
 ): Promise<DocumentDTO> {
-  const existing = await storage.findDocumentById(documentId);
+  const existing = await storage.findDocumentById(orgId, documentId);
   if (!existing || existing.orgId !== orgId || existing.type !== type) {
     throw new NotFoundError("ContentEntry", `${type}/${documentId}`);
   }

@@ -229,6 +229,7 @@ export function createMastraExecutor(deps: MastraExecutorDeps): AgentExecutor {
         let layoutSpecJson: string | undefined;
         if (runContext?.targetLayoutDocumentId) {
           const layoutDoc = await deps.documents.findDocumentById(
+            orgId,
             runContext.targetLayoutDocumentId,
           );
           if (

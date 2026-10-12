@@ -15,7 +15,7 @@ export async function canEditLayoutDocument(
     return false;
   }
 
-  const doc = await storage.findDocumentById(layoutDocumentId);
+  const doc = await storage.findDocumentById(orgId, layoutDocumentId);
   if (!doc || doc.orgId !== orgId || doc.type !== "layout") {
     return false;
   }

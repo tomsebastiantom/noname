@@ -32,7 +32,7 @@ function pagesStorage(options: {
       if (input.type === "page_tree") tree = row;
       return row;
     },
-    updateDocument: async (id, data) => {
+    updateDocument: async (_orgId, id, data) => {
       if (page?.id === id) {
         page = { ...page, data: { ...page.data, ...data } };
         return page;
@@ -43,7 +43,7 @@ function pagesStorage(options: {
       }
       throw new Error("not found");
     },
-    publishDocument: async (id) => {
+    publishDocument: async (_orgId, id) => {
       if (page?.id === id) {
         page = { ...page, status: "published" };
         return page;

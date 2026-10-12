@@ -79,10 +79,13 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       const existing = await storage.findDocument(orgId, "page_tree", "main");
       const data = { pages: pageRefs };
       if (existing) {
-        const updated = await storage.updateDocument(existing.id, data);
+        const updated = await storage.updateDocument(orgId, existing.id, data);
         void eventBus.publish(PageTreeEvents.UPDATED, { orgId, id: existing.id, key: "main" });
         if (!isPublished(existing)) {
-          const published = (await storage.publishDocument(existing.id)) as unknown as PageTreeDTO;
+          const published = (await storage.publishDocument(
+            orgId,
+            existing.id,
+          )) as unknown as PageTreeDTO;
           return published;
         }
         return updated as unknown as PageTreeDTO;
@@ -106,10 +109,13 @@ export function createPagesService(storage: DocumentStorage): PageTreeService {
       };
       const existing = await storage.findDocument(orgId, "page", pageKey);
       if (existing) {
-        const updated = await storage.updateDocument(existing.id, data);
+        const updated = await storage.updateDocument(orgId, existing.id, data);
         void eventBus.publish(PageEvents.UPDATED, { orgId, id: existing.id, pageKey });
         if (!isPublished(existing)) {
-          const published = (await storage.publishDocument(existing.id)) as unknown as PageDTO;
+          const published = (await storage.publishDocument(
+            orgId,
+            existing.id,
+          )) as unknown as PageDTO;
           void eventBus.publish(PageEvents.PUBLISHED, { orgId, id: existing.id, pageKey });
           return published;
         }

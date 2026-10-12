@@ -46,7 +46,7 @@ export function createPatchLayoutDraftTool(
 
       const spec = normalizeLayoutSpec(rawSpec);
 
-      const doc = await deps.storage.findDocumentById(layoutDocumentId);
+      const doc = await deps.storage.findDocumentById(orgId, layoutDocumentId);
       if (!doc || doc.orgId !== orgId) {
         return { found: false, layoutDocumentId };
       }

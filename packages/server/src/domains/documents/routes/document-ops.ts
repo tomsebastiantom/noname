@@ -29,7 +29,7 @@ export function registerDocumentOpsRoutes(routes: Hono, deps: DocumentsRouteDeps
   routes.get("/document/:id/ops", async (c) => {
     const orgId = getOrgId(c);
     const documentId = c.req.param("id");
-    const doc = await storage.findDocumentById(documentId);
+    const doc = await storage.findDocumentById(orgId, documentId);
     if (!doc || doc.orgId !== orgId) {
       return notFound(c);
     }

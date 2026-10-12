@@ -107,7 +107,13 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
         }
       }
       validateLayoutMetadata(nextData);
-      const updated = await storage.updateDocument(id, nextData, existing.meta, input.collectionId);
+      const updated = await storage.updateDocument(
+        orgId,
+        id,
+        nextData,
+        existing.meta,
+        input.collectionId,
+      );
       flushEvents(entity);
       if (audit) {
         const payload = buildLayoutDataPatchPayload(
@@ -188,7 +194,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
 
     async publish(orgId, id, audit) {
       const existing = await requireLayoutDocument(storage, id, orgId);
-      const published = await storage.publishDocument(id);
+      const published = await storage.publishDocument(orgId, id);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.publish(audit);
       flushEvents(entity);
@@ -209,7 +215,7 @@ export function createLayoutService(storage: DocumentStorage): LayoutDocumentSer
       if (!isPublished(existing)) {
         throw new ValidationError("status", "Only published layouts can be archived");
       }
-      const archived = await storage.archiveDocument(id);
+      const archived = await storage.archiveDocument(orgId, id);
       const entity = toLayoutEntity(existing as LayoutDTO);
       entity.archive(audit);
       flushEvents(entity);

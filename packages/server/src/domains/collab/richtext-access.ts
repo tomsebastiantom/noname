@@ -23,7 +23,7 @@ export async function canEditContentDocument(
     return false;
   }
 
-  const doc = await storage.findDocumentById(contentDocumentId);
+  const doc = await storage.findDocumentById(orgId, contentDocumentId);
   if (!doc || doc.orgId !== orgId || BLOCKED_DOCUMENT_TYPES.has(doc.type)) {
     return false;
   }

@@ -46,7 +46,7 @@ export function createReadDocumentTool(
         return { allowed: false, reason: "missing_agent_context", documentId };
       }
 
-      const doc = await deps.storage.findDocumentById(documentId);
+      const doc = await deps.storage.findDocumentById(orgId, documentId);
       if (!doc || doc.orgId !== orgId) {
         return { found: false, documentId };
       }

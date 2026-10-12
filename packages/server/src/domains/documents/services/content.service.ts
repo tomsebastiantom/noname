@@ -76,7 +76,7 @@ export function createContentService(
     },
 
     findById: async (orgId, id, opts) => {
-      const found = await storage.findDocumentById(id);
+      const found = await storage.findDocumentById(orgId, id);
       // Tenant boundary. A document id belonging to another org must be
       // indistinguishable from a missing one, and this is enforced here rather
       // than trusting every caller to re-check it.
@@ -112,6 +112,7 @@ export function createContentService(
 
       const audit = opts?.audit;
       const updated = await storage.updateDocument(
+        orgId,
         existing.id,
         builtData,
         meta,
@@ -142,7 +143,7 @@ export function createContentService(
       const existing = await requireContentEntry(storage, orgId, type, id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, existing.status);
       entity.deleteEntry(audit);
-      await storage.deleteDocument(existing.id);
+      await storage.deleteDocument(orgId, existing.id);
       flushEvents(entity);
       if (audit) {
         await recordDocumentOp(storage, {
@@ -157,7 +158,7 @@ export function createContentService(
 
     async publish(orgId, type, id, audit) {
       const existing = await requireContentEntry(storage, orgId, type, id);
-      const published = await storage.publishDocument(existing.id);
+      const published = await storage.publishDocument(orgId, existing.id);
       const entity = new ContentDocument(existing.id, orgId, type, existing.data, "draft");
       entity.publish(audit);
       flushEvents(entity);
@@ -177,7 +178,7 @@ export function createContentService(
     },
 
     async resolve(orgId, type, id, locale) {
-      const existing = await storage.findDocumentById(id);
+      const existing = await storage.findDocumentById(orgId, id);
       // Tenant boundary: see findById above.
       if (!existing || existing.orgId !== orgId || existing.type !== type) return null;
       const schema = await storage.findContentTypeByName(orgId, type);

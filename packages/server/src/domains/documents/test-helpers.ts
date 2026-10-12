@@ -68,7 +68,11 @@ export function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage 
   return {
     findContentTypeByName: async (_orgId, name) => (name === "product" ? productType : null),
     getTenantSettings: async () => tenantSettings,
-    findDocumentById: async (id) => docs[id] ?? null,
+    // Mirrors the SQL: the lookup is scoped by org, so a foreign id reads as missing.
+    findDocumentById: async (orgId, id) => {
+      const doc = docs[id];
+      return doc && doc.orgId === orgId ? doc : null;
+    },
     createDocument: async (input) => ({
       ...documentRow(input.key, input.type, input.orgId),
       data: input.data,

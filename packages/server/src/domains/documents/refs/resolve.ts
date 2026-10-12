@@ -28,7 +28,7 @@ export async function resolveDocumentRefs(
   const schemaCache = new Map<string, ContentTypeSchema | null>();
 
   for (const documentId of unique) {
-    const row = await storage.findDocumentById(documentId);
+    const row = await storage.findDocumentById(orgId, documentId);
     if (!row || row.orgId !== orgId) {
       out[documentId] = null;
       continue;

@@ -27,7 +27,10 @@ function row(
 
 function mockStorage(docs: Record<string, DocumentDTO>): DocumentStorage {
   return {
-    findDocumentById: async (id) => docs[id] ?? null,
+    findDocumentById: async (orgId, id) => {
+      const doc = docs[id];
+      return doc && doc.orgId === orgId ? doc : null;
+    },
     findContentTypeByName: async (_orgId, name) =>
       name === "category"
         ? {
@@ -115,7 +118,7 @@ describe("resolveDocumentRefs", () => {
       [assetId],
       "en-US",
       "en-US",
-      async () => storage.findDocumentById(assetId) as Promise<never>,
+      async (orgId, documentId) => storage.findDocumentById(orgId, documentId) as Promise<never>,
     );
 
     expect(resolved[assetId]?.label).toBe("google.svg");

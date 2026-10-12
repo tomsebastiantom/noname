@@ -117,7 +117,7 @@ export async function runMockOrchestrate(
       async () => {
         const storage = deps.documents;
         try {
-          const doc = await storage.findDocumentById("mock-doc");
+          const doc = await storage.findDocumentById(orgId, "mock-doc");
           if (!doc || doc.orgId !== orgId) {
             return { found: false, documentId: "mock-doc" };
           }

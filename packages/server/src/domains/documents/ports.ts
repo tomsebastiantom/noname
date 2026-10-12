@@ -345,8 +345,18 @@ export interface DocumentStorage {
     key: string,
     segment?: string,
   ): Promise<DocumentDTO | null>;
-  findDocumentById(id: string): Promise<DocumentDTO | null>;
+  /**
+   * Document identity is `(orgId, id)`.
+   *
+   * Every read/write below takes `orgId` so the tenant boundary is enforced in
+   * SQL: a document belonging to another org is indistinguishable from a missing
+   * one. Previously these took only `id`, which meant tenancy held only by
+   * convention — each of ~30 call sites had to remember to re-check `orgId`, and
+   * two of them did not.
+   */
+  findDocumentById(orgId: string, id: string): Promise<DocumentDTO | null>;
   updateDocument(
+    orgId: string,
     id: string,
     data: Record<string, unknown>,
     meta?: Record<string, unknown>,
@@ -354,9 +364,9 @@ export interface DocumentStorage {
   ): Promise<DocumentDTO>;
   findCollectionSlug(orgId: string, collectionId: string): Promise<string | null>;
   findCollectionIdBySlug(orgId: string, slug: string): Promise<string | null>;
-  publishDocument(id: string): Promise<DocumentDTO>;
-  archiveDocument(id: string): Promise<DocumentDTO>;
-  deleteDocument(id: string): Promise<void>;
+  publishDocument(orgId: string, id: string): Promise<DocumentDTO>;
+  archiveDocument(orgId: string, id: string): Promise<DocumentDTO>;
+  deleteDocument(orgId: string, id: string): Promise<void>;
   findAssetByHash(orgId: string, hash: string): Promise<DocumentDTO | null>;
   findDocumentsWithDataMentioning(orgId: string, needle: string): Promise<DocumentDTO[]>;
   findDocumentsBySearchText(orgId: string, type: string, query: string): Promise<DocumentDTO[]>;
