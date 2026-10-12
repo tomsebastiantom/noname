@@ -251,12 +251,13 @@ describe("edge public routes never trust an unverifiable credential (audit 0.3)"
       expect(response.status).toBe(200);
       const init = fetchMock.mock.calls[0]?.[1] as RequestInit;
       const headers = new Headers(init.headers);
+      // The invariant is that an unverified credential never becomes identity.
+      // Forwarding the raw token is expected and safe: the origin verifies it
+      // itself and actor-authenticated capabilities require it. An earlier
+      // revision of this test asserted the header was absent, which encoded a
+      // regression (it broke every commerce.orders.* call) as the desired state.
       expect(headers.get("x-user-id")).toBe("");
       expect(headers.get("x-role")).toBe("");
-      // The raw credential may only reach the origin on the auth flows that need it.
-      if (!path.startsWith("/api/auth/")) {
-        expect(headers.has("Authorization")).toBe(false);
-      }
     });
   }
 

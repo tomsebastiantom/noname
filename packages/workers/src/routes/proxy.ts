@@ -40,16 +40,6 @@ function isOptionalAuthRoute(method: string, pathname: string): boolean {
   return method === "POST" && pathname.toLowerCase() === "/api/capabilities/commerce.checkout";
 }
 
-/**
- * Public routes where the origin genuinely needs the caller's own credential
- * (login/register/MFA/callback/password-reset/idp start). Everywhere else on a
- * public route the origin must derive identity only from the HMAC-signed headers,
- * never from a credential the edge has not verified.
- */
-function forwardsCallerCredential(pathname: string): boolean {
-  return pathname.startsWith("/api/auth/");
-}
-
 function forwardsSessionId(method: string, pathname: string): boolean {
   return (
     (method === "GET" && /^\/api\/edge\/schema\/[^/]+$/.test(pathname)) ||
@@ -173,12 +163,12 @@ export function createApiProxyRoutes() {
       if (sessionId && forwardsSessionId(c.req.method, pathname)) {
         headers.set("x-session-id", sessionId);
       }
-      // Identity at the origin is the HMAC-signed pair derived from a VERIFIED token.
-      // A raw caller credential is forwarded only where it is genuinely the caller's own
-      // token: authenticated routes the edge just validated, and the /api/auth/* flows.
-      // Anonymous public routes must not hand the origin a credential it could decode
-      // into identity (report 05 §7.3).
-      if (!isPublic || forwardsCallerCredential(pathname)) {
+      // The origin verifies whatever credential it uses (`verifiedTokenPayload` ->
+      // JWKS), and actor-authenticated capabilities (every commerce.orders.* call)
+      // need the caller's own token, so it is forwarded on public routes too.
+      // Only the optional-identity routes skip it: there the edge-signed HMAC pair
+      // is the entire identity contract.
+      if (!optionalAuth) {
         const authorization = c.req.header("Authorization");
         if (authorization) {
           headers.set("Authorization", authorization);
