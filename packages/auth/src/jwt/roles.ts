@@ -44,12 +44,10 @@ export function rolesFromTokenPayload(
     }
   }
 
-  const projectsRoles = payload["urn:zitadel:iam:org:projects:roles"];
-  if (Array.isArray(projectsRoles)) {
-    for (const entry of projectsRoles) {
-      if (typeof entry === "string" && isPlatformRole(entry)) found.add(entry);
-    }
-  }
+  // NOTE: `urn:zitadel:iam:org:projects:roles` is deliberately NOT accepted.
+  // It aggregates role *names* across every project the token can see, so a role
+  // called `admin` in an unrelated project would be read as the platform `admin`.
+  // Only project-scoped claim keys (above) are trusted.
 
   return [...found];
 }
