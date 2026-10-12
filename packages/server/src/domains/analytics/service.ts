@@ -36,37 +36,43 @@ export function createAnalyticsService(
   storage: AnalyticsStorage,
   queue: Queue<AnalyticsJobData>,
 ): AnalyticsService {
+  type TrackInput = Parameters<AnalyticsService["track"]>[1];
+
+  function buildFrontendEvent(orgId: string, input: TrackInput): AnalyticsJobData {
+    return {
+      eventId: crypto.randomUUID(),
+      orgId,
+      eventType: input.eventType,
+      eventSource: "frontend",
+      timestamp: new Date(),
+      sessionId: input.sessionId,
+      schemaId: input.schemaId ?? null,
+      variantId: input.variantId ?? null,
+      audienceKey: null,
+      audienceDefinitionVersion: null,
+      bindingId: null,
+      bindingVersion: null,
+      decisionId: null,
+      pageKey: null,
+      locale: null,
+      meta: input.meta ?? {},
+    };
+  }
+
   return {
     async track(orgId, input) {
-      const eventId = crypto.randomUUID();
-      const event: AnalyticsJobData = {
-        eventId,
-        orgId,
-        eventType: input.eventType,
-        eventSource: "frontend",
-        timestamp: new Date(),
-        sessionId: input.sessionId,
-        schemaId: input.schemaId ?? null,
-        variantId: input.variantId ?? null,
-        audienceKey: null,
-        audienceDefinitionVersion: null,
-        bindingId: null,
-        bindingVersion: null,
-        decisionId: null,
-        pageKey: null,
-        locale: null,
-        meta: input.meta ?? {},
-      };
+      const event = buildFrontendEvent(orgId, input);
       await queue.add("ingest", event);
-      return { eventId, accepted: true };
+      return { eventId: event.eventId, accepted: true };
     },
 
     async trackBatch(orgId, inputs) {
-      const results: Array<{ eventId: string; accepted: boolean }> = [];
-      for (const input of inputs) {
-        results.push(await this.track(orgId, input));
+      // One round trip for the whole batch instead of N serial `add` calls.
+      const events = inputs.map((input) => buildFrontendEvent(orgId, input));
+      if (events.length > 0) {
+        await queue.addBulk(events.map((data) => ({ name: "ingest", data })));
       }
-      return results;
+      return events.map((event) => ({ eventId: event.eventId, accepted: true }));
     },
 
     async ingestServerEvent(eventType, data) {
