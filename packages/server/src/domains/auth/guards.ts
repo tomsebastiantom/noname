@@ -1,6 +1,7 @@
 import {
   type AuthActor,
   actorHasPermission,
+  allowProjectIdFallbackFromEnv,
   hasPermission,
   PERMISSIONS,
   type PermissionKey,
@@ -88,6 +89,7 @@ export async function requireAuthenticatedActor(
     {
       projectId,
       issuer: zitadelIssuer(),
+      allowProjectIdFallback: allowProjectIdFallbackFromEnv(process.env),
     },
   );
   return {

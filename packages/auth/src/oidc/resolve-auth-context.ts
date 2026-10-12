@@ -1,6 +1,6 @@
 import { orgIdFromTokenPayload } from "../jwt/claims";
 import { decodeAccessTokenPayload } from "../jwt/decode";
-import { rolesFromTokenPayload } from "../jwt/roles";
+import { type RoleLookupOptions, rolesFromTokenPayload } from "../jwt/roles";
 import {
   expandPermissions,
   type PermissionKey,
@@ -9,16 +9,19 @@ import {
 } from "../permissions";
 import { rolesFromUserinfo } from "./userinfo";
 
+/** Role/permission resolution options shared by every entry point below. */
+export type AuthContextOptions = RoleLookupOptions & { issuer?: string };
+
 export function rolesFromJwt(
   payload: Record<string, unknown>,
-  options?: { projectId?: string },
+  options?: AuthContextOptions,
 ): PlatformRole[] {
   return rolesFromTokenPayload(payload, options);
 }
 
 export function permissionsFromJwt(
   payload: Record<string, unknown>,
-  options?: { projectId?: string },
+  options?: AuthContextOptions,
 ): PermissionKey[] {
   return expandPermissions(rolesFromJwt(payload, options));
 }
@@ -26,7 +29,7 @@ export function permissionsFromJwt(
 /** @deprecated Use `staffUiRoleFromJwt` — legacy two-role admin|editor helper for old UI. */
 export function teamRoleFromJwt(
   payload: Record<string, unknown>,
-  options?: { projectId?: string },
+  options?: AuthContextOptions,
 ): "admin" | "editor" | null {
   return staffUiRoleFromJwt(payload, options);
 }
@@ -34,7 +37,7 @@ export function teamRoleFromJwt(
 /** Highest legacy staff UI role when only admin vs editor mattered. */
 export function staffUiRoleFromJwt(
   payload: Record<string, unknown>,
-  options?: { projectId?: string },
+  options?: AuthContextOptions,
 ): "admin" | "editor" | null {
   const roles = rolesFromJwt(payload, options);
   if (roles.includes("admin")) return "admin";
@@ -46,7 +49,7 @@ export function staffUiRoleFromJwt(
 export async function resolveRolesFromTokenPayload(
   accessToken: string,
   payload: Record<string, unknown>,
-  options?: { projectId?: string; issuer?: string },
+  options?: AuthContextOptions,
 ): Promise<PlatformRole[]> {
   let roles = rolesFromJwt(payload, options);
   if (roles.length === 0 && options?.issuer) {
@@ -59,7 +62,7 @@ export async function resolveRolesFromTokenPayload(
 export async function resolveIdentityFromTokenPayload(
   accessToken: string,
   payload: Record<string, unknown>,
-  options?: { projectId?: string; issuer?: string },
+  options?: AuthContextOptions,
 ): Promise<{
   orgId: string;
   userId: string;
@@ -78,7 +81,7 @@ export async function resolveIdentityFromTokenPayload(
 /** Resolve roles/permissions from JWT, falling back to OIDC userinfo when roles are omitted. */
 export async function resolveAuthContextFromAccessToken(
   accessToken: string,
-  options?: { projectId?: string; issuer?: string },
+  options?: AuthContextOptions,
 ): Promise<{ roles: PlatformRole[]; permissions: PermissionKey[] }> {
   const payload = decodeAccessTokenPayload(accessToken);
   if (!payload) return { roles: [], permissions: [] };
@@ -96,7 +99,7 @@ export async function resolveAuthContextFromAccessToken(
 export async function resolveAuthContextFromVerifiedPayload(
   accessToken: string,
   payload: Record<string, unknown>,
-  options?: { projectId?: string; issuer?: string },
+  options?: AuthContextOptions,
 ): Promise<{ roles: PlatformRole[]; permissions: PermissionKey[] }> {
   const roles = await resolveRolesFromTokenPayload(accessToken, payload, options);
   return { roles, permissions: expandPermissions(roles) };

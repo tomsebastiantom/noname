@@ -1,4 +1,8 @@
-import { primaryTeamRole, resolveAuthContextFromVerifiedPayload } from "@noname/auth";
+import {
+  allowProjectIdFallbackFromEnv,
+  primaryTeamRole,
+  resolveAuthContextFromVerifiedPayload,
+} from "@noname/auth";
 import type { Hono } from "hono";
 import { notFound, ok } from "../../../shared/respond";
 import { resolveRouteOrgId } from "../../../shared/site-id";
@@ -24,6 +28,7 @@ export function registerAuthSessionRoutes(routes: Hono, deps: AuthRouteDeps): vo
       {
         projectId,
         issuer: zitadelIssuer(),
+        allowProjectIdFallback: allowProjectIdFallbackFromEnv(process.env),
       },
     );
     const teamRole = primaryTeamRole(roles);

@@ -23,6 +23,9 @@ export async function tryParseJwt(request: Request, env: Env): Promise<EdgeConte
     return resolveIdentityFromTokenPayload(token, payload, {
       projectId,
       issuer: env.ZITADEL_ISSUER,
+      // Local dev only: survives a stale ZITADEL_PROJECT_ID. Must never be set in
+      // deployed vars — see RoleLookupOptions.allowProjectIdFallback.
+      allowProjectIdFallback: env.ZITADEL_ALLOW_PROJECT_ID_FALLBACK === "true",
     });
   } catch {
     return null;

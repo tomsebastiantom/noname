@@ -1,4 +1,4 @@
-import { resolveAuthContextFromVerifiedPayload } from "@noname/auth";
+import { allowProjectIdFallbackFromEnv, resolveAuthContextFromVerifiedPayload } from "@noname/auth";
 import type { Database } from "../../drizzle";
 import { zitadelIssuer } from "../auth/adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "../auth/adapters/zitadel/project-id";
@@ -43,6 +43,7 @@ export function createAgentDomain(deps: AgentDomainDeps) {
       const { permissions } = await resolveAuthContextFromVerifiedPayload(userToken, payload, {
         projectId: zitadelProjectIdOrNull() ?? undefined,
         issuer: zitadelIssuer(),
+        allowProjectIdFallback: allowProjectIdFallbackFromEnv(process.env),
       });
       return permissions;
     },

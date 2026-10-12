@@ -16,6 +16,8 @@ export { accessTokenFromRequest } from "./http/request-token";
 export { orgIdFromTokenPayload } from "./jwt/claims";
 export { decodeAccessTokenPayload, userIdFromAccessToken } from "./jwt/decode";
 export {
+  allowProjectIdFallbackFromEnv,
+  type RoleLookupOptions,
   rolesFromTokenPayload,
   zitadelProjectRolesClaimKey,
 } from "./jwt/roles";
@@ -26,6 +28,7 @@ export {
   verifyAccessToken,
 } from "./jwt/verify";
 export {
+  type AuthContextOptions,
   permissionsFromJwt,
   resolveAuthContextFromAccessToken,
   resolveAuthContextFromVerifiedPayload,
