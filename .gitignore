@@ -1,4 +1,4 @@
-﻿# Dependencies
+# Dependencies
 node_modules/
 .pnp
 .pnp.js
@@ -85,3 +85,8 @@ pids/
 key
 key.*
 *.key
+
+# Agent harness state — machine-specific, not part of the product.
+.dsh/
+.kilo/
+kilo.json
