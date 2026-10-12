@@ -1,0 +1,22 @@
+# Normalise line endings to LF in the working tree.
+#
+# Without this, `core.autocrlf=true` on Windows rewrites LF blobs to CRLF on
+# every `git checkout`, and `biome check` (formatter lineEnding: lf) then fails
+# on files git considers unchanged — a loop where the lint gate flips red after
+# any checkout and green after `biome check --write`, with no diff to commit.
+* text=auto eol=lf
+
+# Binary assets must never be newline-translated.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.gz binary
