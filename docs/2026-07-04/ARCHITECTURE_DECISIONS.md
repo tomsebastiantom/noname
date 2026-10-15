@@ -58,6 +58,12 @@ server/src/
 └── domains/              ← 9 DDD domains. Each has its own ports, schema, API routes.
 ```
 
+> **Drift note (2026-10-15):** the tree above records the structure as of this ADR. The domain count is
+> now **17**, not 9. The `shared/` tree has also grown well beyond the four files listed, and
+> `event-bus.ts` now fans out through Redis in addition to notifying in-process subscribers (see the
+> Event bus row in the decision table below). Only the counts are corrected here; the original text is
+> left intact because it is the record of what was decided.
+
 ---
 
 ### `packages/cli` — THE DEVELOPER TOOL
@@ -79,6 +85,11 @@ server/src/
 
 ## Domain Map (9 Domains Inside `server/src/domains/`)
 
+> **Count updated 2026-10-15:** there are now **17** domains. This section documents the nine this ADR
+> covered; the current set is `agent`, `ai-pipeline`, `analytics`, `audiences`, `auth`, `capabilities`,
+> `collab`, `documents`, `edge`, `evidence`, `flags`, `integrations`, `machines`, `notifications`,
+> `secrets`, `tenant`, `webhooks`.
+
 ### `documents` — Unified JSON Document Domain (content + layout + backend-logic)
 
 **Status:** ✅ Implemented. Full DDD pattern: ports/adapters, aggregate entities, domain events, Postgres storage.
@@ -92,6 +103,13 @@ The `content` and `spec` domains were **removed and folded into `documents`**: `
 
 Each type keeps **separate TypeScript ports, separate tables, separate `version`, separate `status`, separate cache keys, and distinct event names** (`content.created`/`content.updated`/`content.deleted`/`content.published`, `layout.created`/`layout.updated`/`layout.published`/`layout.archived`/`layout.variant_created`). All types share one machinery via a **type-registry**: a `DocumentStorage` interface and `createDocumentsService()` implement store / version / publish / cache / events once. The API routes are fully generic (`/api/documents/:type`) and dispatch by a registered `TypeHandler` per type — adding `backend-logic` means registering one handler, with **no route changes**. See `documents-domain.md` for the full rationale.
 **Storage:** `content_entries` + `layouts` tables (JSONB). Workers KV cache at edge, keyed per type (content by slug, layout by segment).
+
+> **Drift note (2026-10-15):** the tables named above no longer exist. Storage is now a single
+> `documents` table holding every document type as JSONB, alongside `content_collections`,
+> `content_teams`, `document_types` and `document_ops` — verified against the live schema
+> (`pg_tables`), which contains no `content_entries` and no `layouts`. The type-registry and
+> per-type `version`/`status`/cache-key separation described above still hold; only the table
+> layout changed.
 **API routes:** `/api/documents/:type` (generic, dispatched by document-type), plus `/api/documents/content-types` for content-type schema management and `/api/documents/:type/:name/resolve` for per-segment layout resolution.
 **Future:** Add real Zod-based content validation (validator is currently a stub returning `valid: true`). Connect to AI generation pipeline for automated creation of any type. Diff/patch via @json-render/core `diffToPatches()`. Integrate with `flags` domain — JSON spec conditions reference `$flags` namespace.
 
@@ -169,7 +187,7 @@ Each type keeps **separate TypeScript ports, separate tables, separate `version`
 ```
 Layer 1: API SERVER (packages/server)
   Hono + Node.js + Postgres + Dragonfly(Redis) + ClickHouse + ZITADEL
-  Pure API. No React. No SSR. No JSX. 9 DDD domains.
+  Pure API. No React. No SSR. No JSX. 17 DDD domains.
   Deployed as Docker container.
 
 Layer 2: EDGE WORKER (Cloudflare Workers, packages/workers)
@@ -205,7 +223,7 @@ See [`VISUAL_EDITOR.md`](../docs/2026-07-11/VISUAL_EDITOR.md) for the full desig
 | **Auth** | ZITADEL (self-hosted Docker, port 8080). JWT validated at Cloudflare edge via `@cfworker/jwt`. HMAC trust between worker and API server. Invalid → redirect to ZITADEL login. | PII isolation (passwords never touch API server). Edge validation stops bad requests before origin. Multi-tenancy via ZITADEL organizations. See `docs/2026-07-13/AUTH.md`. |
 | **Workflow logic** | All workflows are XState machines in the machines domain — commerce is just the first example. No separate commerce ports/adapters/service. | Cart, checkout, refund, subscription (commerce example) — every flow is an XState machine definition (JSONB) executed by the generic machine engine. One `POST /api/machines/:machine/:transition` endpoint serves all flows. Adding a new flow = adding a new JSON definition, not new code. |
 | **Event bus** | In-memory for Phase 0. BullMQ queues for async task execution (agent domain). | BullMQ re-added (2026-07-11) for agent task queue. Redis (DragonflyDB) backing. In-memory event bus still used for synchronous cross-domain events. |
-| **Monorepo** | Two packages: server + cli. | Admin, catalog, types packages were empty and deleted. Server is the monolith (WordPress model). CLI is the developer tool. |
+| **Monorepo** | Two packages: server + cli. | Admin, catalog, types packages were empty and deleted. Server is the monolith (WordPress model). CLI is the developer tool. **Count updated 2026-10-15:** the workspace now holds **12** packages — `auth`, `browser-sdk`, `cli`, `client`, `documents`, `extensions`, `fixtures`, `seeding`, `server`, `shared`, `verticals`, `workers` — plus an `apps/docs` site. The "server is the monolith" decision itself still holds. |
 | **Database** | Postgres (JSONB for content + relational for ACID) + ClickHouse (analytics) + Dragonfly/Redis (future queues/cache). | One DB approach: JSONB where flexible, relational where ACID needed (orders, payments). ClickHouse for time-series analytics from day one. |
 | **Platform identity** | Identity-agnostic. Commerce is the first vertical, not the only vertical. | Same architecture (json-render + XState + Content API + ClickHouse) powers commerce, booking, membership, SaaS — different catalogs + machines, same engine. |
 | **Feature flags** | Built natively as a `flags` domain. NOT LaunchDarkly or any third-party flag service. | Platform already has context engine, segment resolution, JSON spec conditions, A/B bandit — native flags integrate seamlessly with these domains (flag.evaluated analytics events, multivariate A/B routing, AI-generated flag definitions, $flags namespace in json-render conditions). LaunchDarkly would be a separate service, separate billing, separate latency hop for behavior the platform already performs. |

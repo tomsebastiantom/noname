@@ -24,7 +24,7 @@ cp .env.example .env
 cp packages/server/.env.example packages/server/.env
 # Edge: packages/workers/.dev.vars needs WORKER_SERVER_SECRET (same value as root .env)
 
-# 3. Start infrastructure (Postgres, Redis, ClickHouse, ZITADEL, S3, Jaeger)
+# 3. Start infrastructure (Postgres, Dragonfly/Redis, ClickHouse, ZITADEL, Keto, Vault, S3, Nango, Jaeger)
 podman compose up -d   # or: docker compose up -d
 
 # Wait until services are healthy (~30s for ZITADEL on first boot)
@@ -36,7 +36,7 @@ pnpm init:zitadel
 # 5. Push DB schema (fresh DB only — use compose down -v to reset)
 pnpm --filter @noname/server db:push
 
-# 6. Seed demo layout (requires API running — do step 7 terminal 1 first, or re-run seed after)
+# 6. Seed demo layout (requires the API running — start it per "Dev setup" below, then re-run this)
 pnpm seed:demo
 ```
 
@@ -118,7 +118,7 @@ podman compose down -v       # tear down + delete data
 |---------|------|---------|
 | **Postgres 16** | 5432 | Primary DB — JSONB content, ACID transactions |
 | **DragonflyDB** | 6379 | Redis-compatible — cache + BullMQ queue backend |
-| **ClickHouse** | 8123/9000 | Columnar analytics — event ingestion, aggregations |
+| **ClickHouse** | 8123 (HTTP) / 9001 (native) | Columnar analytics — event ingestion, aggregations |
 | **ZITADEL** | 8080 | Self-hosted auth — OIDC, MFA, SSO |
 | **S3 emulator** | 9000 | R2-compatible asset storage for local dev |
 | **Jaeger** | 16686/4318 | OpenTelemetry tracing UI |
@@ -127,12 +127,15 @@ podman compose down -v       # tear down + delete data
 
 ```
 noname/
-├── packages/
-│   ├── server/      → API server (Hono + Node.js) — 9 DDD domains
+├── packages/        → 12 workspace packages
+│   ├── server/      → API server (Hono + Node.js) — 17 DDD domains
 │   ├── browser-sdk/ → Client SDK — analytics, errors, trace, flags, replay
 │   ├── client/      → Storefront bundle — React 19 + json-render + Module Federation
 │   ├── workers/     → Cloudflare Edge Worker — JWT, KV cache, SEO prerender
-│   └── cli/         → Developer CLI (skeleton)
+│   ├── cli/         → Developer CLI (skeleton)
+│   └── (also) auth, documents, extensions, fixtures, seeding, shared, verticals
+├── apps/
+│   └── docs/        → Docusaurus docs site
 ├── docs/            → Architecture decisions, domain plans
 ├── scripts/         → compose hooks, init, and demo seeds (see scripts/README.md)
 └── docker-compose.yml → Local dev infrastructure
@@ -205,6 +208,6 @@ Visitor → Cloudflare Edge Worker (JWT, cache, SEO prerender)
          Postgres + ClickHouse + DragonflyDB
 ```
 
-All 9 domains follow Domain-Driven Design: `ports.ts` → `entity.ts` → `service.ts` → `adapters/postgres.ts` → `api.ts` → `index.ts`.
+All 17 domains follow Domain-Driven Design: `ports.ts` → `entity.ts` → `service.ts` → `adapters/postgres.ts` → `api.ts` → `index.ts`.
 
 Auth is handled at the edge (ZITADEL JWT validation + HMAC signing). See `docs/2026-07-13/AUTH.md`.
