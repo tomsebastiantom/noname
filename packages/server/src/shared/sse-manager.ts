@@ -1,7 +1,5 @@
 import type { SSEStreamingApi } from "hono/streaming";
-import Redis from "ioredis";
-import { getRedisConnection } from "./redis";
-import { registerRedisFanout } from "./redis-fanout-status";
+import { createRedisFanout, type RedisFanout } from "./redis-fanout";
 
 const CHANNEL = "noname:sse";
 
@@ -15,7 +13,7 @@ type ClientEntry = {
 };
 
 const clients = new Map<OrgId, Map<StreamId, ClientEntry>>();
-let publisher: Redis | null = null;
+let fanout: RedisFanout | null = null;
 let initialized = false;
 
 function broadcastLocal(orgId: OrgId, data: Record<string, unknown>): void {
@@ -40,29 +38,23 @@ function broadcastLocal(orgId: OrgId, data: Record<string, unknown>): void {
 export function initSseManager(): void {
   if (initialized) return;
   initialized = true;
-  registerRedisFanout("sse", () => publisher !== null);
 
-  try {
-    publisher = new Redis(getRedisConnection());
-    const subscriber = new Redis(getRedisConnection());
-    void subscriber.subscribe(CHANNEL);
-    subscriber.on("message", (_channel, raw) => {
+  fanout = createRedisFanout({
+    name: "sse",
+    channel: CHANNEL,
+    consequence: "SSE won't reach clients connected to other API replicas",
+    onMessage: (raw) => {
+      let msg: { orgId?: string; data?: Record<string, unknown> };
       try {
-        const msg = JSON.parse(raw) as { orgId?: string; data?: Record<string, unknown> };
-        if (typeof msg.orgId === "string" && msg.data && typeof msg.data === "object") {
-          broadcastLocal(msg.orgId, msg.data);
-        }
+        msg = JSON.parse(raw) as { orgId?: string; data?: Record<string, unknown> };
       } catch {
-        /* ignore malformed */
+        return; // not a message of ours; nothing to do
       }
-    });
-  } catch (err) {
-    publisher = null;
-    console.error(
-      "[sse-manager] Redis unavailable — degraded to single-instance mode (SSE won't reach clients on other replicas)",
-      err,
-    );
-  }
+      if (typeof msg.orgId === "string" && msg.data && typeof msg.data === "object") {
+        broadcastLocal(msg.orgId, msg.data);
+      }
+    },
+  });
 }
 
 export function addClient(orgId: OrgId, stream: SSEStreamingApi, userId?: UserId): StreamId {
@@ -94,8 +86,15 @@ export function removeClient(orgId: OrgId, streamId: StreamId): void {
 }
 
 export function broadcast(orgId: OrgId, data: Record<string, unknown>): void {
-  if (publisher) {
-    void publisher.publish(CHANNEL, JSON.stringify({ orgId, data }));
+  // Unchanged semantics: while fan-out is live, the message goes to Redis and every replica —
+  // this one included — receives it through its own subscription, so broadcasting locally as well
+  // would double-deliver. Only when fan-out is down do we deliver directly to local clients.
+  //
+  // The condition is now `isActive()` rather than "a publisher object exists". Previously a Redis
+  // outage left SSE messages queued on the publish side with no local fallback at all: they reached
+  // neither remote nor local clients until Redis returned.
+  if (fanout?.isActive()) {
+    void fanout.publish({ orgId, data });
     return;
   }
   broadcastLocal(orgId, data);

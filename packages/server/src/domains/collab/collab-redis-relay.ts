@@ -1,6 +1,4 @@
-import Redis from "ioredis";
-import { getRedisConnection } from "../../shared/redis";
-import { registerRedisFanout } from "../../shared/redis-fanout-status";
+import { createRedisFanout, type RedisFanout } from "../../shared/redis-fanout";
 
 const CHANNEL = "noname:collab-relay";
 
@@ -16,7 +14,7 @@ type RelayEnvelope = {
 
 type RelayHandler = (msg: { roomName: string; data: Uint8Array }) => void;
 
-let publisher: Redis | null = null;
+let fanout: RedisFanout | null = null;
 let initialized = false;
 const handlersByKind = new Map<string, RelayHandler[]>();
 
@@ -34,29 +32,23 @@ function dispatchLocal(kind: string, roomName: string, data: Uint8Array): void {
 export function initCollabRedisRelay(): void {
   if (initialized) return;
   initialized = true;
-  registerRedisFanout("collab-relay", () => publisher !== null);
 
-  try {
-    publisher = new Redis(getRedisConnection());
-    const subscriber = new Redis(getRedisConnection());
-    void subscriber.subscribe(CHANNEL);
-    subscriber.on("message", (_channel, raw) => {
+  fanout = createRedisFanout({
+    name: "collab-relay",
+    channel: CHANNEL,
+    consequence: "collab rooms won't sync across replicas",
+    onMessage: (raw) => {
+      let msg: RelayEnvelope;
       try {
-        const msg = JSON.parse(raw) as RelayEnvelope;
-        if (msg.senderId === REPLICA_ID) return; // our own publish, echoed back by Redis
-        if (!msg.kind || !msg.roomName || typeof msg.data !== "string") return;
-        dispatchLocal(msg.kind, msg.roomName, new Uint8Array(Buffer.from(msg.data, "base64")));
+        msg = JSON.parse(raw) as RelayEnvelope;
       } catch {
-        /* ignore malformed */
+        return; // not a message of ours; nothing to do
       }
-    });
-  } catch (err) {
-    publisher = null;
-    console.error(
-      "[collab-relay] Redis unavailable — degraded to single-instance mode (collab rooms won't sync across replicas)",
-      err,
-    );
-  }
+      if (msg.senderId === REPLICA_ID) return; // our own publish, echoed back by Redis
+      if (!msg.kind || !msg.roomName || typeof msg.data !== "string") return;
+      dispatchLocal(msg.kind, msg.roomName, new Uint8Array(Buffer.from(msg.data, "base64")));
+    },
+  });
 }
 
 /** Register a handler for relayed messages of one room kind (e.g. `"richtext-doc"`, `"layout-snapshot"`). */
@@ -68,23 +60,23 @@ export function onCollabRelayMessage(kind: string, handler: RelayHandler): void 
 
 /** Publish a binary room message to every other replica. Silent no-op without Redis. */
 export function publishCollabRelay(kind: string, roomName: string, data: Uint8Array): void {
-  if (!publisher) return;
+  if (!fanout?.isActive()) return;
   const envelope: RelayEnvelope = {
     kind,
     roomName,
     senderId: REPLICA_ID,
     data: Buffer.from(data).toString("base64"),
   };
-  void publisher.publish(CHANNEL, JSON.stringify(envelope));
+  void fanout.publish(envelope);
 }
 
 export function isCollabRelayActive(): boolean {
-  return publisher !== null;
+  return fanout?.isActive() ?? false;
 }
 
 /** Test-only: reset module state between test files (each test constructs its own Redis mocks). */
 export function resetCollabRelayForTests(): void {
   initialized = false;
-  publisher = null;
+  fanout = null;
   handlersByKind.clear();
 }

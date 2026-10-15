@@ -22,14 +22,16 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 6 | 1 | 10 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 7 | 2 | 8 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
 
-**Headline:** the 31 commits since the audit were auth, edge, tenancy, analytics and shutdown
-hardening from the release-verification effort. They fixed six of the seventeen report-05 risks and
-**did not touch a single report-03/04 conformance violation**. Two violations measurably widened.
+**Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
+from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
+touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
+recorded below moved report 05 to **7 fixed / 2 partial / 8 still present** (S8 fixed, S7 partially,
+S6's sibling §5.7 still open).
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -62,8 +64,8 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | # | Risk | Evidence | Note |
 |---|---|---|---|
 | S3 | Real `WORKER_SERVER_SECRET` committed | `.dev.vars` tracked (blob `ee479708`); same value in `.env` and `AUTH.md:72,81`; fingerprint `a4d59153` | See §5. |
-| S7 | Event bus at-most-once, no replay, errors swallowed | `shared/event-bus.ts:17-25` — `dispatchLocal` `catch {}`; no outbox, no consumer offset, no replay | Unchanged. |
-| S8 | Redis fan-out health can never report degraded | `redis-fanout-status.ts:14-27` — `isActive` closes over `publisher !== null`, and `publisher` never returns to null after startup (`event-bus.ts:31,49`) | The health check is structurally incapable of flipping. |
+| S7 | Event bus at-most-once, no replay, errors swallowed | **Error handling fixed 2026-10-15.** `dispatchLocal` no longer swallows: a throwing subscriber is logged and the remaining subscribers still run. Cross-replica publish is bounded (2s) and never rejects, so a `void`-ed call can no longer become a process-killing unhandled rejection, and a request path can no longer block behind `maxRetriesPerRequest: null`. **Still absent: outbox, consumer offsets, replay** — fan-out remains at-most-once, and that is an architectural change rather than a bug fix. | See §5.8. |
+| S8 | Redis fan-out health can never report degraded | **FIXED 2026-10-15.** Liveness is driven by the connections' own `ready`/`error`/`close`/`end` events instead of `publisher !== null`. One finding, **three** sites — `event-bus`, `sse-manager` and `collab-redis-relay` all had it identically; all three now use `shared/redis-fanout.ts`. | Verified live: stopping Dragonfly flipped all three to degraded in 4s and restarting recovered them in 2s. Neither direction worked before. |
 | S9 | Redis helper silently drops TLS/username/db | `shared/redis.ts:1-11` | `rediss://`, username and db index are all ignored; `maxRetriesPerRequest: null` applied unconditionally. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | `tenant-settings.service.ts:22-26` (no cache; writes a default row on miss); `documents/adapters/postgres.ts:61-74` scans JSONB `data->>'slug'`; `documents/schema.ts` has no slug index | One mitigation exists: `ead4f56` stopped the edge poisoning its slug miss-cache when origin is down (`resolve-slug.ts:28-45` — 404 only). That narrows S10 without fixing it. |
 | S11 | Transition hooks run outside the transaction, inline on the request | `machines/engine.ts:145-163` awaits `hooks.onTransitionComplete` after commit; `replayPersistedTransition` `:170-204` unchanged | A hook failure cannot roll back the transition, and it lengthens the request. |
@@ -232,14 +234,21 @@ Lesson that generalises beyond this incident: a test that encodes an implementat
 requirement will actively defend a bug. The forged-credential test (`4e48dc0`) is written the other way —
 it asserts the *property* (forged claims never become identity) rather than the mechanism.
 
-A second instance of the same class, observed while running the suite for this document:
-`packages/server/src/shared/shared.test.ts:5` does `await eventBus.publish("test.event", …)` and then
-immediately asserts the subscriber ran. `publish` is fire-and-forget (see S7), so that assertion only
-holds when the subscriber's microtask happens to win the race. It passes 3/3 in isolation but timed out
-under full-suite load (**726/727 passed**; the single failure was this test). So the test asserts a
-scheduling accident as a guarantee — which is exactly the fire-and-forget design S7 says is unsafe. It
-is not a regression from any change here, and it should be rewritten to await a real completion signal
-rather than deleted.
+**Correction (2026-10-15).** An earlier draft of this section claimed
+`packages/server/src/shared/shared.test.ts:5` is racy, asserting a "scheduling accident" because
+`publish` is fire-and-forget. That was wrong and is retracted here rather than quietly deleted.
+`publish` awaits `dispatchLocal`, which awaits each handler, so the assertion *is* deterministic and
+correct. The observed failure was a **timeout**, not a failed assertion: the test's dynamic
+`await import("./event-bus")` pulls in ioredis, and under full-suite load (import time measured in
+hundreds of seconds) the whole test exceeded its 5s budget and never reached the assertion. It passes
+3/3 in isolation and passed on the next full run (**744/744**). The real issue is an import-cost
+sensitivity in a 5s default timeout, not a race and not a design smell in the test's logic — and it is
+a good argument for measuring rather than reasoning to a satisfying story.
+
+A second instance of the class described above *does* exist, but it was found in the collab relay
+tests rather than here: they asserted `isCollabRelayActive()` immediately after init, and once
+liveness became readiness-based the fake had to emit `ready` for those tests to keep exercising the
+real path instead of passing against a no-op publish.
 
 ### 5.5 Line endings made the lint gate unfixable, and the loop was invisible
 
@@ -284,6 +293,35 @@ in ClickHouse with the queue draining to 0 failed. Probe rows were then deleted.
 process also hosts seven in-process BullMQ `Worker` instances. Their in-flight jobs are not awaited, so
 they are killed mid-execution on every deploy. The worker entrypoint has the same gap. This is adjacent
 to S6 and was not counted there — S6 was about the HTTP server, which is genuinely fixed.
+
+### 5.8 Redis fan-out: failures were invisible and could crash or hang the process
+
+Found while fixing S7/S8, and worse than either row suggested on its own. Three things compounded:
+
+1. **Subscriber errors were discarded.** `dispatchLocal` was `catch { /* fire-and-forget */ }`, so a
+   listener could throw on every event with no log anywhere. The failure was indistinguishable from the
+   event never having been published. Now logged, and the remaining subscribers still run.
+
+2. **A failed publish could kill the process.** Most of the ~30 publish call sites use
+   `void eventBus.publish(...)`, and `eventBus.publish` awaited `publisher.publish` with no catch. Node
+   throws on unhandled rejection by default, and there is **no `unhandledRejection` handler** in
+   `index.ts` or `worker.ts`. So a single Redis publish failure during an outage could take down the API
+   instead of degrading. Publish is now best-effort: it cannot reject.
+
+3. **A stalled publish could block a request indefinitely.** `getRedisConnection()` sets
+   `maxRetriesPerRequest: null`, which makes ioredis queue commands while offline rather than fail them.
+   Awaiting that from a request path means waiting for Redis to come back. Publishes are now bounded by a
+   2s timeout.
+
+Both were falsified rather than assumed: reverting the `try/catch` fails exactly the two publish-safety
+tests, and reverting `dispatchLocal` to swallowing fails the visibility test while the "does not reject"
+test still passes — confirming they are independent properties, not one behaviour counted twice.
+
+Related, and **not** fixed here: many ioredis clients created through `getBullmqQueue`/`getRedisConnection`
+attach no `error` listener, so during a Redis outage the logs fill with `[ioredis] Unhandled error event`
+plus an `AggregateError` per retry per connection. The six connections this change owns are now quiet
+(edge-triggered logging only); the rest are unchanged. Worth a follow-up, since a log flood that large
+buries the one line that matters.
 
 ---
 

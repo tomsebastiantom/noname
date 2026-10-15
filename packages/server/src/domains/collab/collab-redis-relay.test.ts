@@ -7,6 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const channels = new Map<string, Set<FakeRedis>>();
 
 class FakeRedis extends EventEmitter {
+  constructor() {
+    super();
+    // Real ioredis clients emit `ready` once connected, and fan-out liveness is driven by that
+    // event rather than by the client object merely existing. Emitting it keeps these tests
+    // exercising the live path — without it, publishCollabRelay would be a no-op and the
+    // self-echo test below would pass for the wrong reason.
+    queueMicrotask(() => this.emit("ready"));
+  }
+
   async subscribe(channel: string): Promise<void> {
     const subs = channels.get(channel) ?? new Set();
     subs.add(this);
@@ -40,7 +49,7 @@ describe("collab-redis-relay", () => {
     );
 
     initCollabRedisRelay();
-    expect(isCollabRelayActive()).toBe(true);
+    await vi.waitFor(() => expect(isCollabRelayActive()).toBe(true));
 
     const received: Array<{ roomName: string; data: Uint8Array }> = [];
     onCollabRelayMessage("richtext-doc", (msg) => received.push(msg));
@@ -68,11 +77,13 @@ describe("collab-redis-relay", () => {
   });
 
   it("does not deliver a message this replica published itself (self-echo)", async () => {
-    const { initCollabRedisRelay, onCollabRelayMessage, publishCollabRelay } = await import(
-      "./collab-redis-relay"
-    );
+    const { initCollabRedisRelay, onCollabRelayMessage, publishCollabRelay, isCollabRelayActive } =
+      await import("./collab-redis-relay");
 
     initCollabRedisRelay();
+    // Wait for readiness, otherwise publishCollabRelay is a no-op and this test would pass
+    // without ever exercising self-echo suppression.
+    await vi.waitFor(() => expect(isCollabRelayActive()).toBe(true));
     const received: unknown[] = [];
     onCollabRelayMessage("layout-snapshot", (msg) => received.push(msg));
 
