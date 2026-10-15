@@ -8,6 +8,7 @@ import { WebSocketServer } from "ws";
 import { createApp } from "./bootstrap";
 import { initCollabRedisRelay } from "./domains/collab/collab-redis-relay";
 import { closeAllBullmqQueues } from "./shared/bullmq-queue";
+import { closeAllBullmqWorkers } from "./shared/bullmq-workers";
 import { initEventBus } from "./shared/event-bus";
 import { listenWithRetry } from "./shared/listen-with-retry";
 import { startRedisFanoutMonitor } from "./shared/redis-fanout-status";
@@ -88,6 +89,12 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     draining.closeAllConnections?.();
     await closed;
     await new Promise<void>((resolve) => wss.close(() => resolve()));
+    // Drain in-flight jobs before releasing the queues. With RUN_WORKERS=true (the default) this
+    // process hosts every domain's worker, so closing queues alone left their active jobs running
+    // while the process exited — a half-finished webhook delivery, email send or catalog build.
+    await closeAllBullmqWorkers().catch((error) => {
+      console.error("[shutdown] worker drain failed", error);
+    });
     await closeAllBullmqQueues().catch((error) => {
       console.error("[shutdown] queue drain failed", error);
     });

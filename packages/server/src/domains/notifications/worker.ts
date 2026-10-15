@@ -1,6 +1,7 @@
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { NotFoundError, ServiceUnavailableError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
@@ -19,7 +20,7 @@ export function startEmailOutboundWorker(deps: {
 }): Worker<EmailOutboundJobData> | null {
   if (!workersEnabled()) return null;
 
-  return new Worker<EmailOutboundJobData>(
+  const worker = new Worker<EmailOutboundJobData>(
     BULLMQ_QUEUES.EMAIL_OUTBOUND,
     async (job) => {
       const { deliveryId, orgId, to, subject, html, text } = job.data;
@@ -121,4 +122,7 @@ export function startEmailOutboundWorker(deps: {
       removeOnFail: { count: 200 },
     },
   );
+
+  registerBullmqWorker(worker);
+  return worker;
 }

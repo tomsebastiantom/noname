@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 8 | 2 | 7 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 9 | 2 | 6 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,8 +30,8 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below moved report 05 to **8 fixed / 2 partial / 7 still present** (S8 and S10 fixed, S7
-partially, S6's sibling §5.7 still open).
+recorded below moved report 05 to **9 fixed / 2 partial / 6 still present** (S8, S9 and S10 fixed, S7
+partially, and the new-finding §5.7 also fixed).
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -66,7 +66,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S3 | Real `WORKER_SERVER_SECRET` committed | `.dev.vars` tracked (blob `ee479708`); same value in `.env` and `AUTH.md:72,81`; fingerprint `a4d59153` | See §5. |
 | S7 | Event bus at-most-once, no replay, errors swallowed | **Error handling fixed 2026-10-15.** `dispatchLocal` no longer swallows: a throwing subscriber is logged and the remaining subscribers still run. Cross-replica publish is bounded (2s) and never rejects, so a `void`-ed call can no longer become a process-killing unhandled rejection, and a request path can no longer block behind `maxRetriesPerRequest: null`. **Still absent: outbox, consumer offsets, replay** — fan-out remains at-most-once, and that is an architectural change rather than a bug fix. | See §5.8. |
 | S8 | Redis fan-out health can never report degraded | **FIXED 2026-10-15.** Liveness is driven by the connections' own `ready`/`error`/`close`/`end` events instead of `publisher !== null`. One finding, **three** sites — `event-bus`, `sse-manager` and `collab-redis-relay` all had it identically; all three now use `shared/redis-fanout.ts`. | Verified live: stopping Dragonfly flipped all three to degraded in 4s and restarting recovered them in 2s. Neither direction worked before. |
-| S9 | Redis helper silently drops TLS/username/db | `shared/redis.ts:1-11` | `rediss://`, username and db index are all ignored; `maxRetriesPerRequest: null` applied unconditionally. |
+| S9 | Redis helper silently drops TLS/username/db | **FIXED 2026-10-15.** `getRedisConnection()` now derives the whole URL: `rediss://` (or `?tls=true`) enables TLS, an ACL `username` is kept and percent-decoded, and the database index is read from the path or `?db=`. A malformed URL or a non-`redis://` scheme throws instead of silently falling back to localhost. | Three silent failures, not one: a TLS-requiring Redis was dialled in the clear, a Redis 6 ACL user authenticated as `default`, and `redis://host/2` silently became db 0 — cross-talk between datasets that looks like a healthy connection. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | `machines/engine.ts:145-163` awaits `hooks.onTransitionComplete` after commit; `replayPersistedTransition` `:170-204` unchanged | A hook failure cannot roll back the transition, and it lengthens the request. |
 | S12 | `flag_evaluations` unbounded; no ClickHouse sink | `flags/schema.ts:38-59` — no TTL/cleanup; `evaluation.ts:132-155` inserts per evaluation | DB insert is now batched, but `eventBus.publish` is still once per flag (`:152-154`), so half of this risk is untouched. |
@@ -287,12 +287,35 @@ returned `201 {"accepted":1200}`, incremented BullMQ's job counter by exactly **
 race-free — it increments once per job added), and landed **1 200 rows with 1 200 distinct `event_id`s**
 in ClickHouse with the queue draining to 0 failed. Probe rows were then deleted.
 
-### 5.7 Shutdown does not drain in-process workers
+### 5.7 Shutdown does not drain in-process workers — **FIXED 2026-10-15**
 
-`index.ts` calls `closeAllBullmqQueues()` on `SIGTERM`, but with `RUN_WORKERS=true` (the default) the API
-process also hosts seven in-process BullMQ `Worker` instances. Their in-flight jobs are not awaited, so
-they are killed mid-execution on every deploy. The worker entrypoint has the same gap. This is adjacent
-to S6 and was not counted there — S6 was about the HTTP server, which is genuinely fixed.
+`index.ts` called `closeAllBullmqQueues()` on `SIGTERM`, but with `RUN_WORKERS=true` (the default) the
+API process also hosts every domain's BullMQ `Worker`. Closing the *queue* objects did not touch them,
+so their active jobs were abandoned mid-execution on every deploy — a webhook delivery, email send or
+catalog build killed after it had already started side effects. `worker.ts`, the worker-only process
+where this matters most, had the same gap.
+
+Fixed with a registry (`shared/bullmq-workers.ts`) that each `start*Worker` joins, plus
+`closeAllBullmqWorkers()` called by both entrypoints **before** the queues are closed. Registration
+lives in the constructors rather than at the wiring sites because the domain objects expose their
+workers under inconsistent names (`worker`, `outboundWorker`, `deliveryWorker`, …) — a registry a
+constructor joins cannot be forgotten when wiring changes.
+
+The load-bearing assumption was verified rather than trusted: that BullMQ's `close()` waits for the
+job in progress. A probe against real BullMQ and real Dragonfly, using its own `{hashtag}`-named queue
+so no production queue was read or drained, ran a 3s job and then closed:
+
+```text
+job started: true
+close() returned after 2943ms
+job had completed when close() returned: true
+```
+
+Had `close()` merely stopped new work, awaiting it would have bought nothing.
+
+Incidental finding from that probe: **a queue name without a `{hashtag}` fails on Dragonfly** —
+BullMQ's own Lua scripts error with `script tried accessing undeclared key`. Every entry in
+`shared/bullmq-queues.ts` has one; anything added later must too.
 
 ### 5.8 Redis fan-out: failures were invisible and could crash or hang the process
 

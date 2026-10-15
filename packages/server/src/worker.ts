@@ -48,10 +48,14 @@ async function shutdown(signal: string): Promise<void> {
   forceTimer.unref();
 
   try {
+    const { closeAllBullmqWorkers } = await import("./shared/bullmq-workers");
     const { closeAllBullmqQueues } = await import("./shared/bullmq-queue");
+    // Workers first: `close()` lets the job in progress finish. This process exists only to run
+    // jobs, so skipping this abandoned every job that happened to be mid-flight at shutdown.
+    await closeAllBullmqWorkers();
     await closeAllBullmqQueues();
   } catch (err) {
-    console.warn("[worker] queue drain failed", err);
+    console.warn("[worker] drain failed", err);
   }
 
   clearTimeout(forceTimer);

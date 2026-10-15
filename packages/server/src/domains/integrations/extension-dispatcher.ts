@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { Worker } from "bullmq";
 import { getBullmqQueue } from "../../shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { getRedisConnection } from "../../shared/redis";
 import { signOutboundWebhook } from "../../shared/webhook-signing";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
@@ -121,7 +122,7 @@ export function registerExtensionDispatcher(deps: {
 /** Worker: signed POST per delivery; throw on 5xx/timeout for BullMQ retry. */
 export function startExtensionDeliveryWorker(): Worker<ExtensionDeliveryJob> | null {
   if (!workersEnabled()) return null;
-  return new Worker<ExtensionDeliveryJob>(
+  const worker = new Worker<ExtensionDeliveryJob>(
     BULLMQ_QUEUES.EXTENSION_DELIVERY,
     async (job) => {
       const { orgId, extension, url, event, payload } = job.data;
@@ -149,4 +150,7 @@ export function startExtensionDeliveryWorker(): Worker<ExtensionDeliveryJob> | n
       removeOnFail: { count: 200 },
     },
   );
+
+  registerBullmqWorker(worker);
+  return worker;
 }

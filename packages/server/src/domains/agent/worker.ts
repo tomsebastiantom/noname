@@ -1,6 +1,7 @@
 import { context, propagation, SpanStatusCode, trace } from "@opentelemetry/api";
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
 import type { AgentRegistryStorage } from "./adapters/registry-postgres";
@@ -146,6 +147,8 @@ export function startAgentWorker(
       removeOnFail: { count: 100 },
     },
   );
+
+  registerBullmqWorker(worker);
 
   return worker;
 }

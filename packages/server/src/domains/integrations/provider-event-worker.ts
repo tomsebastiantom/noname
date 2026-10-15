@@ -1,5 +1,6 @@
 import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { eventBus } from "../../shared/event-bus";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
@@ -29,7 +30,7 @@ export function startProviderEventWorker(
     createMachineEventMapping(),
     ...(deps.mappings ?? []),
   ]);
-  return new Worker<ProviderEventJob>(
+  const worker = new Worker<ProviderEventJob>(
     BULLMQ_QUEUES.PROVIDER_EVENTS,
     async (job) => processProviderEventJob(job.data.event, deps, registry),
     {
@@ -39,6 +40,9 @@ export function startProviderEventWorker(
       removeOnFail: { count: 500 },
     },
   );
+
+  registerBullmqWorker(worker);
+  return worker;
 }
 
 export async function processProviderEventJob(
