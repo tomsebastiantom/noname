@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-15 (America/New_York)
 **Baseline (audit):** `docs/2026-10-10/architecture-audit/00-EXECUTIVE-SUMMARY.md` and reports 01–07, commit `4334196`
-**Verified tree:** HEAD `3625bb9`, worktree clean (0 uncommitted files)
+**Verified tree:** HEAD `46c759a`, worktree clean (0 uncommitted files)
 **Method:** three independent read-only re-verifications (one per report cluster), each instructed to
 re-read the cited files at current HEAD rather than trust the reports, plus first-party findings from
 the release-verification work in this session.
@@ -38,15 +38,15 @@ and unrotated (§5.1).
 
 ## 2. Report 05 — resolved (6 of 17)
 
-Each row was independently re-read at HEAD. Evidence is `file:line` at `3625bb9`.
+Each row was independently re-read at HEAD. Evidence is `file:line` at `46c759a`.
 
 | # | Risk | Fix commit | Evidence at HEAD |
 |---|---|---|---|
-| S1 | Cross-tenant document read via unscoped `findDocumentById` | `e804b5c`, `f01368d` | `orgId` is the first parameter of all five adapter methods; every statement filters `and(eq(documents.orgId, orgId), eq(documents.id, id))`. Service layer re-checks and fails closed: `content.service.ts:78-84` (`findById`), `:180-183` (`resolve`) return `null` on org mismatch. Regression test added. |
-| S2 | Forged unsigned JWT yields permissions on public capability routes | `646b90e`, `a9799d0`, `2a991c3` | Origin now verifies signature via JWKS: `auth/jwt/verify.ts` (new), `verified-token.ts`, `zitadel/jwks.ts`; `guards.ts:42-45` rejects an unverified payload. On public routes a *presented* credential must validate before HMAC signing (`proxy.ts:107-112`). The wildcard `urn:zitadel:iam:org:projects:roles` claim is no longer accepted; project-id fallback is opt-in and forced off when `NODE_ENV=production` (`roles.ts:41-47`). Regression tests `4e48dc0`, `2d49865`. |
+| S1 | Cross-tenant document read via unscoped `findDocumentById` | `847fbf0`, `f01368d` | `orgId` is the first parameter of all five adapter methods; every statement filters `and(eq(documents.orgId, orgId), eq(documents.id, id))`. Service layer re-checks and fails closed: `content.service.ts:78-84` (`findById`), `:180-183` (`resolve`) return `null` on org mismatch. Regression test added. |
+| S2 | Forged unsigned JWT yields permissions on public capability routes | `646b90e`, `a9799d0`, `c365ea5` | Origin now verifies signature via JWKS: `auth/jwt/verify.ts` (new), `verified-token.ts`, `zitadel/jwks.ts`; `guards.ts:42-45` rejects an unverified payload. On public routes a *presented* credential must validate before HMAC signing (`proxy.ts:107-112`). The wildcard `urn:zitadel:iam:org:projects:roles` claim is no longer accepted; project-id fallback is opt-in and forced off when `NODE_ENV=production` (`roles.ts:41-47`). Regression tests `4e48dc0`, `2d49865`. |
 | S4 | ClickHouse outage gates process boot | `21e4940` | `analytics/index.ts:15` calls `void startClickHouseEnsure()` — background retry (`clickhouse.ts:141-165`, `CLICKHOUSE_ENSURE_*`), `createAnalyticsDomain` no longer blocks. Readiness surfaced on `/health` as `analytics.{ready,attempts,lastError}`. |
 | S5 | Analytics ingest at-most-once, flush errors swallowed | `ed2838f` | `analytics/worker.ts:26-37` ingests inside the job and awaits; errors propagate instead of being recorded to a span and dropped. `queue.ts:12-13` sets `attempts: 5`, exponential backoff, `removeOnFail: {count: 100}`. |
-| S6 | API had no `SIGTERM` handling | `cee20da`, `c547ee5` | `server/src/index.ts:65-106`: `SIGTERM`/`SIGINT` drain — `server.close()`, `closeAllConnections()`, WSS, `closeAllBullmqQueues()`, tracing, forced exit after `SHUTDOWN_TIMEOUT_MS`. `listen-with-retry.ts` retries `EADDRINUSE` instead of throwing. |
+| S6 | API had no `SIGTERM` handling | `cee20da`, `1b7c8c7` | `server/src/index.ts:65-106`: `SIGTERM`/`SIGINT` drain — `server.close()`, `closeAllConnections()`, WSS, `closeAllBullmqQueues()`, tracing, forced exit after `SHUTDOWN_TIMEOUT_MS`. `listen-with-retry.ts` retries `EADDRINUSE` instead of throwing. |
 | S13 | `trackBatch` awaited one Redis round-trip per event | `5447ca2` | `analytics/service.ts:69-76` uses a single `queue.addBulk`. |
 
 ### 2.1 Partial (1)
@@ -148,7 +148,7 @@ Phase 1 enforcement lands.*
 | Dead second HMAC verifier `shared/tenant.ts` | **FIXED** | Deleted, untracked — `93b62da`. It was registered nowhere, only warned on a missing signature, and read an `x-tenant-id` header the worker never sets. |
 | Root scratch files (`key`, `console-*.log`, `stripe_events*.log`) | **FIXED** | Removed by `4334196`; the gitignored repo-root `key` (2.8 KB, plaintext token equal to `OPENAI_API_KEY`) deleted from the filesystem. |
 | `.dsh/skills/*` + `kilo.json` tracked | **FIXED** | Untracked — `3405a38`. `kilo.json` had embedded an absolute machine path. Files remain on disk so skills still load. |
-| `.gitattributes` | **FIXED** | Added with `e8bdbb0`; blobs normalised to LF. |
+| `.gitattributes` | **FIXED** | Added with `23757ed`; blobs normalised to LF. |
 | `.kilo/` ignored | **PARTIAL** | Now in `.gitignore:91` and `git check-ignore` hits — but the worktrees remain on disk (§5.3). |
 | `REQUIRE_EDGE_HMAC` dropped | **FIXED** | `0c30821`. |
 
@@ -202,7 +202,7 @@ CI assertion comparing `machine_definitions` rows against the JSON definitions w
 - `packages/workers/.dev.vars` — tracked at HEAD (blob `ee479708`), value fingerprint `a4d59153`
 - `docs/2026-07-13/AUTH.md` — the same value, twice (`:72`, `:81`); a third occurrence at `:112` was removed
 - `.kilo/worktrees/{brick-legume,positive-marjoram}` — each contained its own `.env`/`.dev.vars` copies
-  (2 and 3 env files respectively, `.dev.vars` present in both). **Now removed** (`dc7b5de`).
+  (2 and 3 env files respectively, `.dev.vars` present in both). **Now removed** (`ece5b14`).
 
 Ignoring `.kilo/` had stopped the tracking but did not remove the copies, so the secret-revival path
 report 06 warned about persisted on the filesystem — and those worktrees were the exact artifact a later
@@ -225,7 +225,7 @@ While hardening the edge, credential forwarding was narrowed on public routes. T
 actor-authenticated capability — `denyUnless` → `requireActorPermission` → `requireAuthenticatedUser`
 requires an access token, so the whole Orders surface returned 401. The important part: the regression
 test **asserted the broken behaviour** (`Authorization` absent from the forwarded request), so the suite
-was green while the feature was down. Reverted in `11e894f`, and the test was rewritten to assert the
+was green while the feature was down. Reverted in `40364d4`, and the test was rewritten to assert the
 real invariant.
 
 Lesson that generalises beyond this incident: a test that encodes an implementation detail as a
@@ -247,7 +247,7 @@ rather than deleted.
 `core.autocrlf=true` with no `.gitattributes` — `git checkout` wrote CRLF, biome requires LF, but git
 normalises on compare, so the working tree looked clean and the same two files failed forever. Proved by
 measurement: 91 of 236 lines CRLF → exit 1; normalised → exit 0. Fixed by normalising the blobs and
-adding `.gitattributes` (`e8bdbb0`).
+adding `.gitattributes` (`23757ed`).
 
 ### 5.6 Analytics durability fix has a throughput cost — **FIXED 2026-10-15**
 
@@ -292,12 +292,12 @@ to S6 and was not counted there — S6 was about the HTTP server, which is genui
 1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
    (Phase 0 item 0.1). Everything in §2's S2 row — both defensive layers — assumes this value is private.
    Deleting it from HEAD is **not** sufficient: it is in history and already public.
-2. ~~**Delete `.kilo/worktrees/*`**~~ — **done** (`dc7b5de`). Both registered worktrees, the merged
+2. ~~**Delete `.kilo/worktrees/*`**~~ — **done** (`ece5b14`). Both registered worktrees, the merged
    `positive-marjoram` branch, `kilo.json` and kilo's internal `.git` state were removed after verifying
    nothing unique would be lost; the `.kilo/` ignore entry is kept deliberately as a guard (§5.3).
 3. **Add CI** with the two convention tests report 03/04 specified. Without it, §3 is guaranteed to grow —
    it already did, twice, while nobody was looking.
-4. ~~**Add a stored-vs-code machine-definition assertion**~~ — **done** (`b61fd01`). Both halves landed:
+4. ~~**Add a stored-vs-code machine-definition assertion**~~ — **done** (`5df9f3a`). Both halves landed:
    the contract test that fails when a transition the capabilities drive disappears, and the seed-time
    round-trip check that compares the stored row against `cart.json` (§5.2).
 5. **Fix the README and `ARCHITECTURE_DECISIONS.md` counts** (§4). Cheap, and the audit named docs as its
@@ -321,5 +321,5 @@ documents.
   refund round-trip has been tested only against a fake provider proxy, never against the Stripe sandbox —
   no webhook event has ever been captured in this environment. Those remain `NOT VERIFIED` and are
   tracked in `docs/2026-10-10/RELEASE-VERIFICATION-STATUS.md`.
-- The verification was performed at `3625bb9`. A separate writer session has been active in this repo;
+- The verification was performed at `46c759a`. A separate writer session has been active in this repo;
   line numbers cited here will drift as it commits, which is itself an argument for the CI in item 3.
