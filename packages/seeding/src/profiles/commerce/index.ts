@@ -463,6 +463,62 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   return res.json() as Promise<T>;
 }
 
+type MachineDefinitionShape = {
+  name: string;
+  initial: string;
+  states: Record<string, { on?: Record<string, { target: string }>; final?: boolean }>;
+};
+
+/**
+ * The stored `machine_definitions` row is the definition the engine actually loads, and this
+ * seeding step is the only thing that ever writes it — so "the code and the database agree" is an
+ * assumption, not an invariant.
+ *
+ * That assumption has silently broken before: the stored row held four states while `cart.json`
+ * declared nine, which made `commerce.orders.cancel`, `.fulfill` and `.refund` unreachable through
+ * the real path. Nothing reported it, because a definition that lacks a transition does not error
+ * at seed time — it only rejects the event much later, when an operator action fails in the
+ * browser. Earlier "verification" of those capabilities had passed only because it wrote to the
+ * tables with direct SQL, bypassing the machine layer entirely.
+ *
+ * Re-reading what the API stored turns that assumption into a checked postcondition, so a partial
+ * or rejected write fails here, loudly, at the moment the drift is introduced.
+ */
+async function verifyStoredCartDefinition(expected: MachineDefinitionShape): Promise<void> {
+  const { data: stored } = await api<{ data: MachineDefinitionShape | null }>(
+    "GET",
+    `/api/machines/definitions/${expected.name}`,
+  );
+  if (!stored) {
+    throw new Error("Cart definition was written but could not be read back from the API");
+  }
+
+  const expectedStates = Object.keys(expected.states).sort();
+  const storedStates = Object.keys(stored.states ?? {}).sort();
+  if (expectedStates.join(",") !== storedStates.join(",")) {
+    throw new Error(
+      `Cart definition drift: cart.json declares [${expectedStates.join(", ")}] but the stored row has [${storedStates.join(", ")}]`,
+    );
+  }
+
+  const wrong: string[] = [];
+  for (const [state, node] of Object.entries(expected.states)) {
+    for (const [event, transition] of Object.entries(node.on ?? {})) {
+      const storedTarget = stored.states?.[state]?.on?.[event]?.target;
+      if (storedTarget !== transition.target) {
+        wrong.push(
+          `${state} --${event}--> ${transition.target} (stored: ${storedTarget ?? "absent"})`,
+        );
+      }
+    }
+  }
+  if (wrong.length > 0) {
+    throw new Error(`Cart definition drift: the stored row disagrees on ${wrong.join("; ")}`);
+  }
+
+  console.log(`Cart definition verified against the stored row (${expectedStates.length} states).`);
+}
+
 async function ensureProductContentType(): Promise<void> {
   const { data: types } = await api<{ data: { name: string }[] }>(
     "GET",
@@ -661,9 +717,10 @@ async function runCommerceSeed() {
 
   const cartDefinition = JSON.parse(
     readFileSync(join(ROOT, "packages/extensions/src/commerce/machines/cart.json"), "utf8"),
-  ) as { name: string };
+  ) as MachineDefinitionShape;
   await api("POST", "/api/machines/definitions", cartDefinition);
-  console.log(`Cart machine definition seeded (${cartDefinition.name}).`);
+  await verifyStoredCartDefinition(cartDefinition);
+  console.log(`Cart machine definition seeded and verified (${cartDefinition.name}).`);
 
   await ensureProductContentType();
   const productId = await seedDemoProduct();

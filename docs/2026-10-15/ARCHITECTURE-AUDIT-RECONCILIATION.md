@@ -226,6 +226,15 @@ Lesson that generalises beyond this incident: a test that encodes an implementat
 requirement will actively defend a bug. The forged-credential test (`4e48dc0`) is written the other way —
 it asserts the *property* (forged claims never become identity) rather than the mechanism.
 
+A second instance of the same class, observed while running the suite for this document:
+`packages/server/src/shared/shared.test.ts:5` does `await eventBus.publish("test.event", …)` and then
+immediately asserts the subscriber ran. `publish` is fire-and-forget (see S7), so that assertion only
+holds when the subscriber's microtask happens to win the race. It passes 3/3 in isolation but timed out
+under full-suite load (**726/727 passed**; the single failure was this test). So the test asserts a
+scheduling accident as a guarantee — which is exactly the fire-and-forget design S7 says is unsafe. It
+is not a regression from any change here, and it should be rewritten to await a real completion signal
+rather than deleted.
+
 ### 5.5 Line endings made the lint gate unfixable, and the loop was invisible
 
 `biome check` failed on `proxy.ts` and `index.ts` with no actionable diff. Root cause:
