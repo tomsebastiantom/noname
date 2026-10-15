@@ -2,7 +2,13 @@
 
 **Date:** 2026-10-12 (America/New_York)
 **Scope:** `docs/2026-10-10/architecture-audit/07-REMEDIATION-ROADMAP.md` Phase 0, items 0.1–0.11
-**Result:** 9 of 11 complete; 0.1 is owner-deferred, 0.4 is remaining.
+**Result:** 10 of 11 complete; 0.1 (secret rotation) is owner-deferred.
+
+> **Correction (2026-10-15):** this header previously read "9 of 11 complete; 0.1 is owner-deferred,
+> 0.4 is remaining." That was stale: 0.4 was completed on 2026-10-12 (§2, `e804b5c`) and the header
+> was not updated with it. The mismatch is recorded here rather than silently overwritten, because a
+> remediation record that contradicts itself is the same doc-reconciliation failure this audit exists
+> to catch.
 
 This is the handover record so the outstanding items can be picked up without re-deriving
 context. Evidence is `file:line` plus commit; every claim was verified by running the code.
@@ -46,7 +52,13 @@ mint valid `x-user-id`/`x-role` headers directly and bypass both.
 
 ### 0.4 — scope tenant reads at the data-access boundary (COMPLETE — 2026-10-12)
 
-`packages/server/src/domains/documents/adapters/postgres.ts` still exposes unscoped reads/writes:
+> **Status note (2026-10-15):** resolved by `e804b5c`. Everything from here to the "**Done (2026-10-12)**"
+> paragraph below is the pre-fix analysis, kept as the record of what the hole was and how blast radius
+> was measured — it is **not** a description of the current tree. The `:226` etc. line numbers in the
+> block are from before the fix. Jump to "**Done (2026-10-12)**" for the verified end state.
+
+At the time of writing, `packages/server/src/domains/documents/adapters/postgres.ts` exposed unscoped
+reads/writes:
 
 ```text
 :226 findDocumentById(id)
