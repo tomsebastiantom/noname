@@ -88,5 +88,8 @@ key.*
 
 # Agent harness state — machine-specific, not part of the product.
 .dsh/
+
+# Kilo was removed on 2026-10-15 (worktrees, branches and kilo.json deleted).
+# Kept as a guard: this exact path previously held copies of packages/workers/.dev.vars,
+# so if a worktree tool is ever reinstalled here, its checkouts must not become trackable.
 .kilo/
-kilo.json
