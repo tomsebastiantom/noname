@@ -92,5 +92,15 @@ export function createInMemoryFlagStorage(): FlagStorage {
         return true;
       });
     },
+
+    async deleteEvaluationsOlderThan(cutoff) {
+      let removed = 0;
+      for (const [flagId, list] of evaluations) {
+        const kept = list.filter((e) => e.evaluatedAt >= cutoff);
+        removed += list.length - kept.length;
+        evaluations.set(flagId, kept);
+      }
+      return removed;
+    },
   };
 }

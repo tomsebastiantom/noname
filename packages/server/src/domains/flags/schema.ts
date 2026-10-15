@@ -55,5 +55,11 @@ export const flagEvaluations = pgTable(
   (t) => ({
     flagTime: index("flag_evals_flag_time").on(t.flagId, t.evaluated_at),
     subjectTime: index("flag_evals_subject_time").on(t.orgId, t.subjectKind, t.evaluated_at),
+    /**
+     * Retention sweeps delete by age alone (`evaluated_at < cutoff`). The two indexes above lead with
+     * `flag_id` and `org_id`, so neither can serve that predicate — without this, each sweep would
+     * sequentially scan the whole table, and this table is the reason a sweep is needed at all.
+     */
+    evaluatedAt: index("flag_evals_evaluated_at").on(t.evaluated_at),
   }),
 );

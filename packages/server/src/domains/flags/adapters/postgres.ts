@@ -1,4 +1,4 @@
-import { and, eq, gte, lte } from "drizzle-orm";
+import { and, eq, gte, lt, lte } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { StorageError } from "../../../shared/domain-error";
 import { validateTargeting } from "../flag-validation";
@@ -102,6 +102,16 @@ export function createPostgresFlagStorage(db: Database): FlagStorage {
           evaluated_at: record.evaluatedAt,
         })),
       );
+    },
+
+    async deleteEvaluationsOlderThan(cutoff) {
+      // `.returning()` so the caller can report how many rows went; the predicate is supported by
+      // the `flag_evals_evaluated_at` index rather than a sequential scan.
+      const deleted = await db
+        .delete(flagEvaluations)
+        .where(lt(flagEvaluations.evaluated_at, cutoff))
+        .returning({ id: flagEvaluations.id });
+      return deleted.length;
     },
 
     async listEvaluations(flagId, filters = {}) {

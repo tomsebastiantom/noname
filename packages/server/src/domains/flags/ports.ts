@@ -104,6 +104,13 @@ export interface FlagStorage {
   /** Bulk insert — used on the per-request evaluate() path so N flags cost one round-trip, not N. */
   recordEvaluations(records: Omit<EvaluationRecord, "id">[]): Promise<void>;
   listEvaluations(flagId: string, filters?: EvaluationFilters): Promise<EvaluationRecord[]>;
+  /**
+   * Retention sweep: delete evaluations recorded before `cutoff` and return how many went.
+   *
+   * `flag_evaluations` has no natural expiry — it is written on every flag evaluation, which is a
+   * per-request path — so without this the table grows without bound (S12).
+   */
+  deleteEvaluationsOlderThan(cutoff: Date): Promise<number>;
 }
 
 export interface FlagFilters {

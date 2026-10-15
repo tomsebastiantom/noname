@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
+import { sweepFlagEvaluations } from "./evaluation-retention";
 import { FlagEvents } from "./events";
 import type {
   Condition,
@@ -151,6 +152,14 @@ export async function recordEvaluations(
   );
   for (const { flag, ctx, result } of evaluated) {
     publishEvaluated(flag, ctx, result);
+  }
+
+  // Retention trigger. This is the only place evaluations are written, so it is the natural hook —
+  // but it is deliberately not awaited: `sweepFlagEvaluations` is time-gated to at most one run per
+  // interval, and the evaluation path must not pay for a DELETE. The guard keeps loosely-typed test
+  // doubles that predate this method from producing a spurious failure log.
+  if (typeof storage.deleteEvaluationsOlderThan === "function") {
+    void sweepFlagEvaluations(storage).catch(() => undefined);
   }
 }
 

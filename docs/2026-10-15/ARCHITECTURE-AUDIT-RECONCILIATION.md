@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 9 | 2 | 6 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 9 | 4 | 4 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,8 +30,8 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below moved report 05 to **9 fixed / 2 partial / 6 still present** (S8, S9 and S10 fixed, S7
-partially, and the new-finding §5.7 also fixed).
+recorded below moved report 05 to **9 fixed / 4 partial / 4 still present** (S8, S9, S10 fixed; S7, S11,
+S12, S16 partial; §5.7 fixed as a new finding).
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -68,8 +68,8 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S8 | Redis fan-out health can never report degraded | **FIXED 2026-10-15.** Liveness is driven by the connections' own `ready`/`error`/`close`/`end` events instead of `publisher !== null`. One finding, **three** sites — `event-bus`, `sse-manager` and `collab-redis-relay` all had it identically; all three now use `shared/redis-fanout.ts`. | Verified live: stopping Dragonfly flipped all three to degraded in 4s and restarting recovered them in 2s. Neither direction worked before. |
 | S9 | Redis helper silently drops TLS/username/db | **FIXED 2026-10-15.** `getRedisConnection()` now derives the whole URL: `rediss://` (or `?tls=true`) enables TLS, an ACL `username` is kept and percent-decoded, and the database index is read from the path or `?db=`. A malformed URL or a non-`redis://` scheme throws instead of silently falling back to localhost. | Three silent failures, not one: a TLS-requiring Redis was dialled in the clear, a Redis 6 ACL user authenticated as `default`, and `redis://host/2` silently became db 0 — cross-talk between datasets that looks like a healthy connection. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
-| S11 | Transition hooks run outside the transaction, inline on the request | `machines/engine.ts:145-163` awaits `hooks.onTransitionComplete` after commit; `replayPersistedTransition` `:170-204` unchanged | A hook failure cannot roll back the transition, and it lengthens the request. |
-| S12 | `flag_evaluations` unbounded; no ClickHouse sink | `flags/schema.ts:38-59` — no TTL/cleanup; `evaluation.ts:132-155` inserts per evaluation | DB insert is now batched, but `eventBus.publish` is still once per flag (`:152-154`), so half of this risk is untouched. |
+| S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
+| S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. **Still absent: a ClickHouse sink, and the per-flag `flag.evaluated` publish** — see §5.10. | The publish half is worse than the audit implied: **the event has no subscribers at all**, so each evaluation costs a Redis publish for zero consumers. |
 | S14 | Multi-instance hazards (SSE, collab, caches, version races) | `event-bus`, `sse-manager`, `collab-relay`, cache invalidation unchanged | One sub-item is resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. |
 | S15 | Unbounded tables (idempotency, provider receipts) | `capabilities/schema.ts:17,25` — `expires_at` field and index exist, but nothing deletes expired rows; `provider_event_receipts` has no cleanup | Corrected from the audit's own framing: the expiry index was already present at audit time. The real gap is the absence of any reaper. `audiences` experience decisions *are* bounded (`cleanupExpiredExperienceDecisions`) — the audit did not cite that precedent. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
@@ -345,6 +345,74 @@ attach no `error` listener, so during a Redis outage the logs fill with `[ioredi
 plus an `AggregateError` per retry per connection. The six connections this change owns are now quiet
 (edge-triggered logging only); the rest are unchanged. Worth a follow-up, since a log flood that large
 buries the one line that matters.
+
+### 5.9 A committed transition reported as a failure, proven end-to-end
+
+S11 was not a theoretical ordering concern. The commerce hook (`bootstrap.ts`) runs order projection,
+audience attribution, analytics and a notification — and the notification throws
+`NotFoundError("Notification template", templateId)` when no template is published for a trigger. The
+error propagated *after* `commitTransition` had already persisted the new state.
+
+Demonstrated against the running stack by sending an `addToCart` transition carrying a `notify` whose
+trigger has no template. The same request, with only the engine's post-commit handling changed:
+
+```text
+pre-S11 behaviour:   -> 404 {"error":"Notification template not found: ..."}
+                     read back -> revision=2      (the transition HAD committed)
+after the fix:       -> 200
+                     read back -> revision=2
+```
+
+The first case is the defect stated plainly: the API told the caller the operation failed while the
+state had already changed, so the natural retry then fails on a revision conflict. The row counts
+confirm the mechanism — the transition record exists and no delivery row was written, i.e. the commit
+preceded the hook and the hook threw.
+
+Two deliberate limits, so this is recorded as partial rather than fixed:
+
+- **Hooks are still awaited inline.** Detaching them would remove their latency from the request but
+  trade this bug for silent loss on crash, and callers rely on the projection being written before the
+  response returns. Moving them onto a durable queue is the architectural follow-up.
+- **Hooks still run outside the transaction**, so they still cannot be rolled back. Making them
+  transactional would require hooks to be storage-level operations inside `commitTransition`, which is
+  a port redesign rather than a fix.
+
+`replayPersistedTransition` keeps a distinct contract: there the hook *is* the operation, so it now
+returns `false` when the hook fails instead of reporting a repair that did not happen.
+
+One honest consequence: an existing engine test asserted the old behaviour
+(`rejects.toThrow("projection unavailable")`), so the suite had been defending this bug — the same
+pattern as §5.4. It now asserts that the transition succeeds and that replay still repairs the
+projection.
+
+### 5.10 Flag evaluations: retention added, but the write path publishes to nobody
+
+`flag_evaluations` is written on every flag evaluation — a per-request path — with no expiry, so it grew
+without bound. Retention now bounds it, and the sweep is deliberately off the hot path: time-gated to
+at most once per interval per process, never overlapping, and it cannot fail the evaluation that
+triggered it.
+
+Two things the audit's framing understated:
+
+- **The retention predicate needed its own index.** `evaluated_at < cutoff` is not served by
+  `flag_evals_flag_time` or `flag_evals_subject_time` (both lead with `flag_id`/`org_id`). Verified by
+  A/B against Postgres: with `flag_evals_evaluated_at` the plan is
+  `Index Scan using flag_evals_evaluated_at`; without it, `Seq Scan ... Filter`. At 617 rows either is
+  fine, which is precisely why this had to be measured rather than assumed — at scale the difference is
+  a full scan per sweep.
+- **`flag.evaluated` has no subscribers anywhere in the codebase.** The audit called the per-flag
+  publish the untouched half of S12; it is worse than that. Since `eventBus.publish` also fans out to
+  Redis, every flag evaluated on every request costs a Redis publish for an event nothing consumes.
+  That is a decision to make (batch it into one event per evaluation set, or drop it) rather than a
+  change to make silently, because it alters a published event contract — so it is left open.
+
+Also worth recording before anyone enables retention in an existing environment: the default 30-day
+window is **not inert**. In this database the oldest evaluations are 32 days old, so the first sweep
+would delete 93 existing rows. That is what retention means, but it should be a deliberate choice.
+
+Verified live against real Postgres and the real adapter: with a 100-day window and a probe row
+backdated 200 days, the sweep removed exactly that one row, left the current probe row in place, and
+left all 93 real older-than-30-days rows untouched.
 
 ---
 

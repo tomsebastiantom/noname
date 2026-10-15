@@ -30,6 +30,47 @@ export interface MachineEngineHooks {
   }) => Promise<void>;
 }
 
+type TransitionHookContext = Parameters<NonNullable<MachineEngineHooks["onTransitionComplete"]>>[0];
+
+/**
+ * Run a post-commit hook without letting its failure masquerade as a failed transition (S11).
+ *
+ * `storage.commitTransition` has already persisted the new state by the time this runs, so the
+ * transition *happened* whether or not the hook succeeds. Letting the error propagate made a
+ * committed transition report as an error — a failure inside the commerce hook (order projection,
+ * audience attribution, analytics, notifications — see `bootstrap.ts`) turned a genuinely cancelled
+ * order into a 500, and the client's natural retry then fails on a revision conflict instead. The
+ * caller was told the opposite of what happened.
+ *
+ * Failures are logged with enough context to act on, and the projection can be rebuilt from the
+ * persisted transition through `replayPersistedTransition` — the repair path that already exists for
+ * exactly this case. So this is fail-soft by design, not by omission.
+ *
+ * Deliberately still awaited rather than detached. Callers depend on the projection being written
+ * before the response returns (an immediate read must not observe the pre-transition state), and
+ * detaching in-process work would trade this bug for silent loss on crash. Moving hooks onto a
+ * durable queue is the architectural follow-up, which would also take their latency off the request.
+ *
+ * Returns whether the hook succeeded.
+ */
+async function runPostCommitHook(
+  hook: NonNullable<MachineEngineHooks["onTransitionComplete"]>,
+  context: TransitionHookContext,
+): Promise<boolean> {
+  try {
+    await hook(context);
+    return true;
+  } catch (error) {
+    console.error(
+      `[machines] post-commit hook failed for "${context.event}" on instance ${context.instance.id} ` +
+        `(${context.fromState} -> ${context.toState}, org ${context.orgId}); the transition is ` +
+        "committed and the projection can be rebuilt via replayPersistedTransition",
+      error,
+    );
+    return false;
+  }
+}
+
 type MachineEvent = { type: string; params?: Record<string, unknown> };
 
 type Execution = {
@@ -152,7 +193,9 @@ export function createMachineEngine(
         });
 
         if (hooks.onTransitionComplete) {
-          await hooks.onTransitionComplete({
+          // A failure here must not fail the request: the state change is already committed, so
+          // reporting an error would tell the caller the opposite of what happened (S11).
+          await runPostCommitHook(hooks.onTransitionComplete, {
             orgId,
             instance: saved,
             event,
@@ -192,7 +235,12 @@ export function createMachineEngine(
         );
       if (!persisted) return false;
 
-      await hooks.onTransitionComplete({
+      // Here the hook *is* the operation: this method's whole purpose is repairing a projection that
+      // did not get written. So a hook failure means the repair failed, and the return value must say
+      // so rather than reporting success — unlike `transition`, where the state change stands on its
+      // own. The failure is still logged rather than thrown, so a caller can fall through to a normal
+      // transition attempt instead of receiving an opaque 500.
+      return await runPostCommitHook(hooks.onTransitionComplete, {
         orgId,
         instance,
         event: persisted.event,
@@ -200,7 +248,6 @@ export function createMachineEngine(
         toState: persisted.toState,
         params: persisted.params,
       });
-      return true;
     },
 
     listInstances(orgId) {

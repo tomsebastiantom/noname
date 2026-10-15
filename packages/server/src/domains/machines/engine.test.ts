@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ConflictError, ValidationError } from "../../shared/domain-error";
 import { createMachineEngine, registerGuard } from "./engine";
 import type {
@@ -157,7 +157,8 @@ describe("machine engine XState execution", () => {
     });
   });
 
-  it("replays only a matching successful final transition after a hook failure", async () => {
+  it("does not fail a committed transition when the hook throws, and can still repair by replay", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const paidCart: MachineDefinition = {
       name: "cart",
       initial: "awaiting_payment",
@@ -175,11 +176,17 @@ describe("machine engine XState execution", () => {
     });
     const started = await engine.start("org-1", "cart", { ownerUserId: "user-1" });
 
+    // S11: `commitTransition` persists the new state *before* the hook runs, so a hook failure must
+    // not be reported as a failed transition — that told the caller the opposite of what happened,
+    // and the natural retry then fails on a revision conflict. The failure is logged instead.
     await expect(
       engine.transition("org-1", started.id, "PAYMENT_SUCCEEDED", { paymentRef: "pi_1" }),
-    ).rejects.toThrow("projection unavailable");
+    ).resolves.toMatchObject({ currentState: "paid" });
     expect((await engine.getInstance("org-1", started.id))?.currentState).toBe("paid");
+    expect(errorSpy).toHaveBeenCalled();
+    expect(String(errorSpy.mock.calls[0]?.[0])).toContain("post-commit hook failed");
 
+    // The projection is still missing, which is what replay exists to repair.
     await expect(
       engine.replayPersistedTransition(
         "org-1",
@@ -211,6 +218,44 @@ describe("machine engine XState execution", () => {
       ),
     ).resolves.toBe(true);
     expect(hookCalls).toBe(2);
+    errorSpy.mockRestore();
+  });
+
+  it("reports a failed replay rather than a successful one", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const paidCart: MachineDefinition = {
+      name: "cart",
+      initial: "awaiting_payment",
+      states: {
+        awaiting_payment: { on: { PAYMENT_SUCCEEDED: { target: "paid" } } },
+        paid: { final: true },
+      },
+    };
+    const engine = createMachineEngine(
+      createStorage(paidCart),
+      // Never succeeds: this is the "repair failed" case.
+      {
+        async onTransitionComplete() {
+          throw new Error("still unavailable");
+        },
+      },
+    );
+    const started = await engine.start("org-1", "cart", {});
+    await engine.transition("org-1", started.id, "PAYMENT_SUCCEEDED", { paymentRef: "pi_1" });
+
+    // Here the hook *is* the operation, so returning true would claim a projection was rebuilt that
+    // was not. The caller falls through to a normal transition attempt instead of a false success.
+    await expect(
+      engine.replayPersistedTransition(
+        "org-1",
+        started.id,
+        "PAYMENT_SUCCEEDED",
+        { paymentRef: "pi_1" },
+        "paid",
+        "awaiting_payment",
+      ),
+    ).resolves.toBe(false);
+    errorSpy.mockRestore();
   });
 
   it("filters and orders by a generic context date with legacy createdAt fallback", async () => {
