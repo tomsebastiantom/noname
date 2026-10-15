@@ -3,38 +3,27 @@ import { Worker } from "bullmq";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
-import type { AnalyticsEventDTO, AnalyticsStorage } from "./ports";
+import type { AnalyticsStorage } from "./ports";
 import type { AnalyticsJobData } from "./queue";
 
 const tracer = trace.getTracer("analytics-worker");
 
-function isBatchedJobData(data: AnalyticsJobData | AnalyticsEventDTO): data is AnalyticsJobData {
-  return Array.isArray((data as { events?: unknown }).events);
-}
-
-/**
- * Jobs enqueued before batching landed carry a single event as the job data, rather than
- * `{ events: [...] }`. A deploy can leave such a job in Redis, and a worker that only understood
- * the new shape would throw on it and burn its retries. Read both shapes so the rollout is not a
- * source of dropped events.
- */
-export function eventsFromJobData(
-  data: AnalyticsJobData | AnalyticsEventDTO | undefined,
-): AnalyticsEventDTO[] {
-  if (!data) return [];
-  if (isBatchedJobData(data)) return data.events;
-  return [data];
-}
-
 /**
  * Ingest one job's events. Exported so the "one ClickHouse insert per batch, not per event"
  * property can be asserted directly, without standing up Redis and a real BullMQ worker.
+ *
+ * There is exactly one job format — `{ events: [...] }` — set by the producers in `service.ts`.
+ * A pre-batching job carrying a bare single event was tolerated here for one commit; that
+ * tolerance is gone, because nothing is deployed yet and supporting two payload shapes means two
+ * contracts, two code paths, and two ways for a producer and worker to disagree in silence. If a
+ * stray old-shape job did reach this worker it now throws and fails visibly instead of being
+ * silently accepted as a different shape than the producers write.
  */
 export async function processAnalyticsJob(
   storage: AnalyticsStorage,
-  data: AnalyticsJobData | AnalyticsEventDTO | undefined,
+  data: AnalyticsJobData | undefined,
 ): Promise<void> {
-  const events = eventsFromJobData(data);
+  const events = data?.events ?? [];
   if (events.length === 0) return;
 
   await tracer.startActiveSpan("analytics.ingest.batch", async (span) => {

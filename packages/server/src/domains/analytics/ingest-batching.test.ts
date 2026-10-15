@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnalyticsEventDTO, AnalyticsStorage } from "./ports";
 import { analyticsIngestBatchSize, chunkAnalyticsEvents } from "./queue";
 import { createAnalyticsService } from "./service";
-import { eventsFromJobData, processAnalyticsJob } from "./worker";
+import { processAnalyticsJob } from "./worker";
 
 /**
  * Regression guard for the write amplification introduced when analytics ingest was made durable.
@@ -123,31 +123,12 @@ describe("analytics ingest batching", () => {
     ).toHaveLength(3);
   });
 
-  it("still processes a pre-batching single-event job left in the queue", async () => {
-    const storage = { ingestBatch: vi.fn(async () => {}) } as unknown as AnalyticsStorage;
-
-    // Legacy job shape: the event itself is the job data.
-    await processAnalyticsJob(storage, event(7));
-
-    expect(storage.ingestBatch).toHaveBeenCalledTimes(1);
-    expect(
-      (storage.ingestBatch as unknown as { mock: { calls: unknown[][] } }).mock.calls[0]?.[0],
-    ).toHaveLength(1);
-  });
-
-  it("does not touch storage for an empty or malformed job payload", async () => {
+  it("does not touch storage for an empty or absent job payload", async () => {
     const storage = { ingestBatch: vi.fn(async () => {}) } as unknown as AnalyticsStorage;
 
     await processAnalyticsJob(storage, { events: [] });
     await processAnalyticsJob(storage, undefined);
 
     expect(storage.ingestBatch).not.toHaveBeenCalled();
-  });
-
-  it("normalizes both job shapes", () => {
-    const single = event(1);
-    expect(eventsFromJobData({ events: [single] })).toHaveLength(1);
-    expect(eventsFromJobData(single)).toEqual([single]);
-    expect(eventsFromJobData(undefined)).toEqual([]);
   });
 });

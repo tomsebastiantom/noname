@@ -262,10 +262,16 @@ job performs exactly one multi-row `INSERT`. A buffer is deliberately *not* rein
 what caused the original at-most-once bug, because jobs completed while events sat in RAM. The queue is
 the buffer now, so a crash loses nothing, and a batch is one statement, so it either lands or does not.
 
-Also handled: the worker reads both job shapes, because a deploy can leave a pre-batching single-event
-job in Redis and a new-only worker would throw on it and burn its retries. The reverse direction is
-*not* handled and is a real rollout constraint — **an old worker cannot process a new batch job**, so the
-worker must be deployed before or with the producers, or the queue drained first.
+Also handled: `analytics_events` is a plain `MergeTree` with no dedup on `event_id`, so the batch size
+bounds how much one retry can duplicate — worth knowing before raising the default.
+
+There is exactly **one** job format, `{ events: [...] }`. An earlier revision of this fix also tolerated
+an old bare-single-event job, on the theory that a deploy could leave one in Redis. That tolerance was
+removed: nothing is deployed, so there is no in-flight legacy job to protect, and supporting two payload
+shapes means two contracts, two code paths, and two ways for a producer and a worker to disagree in
+silence. The rule this repo should follow while it is still pre-production — and the reason the
+interfaces can be changed freely — is that a compat shim must be justified by a real deployed version,
+not by a hypothetical one.
 
 Verified live, not just in unit tests: `POST /api/analytics/track` through the edge with **1 200 events**
 returned `201 {"accepted":1200}`, incremented BullMQ's job counter by exactly **3** (the counter is
