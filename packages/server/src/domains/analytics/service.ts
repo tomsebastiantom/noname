@@ -1,6 +1,6 @@
 import type { Queue } from "bullmq";
-import type { AnalyticsService, AnalyticsStorage } from "./ports";
-import type { AnalyticsJobData } from "./queue";
+import type { AnalyticsEventDTO, AnalyticsService, AnalyticsStorage } from "./ports";
+import { type AnalyticsJobData, analyticsIngestBatchSize, chunkAnalyticsEvents } from "./queue";
 
 const AUDIT_EVENTS = new Set(["machine.transition", "task.failed"]);
 
@@ -38,7 +38,7 @@ export function createAnalyticsService(
 ): AnalyticsService {
   type TrackInput = Parameters<AnalyticsService["track"]>[1];
 
-  function buildFrontendEvent(orgId: string, input: TrackInput): AnalyticsJobData {
+  function buildFrontendEvent(orgId: string, input: TrackInput): AnalyticsEventDTO {
     return {
       eventId: crypto.randomUUID(),
       orgId,
@@ -62,15 +62,18 @@ export function createAnalyticsService(
   return {
     async track(orgId, input) {
       const event = buildFrontendEvent(orgId, input);
-      await queue.add("ingest", event);
+      await queue.add("ingest", { events: [event] });
       return { eventId: event.eventId, accepted: true };
     },
 
     async trackBatch(orgId, inputs) {
-      // One round trip for the whole batch instead of N serial `add` calls.
       const events = inputs.map((input) => buildFrontendEvent(orgId, input));
-      if (events.length > 0) {
-        await queue.addBulk(events.map((data) => ({ name: "ingest", data })));
+      // Chunk into batched jobs: one Redis round trip and one ClickHouse INSERT per chunk, instead
+      // of one of each per event. The job payload is the batch, so nothing is held in process
+      // memory between accepting the request and the write landing.
+      const chunks = chunkAnalyticsEvents(events, analyticsIngestBatchSize());
+      if (chunks.length > 0) {
+        await queue.addBulk(chunks.map((chunk) => ({ name: "ingest", data: { events: chunk } })));
       }
       return events.map((event) => ({ eventId: event.eventId, accepted: true }));
     },
@@ -79,7 +82,7 @@ export function createAnalyticsService(
       const orgId = (data as any).orgId || "";
       if (!orgId) return;
 
-      const event: AnalyticsJobData = {
+      const event: AnalyticsEventDTO = {
         eventId: crypto.randomUUID(),
         orgId,
         eventType,
@@ -95,7 +98,7 @@ export function createAnalyticsService(
       if (AUDIT_EVENTS.has(eventType)) {
         await storage.ingest(event);
       } else {
-        await queue.add("ingest", event);
+        await queue.add("ingest", { events: [event] });
       }
     },
 

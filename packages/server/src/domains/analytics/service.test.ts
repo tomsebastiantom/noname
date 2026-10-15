@@ -1,6 +1,7 @@
 import type { Queue } from "bullmq";
 import { describe, expect, it, vi } from "vitest";
 import type { AnalyticsEventDTO, AnalyticsStorage } from "./ports";
+import type { AnalyticsJobData } from "./queue";
 import { createAnalyticsService } from "./service";
 
 const UUID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
@@ -10,9 +11,16 @@ function createTestService() {
     ingest: vi.fn(async (_event: AnalyticsEventDTO) => {}),
   } as unknown as AnalyticsStorage;
   const queue = {
-    add: vi.fn(async (_name: string, _event: AnalyticsEventDTO) => {}),
-  } as unknown as Queue<AnalyticsEventDTO>;
+    add: vi.fn(async (_name: string, _data: AnalyticsJobData) => {}),
+    addBulk: vi.fn(async (_jobs: { name: string; data: AnalyticsJobData }[]) => {}),
+  } as unknown as Queue<AnalyticsJobData>;
   return { service: createAnalyticsService(storage, queue), storage, queue };
+}
+
+/** The job data is `{ events: [...] }`; assertions below target the single event inside it. */
+function firstEvent(queue: { add: { mock: { calls: unknown[][] } } }): unknown {
+  const data = queue.add.mock.calls.at(-1)?.[1] as AnalyticsJobData | undefined;
+  return data?.events?.[0];
 }
 
 describe("analytics server event dimensions", () => {
@@ -32,23 +40,24 @@ describe("analytics server event dimensions", () => {
       variantId: "66666666-7777-4888-8999-aaaaaaaaaaaa",
     });
 
-    expect(queue.add).toHaveBeenCalledWith(
-      "ingest",
-      expect.objectContaining({
-        eventType: "experience.served",
-        eventSource: "server",
-        sessionId: UUID,
-        audienceKey: "returning-customer",
-        audienceDefinitionVersion: 12,
-        bindingId: "binding-42",
-        bindingVersion: 5,
-        decisionId: "decision-99",
-        pageKey: "/products/widget",
-        locale: "en-US",
-        schemaId: "11111111-2222-4333-8444-555555555555",
-        variantId: "66666666-7777-4888-8999-aaaaaaaaaaaa",
-      }),
-    );
+    expect(queue.add).toHaveBeenCalledWith("ingest", {
+      events: [
+        expect.objectContaining({
+          eventType: "experience.served",
+          eventSource: "server",
+          sessionId: UUID,
+          audienceKey: "returning-customer",
+          audienceDefinitionVersion: 12,
+          bindingId: "binding-42",
+          bindingVersion: 5,
+          decisionId: "decision-99",
+          pageKey: "/products/widget",
+          locale: "en-US",
+          schemaId: "11111111-2222-4333-8444-555555555555",
+          variantId: "66666666-7777-4888-8999-aaaaaaaaaaaa",
+        }),
+      ],
+    });
   });
 
   it("retains named dimensions on trusted server outcomes and rejects malformed session IDs", async () => {
@@ -65,21 +74,22 @@ describe("analytics server event dimensions", () => {
       locale: "en-US",
     });
 
-    expect(queue.add).toHaveBeenCalledWith(
-      "ingest",
-      expect.objectContaining({
-        eventType: "commerce.order.paid",
-        eventSource: "server",
-        sessionId: "",
-        audienceKey: "returning-customer",
-        audienceDefinitionVersion: 12,
-        bindingId: "binding-42",
-        bindingVersion: 5,
-        decisionId: "decision-99",
-        pageKey: "/products/widget",
-        locale: "en-US",
-      }),
-    );
+    expect(queue.add).toHaveBeenCalledWith("ingest", {
+      events: [
+        expect.objectContaining({
+          eventType: "commerce.order.paid",
+          eventSource: "server",
+          sessionId: "",
+          audienceKey: "returning-customer",
+          audienceDefinitionVersion: 12,
+          bindingId: "binding-42",
+          bindingVersion: 5,
+          decisionId: "decision-99",
+          pageKey: "/products/widget",
+          locale: "en-US",
+        }),
+      ],
+    });
   });
 
   it("never copies server-owned attribution supplied to frontend track", async () => {
@@ -96,18 +106,20 @@ describe("analytics server event dimensions", () => {
       locale: "xx-XX",
     });
 
-    expect(queue.add).toHaveBeenCalledWith(
-      "ingest",
-      expect.objectContaining({
-        eventSource: "frontend",
-        audienceKey: null,
-        audienceDefinitionVersion: null,
-        bindingId: null,
-        bindingVersion: null,
-        decisionId: null,
-        pageKey: null,
-        locale: null,
-      }),
-    );
+    expect(queue.add).toHaveBeenCalledWith("ingest", {
+      events: [
+        expect.objectContaining({
+          eventSource: "frontend",
+          audienceKey: null,
+          audienceDefinitionVersion: null,
+          bindingId: null,
+          bindingVersion: null,
+          decisionId: null,
+          pageKey: null,
+          locale: null,
+        }),
+      ],
+    });
+    expect(firstEvent(queue as never)).toBeTruthy();
   });
 });

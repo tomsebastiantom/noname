@@ -197,21 +197,27 @@ the edge returned `200 {"status":"cancelled","revision":2}` for the first time.
 definitions they were generated from. Every machine-based capability is exposed to it. A boot-time or
 CI assertion comparing `machine_definitions` rows against the JSON definitions would close the class.
 
-### 5.3 The secret now exists in three places on disk
+### 5.3 The secret existed in three places on disk — **third one removed 2026-10-15**
 
 - `packages/workers/.dev.vars` — tracked at HEAD (blob `ee479708`), value fingerprint `a4d59153`
 - `docs/2026-07-13/AUTH.md` — the same value, twice (`:72`, `:81`); a third occurrence at `:112` was removed
-- `.kilo/worktrees/{brick-legume,positive-marjoram}` — **both still on disk**, each containing `.env`/
-  `.dev.vars` copies (verified: 2 and 3 env files respectively, `.dev.vars` present in both)
+- `.kilo/worktrees/{brick-legume,positive-marjoram}` — each contained its own `.env`/`.dev.vars` copies
+  (2 and 3 env files respectively, `.dev.vars` present in both). **Now removed** (`dc7b5de`).
 
-Ignoring `.kilo/` stopped the tracking, but did not remove the copies. The secret-revival path report 06
-warned about therefore persists on the filesystem — and those worktrees are the exact artifact a later
-`git add -A` or a well-meaning "let me check that other worktree" would resurrect.
+Ignoring `.kilo/` had stopped the tracking but did not remove the copies, so the secret-revival path
+report 06 warned about persisted on the filesystem — and those worktrees were the exact artifact a later
+`git add -A` or a well-meaning "let me check that other worktree" would have resurrected. Both worktrees
+were removed **only after verifying nothing unique would be lost**: `positive-marjoram` was already merged
+into `main` and `brick-legume`'s detached HEAD (`2ee63c6`) was reachable from `main`. Removing them too
+early would have silently dropped two branches of real work.
 
-They are also full stale checkouts of this repo (each contains its own
+The `.kilo/` ignore entry is deliberately **kept**, with a comment saying why: that path is exactly where
+the `.dev.vars` copies leaked from, so a future reinstall of a worktree tool must not become trackable.
+The `kilo.json` entry was dropped since the file is gone.
+
+They were also full stale checkouts of this repo (each contained its own
 `docs/2026-07-04/ARCHITECTURE_DECISIONS.md` and the rest of the tree), so an agent or a person searching
-the workspace by filename can read an out-of-date copy of a doc and mistake it for the current one. Any
-doc-consistency check that walks the filesystem rather than the index will double-count them.
+the workspace by filename could read an out-of-date copy of a doc and mistake it for the current one.
 
 ### 5.4 A regression that the suite had encoded as correct
 
@@ -243,13 +249,28 @@ normalises on compare, so the working tree looked clean and the same two files f
 measurement: 91 of 236 lines CRLF → exit 1; normalised → exit 0. Fixed by normalising the blobs and
 adding `.gitattributes` (`e8bdbb0`).
 
-### 5.6 Analytics durability fix has a throughput cost
+### 5.6 Analytics durability fix has a throughput cost — **FIXED 2026-10-15**
 
 `ed2838f` correctly made ingest awaited-inside-the-job, but removed the batching that previously
-existed: `analytics/worker.ts:26-37` now runs one job and one ClickHouse insert per event (`batch_size`
-hardcoded to 1, concurrency 1). A 100-event browser batch becomes 100 jobs and 100 inserts. Correctness
-improved; write amplification regressed. Worth a follow-up that keeps the durability win and restores
-batching *inside* the job.
+existed: `analytics/worker.ts` ran one job and one ClickHouse insert per event (`batch_size` hardcoded
+to 1). A 100-event browser batch became 100 jobs and 100 inserts. Correctness improved; write
+amplification regressed.
+
+Restored by batching at **enqueue** time rather than with an in-process buffer (`queue.ts`, `service.ts`,
+`worker.ts`): one job now carries a chunk of events (`ANALYTICS_INGEST_BATCH_SIZE`, default 500) and each
+job performs exactly one multi-row `INSERT`. A buffer is deliberately *not* reintroduced — a buffer is
+what caused the original at-most-once bug, because jobs completed while events sat in RAM. The queue is
+the buffer now, so a crash loses nothing, and a batch is one statement, so it either lands or does not.
+
+Also handled: the worker reads both job shapes, because a deploy can leave a pre-batching single-event
+job in Redis and a new-only worker would throw on it and burn its retries. The reverse direction is
+*not* handled and is a real rollout constraint — **an old worker cannot process a new batch job**, so the
+worker must be deployed before or with the producers, or the queue drained first.
+
+Verified live, not just in unit tests: `POST /api/analytics/track` through the edge with **1 200 events**
+returned `201 {"accepted":1200}`, incremented BullMQ's job counter by exactly **3** (the counter is
+race-free — it increments once per job added), and landed **1 200 rows with 1 200 distinct `event_id`s**
+in ClickHouse with the queue draining to 0 failed. Probe rows were then deleted.
 
 ### 5.7 Shutdown does not drain in-process workers
 
@@ -265,12 +286,14 @@ to S6 and was not counted there — S6 was about the HTTP server, which is genui
 1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
    (Phase 0 item 0.1). Everything in §2's S2 row — both defensive layers — assumes this value is private.
    Deleting it from HEAD is **not** sufficient: it is in history and already public.
-2. **Delete `.kilo/worktrees/*`** or at minimum the `.env`/`.dev.vars` copies inside them (§5.3). This is
-   minutes of work and closes a live secret-revival path.
+2. ~~**Delete `.kilo/worktrees/*`**~~ — **done** (`dc7b5de`). Both registered worktrees, the merged
+   `positive-marjoram` branch, `kilo.json` and kilo's internal `.git` state were removed after verifying
+   nothing unique would be lost; the `.kilo/` ignore entry is kept deliberately as a guard (§5.3).
 3. **Add CI** with the two convention tests report 03/04 specified. Without it, §3 is guaranteed to grow —
    it already did, twice, while nobody was looking.
-4. **Add a stored-vs-code machine-definition assertion** (§5.2). This is the highest-severity *new*
-   finding: it silently disables an entire capability class, and it defeats testing done at the wrong layer.
+4. ~~**Add a stored-vs-code machine-definition assertion**~~ — **done** (`b61fd01`). Both halves landed:
+   the contract test that fails when a transition the capabilities drive disappears, and the seed-time
+   round-trip check that compares the stored row against `cart.json` (§5.2).
 5. **Fix the README and `ARCHITECTURE_DECISIONS.md` counts** (§4). Cheap, and the audit named docs as its
    largest finding cluster; leaving them wrong means the next reader re-derives everything.
 
