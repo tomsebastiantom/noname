@@ -74,6 +74,20 @@ export const documents = pgTable(
     tenantType: index("documents_tenant_type").on(t.orgId, t.type),
     orgCollectionIdx: index("documents_org_collection_idx").on(t.orgId, t.collectionId),
     orgStatusIdx: index("documents_org_status_idx").on(t.orgId, t.status),
+    /**
+     * Storefront slug -> owning tenant. `findOrgIdByStoreSlug` deliberately does not filter by
+     * orgId (it is the lookup that *discovers* the org), so no org-scoped index can serve it — the
+     * expression has to be indexed directly. Without this, the slug was a filter applied to every
+     * tenant_settings row, so the cost of resolving a store grew with the number of tenants.
+     *
+     * Partial, so it only covers tenant_settings rows and stays small; unique, because a slug must
+     * identify exactly one store. The service also checks for an existing owner, but that check
+     * reads and then writes in separate statements, so two concurrent claims could both pass it —
+     * the unique index is what actually makes the constraint hold.
+     */
+    storeSlugUnique: uniqueIndex("documents_store_slug_unique")
+      .on(sql`(${t.data}->>'slug')`)
+      .where(sql`${t.type} = 'tenant_settings' AND ${t.key} = 'default'`),
   }),
 );
 

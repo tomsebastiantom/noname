@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 7 | 2 | 8 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 8 | 2 | 7 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,8 +30,8 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below moved report 05 to **7 fixed / 2 partial / 8 still present** (S8 fixed, S7 partially,
-S6's sibling §5.7 still open).
+recorded below moved report 05 to **8 fixed / 2 partial / 7 still present** (S8 and S10 fixed, S7
+partially, S6's sibling §5.7 still open).
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -67,7 +67,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S7 | Event bus at-most-once, no replay, errors swallowed | **Error handling fixed 2026-10-15.** `dispatchLocal` no longer swallows: a throwing subscriber is logged and the remaining subscribers still run. Cross-replica publish is bounded (2s) and never rejects, so a `void`-ed call can no longer become a process-killing unhandled rejection, and a request path can no longer block behind `maxRetriesPerRequest: null`. **Still absent: outbox, consumer offsets, replay** — fan-out remains at-most-once, and that is an architectural change rather than a bug fix. | See §5.8. |
 | S8 | Redis fan-out health can never report degraded | **FIXED 2026-10-15.** Liveness is driven by the connections' own `ready`/`error`/`close`/`end` events instead of `publisher !== null`. One finding, **three** sites — `event-bus`, `sse-manager` and `collab-redis-relay` all had it identically; all three now use `shared/redis-fanout.ts`. | Verified live: stopping Dragonfly flipped all three to degraded in 4s and restarting recovered them in 2s. Neither direction worked before. |
 | S9 | Redis helper silently drops TLS/username/db | `shared/redis.ts:1-11` | `rediss://`, username and db index are all ignored; `maxRetriesPerRequest: null` applied unconditionally. |
-| S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | `tenant-settings.service.ts:22-26` (no cache; writes a default row on miss); `documents/adapters/postgres.ts:61-74` scans JSONB `data->>'slug'`; `documents/schema.ts` has no slug index | One mitigation exists: `ead4f56` stopped the edge poisoning its slug miss-cache when origin is down (`resolve-slug.ts:28-45` — 404 only). That narrows S10 without fixing it. |
+| S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | `machines/engine.ts:145-163` awaits `hooks.onTransitionComplete` after commit; `replayPersistedTransition` `:170-204` unchanged | A hook failure cannot roll back the transition, and it lengthens the request. |
 | S12 | `flag_evaluations` unbounded; no ClickHouse sink | `flags/schema.ts:38-59` — no TTL/cleanup; `evaluation.ts:132-155` inserts per evaluation | DB insert is now batched, but `eventBus.publish` is still once per flag (`:152-154`), so half of this risk is untouched. |
 | S14 | Multi-instance hazards (SSE, collab, caches, version races) | `event-bus`, `sse-manager`, `collab-relay`, cache invalidation unchanged | One sub-item is resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. |

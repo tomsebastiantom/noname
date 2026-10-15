@@ -407,8 +407,18 @@ export type TenantSettingsUpsert = Omit<TenantSettingsDTO, "id" | "orgId" | "pub
   publishableKey?: string | null;
 };
 
+/**
+ * Tenant settings as returned by `get()`.
+ *
+ * `get()` does not create a row, so a tenant that has never stored settings has no `id` to report.
+ * Returning defaults with a fabricated id (or writing a row just to have one) would both be worse:
+ * the first invents identity, the second turns a read into a write. Callers that only read config
+ * fields are unaffected; only code that treated a non-empty `id` as proof the row exists needs care.
+ */
+export type TenantSettingsView = Omit<TenantSettingsDTO, "id"> & { id: string | null };
+
 export interface TenantSettingsService {
-  get(orgId: string): Promise<TenantSettingsDTO>;
+  get(orgId: string): Promise<TenantSettingsView>;
   upsert(orgId: string, data: TenantSettingsUpsert): Promise<TenantSettingsDTO>;
   resolveStoreSlug(slug: string): Promise<string | null>;
   findOrgIdByOAuthConnectionId(connectionId: string): Promise<string | null>;
