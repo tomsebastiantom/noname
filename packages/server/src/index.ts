@@ -10,6 +10,7 @@ import { initCollabRedisRelay } from "./domains/collab/collab-redis-relay";
 import { closeAllBullmqQueues } from "./shared/bullmq-queue";
 import { closeAllBullmqWorkers } from "./shared/bullmq-workers";
 import { initEventBus } from "./shared/event-bus";
+import { beginDraining } from "./shared/lifecycle";
 import { listenWithRetry } from "./shared/listen-with-retry";
 import { startRedisFanoutMonitor } from "./shared/redis-fanout-status";
 import { initSseManager } from "./shared/sse-manager";
@@ -73,6 +74,9 @@ let shuttingDown = false;
 async function shutdown(signal: NodeJS.Signals): Promise<void> {
   if (shuttingDown) return;
   shuttingDown = true;
+  // Before anything else, so a load balancer polling `/ready` stops sending new requests here while
+  // the drain runs rather than discovering the closed listener by failing them.
+  beginDraining();
   console.log(`[shutdown] ${signal} received; draining (timeout ${SHUTDOWN_TIMEOUT_MS}ms)`);
 
   const force = setTimeout(() => {

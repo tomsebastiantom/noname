@@ -38,8 +38,15 @@ function verifyHmac(orgId: string, userId: string, role: string, providedHmac: s
 
 export const orgMiddleware: MiddlewareHandler = async (c, next) => {
   // These public service callbacks validate Nango's own HMAC in their route handlers.
+  //
+  // `/ready` and `/metrics` bypass this for the same reason `/health` does: an orchestrator's
+  // readiness probe and a metrics scraper run inside the network and cannot produce the edge's HMAC,
+  // so requiring it would leave a replica permanently reported unready. Both are read-only and expose
+  // only operational state; the edge does not route them, so they are not publicly reachable.
   if (
     c.req.path === "/health" ||
+    c.req.path === "/ready" ||
+    c.req.path === "/metrics" ||
     (c.req.method === "POST" && NANGO_WEBHOOK_PATHS.has(c.req.path))
   ) {
     await next();

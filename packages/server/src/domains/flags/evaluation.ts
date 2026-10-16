@@ -113,20 +113,33 @@ function toEvaluationRecord(
   };
 }
 
+/**
+ * Publishes one `flag.evaluated` event carrying the whole evaluation set, rather than one event per
+ * flag.
+ *
+ * `eventBus.publish` fans out to Redis unconditionally — Redis pub/sub has no "are there
+ * subscribers?" check, and this publisher never consulted whether anything listens — so per-flag
+ * publishing cost one Redis publish per evaluated flag on the per-request evaluation path. This
+ * event currently has **no subscribers anywhere in the codebase**, so batching it changes a
+ * published contract that nothing consumes; it is called out here because a future consumer must
+ * expect `evaluations` to be an array, not a single flag.
+ */
 function publishEvaluated(
-  flag: FlagDTO,
-  ctx: FlagEvaluationContext,
-  result: EvaluationResult,
+  evaluated: { flag: FlagDTO; ctx: FlagEvaluationContext; result: EvaluationResult }[],
 ): void {
+  if (evaluated.length === 0) return;
+  const [first] = evaluated;
   eventBus.publish(FlagEvents.EVALUATED, {
-    flagId: flag.id,
-    flagKey: flag.key,
-    orgId: flag.orgId,
-    subjectKind: ctx.subject.kind,
-    value: result.value,
-    reason: result.reason,
-    schemaId: ctx.schemaId,
-    variantId: ctx.variantId,
+    orgId: first?.flag.orgId,
+    subjectKind: first?.ctx.subject.kind,
+    evaluations: evaluated.map(({ flag, ctx, result }) => ({
+      flagId: flag.id,
+      flagKey: flag.key,
+      value: result.value,
+      reason: result.reason,
+      schemaId: ctx.schemaId,
+      variantId: ctx.variantId,
+    })),
   });
 }
 
@@ -137,12 +150,13 @@ export async function recordEvaluation(
   result: EvaluationResult,
 ): Promise<void> {
   await storage.recordEvaluation(toEvaluationRecord(flag, ctx, result));
-  publishEvaluated(flag, ctx, result);
+  publishEvaluated([{ flag, ctx, result }]);
 }
 
 /** Records every flag's evaluation in a single DB round-trip instead of one insert per flag —
  * this is the hot per-request evaluation path, so flag count should not translate 1:1 into
- * DB round-trips. Event-bus publish stays per-flag; it's in-process/Redis pub-sub, not a DB write. */
+ * DB round-trips. The event publish is batched for the same reason: one Redis publish per request
+ * rather than one per flag. */
 export async function recordEvaluations(
   storage: FlagStorage,
   evaluated: { flag: FlagDTO; ctx: FlagEvaluationContext; result: EvaluationResult }[],
@@ -150,9 +164,7 @@ export async function recordEvaluations(
   await storage.recordEvaluations(
     evaluated.map(({ flag, ctx, result }) => toEvaluationRecord(flag, ctx, result)),
   );
-  for (const { flag, ctx, result } of evaluated) {
-    publishEvaluated(flag, ctx, result);
-  }
+  publishEvaluated(evaluated);
 
   // Retention trigger. This is the only place evaluations are written, so it is the natural hook —
   // but it is deliberately not awaited: `sweepFlagEvaluations` is time-gated to at most one run per

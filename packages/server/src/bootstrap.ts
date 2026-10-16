@@ -7,6 +7,7 @@ import {
   createCommerceProviderEventMappings,
   registerCommerceActivityTypes,
 } from "@noname/verticals/commerce";
+import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
 import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
@@ -44,6 +45,8 @@ import { createDatabase } from "./drizzle";
 import { ServiceUnavailableError } from "./shared/domain-error";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
+import { isDraining } from "./shared/lifecycle";
+import { buildReadiness, type ObservabilityInput, renderMetrics } from "./shared/observability";
 import { orgMiddleware } from "./shared/org";
 import { orgTracingMiddleware } from "./shared/org-tracing";
 import { getRedisFanoutStatus } from "./shared/redis-fanout-status";
@@ -89,6 +92,43 @@ export async function createApp(): Promise<Hono> {
     });
   });
 
+  /** Readiness/metrics state. Declared before the routes so the handlers can close over it; the
+   * probe itself is assigned once the pool exists, below. Until then the replica is correctly
+   * reported unready rather than optimistically ready. */
+  const startedAt = Date.now();
+  let lastDatabaseOk = false;
+  let databaseProbe: () => Promise<boolean> = async () => false;
+
+  function observabilityInput(databaseOk: boolean): ObservabilityInput {
+    const { degraded, subsystems } = getRedisFanoutStatus();
+    const ch = getClickHouseReadiness();
+    return {
+      draining: isDraining(),
+      databaseOk,
+      redis: { degraded, subsystems },
+      analytics: { ready: ch.ready, attempts: ch.attempts, lastError: ch.lastError },
+      startedAt,
+      now: Date.now(),
+    };
+  }
+
+  /** Readiness — what an orchestrator may act on. Unlike `/health`, this can fail. */
+  app.get("/ready", async (c) => {
+    const databaseOk = await databaseProbe();
+    lastDatabaseOk = databaseOk;
+    const payload = buildReadiness(observabilityInput(databaseOk));
+    return c.json(payload, payload.ready ? 200 : 503);
+  });
+
+  /** Prometheus scrape target. A snapshot of signals the process already tracks; no metrics SDK. */
+  app.get("/metrics", (c) => {
+    // Deliberately does not probe the database: a scrape must be cheap and must not fail because
+    // Postgres blipped. `noname_ready` reflects the most recent readiness probe instead.
+    return c.text(renderMetrics(observabilityInput(lastDatabaseOk)), 200, {
+      "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
+    });
+  });
+
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new ServiceUnavailableError(
@@ -96,6 +136,23 @@ export async function createApp(): Promise<Hono> {
     );
   }
   const db = createDatabase(databaseUrl);
+  databaseProbe = async () => {
+    try {
+      await db.execute(sql`select 1`);
+      return true;
+    } catch (error) {
+      console.error("[readiness] database probe failed", error);
+      return false;
+    }
+  };
+  // Prime the state so `/metrics` is meaningful before the first readiness probe arrives, and so a
+  // broken pool is visible in the logs at boot rather than only when a probe first fails.
+  lastDatabaseOk = await databaseProbe();
+  if (!lastDatabaseOk) {
+    console.warn(
+      "[readiness] startup database probe failed; /ready will report unready until it recovers",
+    );
+  }
   const storage = createPostgresDocumentStorage(db);
 
   let onAuthProviderPublished: ((orgId: string, type: string, id: string) => Promise<void>) | null =

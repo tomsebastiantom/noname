@@ -30,8 +30,10 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below moved report 05 to **9 fixed / 4 partial / 4 still present** (S8, S9, S10 fixed; S7, S11,
-S12, S16 partial; §5.7 fixed as a new finding).
+recorded below left report 05 at **9 fixed / 4 partial / 4 still present**. The four partials are
+partial for one reason each, and three of those reasons are architectural: **S7** needs an outbox,
+**S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16** needs a
+metrics SDK with instrumentation points. Nothing in that list is blocked on a bug.
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -55,7 +57,7 @@ Each row was independently re-read at HEAD. Evidence is `file:line` at `46c759a`
 
 | # | Risk | Status | Detail |
 |---|---|---|---|
-| S16 | No metrics or readiness; `/health` always 200 | **PARTIAL** | `/health` now surfaces Redis-degraded state and ClickHouse readiness (`bootstrap.ts:76-90`). There is still no metrics SDK, no `/metrics`, no `/ready`; always-200 remains, now as a documented design choice (`bootstrap.ts:77-83`) rather than an accident. Reasonable for a sink, but it gives an orchestrator nothing to act on. |
+| S16 | No metrics or readiness; `/health` always 200 | **Partially fixed 2026-10-15.** `/ready` now exists and can fail: it gates on the database and on the draining flag, while reporting Redis/ClickHouse without gating on them (both degrade a capability without stopping this replica serving — the same reasoning that keeps `/health` always-200). `/metrics` is a Prometheus text scrape target covering readiness, draining, uptime, per-subsystem Redis fan-out, and ClickHouse readiness. | **Still absent: a metrics SDK and instrumented counters** — `/metrics` is a pull snapshot of signals the process already tracked, deliberately without adding a subsystem. See §5.11, including the allowlist change the endpoints needed. |
 
 ### 2.2 Still present (10)
 
@@ -69,7 +71,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S9 | Redis helper silently drops TLS/username/db | **FIXED 2026-10-15.** `getRedisConnection()` now derives the whole URL: `rediss://` (or `?tls=true`) enables TLS, an ACL `username` is kept and percent-decoded, and the database index is read from the path or `?db=`. A malformed URL or a non-`redis://` scheme throws instead of silently falling back to localhost. | Three silent failures, not one: a TLS-requiring Redis was dialled in the clear, a Redis 6 ACL user authenticated as `default`, and `redis://host/2` silently became db 0 — cross-talk between datasets that looks like a healthy connection. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
-| S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. **Still absent: a ClickHouse sink, and the per-flag `flag.evaluated` publish** — see §5.10. | The publish half is worse than the audit implied: **the event has no subscribers at all**, so each evaluation costs a Redis publish for zero consumers. |
+| S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. The per-flag `flag.evaluated` publish is now **one event per evaluation set** — it had no subscribers at all, so each evaluated flag was costing a Redis publish for nothing. | **Still absent: a ClickHouse sink**, which is an architectural change rather than a fix. See §5.10. |
 | S14 | Multi-instance hazards (SSE, collab, caches, version races) | `event-bus`, `sse-manager`, `collab-relay`, cache invalidation unchanged | One sub-item is resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. |
 | S15 | Unbounded tables (idempotency, provider receipts) | `capabilities/schema.ts:17,25` — `expires_at` field and index exist, but nothing deletes expired rows; `provider_event_receipts` has no cleanup | Corrected from the audit's own framing: the expiry index was already present at audit time. The real gap is the absence of any reaper. `audiences` experience decisions *are* bounded (`cleanupExpiredExperienceDecisions`) — the audit did not cite that precedent. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
@@ -402,9 +404,9 @@ Two things the audit's framing understated:
   a full scan per sweep.
 - **`flag.evaluated` has no subscribers anywhere in the codebase.** The audit called the per-flag
   publish the untouched half of S12; it is worse than that. Since `eventBus.publish` also fans out to
-  Redis, every flag evaluated on every request costs a Redis publish for an event nothing consumes.
-  That is a decision to make (batch it into one event per evaluation set, or drop it) rather than a
-  change to make silently, because it alters a published event contract — so it is left open.
+  Redis, every flag evaluated on every request cost a Redis publish for an event nothing consumes.
+  **Now batched** to one event per evaluation set (`evaluations: [...]`). This changes a published
+  contract — safe only because nothing consumes it — so a future consumer must expect the array shape.
 
 Also worth recording before anyone enables retention in an existing environment: the default 30-day
 window is **not inert**. In this database the oldest evaluations are 32 days old, so the first sweep
@@ -413,6 +415,37 @@ would delete 93 existing rows. That is what retention means, but it should be a 
 Verified live against real Postgres and the real adapter: with a 100-day window and a probe row
 backdated 200 days, the sweep removed exactly that one row, left the current probe row in place, and
 left all 93 real older-than-30-days rows untouched.
+
+### 5.11 Readiness and metrics — and the allowlist they needed to be reachable at all
+
+S16 is two findings in one. `/health` returning 200 unconditionally is a deliberate *liveness* choice
+(a replica whose Redis fan-out degraded is still serving), and that reasoning is sound. What was
+missing is the other half: something an orchestrator may act on, and a scrape target for alerting.
+
+`/ready` was therefore made to gate on hard dependencies only — the database, and a new draining flag
+— while Redis and ClickHouse are reported but do not gate, for the same reason `/health` doesn't.
+Draining matters on its own: without it a load balancer keeps routing to a replica that has already
+called `server.close()`, turning every deploy into a window of failed requests. `index.ts` now calls
+`beginDraining()` before anything else on SIGTERM/SIGINT.
+
+`/metrics` is a Prometheus text target covering readiness, draining, uptime, per-subsystem Redis
+fan-out and ClickHouse readiness. There is deliberately **no metrics SDK and no new instrumentation** —
+that would be adding a subsystem, and the honest fix for "no scrape target" is to expose what the
+process already tracks. Counters (for example post-commit hook failures) would need instrumentation
+points and remain absent.
+
+Two things found by testing rather than reasoning:
+
+1. **Both endpoints were unreachable at first.** `orgMiddleware` bypasses only `/health`, so `/ready`
+   and `/metrics` returned `401 {"error":"Request must come through edge worker"}`. An orchestrator's
+   probe and a scraper run inside the network and cannot produce the edge's HMAC, so requiring it would
+   leave every replica permanently reported unready. Both are now in the bypass list — read-only,
+   operational state only, and not routed by the edge.
+2. **The first `/metrics` output was not parser-safe.** `HELP`/`TYPE` were emitted per labelled sample,
+   which a strict Prometheus parser rejects with "second HELP line for metric name" — the whole scrape
+   fails, so the endpoint would have looked fine by eye and been useless in practice. The renderer now
+   groups by metric family, and a test asserts one `HELP`/`TYPE` per family with one sample per
+   subsystem. Verified against the live endpoint: 8 families, no duplicate `HELP` lines.
 
 ---
 
