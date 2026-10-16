@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
-import { and, eq, lte, or } from "drizzle-orm";
+import { and, eq, lt, lte, or } from "drizzle-orm";
 import type { Database } from "../../drizzle";
+import { sweepCapabilityIdempotency } from "./idempotency-retention";
 import { capabilityIdempotency } from "./schema";
 
 const DEFAULT_RETENTION_MS = 24 * 60 * 60 * 1000;
@@ -34,6 +35,14 @@ export interface CapabilityIdempotencyStore {
     claimToken: string,
     error: StoredError,
   ): Promise<void>;
+  /**
+   * Retention: delete rows that expired before `cutoff` and return how many went (S15).
+   *
+   * Nothing used to remove them, so the table grew by one row per command that supplied an
+   * idempotency key and never shrank. `expires_at` already carried an index, so this predicate is
+   * index-supported.
+   */
+  deleteExpiredBefore(cutoff: Date): Promise<number>;
 }
 
 export function hashCapabilityRequest(input: unknown): string {
@@ -46,6 +55,13 @@ export function createCapabilityIdempotencyStore(
 ): CapabilityIdempotencyStore {
   return {
     async claim(orgId, capability, idempotencyKey, requestHash) {
+      // Retention trigger, off the critical path: the gate makes it at most one DELETE per interval
+      // per process, and a failed sweep can never fail the claim it rode in on. The guard keeps
+      // minimal test doubles that predate this method from producing a spurious failure log.
+      if (typeof this.deleteExpiredBefore === "function") {
+        void sweepCapabilityIdempotency(this).catch(() => undefined);
+      }
+
       const expiresAt = new Date(Date.now() + retentionMs);
       const claimToken = randomUUID();
       const identity = and(
@@ -160,6 +176,14 @@ export function createCapabilityIdempotencyStore(
             eq(capabilityIdempotency.status, "processing"),
           ),
         );
+    },
+
+    async deleteExpiredBefore(cutoff) {
+      const deleted = await db
+        .delete(capabilityIdempotency)
+        .where(lt(capabilityIdempotency.expiresAt, cutoff))
+        .returning({ id: capabilityIdempotency.id });
+      return deleted.length;
     },
   };
 }

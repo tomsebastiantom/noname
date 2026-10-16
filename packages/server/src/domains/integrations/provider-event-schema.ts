@@ -22,5 +22,11 @@ export const providerEventReceipts = pgTable(
       table.eventKey,
     ),
     index("provider_event_receipts_org_status_idx").on(table.orgId, table.status),
+    /**
+     * Retention sweeps delete by age alone (`created_at < cutoff`). This table has no expiry column,
+     * and neither index above leads with `created_at`, so without this each sweep would sequentially
+     * scan the very table that needs sweeping.
+     */
+    index("provider_event_receipts_created_at_idx").on(table.createdAt),
   ],
 );

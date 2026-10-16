@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
-import { and, eq } from "drizzle-orm";
+import { and, eq, lt } from "drizzle-orm";
 import type { Database } from "../../drizzle";
+import { sweepProviderEventReceipts } from "./provider-event-retention";
 import { providerEventReceipts } from "./provider-event-schema";
 import type { ProviderForwardedEvent } from "./provider-events";
 
@@ -10,6 +11,16 @@ export interface ProviderEventReceiptStore {
   claim(event: ProviderForwardedEvent): Promise<ProviderReceiptClaim>;
   complete(event: ProviderForwardedEvent): Promise<void>;
   fail(event: ProviderForwardedEvent, message: string): Promise<void>;
+  /**
+   * Retention: delete receipts created before `cutoff` and return how many went (S15).
+   *
+   * Note what this gives up, because it is a real behaviour change rather than pure housekeeping:
+   * receipts had no expiry, so a duplicate provider event was deduplicated *forever*. Deleting them
+   * narrows dedup to the retention window — an event the provider redelivers after that window is
+   * processed again. Providers redeliver within hours or days, so a 30-day window is far beyond any
+   * retry they perform; the alternative is a table that grows with every forwarded event.
+   */
+  deleteOlderThan(cutoff: Date): Promise<number>;
 }
 
 export function providerEventKey(event: ProviderForwardedEvent): string {
@@ -19,8 +30,15 @@ export function providerEventKey(event: ProviderForwardedEvent): string {
 }
 
 export function createProviderEventReceiptStore(db: Database): ProviderEventReceiptStore {
-  return {
+  const store: ProviderEventReceiptStore = {
     async claim(event) {
+      // Retention trigger, off the critical path: gated to at most one DELETE per interval per
+      // process, and a failed sweep can never fail the claim it rode in on. The guard keeps minimal
+      // test doubles that predate this method from producing a spurious failure log.
+      if (typeof store.deleteOlderThan === "function") {
+        void sweepProviderEventReceipts(store).catch(() => undefined);
+      }
+
       const eventKey = providerEventKey(event);
       const inserted = await db
         .insert(providerEventReceipts)
@@ -88,7 +106,16 @@ export function createProviderEventReceiptStore(db: Database): ProviderEventRece
           ),
         );
     },
+
+    async deleteOlderThan(cutoff) {
+      const deleted = await db
+        .delete(providerEventReceipts)
+        .where(lt(providerEventReceipts.createdAt, cutoff))
+        .returning({ id: providerEventReceipts.id });
+      return deleted.length;
+    },
   };
+  return store;
 }
 
 function stableStringify(value: unknown): string {

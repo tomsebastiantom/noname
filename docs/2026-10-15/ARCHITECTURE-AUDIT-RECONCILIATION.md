@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 9 | 4 | 4 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 10 | 4 | 3 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,8 +30,8 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below left report 05 at **9 fixed / 4 partial / 4 still present**. The four partials are
-partial for one reason each, and three of those reasons are architectural: **S7** needs an outbox,
+recorded below left report 05 at **10 fixed / 4 partial / 3 still present**. The four partials are
+partial for one reason each, and every one of those reasons is architectural: **S7** needs an outbox,
 **S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16** needs a
 metrics SDK with instrumentation points. Nothing in that list is blocked on a bug.
 
@@ -73,7 +73,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
 | S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. The per-flag `flag.evaluated` publish is now **one event per evaluation set** — it had no subscribers at all, so each evaluated flag was costing a Redis publish for nothing. | **Still absent: a ClickHouse sink**, which is an architectural change rather than a fix. See §5.10. |
 | S14 | Multi-instance hazards (SSE, collab, caches, version races) | `event-bus`, `sse-manager`, `collab-relay`, cache invalidation unchanged | One sub-item is resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. |
-| S15 | Unbounded tables (idempotency, provider receipts) | `capabilities/schema.ts:17,25` — `expires_at` field and index exist, but nothing deletes expired rows; `provider_event_receipts` has no cleanup | Corrected from the audit's own framing: the expiry index was already present at audit time. The real gap is the absence of any reaper. `audiences` experience decisions *are* bounded (`cleanupExpiredExperienceDecisions`) — the audit did not cite that precedent. |
+| S15 | Unbounded tables (idempotency, provider receipts) | **FIXED 2026-10-15.** Both tables now have reapers sharing the gated sweep (`shared/retention.ts`) with `flag_evaluations`. `capability_idempotency` rows are deleted a configurable grace period **after expiry** (default 7 days), using its existing `expires_at` index. `provider_event_receipts` had **no expiry column at all**, so an age-based delete was added, along with `provider_event_receipts_created_at_idx` — neither existing index could serve `created_at < cutoff`. | Corrected from the audit's own framing: the expiry index was already present at audit time, and `audiences` experience decisions were already bounded. The real gap was the absence of any reaper. See §5.12. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
 
 ### 2.3 How the resolved ones were re-proved
@@ -447,10 +447,56 @@ Two things found by testing rather than reasoning:
    groups by metric family, and a test asserts one `HELP`/`TYPE` per family with one sample per
    subsystem. Verified against the live endpoint: 8 families, no duplicate `HELP` lines.
 
+### 5.12 Three unbounded tables, one gate, and the semantics each deletion gives up
+
+S15 was already the most accurately-framed finding in the report: the `expires_at` index existed and
+the gap was genuinely "nothing deletes rows". `provider_event_receipts` was worse than the report
+implied — it has **no expiry column at all**, so nothing marked a receipt as eligible for removal even
+in principle.
+
+With `flag_evaluations` from S12 that made three tables sharing one problem, so the gate — interval,
+non-overlap, never failing the caller — was extracted to `shared/retention.ts`. The flags tests that
+already pinned those semantics are what made the refactor safe: they passed unchanged against the
+shared implementation.
+
+**A retention window is a semantic choice, not housekeeping**, and each one here gives something up:
+
+- `capability_idempotency` — rows are deleted a grace period **after expiry** (default 7 days), not at
+  expiry. An expired row is not inert: `claim` returns `conflict` when the same key arrives with a
+  different request hash *before* it considers expiry, so deleting at the moment `expires_at` passed
+  would silently turn that conflict into a fresh claim. The grace keeps the key's binding behaviour
+  intact well past the 24h idempotency window.
+- `provider_event_receipts` — a receipt existed only to answer "have I seen this event key before?",
+  and was kept **forever**. Deleting it also deletes the proof its event was handled, so the dedup
+  window shrinks from forever to the configured period (default 30 days). Providers redeliver within
+  hours or days, so that sits far outside any retry they perform — but it is a change in behaviour, not
+  just disk usage.
+- `flag_evaluations` — full history was available before; now only the retention window is.
+
+Two index findings, and the contrast between them is the point:
+
+- Receipts needed `provider_event_receipts_created_at_idx`. Neither existing index leads with
+  `created_at`, so the sweep would have scanned the table it exists to shrink. Verified usable by
+  forcing the planner (`SET enable_seqscan = off` → `Index Scan using
+  provider_event_receipts_created_at_idx`); at four rows Postgres correctly prefers a sequential scan
+  anyway, so this is "available and usable", not "demonstrated at scale".
+- Idempotency needed nothing: its existing `expires_at` index already serves the predicate
+  (`Bitmap Index Scan on capability_idempotency_expires_at_idx`). The audit was right about that, and
+  it is worth noting that `flag_evaluations` at 617 rows chose its index unaided while these two at
+  4 and 14 rows did not — which is why the claim had to be measured per table rather than generalised.
+
+Also worth recording before anyone enables these: like the flags window, they are **not inert**. A
+first sweep in this database would delete 3 real receipts and 11 real idempotency rows. That is what
+retention means, but it should be a deliberate choice rather than a side effect of deploying.
+
+Verified live against real Postgres and the real stores: with 100-day windows and probe rows backdated
+200 days, each reaper removed exactly its own expired probe, the current probe survived, a
+`claim()`-triggered sweep also fired correctly, and the 3 real receipts and 11 real idempotency rows
+were untouched.
+
 ---
 
 ## 6. Immediate actions, in priority order
-
 1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
    (Phase 0 item 0.1). Everything in §2's S2 row — both defensive layers — assumes this value is private.
    Deleting it from HEAD is **not** sufficient: it is in history and already public.
