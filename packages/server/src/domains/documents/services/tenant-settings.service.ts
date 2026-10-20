@@ -41,7 +41,33 @@ const CACHE_TTL_MS = 30_000;
 type CacheEntry = { settings: TenantSettingsView; expiresAt: number };
 
 const cache = new Map<string, CacheEntry>();
+
+/**
+ * Per-org fill fence, incremented by every invalidation.
+ *
+ * `get()` on a miss awaits a database read and then stores the result. An invalidation arriving inside
+ * that await used to be undone: the read had already observed the old row, and the write-back put it
+ * back, so the stale value survived the full 30s TTL despite the eviction that had just happened. The
+ * fix is the standard one — capture the generation before the read and only store if it is unchanged,
+ * discarding an in-flight fill that raced a write. It is the same fencing idea as Go's `singleflight`
+ * plus a generation counter, Caffeine's refresh generation, and Facebook's cache leases.
+ */
+const generation = new Map<string, number>();
+
+/** One in-flight load per org, so concurrent misses share a read instead of stampeding. */
+const inFlight = new Map<string, Promise<TenantSettingsView>>();
+
 let invalidationWired = false;
+
+function currentGeneration(orgId: string): number {
+  return generation.get(orgId) ?? 0;
+}
+
+/** Evict and fence: any fill that started before this call can no longer store its value. */
+function invalidate(orgId: string): void {
+  generation.set(orgId, currentGeneration(orgId) + 1);
+  cache.delete(orgId);
+}
 
 function readCache(orgId: string, now: number): TenantSettingsView | null {
   const entry = cache.get(orgId);
@@ -63,13 +89,15 @@ function wireInvalidation(): void {
   invalidationWired = true;
   eventBus.subscribe(TenantSettingsEvents.UPDATED, async (payload) => {
     const orgId = (payload as { orgId?: unknown } | null)?.orgId;
-    if (typeof orgId === "string" && orgId) cache.delete(orgId);
+    if (typeof orgId === "string" && orgId) invalidate(orgId);
   });
 }
 
-/** Test-only: drop cached settings and the invalidation wiring between test files. */
+/** Test-only: drop cached settings, fences and in-flight loads between test files. */
 export function resetTenantSettingsCacheForTests(): void {
   cache.clear();
+  generation.clear();
+  inFlight.clear();
   invalidationWired = false;
 }
 
@@ -82,16 +110,34 @@ export function createTenantSettingsService(storage: DocumentStorage): TenantSet
       const cached = readCache(orgId, now);
       if (cached) return cached;
 
-      const existing = await storage.getTenantSettings(orgId);
-      // No row is created here. Repeat reads are served from cache, and the first miss costs one
-      // read instead of a read plus a write.
-      const settings: TenantSettingsView = existing ?? {
-        id: null,
-        orgId,
-        ...defaultTenantSettings(),
-      };
-      writeCache(orgId, settings, now);
-      return settings;
+      // Single-flight: another request for this org is already loading, so share its result.
+      const pending = inFlight.get(orgId);
+      if (pending) return pending;
+
+      const fillGeneration = currentGeneration(orgId);
+      const load = (async () => {
+        const existing = await storage.getTenantSettings(orgId);
+        // No row is created here. Repeat reads are served from cache, and the first miss costs one
+        // read instead of a read plus a write.
+        const settings: TenantSettingsView = existing ?? {
+          id: null,
+          orgId,
+          ...defaultTenantSettings(),
+        };
+        // Only store if no write invalidated this org while the read was in flight. The value is still
+        // returned — it is what the database said — but caching it would re-stale a fresh eviction.
+        if (currentGeneration(orgId) === fillGeneration) {
+          writeCache(orgId, settings, Date.now());
+        }
+        return settings;
+      })();
+
+      inFlight.set(orgId, load);
+      try {
+        return await load;
+      } finally {
+        inFlight.delete(orgId);
+      }
     },
     async upsert(orgId, data) {
       const nextSlug = data.slug == null ? null : normalizeStoreSlug(data.slug);
@@ -106,12 +152,12 @@ export function createTenantSettingsService(storage: DocumentStorage): TenantSet
         }
       }
       const saved = await storage.upsertTenantSettings(orgId, { ...data, slug: nextSlug });
-      // Evict rather than pre-warm, and deliberately so: `eventBus.publish` below is delivered back
-      // to this process's own subscriber, so anything written here is dropped again a moment later.
-      // Pre-warming would therefore require awaiting the publish, which would stall this write for
-      // up to the fan-out timeout whenever Redis is degraded. One extra read on a rare settings
-      // write is the cheaper trade — and reads after it are cached again.
-      cache.delete(orgId);
+      // Evict and fence rather than pre-warm, and deliberately so: `eventBus.publish` below is
+      // delivered back to this process's own subscriber, so anything written here is dropped again a
+      // moment later. Pre-warming would therefore require awaiting the publish, which would stall this
+      // write for up to the fan-out timeout whenever Redis is degraded. The fence is what makes
+      // evicting safe: a read that started before this write can no longer store its stale result.
+      invalidate(orgId);
       void eventBus.publish(TenantSettingsEvents.UPDATED, { orgId });
       return saved;
     },
