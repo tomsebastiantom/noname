@@ -33,8 +33,9 @@ touch a single report-03/04 conformance violation**; two violations measurably w
 recorded below left report 05 at **10 fixed / 5 partial / 2 still present**. The five partials are
 partial for one reason each, and now only four of those reasons are architectural: **S7** needs an
 outbox, **S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16**
-needs a metrics SDK with instrumentation points. **S14** is partial because only its webhook-duplication
-instance is fixed; SSE, collab-relay and settings-cache races remain.
+needs a metrics SDK with instrumentation points. **S14** is partial because two of its instances are now
+fixed (duplicate webhooks, SSE audience leakage) while the settings-cache invalidation race remains; the
+collab relay needed no change (§5.15).
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -73,7 +74,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
 | S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. The per-flag `flag.evaluated` publish is now **one event per evaluation set** — it had no subscribers at all, so each evaluated flag was costing a Redis publish for nothing. | **Still absent: a ClickHouse sink**, which is an architectural change rather than a fix. See §5.10. |
-| S14 | Multi-instance hazards (SSE, collab, caches, version races) | **Partially fixed 2026-10-15.** One instance is fixed and proven: `machine.transition` drove an outbound webhook from a *broadcast* event, so every process that subscribed produced its own delivery row and its own HTTP POST — two processes produced two POSTs to the customer. `machine.transition` now carries `revision`, the dedupe key is occurrence-unique (`org:instance:revision`), and a unique index on `(subscription_id, event_id)` collapses N processes to one delivery. | One sub-item was already resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. **Remaining: the SSE, collab-relay and settings-cache races are untouched** — see §5.13. |
+| S14 | Multi-instance hazards (SSE, collab, caches, version races) | **Partially fixed 2026-10-15.** Two instances fixed and proven. (1) `machine.transition` drove an outbound webhook from a *broadcast* event, so every process that subscribed produced its own delivery row and its own HTTP POST; the event now carries `revision`, the dedupe key is occurrence-unique, and a unique index on `(subscription_id, event_id)` collapses N processes to one delivery. (2) SSE is now **topic-addressed** in the Socket.IO-rooms / Mercure sense: the recipient is decided by what the connection subscribed to, derived server-side from the stream ticket, so an anonymous storefront stream is not a candidate for a user's notifications at all — previously it was a candidate and only a payload predicate stood in the way. | One sub-item was already resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. **Collab needs no fix** — its persist path already refuses to overwrite a moved row (§5.13). **Remaining: the settings-cache invalidation race.** |
 | S15 | Unbounded tables (idempotency, provider receipts) | **FIXED 2026-10-15.** Both tables now have reapers sharing the gated sweep (`shared/retention.ts`) with `flag_evaluations`. `capability_idempotency` rows are deleted a configurable grace period **after expiry** (default 7 days), using its existing `expires_at` index. `provider_event_receipts` had **no expiry column at all**, so an age-based delete was added, along with `provider_event_receipts_created_at_idx` — neither existing index could serve `created_at < cutoff`. | Corrected from the audit's own framing: the expiry index was already present at audit time, and `audiences` experience decisions were already bounded. The real gap was the absence of any reaper. See §5.12. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
 
@@ -540,6 +541,71 @@ is inference, not measurement.
 Worth noting for anyone touching this later: `addToCart` is a self-transition, and the engine rejects a
 transition that changes neither state nor context (`engine.ts:150`). Params are merged into context, so
 an empty body is rejected while a non-empty one succeeds.
+
+### 5.14 SSE audiences: adopting topic addressing instead of payload filtering
+
+The SSE leak was not a missing check — it was the wrong delivery model. Fixing the check would have left
+the same class of bug one predicate away, so the model was replaced with the one every mature
+implementation uses.
+
+**The established pattern.** [Socket.IO rooms](https://socket.io/docs/v4/rooms/) answers "broadcast to
+each device/tab of a given user" with `socket.join(userId)` then `io.to(userId).emit(...)`; its adapter
+keeps `rooms: Map<Room, Set<SocketId>>` and delivery is a room lookup. [Mercure](https://mercure.rocks/spec),
+the SSE-native standard, separates the two concerns explicitly: "routing … is independent of
+authorization … the query parameters never grant access to private updates", and a private update "MUST
+NOT" be dispatched to a subscriber not authorized to receive it. In both, **the recipient is a property
+of the subscription, not a predicate over the payload.**
+
+**What we had.** `broadcast(orgId, data)` fanned out per org and then filtered on `data.userId` at
+delivery. The guard was `if (targetUserId && entry.userId && entry.userId !== targetUserId) continue`,
+so an entry with **no** userId — the anonymous storefront stream, whose ticket is minted with an empty
+userId — was never skipped. A per-user `comms.inbox` payload (title and body) therefore reached every
+anonymous storefront visitor of the org.
+
+**What replaced it.** `subscribe(topic, stream)` / `broadcast(topic, data)` with topics derived from the
+authenticated ticket:
+
+- `org:{orgId}/flags` — the anonymous storefront stream
+- `org:{orgId}/user:{userId}` — one user's notifications, org-scoped so ids cannot collide across tenants
+
+Only the route chooses a topic, never the client, which makes the subscription itself the authorization.
+Delivery is one map lookup with no payload inspection, and the tests assert routing *ignores* the
+payload's `userId` — so a regression cannot reintroduce filtering subtly.
+
+**One deliberate asymmetry.** A fan-out message arriving without a `topic` is dropped rather than
+broadcast. The alternatives are both worse: broadcasting would deliver a per-user notification to every
+subscriber (the leak, restored), while dropping it costs at most one event during a mixed-version
+rollout. Failing closed on a security boundary is the correct direction.
+
+Verified live: a header-authenticated flags stream connects (200), a flag change is created, and the
+stream receives exactly `{"key":"…"}` — no notification payload. Falsified by removing topic scoping
+(deliver to all subscribers): four tests fail, including the leak and the cross-tenant case.
+
+**Superseded on purpose.** An intermediate version of this change introduced a `channel` enum plus a
+fixed predicate. That was a half-step: it stopped the leak but kept delivery payload-driven. The enum was
+replaced by topics, per the pattern above.
+
+### 5.15 Two root-cause passes that changed the plan (and one that said "do nothing")
+
+Recorded because the value was in *not* writing code.
+
+**Collab persistence — no fix warranted.** I had claimed concurrent `Automerge.save()` writes to one key
+could lose ops (last-writer-wins). Reading `persistRoom` shows the standard guard already exists
+(`layout-room.ts:150-166`): if the collab doc differs from its baseline *and* Postgres has also moved, it
+**refuses to write** and reimports from Postgres instead, then lets the next real edit persist against
+the fresh baseline. The stored artifact is the derived spec, not the CRDT binary, and the live docs merge
+relayed snapshots (`Automerge.merge`). A residual convergence window remains — inherent to multi-writer
+CRDT persistence without a single designated writer — but there is nothing here to fix, and changing it
+would have been churn.
+
+**Settings cache — not yet fixed, and the fix is a choice, not a patch.** The race is real: `get()` on a
+miss writes the DB result back unconditionally (`tenant-settings.service.ts:93`), so an invalidation
+arriving between the read and the write is undone and the stale value survives the 30s TTL. The standard
+answers are a shared cache ([Redis client-side caching](https://redis.io/docs/latest/develop/clients/client-side-caching/)
+has the server track read keys and send invalidations itself, and flushes a client's cache when its
+connection drops) or a version-checked write-back. I have not implemented either: choosing between
+"make Redis the cache" and "keep the per-process cache, version the fill" is a design decision, not a
+mechanical fix.
 
 ---
 

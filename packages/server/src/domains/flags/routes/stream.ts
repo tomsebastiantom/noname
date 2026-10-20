@@ -2,7 +2,7 @@ import type { Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { requireHeaderOrgId } from "../../../shared/org";
 import { ok } from "../../../shared/respond";
-import { addClient } from "../../../shared/sse-manager";
+import { flagsTopic, subscribe } from "../../../shared/sse-manager";
 import { mintStreamTicket, verifyStreamTicket } from "../../notifications/stream-ticket";
 
 /**
@@ -41,7 +41,9 @@ export function registerFlagStreamRoutes(routes: Hono): void {
     }
 
     return streamSSE(c, async (stream) => {
-      addClient(orgId, stream);
+      // Topic is derived from the authenticated ticket, so this anonymous connection can only ever
+      // receive org-scoped flag changes — never another user's notifications.
+      subscribe(flagsTopic(orgId), stream);
 
       stream.writeSSE({ data: JSON.stringify({ type: "connected" }) });
 

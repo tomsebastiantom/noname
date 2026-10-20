@@ -1,11 +1,11 @@
 import { eventBus } from "../../shared/event-bus";
-import { broadcast } from "../../shared/sse-manager";
+import { broadcast, flagsTopic } from "../../shared/sse-manager";
 import { FlagEvents } from "./events";
 
 function broadcastFlagChange(data: unknown): void {
   const payload = data as { orgId?: string; key?: string };
   if (payload?.orgId && payload?.key) {
-    broadcast(payload.orgId, { key: payload.key });
+    broadcast(flagsTopic(payload.orgId), { key: payload.key });
   }
 }
 

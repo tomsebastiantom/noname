@@ -1,6 +1,6 @@
 import type { Queue } from "bullmq";
 import { ConflictError, NotFoundError } from "../../shared/domain-error";
-import { broadcast } from "../../shared/sse-manager";
+import { broadcast, userTopic } from "../../shared/sse-manager";
 import type { ContentDocumentService, TenantSettingsService } from "../documents/ports";
 import type { SecretsService } from "../secrets/ports";
 import type { NotificationsStorage } from "./adapters/postgres";
@@ -162,11 +162,15 @@ export function createNotificationsService(deps: {
           trigger: input.trigger,
           metadata: { templateId, variables: input.variables ?? {} },
         });
-        broadcast(orgId, {
-          type: "comms.inbox",
-          userId: input.userId,
-          item: toInboxItemDTO(item),
-        });
+        // Published to that user's topic only. Previously this was an org-wide broadcast carrying a
+        // `userId` in the payload, which an anonymous storefront stream also received.
+        if (input.userId) {
+          broadcast(userTopic(orgId, input.userId), {
+            type: "comms.inbox",
+            userId: input.userId,
+            item: toInboxItemDTO(item),
+          });
+        }
         last = { deliveryId: itemId, jobId: itemId };
       }
 

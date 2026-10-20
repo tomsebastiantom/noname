@@ -2,7 +2,7 @@ import type { Context, Hono } from "hono";
 import { streamSSE } from "hono/streaming";
 import { getOrgId, getUserId } from "../../../shared/org";
 import { ok } from "../../../shared/respond";
-import { addClient } from "../../../shared/sse-manager";
+import { subscribe, userTopic } from "../../../shared/sse-manager";
 import { requireAuthenticatedUser, resolveAccessToken } from "../../auth/guards";
 import { verifiedTokenPayload } from "../../auth/verified-token";
 import { mintStreamTicket, verifyStreamTicket } from "../stream-ticket";
@@ -71,7 +71,9 @@ export function registerNotificationsStreamRoutes(routes: Hono): void {
     const { userId, orgId } = auth;
 
     return streamSSE(c, async (stream) => {
-      addClient(orgId, stream, userId);
+      // The topic is the authenticated user's own inbox. A caller cannot subscribe elsewhere, so
+      // another user's notifications are unreachable by construction rather than by a delivery check.
+      subscribe(userTopic(orgId, userId), stream);
 
       stream.writeSSE({
         data: JSON.stringify({ type: "connected", userId }),
