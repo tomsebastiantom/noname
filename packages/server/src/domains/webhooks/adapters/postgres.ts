@@ -51,6 +51,14 @@ export interface WebhooksStorage {
   deleteSubscription(orgId: string, id: string): Promise<void>;
   listEnabledSubscriptions(orgId: string, eventType: string): Promise<WebhookSubscriptionRow[]>;
 
+  /**
+   * Inserts a delivery, or returns `null` when `(subscriptionId, eventId)` already exists.
+   *
+   * `null` means "this event was already accepted for this subscription", which is how the caller
+   * avoids enqueuing a second HTTP POST. Returning null rather than throwing keeps duplicate
+   * suppression out of the error path — a duplicate is expected behaviour (every process handles
+   * every event), not a failure.
+   */
   insertOutboundDelivery(
     input: Omit<
       WebhookOutboundDeliveryRow,
@@ -61,7 +69,7 @@ export interface WebhooksStorage {
       error?: string | null;
       deliveredAt?: Date | null;
     },
-  ): Promise<WebhookOutboundDeliveryRow>;
+  ): Promise<WebhookOutboundDeliveryRow | null>;
   updateOutboundDelivery(
     id: string,
     patch: Partial<
@@ -197,8 +205,13 @@ export function createWebhooksStorage(db: Database): WebhooksStorage {
           error: input.error ?? null,
           deliveredAt: input.deliveredAt ?? null,
         })
+        // Suppressed when another process already accepted this event for this subscription.
+        .onConflictDoNothing({
+          target: [webhookOutboundDeliveries.subscriptionId, webhookOutboundDeliveries.eventId],
+        })
         .returning();
-      if (!row) throw new StorageError("Failed to insert outbound delivery");
+      // No row means the unique index rejected it, i.e. this event was already recorded.
+      if (!row) return null;
       return mapOutbound(row);
     },
 

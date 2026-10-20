@@ -110,7 +110,7 @@ export function createWebhooksService(deps: {
         const deliveryId = crypto.randomUUID();
         const body = buildOutboundWebhookBody(eventType, resolvedEventId, payload);
 
-        await storage.insertOutboundDelivery({
+        const inserted = await storage.insertOutboundDelivery({
           id: deliveryId,
           orgId,
           subscriptionId: sub.id,
@@ -119,6 +119,10 @@ export function createWebhooksService(deps: {
           payload,
           status: "queued",
         });
+
+        // Already recorded for this subscription — another process handled the same event. Do not
+        // enqueue a second POST: the customer must receive one delivery per occurrence.
+        if (!inserted) continue;
 
         await outboundQueue.add(
           "deliver",

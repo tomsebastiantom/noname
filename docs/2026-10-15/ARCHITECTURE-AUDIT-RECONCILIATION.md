@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 10 | 4 | 3 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 10 | 5 | 2 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,10 +30,11 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below left report 05 at **10 fixed / 4 partial / 3 still present**. The four partials are
-partial for one reason each, and every one of those reasons is architectural: **S7** needs an outbox,
-**S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16** needs a
-metrics SDK with instrumentation points. Nothing in that list is blocked on a bug.
+recorded below left report 05 at **10 fixed / 5 partial / 2 still present**. The five partials are
+partial for one reason each, and now only four of those reasons are architectural: **S7** needs an
+outbox, **S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16**
+needs a metrics SDK with instrumentation points. **S14** is partial because only its webhook-duplication
+instance is fixed; SSE, collab-relay and settings-cache races remain.
 
 **Still the single most urgent item, unchanged since the audit:** `WORKER_SERVER_SECRET` is committed
 and unrotated (§5.1).
@@ -72,7 +73,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
 | S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. The per-flag `flag.evaluated` publish is now **one event per evaluation set** — it had no subscribers at all, so each evaluated flag was costing a Redis publish for nothing. | **Still absent: a ClickHouse sink**, which is an architectural change rather than a fix. See §5.10. |
-| S14 | Multi-instance hazards (SSE, collab, caches, version races) | `event-bus`, `sse-manager`, `collab-relay`, cache invalidation unchanged | One sub-item is resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. |
+| S14 | Multi-instance hazards (SSE, collab, caches, version races) | **Partially fixed 2026-10-15.** One instance is fixed and proven: `machine.transition` drove an outbound webhook from a *broadcast* event, so every process that subscribed produced its own delivery row and its own HTTP POST — two processes produced two POSTs to the customer. `machine.transition` now carries `revision`, the dedupe key is occurrence-unique (`org:instance:revision`), and a unique index on `(subscription_id, event_id)` collapses N processes to one delivery. | One sub-item was already resolved as a side effect: the in-memory analytics batch that mixed tenants under concurrency is gone, because `ed2838f` removed the buffer entirely. **Remaining: the SSE, collab-relay and settings-cache races are untouched** — see §5.13. |
 | S15 | Unbounded tables (idempotency, provider receipts) | **FIXED 2026-10-15.** Both tables now have reapers sharing the gated sweep (`shared/retention.ts`) with `flag_evaluations`. `capability_idempotency` rows are deleted a configurable grace period **after expiry** (default 7 days), using its existing `expires_at` index. `provider_event_receipts` had **no expiry column at all**, so an age-based delete was added, along with `provider_event_receipts_created_at_idx` — neither existing index could serve `created_at < cutoff`. | Corrected from the audit's own framing: the expiry index was already present at audit time, and `audiences` experience decisions were already bounded. The real gap was the absence of any reaper. See §5.12. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
 
@@ -493,6 +494,52 @@ Verified live against real Postgres and the real stores: with 100-day windows an
 200 days, each reaper removed exactly its own expired probe, the current probe survived, a
 `claim()`-triggered sweep also fired correctly, and the 3 real receipts and 11 real idempotency rows
 were untouched.
+
+### 5.13 A broadcast event driving a global side effect — duplicate webhooks, proven with two replicas
+
+This is the root cause behind part of S14, and it was found by asking what the *actual* defect was
+rather than which pattern to add.
+
+`eventBus.publish(MachineEvents.TRANSITION, …)` fans out to Redis and every process that subscribed
+handles it. `bootstrap.ts` registers the outbound webhook router **unconditionally in `createApp()`** —
+not gated by `RUN_WORKERS` — so every API replica *and* the worker process subscribed. One committed
+transition was therefore handled once per process: N delivery rows and N HTTP POSTs to the customer.
+
+Broadcast semantics are correct for per-replica state (local caches, SSE fan-out to connections a
+replica owns). They are wrong for a **global side effect** like a customer webhook, which must happen
+once. The fix keeps the broadcast and makes the global effect idempotent, because the alternative —
+electing one replica to handle it — adds coordination to a path that has none.
+
+Two details decided whether this could work at all:
+
+- **The old dedupe key was not usable.** `org:instance:event:toState` is occurrence-insensitive: two
+  `addToCart` calls produce the same key, so adding a unique index on it would have *suppressed a
+  legitimate repeat delivery* — trading duplicates for missing events. `revision` increments per
+  committed transition, so it is now carried on the event and the key is `org:instance:revision`. When
+  `revision` is absent the router falls back to a random id: failing open risks a duplicate, while a
+  colliding key would drop a real delivery, and a lost customer webhook is the worse failure.
+- **`ON CONFLICT` is not a no-op without the index.** Dropping the unique index while leaving
+  `onConflictDoNothing` makes Postgres reject the statement ("no unique or exclusion constraint
+  matching the ON CONFLICT specification"), which silently produced *zero* deliveries rather than
+  duplicates. That is why the counterfactual below had to revert the code as well as the index.
+
+Proven with two live replicas (second on `:3101`, `RUN_WORKERS=false`), one transition, counting both
+delivery rows and enqueued outbound jobs:
+
+```text
+fixed build:          delivery rows: 1   enqueued outbound jobs: 1   PASS
+pre-fix code, no idx: delivery rows: 2   enqueued outbound jobs: 2   PASS (the bug, reproduced)
+fixed build again:    delivery rows: 1   enqueued outbound jobs: 1   PASS
+```
+
+The HTTP POST itself was not observed: the outbound worker requires a per-subscription signing secret
+and the subscription route rejects non-HTTPS URLs, so a local sink cannot be used without mutating
+secrets. One row plus one job implies one POST, since the worker issues exactly one per job — that step
+is inference, not measurement.
+
+Worth noting for anyone touching this later: `addToCart` is a self-transition, and the engine rejects a
+transition that changes neither state nor context (`engine.ts:150`). Params are merged into context, so
+an empty body is rejected while a non-empty one succeeds.
 
 ---
 

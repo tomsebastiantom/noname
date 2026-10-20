@@ -21,10 +21,26 @@ export function registerWebhookOutboundRouter(deps: {
       event?: string;
       fromState?: string;
       toState?: string;
+      revision?: number;
     };
     if (!payload.orgId || !payload.instanceId || !payload.event) return;
 
-    const eventId = `${payload.orgId}:${payload.instanceId}:${payload.event}:${payload.toState ?? "unknown"}`;
+    /**
+     * The dedupe key must identify one *occurrence*. The previous form
+     * (`org:instance:event:toState`) was identical for two separate occurrences of the same
+     * transition — two `addToCart` calls produce the same key — so it could not be used to suppress
+     * duplicates without also suppressing a legitimate repeat delivery.
+     *
+     * `revision` increments with every committed transition, so `org:instance:revision` is unique per
+     * occurrence. When it is missing we fall back to a random id rather than to the old composite:
+     * failing open risks a duplicate, while reusing a colliding key with a unique index would drop a
+     * real delivery. Losing a paying customer's webhook is the worse failure.
+     */
+    const eventId =
+      typeof payload.revision === "number"
+        ? `${payload.orgId}:${payload.instanceId}:${payload.revision}`
+        : crypto.randomUUID();
+
     await deps.webhooks.deliverOutbound(
       payload.orgId,
       WebhookPlatformEventTypes.MACHINE_TRANSITION,

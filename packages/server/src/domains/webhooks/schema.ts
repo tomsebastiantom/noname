@@ -6,6 +6,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -45,6 +46,16 @@ export const webhookOutboundDeliveries = pgTable(
     deliveredAt: timestamp("delivered_at"),
   },
   (table) => [
+    /**
+     * Idempotency guard for at-most-once delivery of a given event to a given subscription.
+     *
+     * `machine.transition` is published to the event bus, and every process that builds the app
+     * subscribes — each API replica *and* the worker process (`bootstrap.ts` registers the outbound
+     * router unconditionally). So one committed transition is handled once per process, which meant
+     * N delivery rows and N HTTP POSTs to the customer as soon as the app ran in more than one
+     * process. This constraint collapses them to one.
+     */
+    uniqueIndex("webhook_outbound_subscription_event_idx").on(table.subscriptionId, table.eventId),
     index("webhook_outbound_org_id_idx").on(table.orgId),
     index("webhook_outbound_subscription_idx").on(table.subscriptionId),
     index("webhook_outbound_status_idx").on(table.status),

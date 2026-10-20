@@ -190,6 +190,11 @@ export function createMachineEngine(
           fromState,
           toState,
           params,
+          // Carried so consumers can build an occurrence-unique dedupe key. Without it the only
+          // available identity was `instance:event:toState`, which is identical for two separate
+          // occurrences of the same transition (e.g. two addToCart calls) — so it cannot dedupe
+          // without also suppressing legitimate repeats.
+          revision: saved.revision,
         });
 
         if (hooks.onTransitionComplete) {
