@@ -100,10 +100,16 @@ export const machineTransitions = pgTable(
   },
   (t) => ({
     instanceIdx: index("machine_transitions_instance_idx").on(t.instanceId),
-    /** Partial, so the relay's scan touches only the backlog and stays small as history grows. */
+    /**
+     * Partial, so the relay's scan touches only the backlog and stays small as history grows.
+     *
+     * The predicate must match the relay's query exactly, including `success = 'true'`. Rejected
+     * transitions are *never* published — nothing consumes `TRANSITION_REJECTED` — so leaving them in the
+     * index would grow the "backlog" forever with rows the relay deliberately skips.
+     */
     unpublishedIdx: index("machine_transitions_unpublished_idx")
       .on(t.id)
-      .where(sql`${t.publishedAt} is null`),
+      .where(sql`${t.publishedAt} is null and ${t.success} = 'true'`),
   }),
 );
 

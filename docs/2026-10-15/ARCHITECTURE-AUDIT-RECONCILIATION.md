@@ -660,6 +660,17 @@ row's event was delivered" from "this row's event was lost". Adding `published_a
 registry. The relay then republishes rows that stayed unmarked — the same shape as Spring Modulith's
 resend, without a parallel table that could drift from the state it describes.
 
+The three fields each earn their place, which is worth stating because they were originally open gaps:
+`org_id` makes a replayed row routable without a join; `revision` gives the replay the same
+occurrence-unique identity the live publish uses, so the webhook dedupe key survives a replay (without it
+a replay would fall back to a random id and deliver a duplicate); `published_at` is the marker itself.
+
+The partial index predicate must match the relay's query *exactly* — `WHERE published_at IS NULL AND
+success = 'true'`. A rejected transition is never published (nothing consumes `TRANSITION_REJECTED`), so
+indexing on `published_at IS NULL` alone would grow the "backlog" forever with rows the relay skips by
+design. Verified by forcing the planner: `Index Scan using machine_transitions_unpublished_idx` with only
+`created_at` left as a filter, and a simulated rejected row does not enter the predicate.
+
 **The migration hazard, which I hit for real.** Existing rows had `published_at = NULL`, so the relay's
 first pass treated the entire history as undelivered and republished 28 transitions. It was harmless here
 — there were no webhook subscriptions, so the consumer had nothing to do — but the lesson is not
