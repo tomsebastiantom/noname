@@ -176,6 +176,7 @@ export function createMachineEngine(
           revision: expectedVersion + 1,
           updatedAt: new Date(),
         };
+        const committedRevision = expectedVersion + 1;
         const saved = await storage.commitTransition(
           updated,
           expectedVersion,
@@ -183,7 +184,11 @@ export function createMachineEngine(
           result,
           params,
         );
-        eventBus.publish(MachineEvents.TRANSITION, {
+        // Not awaited: the request must not pay for a Redis round-trip (the fan-out is bounded and
+        // already non-fatal). The marker is chained onto the publish instead of run unconditionally, so
+        // a publish that *does* reject leaves the row unpublished for the relay to retry — marking on a
+        // failed publish would silently lose the event.
+        const publish = eventBus.publish(MachineEvents.TRANSITION, {
           orgId,
           instanceId,
           event,
@@ -194,8 +199,21 @@ export function createMachineEngine(
           // available identity was `instance:event:toState`, which is identical for two separate
           // occurrences of the same transition (e.g. two addToCart calls) — so it cannot dedupe
           // without also suppressing legitimate repeats.
-          revision: saved.revision,
+          revision: committedRevision,
         });
+        // The guard keeps minimal `MachineStorage` doubles (tests, custom adapters) working: a missing
+        // marker must degrade to "never marked", which the relay then handles — not throw a TypeError
+        // that would fail a committed transition.
+        if (typeof storage.markTransitionPublished === "function") {
+          void publish
+            .then(() => storage.markTransitionPublished(instanceId, committedRevision))
+            .catch((error: unknown) => {
+              console.warn(
+                "[machines] publish or marker failed; the transition stays unpublished for the relay",
+                error,
+              );
+            });
+        }
 
         if (hooks.onTransitionComplete) {
           // A failure here must not fail the request: the state change is already committed, so

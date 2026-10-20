@@ -100,6 +100,28 @@ export interface MachineStorage {
     params: Record<string, unknown>,
   ): Promise<void>;
   listTransitions(instanceId: string): Promise<TransitionRecord[]>;
+
+  /**
+   * Delivery bookkeeping for the transition log, so a committed transition whose publish was lost can
+   * be re-published from the log itself. `revision` is unique per instance, making
+   * `(instanceId, revision)` a natural key.
+   */
+  markTransitionPublished(instanceId: string, revision: number): Promise<void>;
+
+  /** Transitions committed before `olderThan` that have not been published yet, oldest first. */
+  listUnpublishedTransitions(limit: number, olderThan: Date): Promise<PendingTransition[]>;
+}
+
+/** A committed transition awaiting (re)publication. Mirrors the event payload published live. */
+export interface PendingTransition {
+  id: string;
+  instanceId: string;
+  orgId: string | null;
+  revision: number | null;
+  event: string;
+  fromState: string;
+  toState: string;
+  params: Record<string, unknown>;
 }
 
 export interface TransitionRecord {

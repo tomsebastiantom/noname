@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, or, type SQL, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lte, or, type SQL, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { ConflictError, StorageError, ValidationError } from "../../../shared/domain-error";
 import type {
@@ -91,6 +91,8 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
         }
         await tx.insert(machineTransitions).values({
           instanceId: instance.id,
+          orgId: instance.orgId,
+          revision: expectedRevision + 1,
           event,
           fromState: result.fromState,
           toState: result.toState,
@@ -101,6 +103,62 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
         });
         return mapInstance(row);
       });
+    },
+
+    /**
+     * Marks the transition for `(instanceId, revision)` as published. Keyed on that pair rather than an
+     * id so the engine can mark without changing `commitTransition`'s return type; `revision` is unique
+     * per instance, which makes the pair a natural key.
+     */
+    async markTransitionPublished(instanceId, revision) {
+      await db
+        .update(machineTransitions)
+        .set({ publishedAt: new Date() })
+        .where(
+          and(
+            eq(machineTransitions.instanceId, instanceId),
+            eq(machineTransitions.revision, revision),
+            isNull(machineTransitions.publishedAt),
+          ),
+        );
+    },
+
+    /**
+     * Transitions committed but not yet published, oldest first.
+     *
+     * No row lock: `FOR UPDATE SKIP LOCKED` only protects rows for the duration of a transaction, and
+     * this runs as a single statement, so the lock would be released before the caller publishes
+     * anything — it would advertise a guarantee it cannot provide. Two processes may therefore read the
+     * same row and both publish it. That is why the relay is documented as **at-least-once** and why
+     * consumers must be idempotent; the webhook path already is, keyed by `(subscription_id, event_id)`.
+     * Making dispatch exclusive needs either a pinned session for an advisory lock or a
+     * claim-then-publish protocol with a staleness reaper (what Spring Modulith's PROCESSING/FAILED
+     * states do) — both are larger than this increment, and neither is needed while duplicates are
+     * harmless.
+     */
+    async listUnpublishedTransitions(limit, olderThan) {
+      const rows = await db
+        .select()
+        .from(machineTransitions)
+        .where(
+          and(
+            isNull(machineTransitions.publishedAt),
+            eq(machineTransitions.success, "true"),
+            lte(machineTransitions.created_at, olderThan),
+          ),
+        )
+        .orderBy(machineTransitions.created_at, machineTransitions.id)
+        .limit(limit);
+      return rows.map((row) => ({
+        id: row.id,
+        instanceId: row.instanceId,
+        orgId: row.orgId,
+        revision: row.revision,
+        event: row.event,
+        fromState: row.fromState,
+        toState: row.toState,
+        params: (row.params ?? {}) as Record<string, unknown>,
+      }));
     },
     async listInstances(orgId) {
       const rows = await db

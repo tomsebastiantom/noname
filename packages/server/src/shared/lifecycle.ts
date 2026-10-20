@@ -25,4 +25,38 @@ export function isDraining(): boolean {
 /** Test-only: restore the pre-shutdown state between test files. */
 export function resetLifecycleForTests(): void {
   draining = false;
+  shutdownTasks.length = 0;
+}
+
+/**
+ * Background work that must be *stopped* on shutdown, as opposed to the BullMQ workers that must be
+ * *drained*. A relay or a debounced flusher holds in-flight work that would otherwise be abandoned when
+ * the process exits.
+ */
+const shutdownTasks: { name: string; run: () => Promise<void> }[] = [];
+
+export function registerShutdownTask(name: string, run: () => Promise<void>): void {
+  shutdownTasks.push({ name, run });
+}
+
+/**
+ * Runs every registered task, never throwing. One failing task must not strand the others, and shutdown
+ * has to reach `process.exit` regardless.
+ */
+export async function runShutdownTasks(): Promise<void> {
+  const tasks = shutdownTasks.splice(0);
+  if (tasks.length === 0) return;
+  const results = await Promise.allSettled(tasks.map((task) => task.run()));
+  const failed = results
+    .map((result, index) => ({ result, task: tasks[index] }))
+    .filter(({ result }) => result.status === "rejected");
+  for (const { result, task } of failed) {
+    console.error(
+      `[shutdown] task "${task?.name}" failed`,
+      (result as PromiseRejectedResult).reason,
+    );
+  }
+  if (failed.length > 0) {
+    console.warn(`[shutdown] ${failed.length}/${tasks.length} shutdown task(s) failed`);
+  }
 }

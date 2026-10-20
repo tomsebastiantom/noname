@@ -48,8 +48,11 @@ async function shutdown(signal: string): Promise<void> {
   forceTimer.unref();
 
   try {
+    const { runShutdownTasks } = await import("./shared/lifecycle");
     const { closeAllBullmqWorkers } = await import("./shared/bullmq-workers");
     const { closeAllBullmqQueues } = await import("./shared/bullmq-queue");
+    // Stop producing first (the transition relay holds an in-flight pass), then let workers drain.
+    await runShutdownTasks();
     // Workers first: `close()` lets the job in progress finish. This process exists only to run
     // jobs, so skipping this abandoned every job that happened to be mid-flight at shutdown.
     await closeAllBullmqWorkers();

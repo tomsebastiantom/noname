@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -73,6 +74,11 @@ export const machineTransitions = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     instanceId: uuid("instance_id").notNull(),
+    /** Denormalised so the log is self-contained: the relay rebuilds an event payload without a join. */
+    orgId: text("org_id"),
+    /** The instance revision this transition produced. Unique per occurrence, so it also serves as the
+     * idempotency key for consumers (see the webhook dedupe key). */
+    revision: integer("revision"),
     event: text("event").notNull(),
     fromState: text("from_state").notNull(),
     toState: text("to_state").notNull(),
@@ -81,9 +87,23 @@ export const machineTransitions = pgTable(
     success: text("success").notNull().default("true"),
     error: text("error"),
     created_at: timestamp("created_at").notNull().defaultNow(),
+    /**
+     * Set once the event for this transition has been published. `NULL` means "committed but not yet
+     * delivered", which is exactly the state the relay exists to find.
+     *
+     * This is the same idea as Spring Modulith's event publication registry — an entry written *as part
+     * of the original business transaction* and marked when dispatch succeeds — except the entry is
+     * already here: `commitTransition` has always written this row inside its transaction. We only had
+     * no way to tell which rows had been delivered.
+     */
+    publishedAt: timestamp("published_at"),
   },
   (t) => ({
     instanceIdx: index("machine_transitions_instance_idx").on(t.instanceId),
+    /** Partial, so the relay's scan touches only the backlog and stays small as history grows. */
+    unpublishedIdx: index("machine_transitions_unpublished_idx")
+      .on(t.id)
+      .where(sql`${t.publishedAt} is null`),
   }),
 );
 

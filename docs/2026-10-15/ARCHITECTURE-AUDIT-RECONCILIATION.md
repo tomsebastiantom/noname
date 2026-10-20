@@ -68,7 +68,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | # | Risk | Evidence | Note |
 |---|---|---|---|
 | S3 | Real `WORKER_SERVER_SECRET` committed | `.dev.vars` tracked (blob `ee479708`); same value in `.env` and `AUTH.md:72,81`; fingerprint `a4d59153` | See §5. |
-| S7 | Event bus at-most-once, no replay, errors swallowed | **Error handling fixed 2026-10-15.** `dispatchLocal` no longer swallows: a throwing subscriber is logged and the remaining subscribers still run. Cross-replica publish is bounded (2s) and never rejects, so a `void`-ed call can no longer become a process-killing unhandled rejection, and a request path can no longer block behind `maxRetriesPerRequest: null`. **Still absent: outbox, consumer offsets, replay** — fan-out remains at-most-once, and that is an architectural change rather than a bug fix. | See §5.8. |
+| S7 | Event bus at-most-once, no replay, errors swallowed | **Partially fixed 2026-10-15.** Error handling fixed first (§5.8). Then the replay half: machine transitions are now **at-least-once**. `commitTransition` already wrote the transition row *inside the same transaction* as the state change, so the durable event record always existed — nothing could tell which rows had been delivered. `machine_transitions` gained `published_at` (plus `org_id` and `revision`); the live path marks it after a successful publish; a relay re-publishes rows that stay unmarked. Proven end-to-end: clearing the marker on a real transition made the relay re-publish it and a webhook delivery row appeared with the correct occurrence-unique id. | **The other ~30 publishers stay best-effort by design** — they are cache/SSE notifications, not facts a consumer depends on (§5.16). Duplicate dispatch across replicas is possible and harmless for idempotent consumers. |
 | S8 | Redis fan-out health can never report degraded | **FIXED 2026-10-15.** Liveness is driven by the connections' own `ready`/`error`/`close`/`end` events instead of `publisher !== null`. One finding, **three** sites — `event-bus`, `sse-manager` and `collab-redis-relay` all had it identically; all three now use `shared/redis-fanout.ts`. | Verified live: stopping Dragonfly flipped all three to degraded in 4s and restarting recovered them in 2s. Neither direction worked before. |
 | S9 | Redis helper silently drops TLS/username/db | **FIXED 2026-10-15.** `getRedisConnection()` now derives the whole URL: `rediss://` (or `?tls=true`) enables TLS, an ACL `username` is kept and percent-decoded, and the database index is read from the path or `?db=`. A malformed URL or a non-`redis://` scheme throws instead of silently falling back to localhost. | Three silent failures, not one: a TLS-requiring Redis was dialled in the clear, a Redis 6 ACL user authenticated as `default`, and `redis://host/2` silently became db 0 — cross-talk between datasets that looks like a healthy connection. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
@@ -632,10 +632,66 @@ Residual, documented rather than hidden: if the invalidation publish is lost, a 
 settings until the 30s TTL — that is the purpose of the short TTL, since `publishableKey` authenticates
 public actors.
 
+### 5.16 Durable event delivery without an outbox table — the log was already the outbox
+
+S7 was the item I had repeatedly described as needing "a transaction boundary threaded through ~30
+publishers". Working through how DDD and its frameworks actually solve this showed the estimate was
+wrong, and the reason is specific to this codebase.
+
+**What the frameworks do.** [Spring Modulith's event publication
+registry](https://docs.spring.io/spring-modulith/reference/events.html) writes an entry for each
+transactional listener "**as part of the original business transaction**", marks it when the listener
+succeeds, and republishes outstanding entries on restart — with `PUBLISHED → PROCESSING →
+COMPLETED/FAILED` states, a staleness monitor, and a documented warning that without periodic purging the
+registry table "will grow unbounded". It can work that way because the framework owns both transaction
+demarcation (`@Transactional`) and a single publish choke point (`ApplicationEventPublisher`). Next.js
+offers the opposite lesson: [`after()`](https://nextjs.org/docs/app/api-reference/functions/after) is
+documented for "side effects that should not block the response, such as logging and analytics" — no
+transaction, no durability.
+
+**What we already had.** `commitTransition` opens `db.transaction` and writes **both** the aggregate and
+its `machine_transitions` row inside it. That is a unit of work persisting an aggregate with its domain
+event — the property DDD requires and the outbox exists to obtain. The transition log is append-only, and
+`replayPersistedTransition` already read it to repair missed projections.
+
+So the missing piece was never the durable record. It was **the marker**: nothing could distinguish "this
+row's event was delivered" from "this row's event was lost". Adding `published_at` (plus `org_id` and
+`revision`, so a replayed row carries a complete payload) turned the existing log into a publication
+registry. The relay then republishes rows that stayed unmarked — the same shape as Spring Modulith's
+resend, without a parallel table that could drift from the state it describes.
+
+**The migration hazard, which I hit for real.** Existing rows had `published_at = NULL`, so the relay's
+first pass treated the entire history as undelivered and republished 28 transitions. It was harmless here
+— there were no webhook subscriptions, so the consumer had nothing to do — but the lesson is not
+optional: **mark pre-existing rows as published before starting the relay**, or the first deploy fires
+every historical event at every subscriber. The migration is:
+
+```sql
+update machine_transitions set revision = null where published_at is null;      -- history never recorded it
+update machine_transitions set published_at = created_at where published_at is null;
+```
+
+and `revision` is deliberately nulled rather than backfilled from the instance's *current* revision,
+because a per-row value taken from current state would be a plausible-looking lie. Historical rows carry
+no revision; only rows written from now on are complete.
+
+**What this deliberately does not do.** Only machine transitions are durable. The other ~30 publishers
+(cache invalidation, SSE nudges, asset/page notifications) stay at-most-once, because they carry
+notifications rather than facts and DDD's boundary thinking says losing one costs a stale cache entry, not
+a missing delivery. Making dispatch *exclusive* across replicas is also unsolved on purpose: every
+worker-enabled replica runs a relay and the read is not exclusive, so two processes can publish the same
+row. Consumers are idempotent (the webhook unique index from §5.13 is what makes this safe), and the
+alternatives — an advisory lock on a pinned session, or claim-then-publish with a staleness reaper like
+Modulith's `PROCESSING`/`FAILED` states — are a larger increment than the risk justifies today.
+
+Verified end-to-end: a real transition wrote `org_id`/`revision` and was marked published shortly after
+the response (the marker is chained off the publish, not awaited, so a request never pays for a Redis
+round-trip); clearing that marker and backdating the row made the relay re-publish it within one interval,
+and a webhook delivery row appeared carrying `{org}:{instance}:{revision}`.
+
 ---
 
-## 6. Immediate actions, in priority order
-1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
+## 6. Immediate actions, in priority order1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
    (Phase 0 item 0.1). Everything in §2's S2 row — both defensive layers — assumes this value is private.
    Deleting it from HEAD is **not** sufficient: it is in history and already public.
 2. ~~**Delete `.kilo/worktrees/*`**~~ — **done** (`ece5b14`). Both registered worktrees, the merged

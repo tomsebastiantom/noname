@@ -45,11 +45,12 @@ import { createDatabase } from "./drizzle";
 import { ServiceUnavailableError } from "./shared/domain-error";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
-import { isDraining } from "./shared/lifecycle";
+import { isDraining, registerShutdownTask } from "./shared/lifecycle";
 import { buildReadiness, type ObservabilityInput, renderMetrics } from "./shared/observability";
 import { orgMiddleware } from "./shared/org";
 import { orgTracingMiddleware } from "./shared/org-tracing";
 import { getRedisFanoutStatus } from "./shared/redis-fanout-status";
+import { workersEnabled } from "./shared/worker-runtime";
 
 /**
  * Builds the full domain graph (services, routes, and — unless `RUN_WORKERS=false` — background
@@ -254,6 +255,13 @@ export async function createApp(): Promise<Hono> {
       },
     },
   });
+
+  // Republish transitions whose event was committed but never delivered. Started where background work
+  // runs, and stopped on shutdown so a half-marked batch is not abandoned mid-flight.
+  if (workersEnabled()) {
+    machines.relay.start();
+    registerShutdownTask("machine-transition-relay", () => machines.relay.stop());
+  }
 
   const integrations = createIntegrationsDomain({
     secrets: secrets.service,

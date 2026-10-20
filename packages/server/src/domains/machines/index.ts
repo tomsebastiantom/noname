@@ -4,6 +4,7 @@ import { createPostgresMachineStorage } from "./adapters/postgres";
 import { createMachineRoutes } from "./api";
 import { createMachineEngine, type MachineEngineHooks, registerGuard } from "./engine";
 import type { Guard, MachineStorage } from "./ports";
+import { createTransitionRelay } from "./transition-relay";
 
 export interface MachineDomainDeps {
   db: Database;
@@ -24,5 +25,10 @@ export function createMachineDomain(deps: MachineDomainDeps) {
   }
 
   const routes = createMachineRoutes(engine, deps.tenantSettings);
-  return { storage, engine, routes };
+  /**
+   * Republisher for committed-but-undelivered transitions. Not started here: the caller decides,
+   * because it should run wherever background work runs (and must be stopped on shutdown).
+   */
+  const relay = createTransitionRelay(storage);
+  return { storage, engine, routes, relay };
 }

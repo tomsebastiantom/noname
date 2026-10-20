@@ -10,7 +10,7 @@ import { initCollabRedisRelay } from "./domains/collab/collab-redis-relay";
 import { closeAllBullmqQueues } from "./shared/bullmq-queue";
 import { closeAllBullmqWorkers } from "./shared/bullmq-workers";
 import { initEventBus } from "./shared/event-bus";
-import { beginDraining } from "./shared/lifecycle";
+import { beginDraining, runShutdownTasks } from "./shared/lifecycle";
 import { listenWithRetry } from "./shared/listen-with-retry";
 import { startRedisFanoutMonitor } from "./shared/redis-fanout-status";
 import { initSseManager } from "./shared/sse-manager";
@@ -93,6 +93,9 @@ async function shutdown(signal: NodeJS.Signals): Promise<void> {
     draining.closeAllConnections?.();
     await closed;
     await new Promise<void>((resolve) => wss.close(() => resolve()));
+    // Stop producing before draining: the relay (and any future flusher) may hold in-flight work that
+    // would otherwise be abandoned when the process exits.
+    await runShutdownTasks();
     // Drain in-flight jobs before releasing the queues. With RUN_WORKERS=true (the default) this
     // process hosts every domain's worker, so closing queues alone left their active jobs running
     // while the process exited — a half-finished webhook delivery, email send or catalog build.
