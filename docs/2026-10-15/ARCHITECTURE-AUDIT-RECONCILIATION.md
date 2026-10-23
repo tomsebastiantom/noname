@@ -793,6 +793,43 @@ tests.
 
 ---
 
+## 5.20 Browser regression pass over everything changed
+
+The refactors in this document touch transitions, SSE, webhooks, caching, retention, metrics, the
+transition relay and collab persistence. Every one was verified at the API or unit level, but none had been
+exercised through the real UI — so a full browser pass was run against the running stack (client `:5173` →
+edge `:8787` → API `:3000`) with Playwright.
+
+**9/9 checks passed**, with the page text captured as evidence rather than an assertion that it "looked
+fine":
+
+| Check | Evidence |
+|---|---|
+| Storefront renders | `Welcome to Noname / Commerce extension demo layout / Explore / Click blocks in ?edit=true to change layout` |
+| Login form renders | email + password inputs present |
+| Sign-in completes | redirected away from `/login` to `/` using the demo credentials |
+| Admin reaches the dashboard | `ADMIN / Overview / Pages / Content / Layouts / Orders / Auth settings / Integrations / Team members` |
+| Visual editor loads | 1768 chars: `Edit page / Admin edited 6 weeks ago / Live · You · Editing alone / Exit edit / Discard / Save` |
+| Tenant resolve via the browser | `GET /api/tenants/resolve/yogastore → 200` |
+| **Flag SSE stream accepted** | `GET /api/flags/stream → 200` from inside the page — the topic rework from §5.14 works through client → edge → API |
+| No console errors | 0 (filtering only dev-server/HMR noise) |
+| No failing `/api` responses | 0 responses ≥ 400 |
+
+Two things worth recording from the run, neither of them the app's fault:
+
+- **The podman VM had stopped mid-run.** Every dependency vanished (`ECONNREFUSED` on 5432 and 6379,
+  including inside the transition relay), which surfaced as a 400 from the edge
+  (`org id required (JWT, URL path, or Host)`) because its slug lookup could not reach the API. `/health`
+  still returned 200 the whole time, because it deliberately never touches a dependency — a good
+  illustration of why `/ready` exists. After `podman machine start` + `compose up -d` the data was intact
+  (`63/6/2`, `flags=1`, `evaluations=617`) and the same request returned
+  `{"data":{"orgId":…,"slug":"yogastore"}}` 200 with no code change. **Not a regression.**
+- **The skill's browser evidence is worth reading, not summarising.** An early version of my harness
+  asserted on the tool's *summary* text and on a `ref=e\d+` pattern, while the real snapshots are inline
+  YAML with frame-prefixed refs (`ref=f1e26`). It reported failures that were entirely its own.
+
+---
+
 ## 6. Immediate actions, in priority order
 
 1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
