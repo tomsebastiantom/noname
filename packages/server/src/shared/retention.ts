@@ -1,3 +1,5 @@
+import { retentionRowsDeleted } from "./metrics";
+
 /**
  * Gated retention sweeps.
  *
@@ -71,6 +73,7 @@ export function createRetentionGate(options: RetentionGateOptions): RetentionGat
       inFlight = (async () => {
         try {
           removed = await deleteBefore(new Date(startedAt - options.retentionMs()));
+          if (removed > 0) retentionRowsDeleted.inc({ table: options.name }, removed);
         } catch (error) {
           // Never propagate: the caller is a write path whose own work already succeeded.
           console.error(

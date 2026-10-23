@@ -1,6 +1,7 @@
 import { assign, createActor, createMachine } from "xstate";
 import { ConflictError, NotFoundError, ValidationError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
+import { postCommitHookFailures } from "../../shared/metrics";
 import { MachineEvents } from "./events";
 import { normalizeMachineDefinition } from "./machine-config";
 import type {
@@ -61,6 +62,7 @@ async function runPostCommitHook(
     await hook(context);
     return true;
   } catch (error) {
+    postCommitHookFailures.inc({ event: context.event });
     console.error(
       `[machines] post-commit hook failed for "${context.event}" on instance ${context.instance.id} ` +
         `(${context.fromState} -> ${context.toState}, org ${context.orgId}); the transition is ` +

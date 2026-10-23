@@ -290,6 +290,43 @@ export function createRichTextYjsRoomManager(deps: RichTextYjsRoomManagerDeps) {
           break;
       }
     },
+
+    /**
+     * Persist every open rich-text room now. Called on shutdown.
+     *
+     * Same reasoning as the layout rooms: edits persist on a 5s debounce (`SNAPSHOT_DEBOUNCE_MS`), so
+     * without a flush a deploy drops up to five seconds of live typing that only exists in this process's
+     * Yjs document. `persistRoom` no-ops while another pass is running and exposes a boolean rather than a
+     * promise, hence the bounded wait before the final write.
+     */
+    async flushAllRooms(): Promise<void> {
+      const open = [...rooms.entries()];
+      for (const [, room] of open) {
+        if (room.persistTimer) {
+          clearTimeout(room.persistTimer);
+          room.persistTimer = null;
+        }
+      }
+
+      let persisted = 0;
+      let failed = 0;
+      for (const [roomName, room] of open) {
+        for (let attempt = 0; attempt < 20 && room.persisting; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 25));
+        }
+        try {
+          await persistRoom(room);
+          persisted += 1;
+        } catch (error) {
+          failed += 1;
+          console.error(`[collab] shutdown flush failed for room ${roomName}`, error);
+        }
+      }
+
+      if (persisted > 0 || failed > 0) {
+        console.info(`[collab] shutdown flushed ${persisted} rich-text room(s), ${failed} failed`);
+      }
+    },
   };
 }
 

@@ -1,4 +1,4 @@
-﻿import * as Automerge from "@automerge/automerge";
+import * as Automerge from "@automerge/automerge";
 import { type DocHandle, type PeerId, Repo } from "@automerge/automerge-repo/slim";
 import type { WSContext } from "hono/ws";
 import type { Database } from "../../drizzle";
@@ -205,6 +205,50 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
       room.persistTimer = null;
     }
     await persistRoom(room);
+  }
+
+  /**
+   * Persist every open room now. Called on shutdown.
+   *
+   * Rooms persist on a 5s debounce (`SNAPSHOT_DEBOUNCE_MS`), so without this a deploy silently drops up
+   * to five seconds of live edits — the edits exist only in this process's Automerge document and the
+   * debounced timer never fires. `flushPersist` already flushes one room on demand for the agent's
+   * apply/revert paths; this is the same operation applied to everything still open.
+   *
+   * `persistRoom` returns early while another persist is in flight and exposes a boolean rather than a
+   * promise, so an in-flight pass is awaited by bounded polling (at most ~500ms per room) before the final
+   * state is written. Shutdown runs this once, which is why polling is acceptable here.
+   */
+  async function flushAllRooms(): Promise<void> {
+    const open = [...rooms.values()];
+    for (const room of open) {
+      if (room.persistTimer) {
+        clearTimeout(room.persistTimer);
+        room.persistTimer = null;
+      }
+    }
+
+    let persisted = 0;
+    let failed = 0;
+    for (const room of open) {
+      for (let attempt = 0; attempt < 20 && (room.persisting || room.reimporting); attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      try {
+        await persistRoom(room);
+        persisted += 1;
+      } catch (error) {
+        failed += 1;
+        console.error(
+          `[collab] shutdown flush failed for ${room.orgId}/${room.layoutDocumentId}`,
+          error,
+        );
+      }
+    }
+
+    if (persisted > 0 || failed > 0) {
+      console.info(`[collab] shutdown flushed ${persisted} layout room(s), ${failed} failed`);
+    }
   }
 
   async function syncFromDatabase(orgId: string, layoutDocumentId: string): Promise<void> {
@@ -550,6 +594,7 @@ export function createLayoutCollabRoomManager(deps: LayoutCollabRoomManagerDeps)
     getSpec: getRoomSpec,
     applySpec: applySpecToRoom,
     flushPersist,
+    flushAllRooms,
     syncFromDatabase,
     broadcastAgentTask,
   };

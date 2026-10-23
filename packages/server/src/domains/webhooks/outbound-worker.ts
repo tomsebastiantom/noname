@@ -4,6 +4,7 @@ import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { ServiceUnavailableError } from "../../shared/domain-error";
 import { eventBus } from "../../shared/event-bus";
+import { webhookDeliveryOutcomes } from "../../shared/metrics";
 import { getRedisConnection } from "../../shared/redis";
 import { signOutboundWebhook } from "../../shared/webhook-signing";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
@@ -69,6 +70,7 @@ export function startWebhookOutboundWorker(deps: {
           await deps.storage.updateSubscription(orgId, subscriptionId, {
             consecutiveFailures: 0,
           });
+          webhookDeliveryOutcomes.inc({ event_type: eventType, outcome: "delivered" });
 
           await eventBus.publish(WebhookEvents.OUTBOUND_SENT, {
             orgId,
@@ -81,6 +83,10 @@ export function startWebhookOutboundWorker(deps: {
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           const isFinalAttempt = attemptCount >= (job.opts.attempts ?? 1);
+          webhookDeliveryOutcomes.inc({
+            event_type: eventType,
+            outcome: isFinalAttempt ? "failed" : "retrying",
+          });
           const statusCode =
             message.match(/HTTP (\d+)/)?.[1] != null
               ? Number(message.match(/HTTP (\d+)/)?.[1])

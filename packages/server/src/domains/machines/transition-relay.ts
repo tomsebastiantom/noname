@@ -1,4 +1,5 @@
 import { eventBus } from "../../shared/event-bus";
+import { transitionRelayRepublished } from "../../shared/metrics";
 import { MachineEvents } from "./events";
 import type { MachineStorage } from "./ports";
 
@@ -115,6 +116,7 @@ export function createTransitionRelay(
     }
 
     if (published > 0) {
+      transitionRelayRepublished.inc(published);
       console.info(`[machines] relay republished ${published} undelivered transition(s)`);
     }
     return published;

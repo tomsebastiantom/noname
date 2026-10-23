@@ -42,11 +42,20 @@ import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
+import { getBullmqQueue } from "./shared/bullmq-queue";
+import { BULLMQ_QUEUES } from "./shared/bullmq-queues";
 import { ServiceUnavailableError } from "./shared/domain-error";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
 import { isDraining, registerShutdownTask } from "./shared/lifecycle";
-import { buildReadiness, type ObservabilityInput, renderMetrics } from "./shared/observability";
+import {
+  observeHttpRequest,
+  recordDatabaseProbe,
+  registry,
+  renderMetrics,
+  setQueueDepthCollector,
+} from "./shared/metrics";
+import { buildReadiness, type ObservabilityInput } from "./shared/observability";
 import { orgMiddleware } from "./shared/org";
 import { orgTracingMiddleware } from "./shared/org-tracing";
 import { getRedisFanoutStatus } from "./shared/redis-fanout-status";
@@ -70,6 +79,23 @@ export async function createApp(): Promise<Hono> {
   // registration order, so middleware registered after a route won't apply to it.
   app.use("*", orgMiddleware);
   app.use("*", orgTracingMiddleware);
+
+  /**
+   * Request metrics. Labelled by the matched **route pattern** (`c.req.routePath`), never the raw URL:
+   * `/api/machines/cart/<uuid>/addToCart` would otherwise create an unbounded label set and take the
+   * scrape down with it. Unmatched requests collapse to a placeholder for the same reason.
+   */
+  app.use("*", async (c, next) => {
+    const startedAt = performance.now();
+    await next();
+    const route = c.req.matchedRoutes.at(-1)?.path ?? "unmatched";
+    observeHttpRequest({
+      method: c.req.method,
+      route,
+      status: c.res.status,
+      durationSeconds: (performance.now() - startedAt) / 1000,
+    });
+  });
 
   app.onError((err, c) => {
     const handled = handleDomainError(err, c);
@@ -117,16 +143,18 @@ export async function createApp(): Promise<Hono> {
   app.get("/ready", async (c) => {
     const databaseOk = await databaseProbe();
     lastDatabaseOk = databaseOk;
+    // The gauge reads this rather than probing again, so a scrape stays cheap.
+    recordDatabaseProbe(databaseOk);
     const payload = buildReadiness(observabilityInput(databaseOk));
     return c.json(payload, payload.ready ? 200 : 503);
   });
 
-  /** Prometheus scrape target. A snapshot of signals the process already tracks; no metrics SDK. */
-  app.get("/metrics", (c) => {
+  /** Prometheus scrape target, published through prom-client (see `shared/metrics.ts`). */
+  app.get("/metrics", async (c) => {
     // Deliberately does not probe the database: a scrape must be cheap and must not fail because
     // Postgres blipped. `noname_ready` reflects the most recent readiness probe instead.
-    return c.text(renderMetrics(observabilityInput(lastDatabaseOk)), 200, {
-      "Content-Type": "text/plain; version=0.0.4; charset=utf-8",
+    return c.text(await renderMetrics(), 200, {
+      "Content-Type": registry.contentType,
     });
   });
 
@@ -263,6 +291,21 @@ export async function createApp(): Promise<Hono> {
     registerShutdownTask("machine-transition-relay", () => machines.relay.stop());
   }
 
+  // Queue depth for every BullMQ queue. Supplied as a collector so `shared/metrics.ts` stays free of a
+  // dependency on the queue layer; the gauge awaits it on each scrape.
+  setQueueDepthCollector(async () => {
+    const depths: Record<string, Record<string, number>> = {};
+    for (const queueName of new Set(Object.values(BULLMQ_QUEUES))) {
+      try {
+        depths[queueName] = await getBullmqQueue(queueName).getJobCounts();
+      } catch {
+        // A queue whose Redis connection is down must not break the whole scrape.
+        depths[queueName] = { unavailable: 1 };
+      }
+    }
+    return depths;
+  });
+
   const integrations = createIntegrationsDomain({
     secrets: secrets.service,
     tenantSettings: docs.service.tenantSettings,
@@ -308,6 +351,18 @@ export async function createApp(): Promise<Hono> {
     db,
   });
   app.route("/api/collab", collab.routes);
+
+  /**
+   * Persist open collab rooms on shutdown. Edits live in this process's CRDT document and are written on a
+   * 5 s debounce, so without this every deploy drops up to five seconds of live typing or layout editing —
+   * work that exists nowhere else once the process exits.
+   *
+   * Registered for both room managers rather than gated on `workersEnabled()`: rooms exist only on
+   * replicas serving websockets, so whichever process holds them must flush them.
+   */
+  registerShutdownTask("collab-flush", async () => {
+    await Promise.allSettled([collab.rooms.flushAllRooms(), collab.richtextRooms.flushAllRooms()]);
+  });
 
   app.route("/api/machines", machines.routes);
 

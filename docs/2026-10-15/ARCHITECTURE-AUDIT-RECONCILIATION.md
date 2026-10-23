@@ -22,7 +22,7 @@ failure mode is gone from the current code, not when adjacent code was touched.
 
 | Report cluster | Fixed | Partial | Still present | Not re-verified |
 |---|---|---|---|---|
-| 05 — scalability / security / runtime (17 risks) | 11 | 4 | 2 | 0 |
+| 05 — scalability / security / runtime (17 risks) | 12 | 3 | 2 | 0 |
 | 03 — package conformance | 0 | 1 | 14 | 1 |
 | 04 — UI spec conformance | 0 | 0 | 16 | 2 |
 | 01 / 02 / 06 — docs & hygiene | 6 | 1 | 5 | 0 |
@@ -30,10 +30,10 @@ failure mode is gone from the current code, not when adjacent code was touched.
 **Headline:** the commits since the audit were auth, edge, tenancy, analytics and shutdown hardening
 from the release-verification effort. They fixed six of the seventeen report-05 risks and **did not
 touch a single report-03/04 conformance violation**; two violations measurably widened. Subsequent work
-recorded below left report 05 at **11 fixed / 4 partial / 2 still present**. The four partials are
-partial for one reason each, and each of those reasons is architectural: **S7** needs an
-outbox, **S11** needs durable out-of-band hook execution, **S12** needs a ClickHouse sink, and **S16**
-needs a metrics SDK with instrumentation points. **S14** is now fixed outright — duplicate webhooks,
+recorded below left report 05 at **12 fixed / 3 partial / 2 still present**. The three partials are
+partial for one reason each: **S7** keeps its ~30 notification publishers best-effort (the durable half
+covers machine transitions), **S11** needs a product decision before hooks can move off the request, and
+**S12** has no ClickHouse sink because the measured data does not justify one (§5.18). **S14** is now fixed outright — duplicate webhooks,
 SSE audience leakage and the settings-cache race all closed — and its collab relay needed no change
 (§5.15).
 
@@ -59,7 +59,7 @@ Each row was independently re-read at HEAD. Evidence is `file:line` at `46c759a`
 
 | # | Risk | Status | Detail |
 |---|---|---|---|
-| S16 | No metrics or readiness; `/health` always 200 | **Partially fixed 2026-10-15.** `/ready` now exists and can fail: it gates on the database and on the draining flag, while reporting Redis/ClickHouse without gating on them (both degrade a capability without stopping this replica serving — the same reasoning that keeps `/health` always-200). `/metrics` is a Prometheus text scrape target covering readiness, draining, uptime, per-subsystem Redis fan-out, and ClickHouse readiness. | **Still absent: a metrics SDK and instrumented counters** — `/metrics` is a pull snapshot of signals the process already tracked, deliberately without adding a subsystem. See §5.11, including the allowlist change the endpoints needed. |
+| S16 | No metrics or readiness; `/health` always 200 | **FIXED 2026-10-23.** `/ready` gates on the database and the draining flag while reporting Redis/ClickHouse without gating on them. `/metrics` is now published through **prom-client**: 43 families live, including HTTP request count and duration labelled by matched **route pattern**, subscriber/post-commit-hook/webhook-failure counters, retention and relay work counters, BullMQ queue depth by state, and Node process metrics. | The earlier hand-rolled renderer is gone — it was the thing that once shipped a scrape a strict parser rejects. Verified live: 5 requests to `/health` moved the counter by exactly 5, the histogram recorded the same 6 requests, and queue depth came from the real BullMQ collector. See §5.17. |
 
 ### 2.2 Still present (10)
 
@@ -73,7 +73,7 @@ Re-read at HEAD; none of these files were touched by any commit since the audit.
 | S9 | Redis helper silently drops TLS/username/db | **FIXED 2026-10-15.** `getRedisConnection()` now derives the whole URL: `rediss://` (or `?tls=true`) enables TLS, an ACL `username` is kept and percent-decoded, and the database index is read from the path or `?db=`. A malformed URL or a non-`redis://` scheme throws instead of silently falling back to localhost. | Three silent failures, not one: a TLS-requiring Redis was dialled in the clear, a Redis 6 ACL user authenticated as `default`, and `redis://host/2` silently became db 0 — cross-talk between datasets that looks like a healthy connection. |
 | S10 | Storefront hot path: uncached tenant settings + unindexed slug scan | **FIXED 2026-10-15.** Both halves. (1) `get()` now caches per org with a 30s TTL, is invalidated in-process on `upsert` and cross-replica via `tenant_settings.updated`, and **no longer writes a default row on a miss** — a read path doing an insert per request. (2) Added the partial unique expression index `documents_store_slug_unique` on `(data->>'slug') WHERE type='tenant_settings' AND key='default'`, so the slug is an index condition rather than a filter over every tenant row. | Measured live: **40 settings reads → `idx_scan +0`** on `documents`, against a positive control of **40 uncached slug resolutions → `idx_scan +41`**. The unique index also closes a TOCTOU race the service-level check could not: the app read-then-wrote in two statements, so two concurrent claims of one slug could both pass. |
 | S11 | Transition hooks run outside the transaction, inline on the request | **Partially fixed 2026-10-15.** A post-commit hook failure no longer fails the request: `commitTransition` persists first, so reporting an error told the caller the opposite of what happened. Failures are logged with full context. Hooks are **still awaited inline**, so their latency remains on the request, and they remain outside the transaction so they still cannot roll it back. | Proven end-to-end, see §5.9. |
-| S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Partially fixed 2026-10-15.** Retention added: a time-gated sweep deletes evaluations older than `FLAG_EVALUATION_RETENTION_DAYS` (default 30), triggered from the write path but at most once per `FLAG_EVALUATION_SWEEP_INTERVAL_MS` (default 1h) and never overlapping. Added `flag_evals_evaluated_at` because the retention predicate is `evaluated_at < cutoff` and the existing indexes lead with `flag_id`/`org_id`. The per-flag `flag.evaluated` publish is now **one event per evaluation set** — it had no subscribers at all, so each evaluated flag was costing a Redis publish for nothing. | **Still absent: a ClickHouse sink**, which is an architectural change rather than a fix. See §5.10. |
+| S12 | `flag_evaluations` unbounded; no ClickHouse sink | **Bounded and measured 2026-10-23.** Retention removed the unbounded growth (default 30 days, gated sweep, `flag_evals_evaluated_at` for the predicate), and the per-flag publish became one event per evaluation set. The sink was then **measured rather than assumed**: 617 rows / 376 kB total, ~20 rows/day, `listEvaluations` at 0.66 ms, a 30-day aggregate at 1.68 ms, and a 500-row insert at 34.5 ms. | **No sink, by measurement** — reaching 10M rows at current growth would take ~1,370 years. The trigger thresholds are recorded in §5.18, so this becomes a build the moment the data supports it rather than a permanent deferral. |
 | S14 | Multi-instance hazards (SSE, collab, caches, version races) | **FIXED 2026-10-15.** Three instances fixed, one proven unnecessary. (1) `machine.transition` drove an outbound webhook from a *broadcast* event, so every process that subscribed produced its own delivery row and its own HTTP POST; the event now carries `revision`, the dedupe key is occurrence-unique, and a unique index on `(subscription_id, event_id)` collapses N processes to one delivery. (2) SSE is **topic-addressed** in the Socket.IO-rooms / Mercure sense, so an anonymous storefront stream is not a candidate for a user's notifications at all. (3) The tenant-settings cache now uses single-flight plus a per-org generation fence, so a read that raced an invalidation can no longer re-cache the value it invalidated. **Collab needed no change** — its persist path already refuses to overwrite a moved row (§5.15). | Remaining exposure is bounded, not structural: on a lost Redis invalidation a replica serves stale settings until the 30s TTL expires, which is the documented backstop. |
 | S15 | Unbounded tables (idempotency, provider receipts) | **FIXED 2026-10-15.** Both tables now have reapers sharing the gated sweep (`shared/retention.ts`) with `flag_evaluations`. `capability_idempotency` rows are deleted a configurable grace period **after expiry** (default 7 days), using its existing `expires_at` index. `provider_event_receipts` had **no expiry column at all**, so an age-based delete was added, along with `provider_event_receipts_created_at_idx` — neither existing index could serve `created_at < cutoff`. | Corrected from the audit's own framing: the expiry index was already present at audit time, and `audiences` experience decisions were already bounded. The real gap was the absence of any reaper. See §5.12. |
 | S17 | ~39 undocumented env vars, zero boot-time validation | `load-env.ts` added in `73207b9` normalises `.env` precedence only — it is not validation | Measured now: 72 `process.env.*` references across server+worker `src` vs 41 documented lines in `.env.example` → **~43 undocumented**, up from ~39. The only fail-fast guard is inline for `DATABASE_URL` (`bootstrap.ts:92-97`). |
@@ -700,9 +700,102 @@ the response (the marker is chained off the publish, not awaited, so a request n
 round-trip); clearing that marker and backdating the row made the relay re-publish it within one interval,
 and a webhook delivery row appeared carrying `{org}:{instance}:{revision}`.
 
+### 5.17 S16 finished: prom-client, and the instruments that answer "how often?"
+
+The endpoints from §5.11 exposed state the process already tracked. Instrumentation was the missing half,
+and it was deferred for a while under the wrong label — I first called it "architectural", which was a
+prioritisation hiding behind a technical word (nothing in S16 changes a contract, a write path or a
+semantic; it adds visibility to events that already happen).
+
+It is now built on **prom-client** rather than hand-rolled text. That matters concretely: the previous
+renderer in `shared/observability.ts` shipped a scrape a strict Prometheus parser rejects ("second HELP
+line for metric name"), and the exposition format has sharp edges (label escaping, bucket layout, one
+`HELP` per family) that are the library's job. `shared/observability.ts` now keeps only the pure
+readiness decision that `/ready` returns.
+
+What is instrumented, and why each one exists rather than being a number for its own sake:
+
+| Instrument | The question it answers |
+|---|---|
+| `noname_http_request_duration_seconds` / `noname_http_requests_total` | latency and error rate, labelled by **matched route pattern** (`c.req.matchedRoutes`), never the raw URL — a UUID path would make the label set unbounded and take the scrape down |
+| `noname_event_bus_subscriber_failures_total` | a subscriber throwing on *every* event used to be a silent `catch {}` |
+| `noname_machine_post_commit_hook_failures_total` | how often a committed transition's projection failed — previously one log line per occurrence |
+| `noname_webhook_delivery_outcomes_total` | `delivered` / `retrying` / `failed` kept distinct, so a retry is not counted as a failure |
+| `noname_retention_rows_deleted_total` | whether the reapers from S12/S15 actually delete anything |
+| `noname_transition_relay_republished_total` | whether S7's relay is doing work — a permanently flat zero is a useful signal too |
+| `noname_bullmq_queue_depth` | queue depth by state, supplied by a collector so `metrics.ts` stays free of a dependency on the queue layer |
+| Node process metrics | the usual `process_*` / `nodejs_*` families |
+
+**A falsification caught a bad test.** The first version incremented each counter *directly* in the test,
+so deleting the `.inc(...)` from `dispatchLocal` still passed — the test proved the instrument existed, not
+that anything was wired to it. Adding a test that publishes through the real event bus with a throwing
+subscriber made the wiring falsifiable: removing the `.inc` now fails it.
+
+Verified live: 43 families with no duplicate `HELP`; five requests to `/health` moved its counter by
+exactly five; the histogram recorded the same six requests; queue depth came from the real BullMQ
+collector; `/ready` moved `noname_ready`.
+
+### 5.18 S12's ClickHouse sink: measured, and the measurement says no
+
+"No driver" was an assertion. This is the measurement behind it, taken before writing any sink:
+
+| Measurement | Value |
+|---|---|
+| Rows | 617 |
+| Table size | 376 kB total (152 kB heap, ~192 kB indexes) |
+| Growth | ~4–41 rows/day, ~20 average |
+| `listEvaluations` shape (flag + range, newest first) | **0.66 ms**, 7 shared buffers, index-backed |
+| 30-day per-day aggregate | **1.68 ms** |
+| Insert | 500 rows in **34.5 ms** (~0.07 ms/row), already batched per evaluation set |
+
+At ~20 rows/day, reaching 10M rows would take roughly 1,370 years. The sink would cost a ClickHouse
+table, dual-write or CDC, a backfill, a rewrite of the read path, and a new cross-store consistency
+failure mode — all to replace a 0.66 ms query over 376 kB. That is cost without a requirement, which is
+why "measurement first" was the right call and why this stays *partial* rather than getting built.
+
+**Triggers to revisit** (any one of these, not a vague "at scale"):
+
+- table size exceeds **5 GB**, or rows exceed **10M**;
+- p95 `listEvaluations` exceeds **100 ms**;
+- evaluation writes measurably contend (insert latency or DB CPU), i.e. the write path — not reads —
+  becomes the bottleneck;
+- a product need appears for cross-org, ad-hoc analytics over evaluations that Postgres cannot serve
+  within budget.
+
+Until one fires, the correct action is the retention sweep that already exists, not a second datastore.
+
 ---
 
-## 6. Immediate actions, in priority order1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
+## 5.19 Collab snapshots were never flushed on shutdown
+
+Found after the report, while fixing §5.7: `flushPersist` existed but was only ever called from the agent's
+apply/revert tools (`patch-layout-draft.ts`, `revert-layout-patch.ts`). Nothing flushed on exit.
+
+Both room managers persist on a **5 s debounce** (`SNAPSHOT_DEBOUNCE_MS`), and the pending snapshot lives
+only in that process's CRDT document. So every deploy silently dropped up to five seconds of live typing
+(Yjs rich text) or layout editing (Automerge) — edits that had been acknowledged to the user and existed
+nowhere else. This is lost work, not a stale cache.
+
+Fixed with the shutdown-task registry added for the transition relay (§5.16): `flushAllRooms()` on both
+managers clears the debounce timers and persists every open room, and `bootstrap.ts` registers it as
+`collab-flush`. Registered unconditionally rather than gated on `workersEnabled()`, because rooms live only
+on replicas serving websockets — whichever process holds them must flush them.
+
+Two honest details. `persistRoom` returns early while another pass is in flight and exposes a boolean rather
+than a promise, so an in-flight pass is awaited by **bounded polling** (≤ 500 ms per room) before the final
+write; shutdown runs it once, which is why polling is acceptable here. And the flush is **not verified
+end-to-end**: it needs a live websocket client, a CRDT document and a real database write, and a graceful
+exit cannot be signalled on Windows (Node terminates rather than running handlers). What *is* verified is
+the registry it depends on — tasks run once, run concurrently, and one failing task cannot strand the others
+(falsified by replacing `Promise.allSettled` with a sequential loop that aborts: the "still runs the other
+tasks" test fails). The flush path itself reuses the same `persistRoom` covered by the existing collab
+tests.
+
+---
+
+## 6. Immediate actions, in priority order
+
+1. **Rotate `WORKER_SERVER_SECRET`** and purge it from `.dev.vars`, `AUTH.md:72,81`. Owner-deferred
    (Phase 0 item 0.1). Everything in §2's S2 row — both defensive layers — assumes this value is private.
    Deleting it from HEAD is **not** sufficient: it is in history and already public.
 2. ~~**Delete `.kilo/worktrees/*`**~~ — **done** (`ece5b14`). Both registered worktrees, the merged
@@ -736,3 +829,5 @@ documents.
   tracked in `docs/2026-10-10/RELEASE-VERIFICATION-STATUS.md`.
 - The verification was performed at `46c759a`. A separate writer session has been active in this repo;
   line numbers cited here will drift as it commits, which is itself an argument for the CI in item 3.
+
+---

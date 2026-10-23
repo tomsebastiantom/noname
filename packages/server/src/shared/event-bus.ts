@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { DomainEventName } from "../domain-events";
+import { eventBusSubscriberFailures } from "./metrics";
 import { createRedisFanout, type RedisFanout } from "./redis-fanout";
 
 const CHANNEL = "noname:event-bus";
@@ -20,6 +21,7 @@ async function dispatchLocal(event: string, payload: unknown): Promise<void> {
       // This used to be `catch { /* fire-and-forget */ }` — a subscriber could fail on every
       // single event with no log, no counter, and no health signal anywhere. Failures are still
       // non-fatal (the remaining subscribers must run), but they are no longer invisible.
+      eventBusSubscriberFailures.inc({ event });
       console.error(
         `[event-bus] subscriber for "${event}" threw; other subscribers were still notified`,
         error,
