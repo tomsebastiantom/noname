@@ -1,6 +1,8 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-23/CODE-VERIFIED-STATUS.md](2026-10-23/CODE-VERIFIED-STATUS.md)** — **Most current. Read this first.** Dated, command-verified snapshot: gate results, Phase 0/1 item status, report-05 risk status, open correctness findings, the not-verified commerce list, and a register of stale doc claims. Docs are claims, code is truth.
+- **[2026-10-15/ARCHITECTURE-AUDIT-RECONCILIATION.md](2026-10-15/ARCHITECTURE-AUDIT-RECONCILIATION.md)** — Per-risk reconciliation of the 2026-10-10 audit (S7–S17) with evidence and falsification for each fix.
 - **[Noname documentation site](../apps/docs/)** — New Docusaurus + Diátaxis documentation app. Run `pnpm docs:dev` from the repository root.
 - **[2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md](2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md)** — Current code-audited implementation status and next roadmap, reconciled against the latest checkout, Evidence, Orders, edge, seeding, and fixture work. **Read this first.**
 - **[2026-09-26/PERSONALIZATION-ARCHITECTURE-AND-VISION.md](2026-09-26/PERSONALIZATION-ARCHITECTURE-AND-VISION.md)** — Audience and experience architecture, data ownership boundaries, audience vision, and implementation sequence.
