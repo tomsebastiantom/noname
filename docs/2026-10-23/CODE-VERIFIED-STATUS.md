@@ -14,7 +14,7 @@ disagrees with the code, the disagreement is recorded in §7 rather than silentl
 | Fact | Value | How to check |
 |---|---|---|
 | Commit | `f580da5`, in sync with `origin/main`, tree clean | `git rev-parse --short HEAD; git status --short` |
-| Test suite | **187 files / 841 tests, all passing** (3 consecutive runs) | `pnpm exec vitest run` |
+| Test suite | **848 tests, all passing** | `pnpm exec vitest run` |
 | Lint/format gate | `pnpm check` exits **0** | `pnpm check` |
 | Typecheck | `pnpm --filter @noname/server typecheck` exits **0** | same |
 | Live stack | API `:3000` (`/health`, `/ready`, `/metrics` 200), edge `:8787`, client `:5173` | curl each |
@@ -37,7 +37,7 @@ Only **0.1 rotate `WORKER_SERVER_SECRET`** remains (owner-deferred). Evidence th
 value is tracked in `packages/workers/.dev.vars`, quoted in `docs/2026-07-13/AUTH.md`, and present in HEAD.
 Both defensive auth layers assume it is private.
 
-### Phase 1 — 3 of 10 done, 7 open
+### Phase 1 — 4 of 10 done, 6 open
 
 | # | Item | Status today | Evidence |
 |---|---|---|---|
@@ -50,7 +50,7 @@ Both defensive auth layers assume it is private.
 | 1.6 | Boot-time env validation (= risk S17) | **OPEN** | no schema; only `DATABASE_URL` is checked inline |
 | 1.7 | Readiness + metrics (= risk S16) | **DONE** | `/ready`, `/metrics` (prom-client, 43 families) |
 | 1.8 | Retention jobs (= risk S15) | **DONE** | `shared/retention.ts` + three reapers |
-| 1.9 | `document_ops` server-version uniqueness | **OPEN — real bug, see §5** | index missing |
+| 1.9 | `document_ops` server-version uniqueness | **DONE** | unique index live + `retryOnUniqueViolation`; see §5 |
 
 ---
 
@@ -92,15 +92,22 @@ Verified at runtime in this session:
 - Transition relay: clearing a marker re-published the transition and produced a delivery with
   `{org}:{instance}:{revision}`.
 - Cross-replica cache invalidation: replica B saw a write made on replica A, and followed the restore.
+- Order capabilities (§6): cancel and fulfill through the real API, idempotent replay, and a 409 CAS conflict.
+- **The retention reapers fired for real.** `/metrics` shows
+  `noname_retention_rows_deleted_total{table="capability_idempotency"} 14` and `{table="flag_evaluations"} 93`
+  — the S15 and S12 sweeps deleted rows older than their default windows without anyone asking. The windows
+  are therefore **live, not theoretical**: any environment upgrading into this code will lose history beyond
+  30 days / 7-days-past-expiry unless the thresholds are raised first. That is what retention means, but it
+  belongs in an upgrade note, and the metric is how it was detected.
 
 Deliberately **not** claimed: the collab shutdown flush (needs a live WS client and a graceful exit, which
 cannot be signalled on Windows), and any browser flow beyond the nine checks above.
 
 ---
 
-## 5. New correctness finding — `document_ops` server versions can collide
+## 5. `document_ops` server versions — fixed
 
-Measured on the live database:
+Measured on the live database before the fix:
 
 ```text
 columns:  org_id, document_id, server_version bigint, ...
@@ -109,34 +116,64 @@ indexes:  document_ops_pkey (id)
           document_ops_client_dedup (client_id, client_seq)   UNIQUE
 ```
 
-The insert path computes the next version as
+The insert path computes the next version as `SELECT coalesce(max(server_version), 0::bigint) + 1` with **no
+unique index on `(org_id, document_id, server_version)`**, so two concurrent writers could read the same
+`max(...)` and both insert the same version number — ambiguous history with nothing to detect it. The client
+dedupe index did not cover it: it keys on `(client_id, client_seq)`, which only exists for client-originated
+ops.
 
-```sql
-SELECT coalesce(max(server_version), 0::bigint) + 1   -- adapters/postgres.ts:385
-```
+Fixed with both halves:
 
-with **no unique index on `(org_id, document_id, server_version)`**. Two concurrent writers can read the
-same `max(...)` and both insert the same version number, so the version history becomes ambiguous with
-nothing to detect it. This is roadmap item **1.9**; the client-side dedupe index does not cover it.
+- **`document_ops_server_version_unique`** on `(org_id, document_id, server_version)`, added to the drizzle
+  schema and applied to the live database. Verified: a duplicate version is rejected with 23505, a different
+  version is still accepted, and the existing rows were clean (nothing to reconcile).
+- **`retryOnUniqueViolation`** in `shared/postgres-errors.ts`, wrapping the *whole* `recordDocumentOp` body.
+  That matters: a conflict can come from either index, and on a client-dedupe conflict the retry's
+  pre-check finds the winner and returns its version instead of inserting a second op. After the configured
+  attempts the original error is rethrown, so a genuine duplicate still surfaces.
+
+7 unit tests; falsified by removing the retry (2 fail).
 
 ---
 
-## 6. Commerce release gate — still unproven through the app
+## 6. Commerce release gate — cancel and fulfill now proven, refund still not
 
-`docs/2026-10-10/RELEASE-VERIFICATION-STATUS.md` §4 lists these as **NOT verified**, and nothing in this
-session changed that:
+`docs/2026-10-10/RELEASE-VERIFICATION-STATUS.md` §4 listed these as **NOT verified**. Two of them are now
+proven end-to-end, by creating throwaway paid fixtures and driving the **real capability API through the
+edge** with only a session JWT (no hand-made HMAC), then asserting database state:
 
-- **cancel / fulfill / refund through the capability API** — the `cancelled`/`fulfilled` rows in the
-  database were produced by direct SQL, so the capability handler, revision CAS and idempotency replay were
-  never exercised end-to-end.
-- refund from the browser; `commerce.inventory.release`; `REFUND_CONFIRMED → refunded` (not built).
+| Check | Result |
+|---|---|
+| `commerce.orders.cancel` | **200**, exactly one `CANCEL_ORDER` transition, machine at `cancelled` |
+| cancel writes Evidence | 1 `commerce.order.cancelled` record (keyed by `correlationId`) |
+| same `Idempotency-Key` replay | **200**, still exactly one transition, content-identical result |
+| stale `expectedRevision` | **409 CONFLICT**, order stays `paid` — CAS is real |
+| `commerce.orders.fulfill` | **200**, one `MARK_FULFILLED` transition, machine at `fulfilled` |
+| `commerce.orders.refund` | **fails closed**: 500, no transition, order stays `paid` |
+
+The refund is **not proven**, and the reason is environmental rather than a code fault — the handler calls
+the provider through Nango (`POST http://localhost:3003/proxy/v1/refunds`, connection
+`yogastore-stripe-test`), which returns **404** here because that Stripe connection is not provisioned.
+Failing closed is the correct behaviour (it must never enter `refund_pending` without a provider refund) and
+is what the probe asserts.
+
+Two notes from the run itself:
+
+- An idempotent replay returns the result from `capability_idempotency.result`, which is `jsonb`, so Postgres
+  canonicalises key order. A byte comparison against the live response therefore "fails" for a
+  non-difference; compare canonically.
+- Evidence is keyed by `correlation_id` (= machine instance id) with `subject_id` holding the order ref, so
+  counting by `subject_id` finds nothing.
+
+Still **NOT verified**:
+
+- refund end-to-end (provider connection), refund from the browser, `commerce.inventory.release`,
+  `REFUND_CONFIRMED → refunded` (not built).
 - concurrent same-key race through the app; tenant isolation via a second org; cursor pagination boundary.
 - **no real Stripe webhook has ever been captured** — the callback was a locally signed Nango-boundary
   simulation.
 - the `inventory_reservation` machine exists only because it was inserted by hand; it is **not in the
   commerce seed**.
-
-For a commerce product this is the largest single unknown in the repository.
 
 ---
 
@@ -159,11 +196,11 @@ Recorded because the point of a dated doc is to find these.
 | Priority | Item | Effort | Why now |
 |---|---|---|---|
 | 1 | **Rotate `WORKER_SERVER_SECRET`** (Phase 0.1) | 15 min | Only active credential exposure; both auth layers depend on it being private |
-| 2 | **1.9 `document_ops` unique index + retry** | S | Real correctness bug (§5) |
-| 3 | **Prove cancel/fulfill/refund via the capability API** | M | Largest unknown (§6); also exercises CAS + idempotency replay |
+| 2 | ~~1.9 `document_ops` unique index + retry~~ | — | **done** (§5) |
+| 3 | **Prove `refund` end-to-end**, and seed the `inventory_reservation` machine | M | Cancel and fulfill are now proven (§6); refund needs a provisioned Nango→Stripe connection, otherwise it is only proven to fail closed |
 | 4 | **Phase 1.1–1.5: CI + two convention tests + Biome restrictions + coverage scope** | ~1–2 weeks total | Converts this workstream's manual fixes into enforced rules; also surfaces the 1-in-4 flake |
 | 5 | **1.6 / S17 boot-time env validation** | M | Last genuine report-05 bug |
-| 6 | S11 decision, Stripe sandbox replay, seed the inventory machine, Phases 2–4 | M–L | Product/architecture work |
+| 6 | S11 decision, Stripe sandbox replay, Phases 2–4 | M–L | Product/architecture work |
 
 Ordering rationale is the audit's own: **security → enforcement → boundaries → durability → docs.**
 
