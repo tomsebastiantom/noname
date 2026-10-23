@@ -161,5 +161,19 @@ export const documentOps = pgTable(
   (t) => ({
     documentIdx: index("document_ops_document").on(t.orgId, t.documentId),
     clientDedupIdx: uniqueIndex("document_ops_client_dedup").on(t.clientId, t.clientSeq),
+    /**
+     * `server_version` is computed as `max(server_version) + 1` per document, so two concurrent writers
+     * can read the same maximum and both try to insert the same version. Without this constraint the
+     * duplicate is accepted silently and the version history becomes ambiguous; with it the loser gets a
+     * 23505 and `retryOnUniqueViolation` recomputes a fresh number.
+     *
+     * The client dedupe index above does not cover this: it keys on `(client_id, client_seq)`, which is
+     * only present for client-originated ops.
+     */
+    serverVersionUnique: uniqueIndex("document_ops_server_version_unique").on(
+      t.orgId,
+      t.documentId,
+      t.serverVersion,
+    ),
   }),
 );

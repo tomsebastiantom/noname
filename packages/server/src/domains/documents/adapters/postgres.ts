@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, or, sql } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { NotFoundError, StorageError } from "../../../shared/domain-error";
+import { retryOnUniqueViolation } from "../../../shared/postgres-errors";
 import type {
   ContentTypeDTO,
   ContentTypeSchema,
@@ -355,51 +356,61 @@ export function createPostgresDocumentStorage(db: Database): DocumentStorage {
     },
 
     async recordDocumentOp(input) {
-      if (input.clientId && input.clientSeq !== undefined) {
-        const [existing] = await db
-          .select({ serverVersion: documentOps.serverVersion })
-          .from(documentOps)
-          .where(
-            and(
-              eq(documentOps.clientId, input.clientId),
-              eq(documentOps.clientSeq, input.clientSeq),
-            ),
-          )
-          .limit(1);
-        if (existing) {
-          return { serverVersion: existing.serverVersion };
+      /**
+       * The whole body is retried, not just the INSERT, because a unique conflict can come from either
+       * index:
+       * - `document_ops_server_version_unique` — two writers computed the same `max(server_version)+1`;
+       *   the retry recomputes a fresh number.
+       * - `document_ops_client_dedup` — two requests carried the same client id/seq; the retry's
+       *   pre-check finds the winner and returns its version, so the op is deduped rather than doubled.
+       */
+      return retryOnUniqueViolation(async () => {
+        if (input.clientId && input.clientSeq !== undefined) {
+          const [existing] = await db
+            .select({ serverVersion: documentOps.serverVersion })
+            .from(documentOps)
+            .where(
+              and(
+                eq(documentOps.clientId, input.clientId),
+                eq(documentOps.clientSeq, input.clientSeq),
+              ),
+            )
+            .limit(1);
+          if (existing) {
+            return { serverVersion: existing.serverVersion };
+          }
         }
-      }
 
-      const payloadJson = input.payload != null ? JSON.stringify(input.payload) : null;
+        const payloadJson = input.payload != null ? JSON.stringify(input.payload) : null;
 
-      const [inserted] = await db.execute<{ server_version: string }>(sql`
-        INSERT INTO document_ops (
-          org_id, document_id, server_version, operation,
-          actor_type, actor_id, on_behalf_of, task_id, client_id, client_seq, payload
-        )
-        VALUES (
-          ${input.orgId},
-          ${input.documentId},
-          (
-            SELECT coalesce(max(server_version), 0::bigint) + 1
-            FROM document_ops
-            WHERE org_id = ${input.orgId} AND document_id = ${input.documentId}
-          ),
-          ${input.operation},
-          ${input.audit.actorType},
-          ${input.audit.actorId},
-          ${input.audit.onBehalfOf ?? null},
-          ${input.audit.taskId ?? null},
-          ${input.clientId ?? null},
-          ${input.clientSeq ?? null},
-          ${payloadJson}::jsonb
-        )
-        RETURNING server_version
-      `);
+        const [inserted] = await db.execute<{ server_version: string }>(sql`
+          INSERT INTO document_ops (
+            org_id, document_id, server_version, operation,
+            actor_type, actor_id, on_behalf_of, task_id, client_id, client_seq, payload
+          )
+          VALUES (
+            ${input.orgId},
+            ${input.documentId},
+            (
+              SELECT coalesce(max(server_version), 0::bigint) + 1
+              FROM document_ops
+              WHERE org_id = ${input.orgId} AND document_id = ${input.documentId}
+            ),
+            ${input.operation},
+            ${input.audit.actorType},
+            ${input.audit.actorId},
+            ${input.audit.onBehalfOf ?? null},
+            ${input.audit.taskId ?? null},
+            ${input.clientId ?? null},
+            ${input.clientSeq ?? null},
+            ${payloadJson}::jsonb
+          )
+          RETURNING server_version
+        `);
 
-      const serverVersion = Number(inserted?.server_version ?? 1);
-      return { serverVersion };
+        const serverVersion = Number(inserted?.server_version ?? 1);
+        return { serverVersion };
+      });
     },
 
     async listDocumentOps(input) {
