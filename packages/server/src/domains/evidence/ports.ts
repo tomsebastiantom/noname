@@ -74,6 +74,11 @@ export type EvidenceListQuery = {
   type?: string;
   subjectType?: string;
   subjectId?: string;
+  /**
+   * Everything recorded for one workflow/process. Distinct from `subjectId`: the subject is the aggregate
+   * a record is about, the correlation is the process that produced it. Both are indexed.
+   */
+  correlationId?: string;
   limit?: number;
   cursor?: string;
 };

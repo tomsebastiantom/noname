@@ -150,6 +150,9 @@ export function createEvidencePostgresService(db: Database): EvidenceService {
       if (query.type) conditions.push(eq(evidenceRecords.type, query.type));
       if (query.subjectType) conditions.push(eq(evidenceRecords.subjectType, query.subjectType));
       if (query.subjectId) conditions.push(eq(evidenceRecords.subjectId, query.subjectId));
+      if (query.correlationId) {
+        conditions.push(eq(evidenceRecords.correlationId, query.correlationId));
+      }
       const rows = await db
         .select()
         .from(evidenceRecords)

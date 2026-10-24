@@ -31,6 +31,18 @@ export const evidenceRecords = pgTable(
   (table) => [
     index("evidence_records_org_type_recorded_idx").on(table.orgId, table.type, table.recordedAt),
     index("evidence_records_org_subject_idx").on(table.orgId, table.subjectType, table.subjectId),
+    /**
+     * "Everything that happened in this workflow."
+     *
+     * `subject_id` answers "everything about this aggregate"; `correlation_id` answers "everything in this
+     * process", which is a different question — one order can be touched by several workflows, and one
+     * workflow can span aggregates. Without this index that query is available in SQL but unindexed, which
+     * is why a probe looking for an order's evidence by the wrong key found nothing and then had no cheap
+     * way to ask the right question. Partial, because most rows carry no correlation id.
+     */
+    index("evidence_records_org_correlation_idx")
+      .on(table.orgId, table.correlationId)
+      .where(sql`${table.correlationId} IS NOT NULL`),
     uniqueIndex("evidence_records_org_type_idempotency_idx")
       .on(table.orgId, table.type, table.idempotencyKey)
       .where(sql`${table.idempotencyKey} IS NOT NULL`),

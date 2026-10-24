@@ -66,6 +66,17 @@ export type CommerceTransitionComplete = {
   params: Record<string, unknown>;
 };
 
+/**
+ * Stable identity of the transition that caused a record: `{instanceId}:{revision}`.
+ *
+ * `revision` increments with every committed transition, so the pair names one occurrence. When it is
+ * absent (older rows, or a storage that does not carry it) the transition time is the best available
+ * discriminator, and it is what the Evidence idempotency key already falls back to.
+ */
+function transitionIdentity(transition: CommerceTransitionComplete, occurredAt: Date): string {
+  return `${transition.instance.id}:${transition.instance.revision ?? occurredAt.getTime()}`;
+}
+
 export function createCommerceOrderProjector(evidence: CommerceEvidencePort) {
   return async (transition: CommerceTransitionComplete): Promise<void> => {
     if (transition.instance.machineName !== "cart") return;
@@ -109,7 +120,7 @@ async function projectPaidOrder(
     source: "commerce.machine",
     occurredAt,
     correlationId,
-    causationId: transition.instance.id,
+    causationId: transitionIdentity(transition, occurredAt),
     idempotencyKey: `commerce:order:${transition.instance.id}`,
     data: {
       orderRef,
@@ -138,7 +149,7 @@ async function projectPaidOrder(
     source: "commerce.machine",
     occurredAt,
     correlationId,
-    causationId: transition.instance.id,
+    causationId: transitionIdentity(transition, occurredAt),
     idempotencyKey: `commerce:payment:${paymentRef}`,
     data: {
       paymentRef,
@@ -161,7 +172,7 @@ async function projectPaidOrder(
     data: { orderRef, paymentRef, machineInstanceId: transition.instance.id },
     occurredAt,
     correlationId,
-    causationId: transition.instance.id,
+    causationId: transitionIdentity(transition, occurredAt),
     idempotencyKey: `commerce:payment-succeeded:${transition.instance.id}`,
   });
 
@@ -199,7 +210,15 @@ async function projectOrderOperation(
     source: "commerce.capability",
     occurredAt,
     correlationId: transition.instance.id,
-    causationId: transition.instance.id,
+    /**
+     * The *specific* transition, not the workflow.
+     *
+     * `correlationId` groups everything about this order (one workflow); `causationId` names the immediate
+     * predecessor of this record. Setting both to the instance id threw that distinction away — it made
+     * "which transition produced this record?" unanswerable, and read as though the record caused itself.
+     * Using the transition's own identity also matches the idempotency key below, so the two agree.
+     */
+    causationId: transitionIdentity(transition, occurredAt),
     idempotencyKey: `commerce:${cancelled ? "cancelled" : "fulfilled"}:${transition.instance.id}:${transition.instance.revision ?? occurredAt.getTime()}`,
     data: {
       orderRef,
@@ -224,7 +243,7 @@ async function projectOrderOperation(
     data: { orderRef, machineInstanceId: transition.instance.id, event: transition.event },
     occurredAt,
     correlationId: transition.instance.id,
-    causationId: transition.instance.id,
+    causationId: transitionIdentity(transition, occurredAt),
     idempotencyKey: `commerce:activity:${record.id}`,
   });
   await evidence.link({

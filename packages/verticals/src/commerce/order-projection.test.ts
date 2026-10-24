@@ -159,4 +159,36 @@ describe("commerce order evidence projection", () => {
       }),
     );
   });
+
+  it("distinguishes the workflow from the transition that caused a record", async () => {
+    // `correlationId` groups everything about this order; `causationId` names the immediate predecessor.
+    // Both used to be the instance id, which made "which transition produced this?" unanswerable and read
+    // as though the record caused itself. They must differ, and causation must be the transition's own
+    // identity (`{instanceId}:{revision}`) — the same value the Evidence idempotency key uses.
+    const store = evidence();
+    const project = createCommerceOrderProjector(store);
+
+    await project({
+      orgId: "org-test",
+      instance: {
+        id: "machine-1",
+        machineName: "cart",
+        currentState: "fulfilled",
+        context: { orderRef: "order-1" },
+        revision: 4,
+        updatedAt: new Date("2026-09-12T12:00:00Z"),
+      },
+      event: "MARK_FULFILLED",
+      fromState: "paid",
+      toState: "fulfilled",
+      params: { actorId: "staff-1" },
+    });
+
+    const appended = store.appendRecord.mock.calls[0]?.[0] as
+      | { correlationId?: string; causationId?: string }
+      | undefined;
+    expect(appended?.correlationId).toBe("machine-1");
+    expect(appended?.causationId).toBe("machine-1:4");
+    expect(appended?.causationId).not.toBe(appended?.correlationId);
+  });
 });

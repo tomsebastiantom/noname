@@ -14,7 +14,7 @@ disagrees with the code, the disagreement is recorded in §7 rather than silentl
 | Fact | Value | How to check |
 |---|---|---|
 | Commit | `f580da5`, in sync with `origin/main`, tree clean | `git rev-parse --short HEAD; git status --short` |
-| Test suite | **848 tests, all passing** | `pnpm exec vitest run` |
+| Test suite | **849 tests, all passing** | `pnpm exec vitest run` |
 | Lint/format gate | `pnpm check` exits **0** | `pnpm check` |
 | Typecheck | `pnpm --filter @noname/server typecheck` exits **0** | same |
 | Live stack | API `:3000` (`/health`, `/ready`, `/metrics` 200), edge `:8787`, client `:5173` | curl each |
@@ -157,13 +157,31 @@ the provider through Nango (`POST http://localhost:3003/proxy/v1/refunds`, conne
 Failing closed is the correct behaviour (it must never enter `refund_pending` without a provider refund) and
 is what the probe asserts.
 
-Two notes from the run itself:
+Two notes from the run itself — **both now fixed** rather than worked around:
 
-- An idempotent replay returns the result from `capability_idempotency.result`, which is `jsonb`, so Postgres
-  canonicalises key order. A byte comparison against the live response therefore "fails" for a
-  non-difference; compare canonically.
-- Evidence is keyed by `correlation_id` (= machine instance id) with `subject_id` holding the order ref, so
-  counting by `subject_id` finds nothing.
+- An idempotent replay returned the result from `capability_idempotency.result`, which was **`jsonb`**, so
+  Postgres canonicalised key order and the replay body's keys came back in a different order than the live
+  response. Now `json`: the replay is **byte-identical** (424 bytes, verified). The IETF Idempotency-Key
+  draft says a duplicate SHOULD be answered with "the result of the previously completed operation", and
+  nothing queries inside that column, so `jsonb`'s indexing advantages bought nothing.
+- Evidence was only reachable by `subject_id` (the order ref), so "everything in this workflow" had **no
+  query filter and no index**. Added `EvidenceListQuery.correlationId` + the partial index
+  `evidence_records_org_correlation_idx`. Verified with the planner forced: `Index Scan using
+  evidence_records_org_correlation_idx`.
+
+The third finding was a semantics bug: `correlationId` and `causationId` were **both the instance id**, which
+made "which transition produced this record?" unanswerable and read as though the record caused itself.
+`causationId` is now the transition's own identity (`{instanceId}:{revision}`, the same value the Evidence
+idempotency key uses), while `correlationId` stays the workflow. Verified live:
+`correlation=…e89, causation=…e89:3`. A unit test pins the distinction and fails if the two are made equal
+again.
+
+On cleanup: the probe above deleted evidence by the wrong column and left 6 rows behind. The fix is not an
+ad-hoc `DELETE` helper — evidence is append-only by design, and a public delete would undermine that — but
+**querying by the right key**. "All evidence for this aggregate" is `subject_type`+`subject_id`; "all
+evidence for this process" is now `correlation_id`; both are indexed, so cleanup and audit ask the right
+question instead of guessing a column. Erasure, when it is needed, should be redaction/tombstoning rather
+than deletion.
 
 Still **NOT verified**:
 
