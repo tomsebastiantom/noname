@@ -6,7 +6,7 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["packages/**/*.{ts,tsx,js,jsx,json}"]
+    "includes": ["packages/**/*.{ts,tsx,js,jsx,json}", "!packages/server/drizzle"]
   },
   "formatter": {
     "enabled": true,

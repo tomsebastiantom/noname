@@ -2,7 +2,9 @@ import type { Context } from "hono";
 import { describe, expect, it, vi } from "vitest";
 
 describe("shared", () => {
-  it("event bus publishes and subscribes", async () => {
+  // Same module-load cost as event-bus.test.ts: importing the bus pulls in ioredis, which can exceed
+  // the default 5s timeout under parallel load without any assertion being slow.
+  it("event bus publishes and subscribes", { timeout: 20_000 }, async () => {
     const { eventBus } = await import("./event-bus");
 
     const received: unknown[] = [];
@@ -14,7 +16,7 @@ describe("shared", () => {
     expect(received).toEqual([{ value: 42 }]);
   });
 
-  it("AggregateRoot collects and flushes events", async () => {
+  it("AggregateRoot collects and flushes events", { timeout: 20_000 }, async () => {
     const { AggregateRoot, flushEvents } = await import("./aggregate-root");
     const { eventBus } = await import("./event-bus");
 

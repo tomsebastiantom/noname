@@ -13,7 +13,12 @@ afterEach(() => {
 });
 
 describe("event bus subscriber failures", () => {
-  it("logs a throwing subscriber and still notifies the remaining subscribers", async () => {
+  // Explicit timeout: `await import("./event-bus")` pulls in ioredis, so the *module load* — not the
+  // assertion — is what can exceed the 5s default when many test files import the Redis client at once.
+  // Without this the file flakes (observed ~1 run in 3) with no assertion ever failing.
+  it("logs a throwing subscriber and still notifies the remaining subscribers", {
+    timeout: 20_000,
+  }, async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { eventBus } = await import("./event-bus");
     const healthy = vi.fn(async () => undefined);
@@ -31,7 +36,9 @@ describe("event bus subscriber failures", () => {
     expect(logged).toBe(true);
   });
 
-  it("does not reject when a subscriber throws, so void-ed publishes stay safe", async () => {
+  it("does not reject when a subscriber throws, so void-ed publishes stay safe", {
+    timeout: 20_000,
+  }, async () => {
     vi.spyOn(console, "error").mockImplementation(() => undefined);
     const { eventBus } = await import("./event-bus");
     eventBus.subscribe("payment.captured", async () => {
