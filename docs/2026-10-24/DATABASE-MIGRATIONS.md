@@ -106,7 +106,50 @@ greppable.
 
 ---
 
-## 6. Verification commands
+## 6. Seeding had to match the schema too — and one machine was never seeded at all
+
+A migration gets you the tables; the seed is what makes a fresh environment *usable*, so it was audited
+against the same changes.
+
+**Good news first:** the seeder talks to the **HTTP API**, not raw SQL, so the new constraints
+(`(org_id, document_id, server_version)`, `(subscription_id, event_id)`, the partial slug index) are never
+hit behind the application's back. Nothing there needed changing.
+
+**But one machine definition was never seeded.** `machine_definitions` held `inventory_reservation` only
+because it had been inserted by hand during verification — `packages/extensions/src/commerce/machines/inventory.json`
+existed, and the commerce profile seeded `cart.json` and nothing else. Locally everything worked; a fresh
+environment would have had **no inventory machine at all**, so `commerce.inventory.reserve` would fail there
+while passing on the machine where it had been hand-patched. This is the class of bug that only shows up in
+the environment you are not testing.
+
+Fixed by making the seeded set explicit and self-checking:
+
+- `SEEDED_MACHINE_FILES = ["cart.json", "inventory.json"]` is now the contract, seeded in a loop with the
+  same read → POST → **verify-what-was-stored** check that already existed for the cart (that check is what
+  previously caught a stored row with four states while the file declared nine).
+- `seeded-machines.test.ts` asserts the list **equals the files on disk**, so adding a machine file without
+  seeding it fails a test instead of a deploy. Falsified: removing `inventory.json` from the list fails it
+  with `expected [ 'cart.json' ] to deeply equal [ 'cart.json', 'inventory.json' ]`.
+
+Proven end-to-end rather than argued: `inventory_reservation` was **deleted** from the database, then
+`pnpm seed:demo:commerce` recreated it —
+
+```text
+Definition "cart" verified against the stored row (9 states).
+Machine definition seeded and verified (cart) from cart.json.
+Definition "inventory_reservation" verified against the stored row (5 states).
+Machine definition seeded and verified (inventory_reservation) from inventory.json.
+```
+
+The seed is re-runnable (it ran twice during verification with no duplication) and it left the data
+baselines unchanged: cart `79/6/2`, `instances=87`, `evidence=5`, `transitions=32`.
+
+So the fresh-environment recipe is: **`db:migrate` then `seed:demo:full`** — and both are now checks rather
+than assumptions.
+
+---
+
+## 7. Verification commands
 
 ```bash
 # the baseline applied to a fresh DB matches the live one (fresh DB, then compare)

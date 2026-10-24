@@ -470,6 +470,20 @@ type MachineDefinitionShape = {
 };
 
 /**
+ * Every machine definition the commerce profile seeds.
+ *
+ * This list is the whole contract: a file that exists but is not listed here is never written to
+ * `machine_definitions`, so the engine cannot load it no matter what the code expects. That is exactly
+ * what happened to `inventory.json` — `inventory_reservation` existed in the database only because
+ * somebody inserted it by hand, which means a fresh environment (or CI) would have no inventory machine
+ * at all and `commerce.inventory.reserve` would fail there while passing locally.
+ *
+ * `seeded-machines.test.ts` asserts this list matches the files on disk, so adding a machine without
+ * seeding it fails a test instead of a deploy.
+ */
+export const SEEDED_MACHINE_FILES = ["cart.json", "inventory.json"] as const;
+
+/**
  * The stored `machine_definitions` row is the definition the engine actually loads, and this
  * seeding step is the only thing that ever writes it — so "the code and the database agree" is an
  * assumption, not an invariant.
@@ -484,20 +498,22 @@ type MachineDefinitionShape = {
  * Re-reading what the API stored turns that assumption into a checked postcondition, so a partial
  * or rejected write fails here, loudly, at the moment the drift is introduced.
  */
-async function verifyStoredCartDefinition(expected: MachineDefinitionShape): Promise<void> {
+async function verifyStoredMachineDefinition(expected: MachineDefinitionShape): Promise<void> {
   const { data: stored } = await api<{ data: MachineDefinitionShape | null }>(
     "GET",
     `/api/machines/definitions/${expected.name}`,
   );
   if (!stored) {
-    throw new Error("Cart definition was written but could not be read back from the API");
+    throw new Error(
+      `Definition "${expected.name}" was written but could not be read back from the API`,
+    );
   }
 
   const expectedStates = Object.keys(expected.states).sort();
   const storedStates = Object.keys(stored.states ?? {}).sort();
   if (expectedStates.join(",") !== storedStates.join(",")) {
     throw new Error(
-      `Cart definition drift: cart.json declares [${expectedStates.join(", ")}] but the stored row has [${storedStates.join(", ")}]`,
+      `Definition drift for "${expected.name}": the file declares [${expectedStates.join(", ")}] but the stored row has [${storedStates.join(", ")}]`,
     );
   }
 
@@ -513,10 +529,14 @@ async function verifyStoredCartDefinition(expected: MachineDefinitionShape): Pro
     }
   }
   if (wrong.length > 0) {
-    throw new Error(`Cart definition drift: the stored row disagrees on ${wrong.join("; ")}`);
+    throw new Error(
+      `Definition drift for "${expected.name}": the stored row disagrees on ${wrong.join("; ")}`,
+    );
   }
 
-  console.log(`Cart definition verified against the stored row (${expectedStates.length} states).`);
+  console.log(
+    `Definition "${expected.name}" verified against the stored row (${expectedStates.length} states).`,
+  );
 }
 
 async function ensureProductContentType(): Promise<void> {
@@ -715,12 +735,15 @@ async function runCommerceSeed() {
   const fingerprint = (rotated?.publishableKey ?? "").slice(0, 12);
   console.log(`Publishable key issued (fingerprint ${fingerprint}...).`);
 
-  const cartDefinition = JSON.parse(
-    readFileSync(join(ROOT, "packages/extensions/src/commerce/machines/cart.json"), "utf8"),
-  ) as MachineDefinitionShape;
-  await api("POST", "/api/machines/definitions", cartDefinition);
-  await verifyStoredCartDefinition(cartDefinition);
-  console.log(`Cart machine definition seeded and verified (${cartDefinition.name}).`);
+  // Seed every machine the commerce capabilities drive, then prove the stored rows match the files.
+  for (const file of SEEDED_MACHINE_FILES) {
+    const definition = JSON.parse(
+      readFileSync(join(ROOT, `packages/extensions/src/commerce/machines/${file}`), "utf8"),
+    ) as MachineDefinitionShape;
+    await api("POST", "/api/machines/definitions", definition);
+    await verifyStoredMachineDefinition(definition);
+    console.log(`Machine definition seeded and verified (${definition.name}) from ${file}.`);
+  }
 
   await ensureProductContentType();
   const productId = await seedDemoProduct();

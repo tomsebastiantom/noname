@@ -14,7 +14,7 @@ disagrees with the code, the disagreement is recorded in §7 rather than silentl
 | Fact | Value | How to check |
 |---|---|---|
 | Commit | `f580da5`, in sync with `origin/main`, tree clean | `git rev-parse --short HEAD; git status --short` |
-| Test suite | **849 tests, all passing** | `pnpm exec vitest run` |
+| Test suite | **851 tests, all passing** | `pnpm exec vitest run` |
 | Lint/format gate | `pnpm check` exits **0** | `pnpm check` |
 | Typecheck | `pnpm --filter @noname/server typecheck` exits **0** | same |
 | Live stack | API `:3000` (`/health`, `/ready`, `/metrics` 200), edge `:8787`, client `:5173` | curl each |
@@ -190,8 +190,10 @@ Still **NOT verified**:
 - concurrent same-key race through the app; tenant isolation via a second org; cursor pagination boundary.
 - **no real Stripe webhook has ever been captured** — the callback was a locally signed Nango-boundary
   simulation.
-- the `inventory_reservation` machine exists only because it was inserted by hand; it is **not in the
-  commerce seed**.
+- ~~the `inventory_reservation` machine exists only because it was inserted by hand; it is not in the
+  commerce seed~~ — **fixed 2026-10-24**: both machine files are seeded in a loop, the stored rows are
+  verified, and the seeded list is asserted against the files on disk. Proven by deleting the row and
+  having `seed:demo:commerce` recreate it. See `docs/2026-10-24/DATABASE-MIGRATIONS.md` §6.
 
 ---
 
@@ -215,7 +217,7 @@ Recorded because the point of a dated doc is to find these.
 |---|---|---|---|
 | 1 | **Rotate `WORKER_SERVER_SECRET`** (Phase 0.1) | 15 min | Only active credential exposure; both auth layers depend on it being private |
 | 2 | ~~1.9 `document_ops` unique index + retry~~ | — | **done** (§5) |
-| 3 | **Prove `refund` end-to-end**, and seed the `inventory_reservation` machine | M | Cancel and fulfill are now proven (§6); refund needs a provisioned Nango→Stripe connection, otherwise it is only proven to fail closed |
+| 3 | **Prove `refund` end-to-end** | M | Cancel and fulfill are proven (§6); refund needs a provisioned Nango→Stripe connection, otherwise it is only proven to fail closed. The `inventory_reservation` seed gap is **closed** — see `docs/2026-10-24/DATABASE-MIGRATIONS.md` §6 |
 | 4 | **Phase 1.1–1.5: CI + two convention tests + Biome restrictions + coverage scope** | ~1–2 weeks total | Converts this workstream's manual fixes into enforced rules; also surfaces the 1-in-4 flake |
 | 5 | **1.6 / S17 boot-time env validation** | M | Last genuine report-05 bug |
 | 6 | S11 decision, Stripe sandbox replay, Phases 2–4 | M–L | Product/architecture work |
