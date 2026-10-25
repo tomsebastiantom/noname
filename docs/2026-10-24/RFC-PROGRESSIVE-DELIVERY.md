@@ -121,6 +121,49 @@ create table machine_definition_active (
 
 It removes the exact hazard that produced the 4-vs-9-state incident, and it makes rollback of business logic possible for the first time.
 
+### Version inventory — what runs where
+
+Pinning is only safe if we can see **which version is in use, by whom, and how much work is still on it.** Without that, retirement is guesswork and upgrades are blind. So the inventory is a first-class part of V1, not a dashboard afterthought.
+
+**A view, not a table** — it can never drift from reality:
+
+```sql
+create view machine_definition_usage as
+select i.org_id,
+       i.machine_name,
+       i.definition_version,
+       count(*)                as instances,
+       min(i.created_at)       as oldest_instance_at,
+       max(i.updated_at)       as last_activity_at,
+       max(i.created_at) filter (where i.current_state not in ('cancelled','fulfilled','refunded')) as oldest_open_instance_at
+from machine_instances i
+where i.definition_version is not null
+group by 1, 2, 3;
+```
+
+**API** (`GET /api/machines/definitions/:name/versions`) returns, per version: `createdAt`, `active`, `instances`, `byState`, `oldestOpenInstanceAt`, `retirable`.
+
+**Retirement rule** — a version is retirable when **all** hold:
+
+1. `instances = 0` (no instance references it), and
+2. it is **not** the active version, and
+3. it is not referenced by any block or capability that still emits its events (the eval RFC's `M4.machines` check knows this).
+
+Otherwise it stays — and the report says *why* it cannot be retired, not just that it can't.
+
+**Metrics** (existing registry, so this is alarmable, not just browsable):
+
+```
+machine_definition_instances{tenant,machine,version}        gauge
+machine_definition_oldest_open_instance_seconds{tenant,machine,version}  gauge
+machine_definition_retirable{tenant,machine,version}        0 | 1
+machine_definition_versions{tenant,machine}                 gauge (sprawl signal)
+```
+
+**Upgrade planning** comes straight out of the same inventory: pick the (tenant, machine, version) rows with work still open, export them as a migration plan (instance ids, states, ages), dry-run it, then execute explicitly. The plan is *derived* from usage, so it cannot silently miss a cohort.
+
+**Dead vocabulary falls out for free:** a version with `instances = 0` that is also not active and not referenced is a candidate for deletion — and a *definition name* with no blocks referencing it is dead vocabulary. The eval RFC's `M4` check consumes this to flag both.
+
 ## 5. V2 — Channels and canary targeting
 
 ### Data model (same migration)
@@ -159,6 +202,7 @@ Nothing else about eval belongs here; if it cannot be expressed as a gate input,
 - R2 keys become `tenant/<id>/<bundleVersion>/…`; the tenant row holds a pointer.
 - Rollback = repoint the pointer (Kubernetes `rollout undo` shape), not a rebuild.
 - Previous **N** bundle versions retained; retention is a policy constant, not unbounded growth.
+- **Same inventory principle:** a per-tenant bundle pointer plus a usage view (which tenants are on which `platformVersion`) is what makes "who is still on the old build?" answerable — the bundle analogue of `machine_definition_usage` (§4).
 - Definition rollback = set `machine_definition_active` back to a previous version (V1 already gives us the rows).
 
 ## 8. Promotion workflow (state machine)
@@ -198,7 +242,7 @@ Three reasons:
 
 **Agent boundary.** An agent may **propose** a migration plan — instances, source and target version, what would break — and may not execute it. `machine.migrate` is a capability with its own permission; agents do not hold it by default. Same principle as "an agent must never mint permissions".
 
-**Retirement.** A version may be retired only when no instance references it, and drains must be reportable (the Temporal model). Pinning without retirement is the only form of it that causes version sprawl.
+**Retirement.** A version may be retired only when no instance references it, it is not active, and no block still emits its events (see the inventory in §4 — retirement is a query over `machine_definition_usage`, not a judgement call). Drains must be reportable (the Temporal model). Pinning without retirement is the only form of it that causes version sprawl.
 
 ## 10. Non-goals
 
@@ -214,7 +258,7 @@ Each phase is accepted only with a **falsification**: a deliberate break that th
 
 | Phase | Deliverable | Acceptance (must be observed) |
 |---|---|---|
-| **P0** | V1 definition versions + pinning | Deploy a changed cart definition; an `awaiting_payment` instance still transitions under its pinned version; a new instance uses the new one; rollback by reactivating version N |
+| **P0** | V1 definition versions + pinning + usage inventory | Deploy a changed cart definition; an `awaiting_payment` instance still transitions under its pinned version; a new instance uses the new one; rollback by reactivating version N. `GET /api/machines/definitions/:name/versions` reports per-version instance counts and `retirable`, and a version with one pinned instance reports **not** retirable |
 | **P1** | V3 gate available (see [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) P1–P5) | A deliberately broken route/reference/a11y/overflow is caught by `evaluate()` and recorded as Evidence |
 | **P2** | V2 channels + V4 bundle versions + gate wiring | A cohort rollout advances only on green; a failing cohort auto-halts; repointing the bundle pointer restores the previous build |
 
