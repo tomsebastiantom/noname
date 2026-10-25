@@ -106,6 +106,55 @@ queue: eval
 
 Playwright and Chromium are already installed; BullMQ is already a dependency; the repeatable-job pattern already exists (retention reapers `1128929`, transition relay `3f13a64`).
 
+### Where it runs — and why it needs its own deployment unit
+
+Three placements, and only the middle one is right:
+
+| Placement | Verdict |
+|---|---|
+| Inside the **API** process | **No.** A Chromium OOM, a hung page or a browser crash takes down HTTP for tenants. Also pollutes request latency with a 300 MB allocation |
+| Inside the **existing worker** (`worker.ts`) | Fine to start (concurrency 1), wrong at scale — see blast radius below |
+| **Its own eval worker process/image** | **Yes**, from phase P3 |
+
+`packages/server/src/worker.ts` already proves the pattern: a process that never binds HTTP and exists only to drain queues, paired with `RUN_WORKERS=false` on API replicas. Eval reuses it, but must not *share* it.
+
+**Why not share the existing worker — blast radius, not capacity.** That worker already carries order delivery, agent orchestration, catalog builds and analytics ingest. A browser is the least stable thing in the process: it can exhaust memory, spin a core, or wedge forever on a page that never becomes ready. If it lives in the same process, **a bad tenant page can stop webhook delivery and catalog builds for everyone**. Separating them means browser failures degrade eval and nothing else.
+
+The other two reasons are mundane but decisive: the image must carry Chromium **and fonts** (~400 MB more), and the scaling policy is completely different — eval scales with routes × widths × tenants on a nightly cycle; delivery scales with order volume.
+
+```bash
+# same repo, own entrypoint and image
+packages/eval/src/worker.ts        # start:eval-worker — never binds HTTP
+```
+
+### Container requirements (non-obvious, each one has bitten someone)
+
+- Linux base with Chromium's shared libraries **and font packages** — missing fonts silently change layout and produce phantom overflow failures.
+- `init: true` (or a tiny init) in the container: Chromium leaves zombie processes and they accumulate until PID exhaustion.
+- Memory limit above the concurrency budget (4 contexts ≈ 1.5 GB, plus Node), and a **per-job timeout** so a hung page fails the check instead of the worker.
+- Non-root user; if user namespaces are unavailable, `--no-sandbox` is required — that is a real safety reduction, so the network isolation below is not optional.
+- Throwaway browser profile per run: no persisted state, no reuse across tenants.
+
+### Security: the browser renders untrusted content
+
+Eval loads tenant storefronts — content the tenant controls, and (once tenant extensions ship) **code the tenant controls**. So the eval browser is an untrusted workload:
+
+- **No platform credentials in the browser context.** Use a scoped, short-lived test session; never an admin token.
+- **Egress allowlist**: the tenant's edge origin and CDN only. Deny link-local, loopback and private ranges so a page cannot SSRF into Postgres, Redis or the Vault.
+- **No shared network namespace** with the platform's internal services.
+- Treat any successful internal fetch from a page as a security bug, not a flake.
+
+### Scaling model
+
+- Concurrency: **4 contexts per worker**; scale replicas by queue depth, not by CPU.
+- Worked number: 20 routes × 3 widths = 60 renders ≈ **3–5 min** per tenant at 4-way concurrency. The nightly fleet is minutes-to-hours, not a capacity problem — the constraints are isolation, crash containment and image size, not throughput.
+- Cap total concurrent contexts per environment (start at 8) so an evals storm cannot starve the delivery queues of memory on a shared host.
+- Nightly wall-time cap: 2 h, then defer the remainder to the next night with a recorded `skip` (never a silent pass).
+
+### Path if ops burden exceeds value
+
+A hosted browser service (Browserless, or a cloud browser-rendering product) removes the image and reaper concerns but adds per-page cost, egress through a third party, and less control over fonts and networking — which is exactly what determines layout fidelity. Recommend self-hosted until it demonstrably costs more than it saves.
+
 ## 6. Cost control — three levers
 
 1. **Tiers** — most checks never touch a browser.
