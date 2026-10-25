@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-24/DEPLOYMENT-GUIDE.md](2026-10-24/DEPLOYMENT-GUIDE.md)** — How to run it: compose without the browser fleet (the easy, no-Kubernetes path), the opt-in `--profile browser` for tier 2 checks, production manifests, WSL machine sizing (they cannot be resized), and the failures that actually bite.
 - **[2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md](2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md)** — **Proposal, awaiting review.** Compose stays the developer/OSS path; Kubernetes manifests become the production contract (`deploy/`). Shared images and environment contract, deliberately different isolation and scaling, plus what a local podman machine can and cannot prove.
 - **[2026-10-24/RFC-EVAL-SERVICE.md](2026-10-24/RFC-EVAL-SERVICE.md)** — **Proposal, awaiting review.** The eval service: four fidelity dimensions (structure, content, design, behaviour), a check catalogue with stable ids and severities, three cost tiers, the result contract, isolation and determinism rules, and its five consumers (agent, draft save, publish, cohort gate, nightly sweep).
 - **[2026-10-24/RFC-PROGRESSIVE-DELIVERY.md](2026-10-24/RFC-PROGRESSIVE-DELIVERY.md)** — **Proposal, awaiting review.** Versioned machine definitions with instance pinning, tenant channels for canary rollout, the eval gate as promotion input, and pointer-based rollback. Copies Camunda, Argo Rollouts, Unleash and Kubernetes rather than inventing patterns.
