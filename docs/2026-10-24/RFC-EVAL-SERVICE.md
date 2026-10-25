@@ -51,9 +51,9 @@ Rule: **never use a browser to answer a question HTTP can answer.** Tier 0/1 mus
 
 ## 4. Check catalogue
 
-Every check has a stable id, a tier, and a severity that maps to gate policy.
+Every check has a stable id, a tier, and a default **level** (`off | warn | error`) that maps to gate policy.
 
-### Tier 0 — manifest (blocking at draft save)
+### Tier 0 — manifest (default level `error`, runs at draft save)
 
 | id | Assertion |
 |---|---|
@@ -63,7 +63,7 @@ Every check has a stable id, a tier, and a severity that maps to gate policy.
 | `M4.machines` | machine definitions referenced by blocks exist, and declare the transitions the blocks emit |
 | `M5.vocabulary` | every block type and prop is in the catalog schema (unknown → reject) |
 
-### Tier 1 — routes (blocking at publish)
+### Tier 1 — routes (default level `error`, runs at publish)
 
 | id | Assertion |
 |---|---|
@@ -71,16 +71,17 @@ Every check has a stable id, a tier, and a severity that maps to gate policy.
 | `R2.blocks` | expected block types for that template are present in the resolved spec |
 | `R3.content` | content the spec requires resolves non-empty (no published-but-empty collections) |
 
-### Tier 2 — browser (blocking; warnings where noted)
+### Tier 2 — browser (levels per §5.1; `off` disables per route pattern)
 
-| id | Assertion | Severity |
+| id | Assertion | Default level |
 |---|---|---|
-| `B1.structure` | rendered DOM node count per block type == spec node count per type | blocking |
-| `B2.overflow` | `scrollWidth <= clientWidth + 1` at 375 / 768 / 1440 | blocking |
-| `B3.a11y` | images have `alt`; form fields have labels; interactive elements have accessible names (axe-core subset) | blocking |
-| `B4.content` | key content visible: page title, product name, price | blocking |
-| `B5.behaviour` | add-to-cart updates the cart; checkout reaches `paid`; order row exists for the run's `correlation_id` | blocking |
-| `B6.design` | contrast / spacing advisories | **warning** |
+| `B1.structure` | rendered DOM node count per block type == spec node count per type | error |
+| `B2.overflow` | `scrollWidth <= clientWidth + 1` at 375 / 768 / 1440 | error |
+| `B3.a11y` | images have `alt`; form fields have labels; interactive elements have accessible names (axe-core subset) | error |
+| `B4.content` | key content visible: page title, product name, price | error |
+| `B5.behaviour` | add-to-cart updates the cart; checkout reaches `paid`; order row exists for the run's `correlation_id` | error (checkout template only) |
+| `B6.design` | contrast / spacing advisories | warn |
+| `B7.visual-rubric` | vision-model review of the screenshot (§5.2) | warn — triage only, never a gate |
 
 Tier 2 runs at three fixed widths and records them, so "verified" always means "verified at the widths your customers use".
 
@@ -155,6 +156,52 @@ Eval loads tenant storefronts — content the tenant controls, and (once tenant 
 
 A hosted browser service (Browserless, or a cloud browser-rendering product) removes the image and reaper concerns but adds per-page cost, egress through a third party, and less control over fonts and networking — which is exactly what determines layout fidelity. Recommend self-hosted until it demonstrably costs more than it saves.
 
+### 5.1 Assertion model — borrowed from Lighthouse CI
+
+[Lighthouse CI](https://github.com/GoogleChrome/lighthouse-ci/blob/main/docs/configuration.md) is the closest mature OSS analogue of this gate, and its assertion model solves several problems I had hand-waved. Copy it rather than invent:
+
+**1. Three levels, not two.** `off | warn | error` (eslint-style `"check-id": ["error", { … }]`).
+
+- `off` — not run. This is how a tenant or route template disables a check without a code change, and it answers "which checks apply where" without a schema change.
+- `warn` — reported, does not fail the run.
+- `error` — fails the run.
+
+`passed` is then: **no `error`-level failure**. My earlier `blocking | warning` pair had no way to express "off", which is the level you actually need on day one.
+
+**2. Multiple runs with declarative aggregation.** Lighthouse defaults to `numberOfRuns: 3` and aggregates before asserting: `median`, `optimistic`, `pessimistic`, `median-run`. That is a better answer to flakiness than "retry twice":
+
+| Check class | Runs | Aggregation |
+|---|---|---|
+| Numeric (overflow px, contrast ratio) | 3 | `median` |
+| Correctness (route resolves, block present, order exists) | 3 | `pessimistic` — any failure fails |
+| Behaviour (add to cart, checkout) | 1 | single run, but a `skip` on infrastructure error |
+
+**3. `assertMatrix` — per-pattern assertion sets.** Route templates need different assertions: the checkout template must run `B5.behaviour`; a marketing page must not. A pattern-matched matrix replaces per-tenant config sprawl:
+
+```jsonc
+{
+  "assertMatrix": [
+    { "matchingRoute": ".*", "assertions": { "B2.overflow": "error", "B3.a11y": "error" } },
+    { "matchingRoute": "^/checkout", "assertions": { "B5.behaviour": "error" } },
+    { "matchingRoute": "^/legal", "assertions": { "B4.content": "warn" } }
+  ]
+}
+```
+
+**4. Presets.** A named baseline (`eval:baseline`) that a tenant extends, rather than every tenant authoring a full set. Lighthouse ships `lighthouse:recommended` for exactly this reason.
+
+**5. Deterministic comparison inputs.** Lighthouse normalises non-deterministic URL parts (`urlReplacementPatterns` masking ports and UUIDs) before comparing runs. We need the same for `specHash` and for route identity, or the change detection will think everything changed on every run.
+
+**6. Output defaults to failures only.** `includePassedAssertions` is opt-in; noise is what makes people stop reading reports.
+
+**What we add that Lighthouse cannot:** Lighthouse audits a page it did not build. We know the spec, so we can assert **structure fidelity** — spec node count vs DOM node count — which is far stronger than "the page loaded".
+
+### 5.2 Model-judged reviews (warning only, never a gate)
+
+[OpenUI](https://github.com/wandb/openui) evaluates generated UI by screenshotting it and asking a vision model to rate the elements. It is a genuine technique, and worth having as `B7.visual-rubric` — **`warn` level only**.
+
+Reasons it cannot be a gate: it is non-deterministic, costs a model call per route, and "looks fine" is exactly the judgement humans must keep. Its real use is triage: *"something looks off on /collections/all"* sends a human to the right page. Structural assertions decide pass/fail.
+
 ## 6. Cost control — three levers
 
 1. **Tiers** — most checks never touch a browser.
@@ -179,9 +226,10 @@ type EvalScope = {
 type EvalCheckResult = {
   id: string;               // "B2.overflow"
   status: "pass" | "fail" | "skip" | "error";
-  severity: "blocking" | "warning";
+  level: "off" | "warn" | "error";   // eslint-style, borrowed from Lighthouse CI (§5.1)
   route?: string;
   width?: number;
+  runs?: number;            // how many runs were aggregated (§5.1 #2)
   detail: string;           // human sentence, not a stack trace
   fix?: { kind: string; payload?: unknown };   // what the UI can offer
 };
@@ -189,13 +237,13 @@ type EvalCheckResult = {
 type EvalResult = {
   runId: string;
   specHash: string;
-  passed: boolean;          // no blocking failures
+  passed: boolean;          // derived: no error-level failure
   checks: EvalCheckResult[];
   evidenceId: string;       // platform.eval.run
 };
 ```
 
-`passed` is derived, never passed in: **no blocking failure ⇒ passed.** Warnings never block.
+`passed` is derived, never passed in: **no `error`-level failure ⇒ passed.** `warn` is reported and does not block; `off` is not run.
 
 ## 8. Where results are stored
 
@@ -229,7 +277,7 @@ Tier 2 creates real artifacts (cart, order, evidence rows). Rules:
 |---|---|---|
 | Agent tool (`read_rendered_page`) | `evaluate({reason:"agent", tiers:[0,1,2], routes:[current]})` | returns failures to the model so it self-corrects |
 | Draft save | `evaluate({reason:"draft", tiers:[0]})` | inline field errors |
-| Publish | `evaluate({reason:"publish", tiers:[0,1]})` then tier 2 async | warn-only for the first 2 weeks, then blocking |
+| Publish | `evaluate({reason:"publish", tiers:[0,1]})` then tier 2 async | `warn` for the first 2 weeks, then `error` |
 | Cohort promotion | `evaluate({reason:"cohort", tiers:[1,2]})` per cohort | gate advance/halt |
 | Nightly sweep | `evaluate({reason:"sweep", tiers:[1,2], changedSince})` | regression alert |
 
@@ -259,9 +307,9 @@ Every phase ships only with a demonstrated failure. **A harness that has never b
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | Tier 2 blocking at launch, or warn-only? | warn-only 2 weeks, then blocking for `B1,B2,B3,B5` |
+| Q1 | Tier 2 at `error` level at launch, or `warn` first? | `warn` for 2 weeks, then `error` for `B1,B2,B3,B5` |
 | Q2 | Which routes get tier 2 by default? | all published routes for small tenants; top-10 + checkout for >20 routes |
 | Q3 | Evidence-only results, or an `eval_runs` table? | Evidence + metrics first; table only when per-check history is needed |
 | Q4 | Browser-minute budget and concurrency cap? | 4 contexts/worker; cap nightly wall time at 2 h |
 | Q5 | Should `read_rendered_page` be one agent tool or several (`read_render`, `read_a11y`)? | one tool returning all checks, model picks what to act on |
-| Q6 | Do tenant extensions get their own checks (their blocks)? | yes, later — `B1`/`B2` per extension block, own severity class |
+| Q6 | Do tenant extensions get their own checks (their blocks)? | yes, later — `B1`/`B2` per extension block, own level |
