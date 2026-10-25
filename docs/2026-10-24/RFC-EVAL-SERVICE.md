@@ -92,12 +92,13 @@ Tier 2 runs at three fixed widths and records them, so "verified" always means "
 > **What that is not:** it is not where we start, and it is not Kubernetes today — the repository runs on podman compose, and adding an orchestrator before the checks exist would be building the roof first. The ladder is: `checks → CLI → worker → browser service → autoscaled service`, each step only after the previous one is proven. §5 "Browser runtime" defines the trigger for the fourth step.
 
 ```
-packages/eval/
+packages/eval/                        LIBRARY — no CLI of its own
   src/checks/{manifest,routes,render,a11y,commerce}.ts   pure check functions
   src/runner.ts        scope → plan → execute → report
   src/report.ts        result contract (see §7)
-  src/cli.ts           pnpm eval --tenant <slug> [--tier 0|1|2] [--changed-only]
   src/index.ts         evaluate(scope) — the one interface other systems call
+
+packages/cli/src/commands/eval.ts     THIN ADAPTER — `noname eval` (existing bin)
 ```
 
 **Execution split.** Pure checks run in the caller's process (agent tool, API inline). Browser checks are **enqueued to BullMQ** and executed by a worker — never inside the API request path:
@@ -255,6 +256,26 @@ We already hold ourselves to `/health` + `/ready` + `/metrics`; the browser pool
 [OpenUI](https://github.com/wandb/openui) evaluates generated UI by screenshotting it and asking a vision model to rate the elements. It is a genuine technique, and worth having as `B7.visual-rubric` — **`warn` level only**.
 
 Reasons it cannot be a gate: it is non-deterministic, costs a model call per route, and "looks fine" is exactly the judgement humans must keep. Its real use is triage: *"something looks off on /collections/all"* sends a human to the right page. Structural assertions decide pass/fail.
+
+### 5.3 Where it plugs in — no parallel stacks
+
+There are **four** verification paths in this repository today, and adding a fifth would be the real cost of this RFC:
+
+| Existing | Status after this lands |
+|---|---|
+| `packages/cli` — `noname init|dev|status` (commander, bin `noname`) | **extended**, not duplicated: eval becomes `noname eval` |
+| `packages/seeding` — `verifyStoredMachineDefinition()` plus an inline `GET /api/edge/schema/...` assertion | **kept** (it is a *seed postcondition*, not a gate); the inline schema assertion is replaced by tier 1 `R1.resolve` |
+| Ad-hoc scripts and probes (earlier `verify-*.ts` runs, now deleted) | **retired** — each was a one-off test that left no result record |
+| `docs/MANUAL-VERIFICATION-CHECKLIST.md` — hand-written claims | **generated** from Evidence (see below) |
+| `@playwright/mcp` | **stays**, for interactive *agent exploration* only; never for verification |
+
+Three rules that prevent the duplication:
+
+1. **One CLI.** `packages/eval` is a library; the command is a thin adapter on the existing `noname` program. A separate `pnpm eval` bin would mean two entrypoints, two env loaders and two places to update. The earlier `src/cli.ts` in this RFC is dropped for that reason.
+2. **One browser driver for verification.** `playwright-core` in the eval worker. The MCP server stays for the agent *poking around* and for exploratory checks; verification always goes through `evaluate()`, so results are recorded and comparable.
+3. **One place decides pass/fail.** The checks. The agent's `read_rendered_page` tool, the publish gate, the cohort gate and the nightly sweep all call the same function — if any of them re-implemented a check, drift is guaranteed.
+
+**The payoff also fixes a known doc bug.** `MANUAL-VERIFICATION-CHECKLIST.md` currently *overstates* what was proven — its own sibling record contradicts it. Once eval writes `platform.eval.run` Evidence, that checklist can be **generated** from the latest runs per tenant, turning "what we claim" into "what was measured, when, at which widths". That retires the class of stale verification docs instead of adding to it.
 
 ## 6. Cost control — three levers
 
