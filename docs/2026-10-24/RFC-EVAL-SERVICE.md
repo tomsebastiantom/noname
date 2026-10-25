@@ -292,6 +292,87 @@ Two consequences worth stating:
 
 **The payoff also fixes a known doc bug.** `MANUAL-VERIFICATION-CHECKLIST.md` currently *overstates* what was proven — its own sibling record contradicts it. Once `gate` mode writes `platform.eval.run` Evidence, that checklist can be **generated** from the latest gated runs per tenant, turning "what we claim" into "what was measured, when, at which widths". `dev`/`agent` runs deliberately do not count toward it — a claim of verification should mean a gate ran.
 
+### 5.4 Layers — one core, three observers, four sinks
+
+The way to unify without rebuilding is to separate **what is decided** from **where the facts come from** from **where results go**. Five layers, each with one job:
+
+| Layer | Job | Must never do |
+|---|---|---|
+| **L0 primitives** | pure assertions over data: overflow maths, spec↔DOM structure match, a11y rules, HTTP status | touch a browser, a database or the network |
+| **L1 checks** | the named catalogue (`M1…`, `R1…`, `B1…`) composed from L0 + the assertion config | perform I/O |
+| **L2 observers** | produce the facts: HTTP, browser, manifest | decide pass/fail |
+| **L3 runner/policy** | scope → plan → execute → evaluate → report; the `gate \| dev \| agent` mode is a policy here | contain check logic |
+| **L4 sinks** | Evidence, metrics, CLI output, agent tool result, generated checklist | compute anything |
+
+**The seam is one type.** Checks are functions of an `Observation`, and observers are the only thing that builds one:
+
+```ts
+type Observation = {
+  route: string;
+  width?: number;
+  http?: { status: number; headers: Record<string, string> };
+  spec?: ResolvedSpec;          // what the edge says the page is
+  dom?: {                        // what the browser actually rendered
+    nodesByType: Record<string, number>;
+    boxes: { type: string; width: number; x: number }[];
+    text: Record<string, string>;
+  };
+  a11y?: AxeResults;
+  console?: string[];
+  durationMs: number;
+};
+
+type Check = (obs: Observation, cfg: AssertionConfig) => CheckResult[];
+```
+
+Because both `spec` (HTTP) and `dom` (browser) are in the same shape, **`B1.structure` is a pure function** — spec node count vs DOM node count — with no browser in the check itself. That is what makes the same catalogue runnable in all three modes.
+
+### Where each piece lives
+
+```
+packages/eval/                 L0 + L1 + L3 (pure library, no bin)
+  src/primitives/*.ts          overflow, structure, a11y bridge, status
+  src/checks/*.ts              the catalogue (M*, R*, B*) + assertion config/presets
+  src/observers/{http,browser,manifest}.ts    L2
+  src/sinks/{evidence,metrics,stdout,tool,checklist}.ts   L4
+  src/runner.ts, src/index.ts  L3: evaluate(scope, mode)
+
+packages/cli/src/commands/eval.ts                  thin adapter → mode "dev"
+packages/server/src/domains/eval/                  queue + worker + gate wiring → mode "gate"
+packages/server/src/domains/agent/mastra/tools/    read-rendered-page → mode "agent"
+```
+
+Three adapters, one core. Adding a fourth consumer later means writing an adapter, not a harness.
+
+### What this collapses, and what it deliberately keeps apart
+
+**Collapses** — today's four verification paths become three adapters over one catalogue:
+
+| Today | Becomes |
+|---|---|
+| seed's inline `GET /api/edge/schema` assertion | `R1.resolve` in the catalogue, called by the seed or not at all |
+| ad-hoc `verify-*.ts` probes | `evaluate({ mode: "dev" })` |
+| hand-written manual checklist | the `checklist` sink over `gate` Evidence |
+| MCP exploration | **stays separate** — open-ended, no assertion, feeds *humans*, and any finding it produces is promoted into a check |
+
+**Stays apart, on purpose:**
+
+- **Observers** — an HTTP observer cannot produce a DOM, a browser observer cannot produce the edge spec; sharing one would force the browser on everything.
+- **Modes/policies** — target, telemetry and blocking differ (`§5.3`).
+- **Sinks** — the same result must be able to go to Evidence *or* to a terminal *or* to a model, and a sink that also computed would destroy that.
+- **Trust boundaries** — the browser observer is the only one that runs untrusted content, so it is the only one that needs egress allowlists and the sandbox (§"Security").
+
+### Migration — additive, in four steps
+
+Nothing is rebuilt; each step is shippable on its own and the later ones only add.
+
+1. **L0 + L1 + `manifest`/`http` observers** → gate tier 0/1 works with no browser at all. This alone replaces the seed's inline assertion and gives the publish gate something real.
+2. **`dev` mode in `noname eval`** → the catalogue becomes runnable by a human against the local stack. Trust is earned here before anything blocks.
+3. **`browser` observer + `render`/`a11y` checks** → tier 2; still in-process, still `dev`.
+4. **`gate` wiring (queue, worker, Evidence/metrics sinks)** → publish and sweep modes; then the browser pool (see "Browser runtime") when in-process saturates.
+
+At every step the catalogue is shared, so an assertion written once is immediately available to whichever modes exist. That is the "unify the core, separate the seams" property: **adding a mode never re-implements a check, and adding a check never touches a mode.**
+
 ## 6. Cost control — three levers
 
 1. **Tiers** — most checks never touch a browser.
