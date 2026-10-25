@@ -272,10 +272,25 @@ There are **four** verification paths in this repository today, and adding a fif
 Three rules that prevent the duplication:
 
 1. **One CLI.** `packages/eval` is a library; the command is a thin adapter on the existing `noname` program. A separate `pnpm eval` bin would mean two entrypoints, two env loaders and two places to update. The earlier `src/cli.ts` in this RFC is dropped for that reason.
-2. **One browser driver for verification.** `playwright-core` in the eval worker. The MCP server stays for the agent *poking around* and for exploratory checks; verification always goes through `evaluate()`, so results are recorded and comparable.
+2. **One browser driver for the same work.** `playwright-core` is the driver for both the eval worker and the agent's verification tool, so a check computed by the agent and a check computed by the gate are computed the same way. `@playwright/mcp` stays for open-ended exploration (a human or agent poking at a page with no predefined assertion).
 3. **One place decides pass/fail.** The checks. The agent's `read_rendered_page` tool, the publish gate, the cohort gate and the nightly sweep all call the same function — if any of them re-implemented a check, drift is guaranteed.
 
-**The payoff also fixes a known doc bug.** `MANUAL-VERIFICATION-CHECKLIST.md` currently *overstates* what was proven — its own sibling record contradicts it. Once eval writes `platform.eval.run` Evidence, that checklist can be **generated** from the latest runs per tenant, turning "what we claim" into "what was measured, when, at which widths". That retires the class of stale verification docs instead of adding to it.
+**But "one implementation" is not "one behaviour".** These are genuinely *different steps of verification* with different targets, lifetimes and telemetry obligations, and collapsing them would be the opposite mistake:
+
+| Mode | Caller | Targets | Browser | Writes |
+|---|---|---|---|---|
+| **`gate`** | publish, cohort promotion, nightly sweep, CI | **published** routes | headless, short-lived, parallel | **Evidence + metrics** — this is the observability coupling |
+| **`dev`** | `noname eval` (local CLI) | local stack, optionally **drafts** | headless via `playwright-core`, single | **nothing to fleet telemetry**; human-readable output + optional local JSON |
+| **`agent`** | the AI's `read_rendered_page` tool | the **draft being edited** | interactive session, may return DOM + screenshot | nothing to fleet telemetry; the agent *task* is the audit record |
+
+That third column is the whole point of the distinction: **a developer's local run must never flip `tenant_storefront_healthy`.** Eval and observability "go hand in hand" precisely in `gate` mode, and must be *deliberately severed* in the other two, or the fleet dashboards become noise produced by laptops.
+
+Two consequences worth stating:
+
+- The **checks** are shared and must never fork. The **policies** (target, telemetry, blocking) are per mode and belong in the caller.
+- `dev` and `agent` are where the harness earns trust *before* it is allowed to gate anything: they let us run the checks against the real tenants and see whether they produce true failures, without a single publish being blocked by an unproven assertion.
+
+**The payoff also fixes a known doc bug.** `MANUAL-VERIFICATION-CHECKLIST.md` currently *overstates* what was proven — its own sibling record contradicts it. Once `gate` mode writes `platform.eval.run` Evidence, that checklist can be **generated** from the latest gated runs per tenant, turning "what we claim" into "what was measured, when, at which widths". `dev`/`agent` runs deliberately do not count toward it — a claim of verification should mean a gate ran.
 
 ## 6. Cost control — three levers
 
