@@ -3,7 +3,7 @@
 > **Status:** **Proposed** — awaiting review. No code written yet.
 > **Date:** 2026-10-24 (America/New_York)
 > **Author:** platform workstream (2026-10-15 → 2026-10-24 remediation)
-> **Related:** [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`../2026-07-25/TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md) · [`../2026-07-04/ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md)
+> **Related:** [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) (the gate this RFC depends on) · [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`../2026-07-25/TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md) · [`../2026-07-04/ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md)
 
 ---
 
@@ -138,52 +138,22 @@ alter table tenants add column channel text not null default 'stable'
 - Per-tenant **kill switches** use the existing org-scoped flags (`unique (org_id, key)`), e.g. `platform.block_v15_enabled`. Flags stay for *behaviour toggles*; `channel` is configuration, not experimentation.
 - Bundle rebuilds are enqueued **per channel**, so promotion is a cohort, never a global switch.
 
-## 6. V3 — Eval harness and promotion gate
+## 6. V3 — The eval gate (delegated)
 
-### Why it is the gate
+Promotion is decided by something that can say *"this tenant's app actually works"* — not by the absence of complaints.
 
-Promotion must be decided by something that can say "this tenant's app actually works", not by absence of complaints.
-
-### Structure — three tiers, by cost
+**The service design is a separate document:** [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md). It owns the check catalogue, tiers, result contract, isolation rules, determinism strategy and cost model. This RFC only fixes the *interface* the rollout depends on:
 
 ```
-packages/eval/
-  src/checks/manifest.ts    tier 0 — references resolve, permissions exist, routes reachable
-  src/checks/routes.ts      tier 1 — GET /api/edge/schema/:siteId?url=… → 200 + expected blocks
-  src/checks/render.ts      tier 2 — Playwright: overflow + expected blocks at 375/768/1440
-  src/checks/a11y.ts        tier 2 — axe-core
-  src/checks/commerce.ts    tier 2 — add to cart → paid → order row appears
-  src/runner.ts             orchestration, change detection, result writing
-  src/cli.ts                pnpm eval --tenant <slug> [--tier 0|1|2] [--changed-only]
+evaluate(scope) → { passed, checks[], evidenceId }
 ```
 
-- **Tier 0/1** run inline on draft save and on publish (milliseconds — never a browser for an HTTP question).
-- **Tier 2** runs in a BullMQ worker (Playwright and Chromium are already installed; BullMQ is already a dependency).
+- `passed` is derived: **no blocking failure ⇒ passed.** Warnings never block.
+- Called with `reason: "cohort"` at each promotion step, and `reason: "sweep"` nightly to catch regressions caused by platform changes.
+- Deterministic, not statistical: unlike Argo Rollouts and Flagger we do not infer health from error rates — we assert that routes resolve, blocks render at 375/768/1440, a11y holds, and the purchase completes.
+- Cost is bounded by tiers and change detection, so "verified on every publish" stays affordable.
 
-### Scaling
-
-- Job unit: `(runId, tenant, route, width)` → shardable across replicas.
-- **Change detection is the main lever:** hash the composed spec (content + layout + `page_tree` + machines) and skip any `(route, width)` whose hash already passed. AI iteration then costs only what changed.
-- Sample policy: tier 2 nightly for changed tenants, full weekly; tier 1 always.
-
-### Assertions (structural first, pixels later)
-
-- route resolves, 200, expected block types present
-- `scrollWidth <= clientWidth` per viewport
-- alt text / labels present
-- order row exists for the run's `correlation_id`
-- **no pixel diffing in phase 1** — it is the fastest way to build a harness people learn to ignore
-
-### Results
-
-- Aggregates → existing metrics registry: `eval_checks_total{result,check}`, `tenant_eval_failures{tenant,check}`, `tenant_storefront_healthy{tenant}`, `tenant_last_verified_timestamp{tenant}`, `eval_duration_seconds`.
-- Per run → append-only Evidence: `type: "platform.eval.run"`, data = spec hash, platform version, failures; idempotency key = runId.
-- No new tables initially (§9 Q5).
-
-### Isolation (non-negotiable)
-
-Commerce checks use a reserved test product and sandbox checkout; every artifact is tagged with the run's `correlation_id` and cleaned by it (the evidence cleanup path fixed on 2026-10-24). Optionally a dedicated eval tenant per environment.
-
+Nothing else about eval belongs here; if it cannot be expressed as a gate input, it goes in the eval RFC.
 ## 7. V4 — Versioned bundles and rollback
 
 - R2 keys become `tenant/<id>/<bundleVersion>/…`; the tenant row holds a pointer.
@@ -211,7 +181,7 @@ A **rollout** is a record: `{ id, platformVersion, artifactHash, cohort, state, 
 | **Q2** | Does `channel` live on `tenants`/`organizations` or as a flag? | **Column** — configuration, not experimentation. Flags stay for behaviour toggles |
 | **Q3** | Is the gate blocking at launch? | **Warn-only for 2 weeks**, then blocking for routes/a11y/commerce. Never block on visual diffs |
 | **Q4** | Who may promote a cohort? | A dedicated role; promotion is an audited action (Evidence), same class as capability commands |
-| **Q5** | Evidence-only results, or an `eval_runs` table now? | **Evidence + metrics now.** Add tables only when per-check querying is actually needed |
+| **Q5** | Eval-specific questions live in [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) §14 | — |
 | **Q6** | Tier 2 sampling policy and browser-minute budget? | Nightly changed-only + weekly full; cap concurrent contexts at 4/worker |
 
 ## 10. Non-goals
@@ -219,7 +189,6 @@ A **rollout** is a record: `{ id, platformVersion, artifactHash, cohort, state, 
 - **No backward-compatibility layer.** No compat shims, deprecated fields, dual-read paths or API versions. Breaking changes are made in place; the gate and rollback are the safety net (§2).
 - **Not versioning the component catalogue.** Not for compatibility — because per-block versioning multiplies surface for no gain while the gate catches breakage directly.
 - Not a general-purpose CI/CD product; this is scoped to tenant apps and platform artifacts.
-- Not pixel-perfect visual regression in phase 1.
 - Not automatic semantic migration of content between schema versions (explicit migrations only).
 - Not per-tenant *code* deployment — that is the tenant extension path ([`TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md)), a separate concern with its own P0 list.
 
@@ -230,9 +199,8 @@ Each phase is accepted only with a **falsification**: a deliberate break that th
 | Phase | Deliverable | Acceptance (must be observed) |
 |---|---|---|
 | **P0** | V1 definition versions + pinning | Deploy a changed cart definition; an `awaiting_payment` instance still transitions under its pinned version; a new instance uses the new one; rollback by reactivating version N |
-| **P1** | V3 eval tiers 0/1 + CLI | Break a route (dangling `page_tree` entry) → fails; break a reference → fails; restore → passes |
-| **P2** | V3 tier 2 (render/a11y/commerce) + Evidence + metrics | Remove `alt` → a11y fails; force overflow at 375 → render fails; break checkout → commerce fails; each recorded in Evidence and `/metrics` |
-| **P3** | V2 channels + V4 bundle versions + gate | A cohort rollout advances only on green; a failing cohort auto-halts; repointing the bundle pointer restores the previous build |
+| **P1** | V3 gate available (see [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) P1–P5) | A deliberately broken route/reference/a11y/overflow is caught by `evaluate()` and recorded as Evidence |
+| **P2** | V2 channels + V4 bundle versions + gate wiring | A cohort rollout advances only on green; a failing cohort auto-halts; repointing the bundle pointer restores the previous build |
 
 ## 12. Risks
 

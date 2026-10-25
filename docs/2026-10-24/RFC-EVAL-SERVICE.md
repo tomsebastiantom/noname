@@ -1,0 +1,218 @@
+# RFC — Eval service: fidelity, structure and behaviour verification
+
+> **Status:** **Proposed** — awaiting review. No code written yet.
+> **Date:** 2026-10-24 (America/New_York)
+> **Split from:** [`RFC-PROGRESSIVE-DELIVERY.md`](./RFC-PROGRESSIVE-DELIVERY.md) §6 — that RFC keeps the *rollout* decision and delegates the *gate* here.
+> **Related:** [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`ADR-0013`](../../apps/docs/docs/decisions/ADR-0013-progressive-delivery.md)
+
+---
+
+## 1. Why this is its own service
+
+The eval harness has **five consumers with different urgency**, and it is the only component that can answer "does this tenant's app actually work?":
+
+| Consumer | Needs | Latency |
+|---|---|---|
+| **AI agent** (while drafting) | "what did I break?" | seconds, interactive |
+| **Draft save** (tier 0 only) | structural validity | milliseconds, inline |
+| **Publish gate** | block/warn before customers see it | seconds, synchronous-ish |
+| **Cohort promotion** (rollout) | "is this cohort healthy?" | minutes, asynchronous |
+| **Nightly sweep** | "did a platform change break somebody?" | hours, background |
+
+Embedding that inside the rollout RFC made both documents harder to reason about. Split:
+
+- **Progressive delivery** decides *how changes reach tenants* and treats eval as a gate it calls.
+- **This RFC** decides *what is verified, how, at what cost, and with what result contract*.
+
+The two compose through one interface: `evaluate(scope) → { passed, checks[], evidenceId }`.
+
+## 2. What "verified" means — four fidelity dimensions
+
+The word "fidelity" needs disambiguation, because each dimension fails differently and none is covered by the existing schema validation.
+
+| Dimension | Question | Failure mode it catches |
+|---|---|---|
+| **Structure fidelity** | does every node in the spec exist in the DOM, exactly once, of the right type? | a dropped/ignored component, a slot that silently renders nothing, an unknown block |
+| **Content fidelity** | does the resolved data actually appear? | empty grid, placeholder prices, `undefined` copy, a reference pointing at an unpublished document |
+| **Design fidelity** | does it hold at real widths? | horizontal overflow at 375px, collapsed grid, unreadable contrast |
+| **Behaviour fidelity** | do the actions work? | add-to-cart does nothing, checkout never reaches `paid`, a button 403s because the role lacks the permission |
+
+Schema validation covers **none** of these: it proves each artifact is well-formed, not that the composition is correct. A valid layout can render an empty page; a valid action can be forbidden for the tenant's roles.
+
+## 3. Tiers by cost
+
+```
+tier 0  manifest     pure code, no network          microseconds
+tier 1  routes       HTTP to the edge               ~10–50 ms per route
+tier 2  browser      Playwright + axe-core          2–5 s per route × width
+```
+
+Rule: **never use a browser to answer a question HTTP can answer.** Tier 0/1 must be able to run on every keystroke-save; tier 2 is a publish/nightly affair.
+
+## 4. Check catalogue
+
+Every check has a stable id, a tier, and a severity that maps to gate policy.
+
+### Tier 0 — manifest (blocking at draft save)
+
+| id | Assertion |
+|---|---|
+| `M1.references` | every content-type `reference` field resolves to an existing type |
+| `M2.permissions` | every action used by a block maps to a capability whose permission the tenant's roles hold |
+| `M3.reachability` | every published page is reachable from `page_tree`; every `page_tree` entry points at an existing document |
+| `M4.machines` | machine definitions referenced by blocks exist, and declare the transitions the blocks emit |
+| `M5.vocabulary` | every block type and prop is in the catalog schema (unknown → reject) |
+
+### Tier 1 — routes (blocking at publish)
+
+| id | Assertion |
+|---|---|
+| `R1.resolve` | `GET /api/edge/schema/:siteId?url=<route>` → 200 |
+| `R2.blocks` | expected block types for that template are present in the resolved spec |
+| `R3.content` | content the spec requires resolves non-empty (no published-but-empty collections) |
+
+### Tier 2 — browser (blocking; warnings where noted)
+
+| id | Assertion | Severity |
+|---|---|---|
+| `B1.structure` | rendered DOM node count per block type == spec node count per type | blocking |
+| `B2.overflow` | `scrollWidth <= clientWidth + 1` at 375 / 768 / 1440 | blocking |
+| `B3.a11y` | images have `alt`; form fields have labels; interactive elements have accessible names (axe-core subset) | blocking |
+| `B4.content` | key content visible: page title, product name, price | blocking |
+| `B5.behaviour` | add-to-cart updates the cart; checkout reaches `paid`; order row exists for the run's `correlation_id` | blocking |
+| `B6.design` | contrast / spacing advisories | **warning** |
+
+Tier 2 runs at three fixed widths and records them, so "verified" always means "verified at the widths your customers use".
+
+## 5. Architecture
+
+```
+packages/eval/
+  src/checks/{manifest,routes,render,a11y,commerce}.ts   pure check functions
+  src/runner.ts        scope → plan → execute → report
+  src/report.ts        result contract (see §7)
+  src/cli.ts           pnpm eval --tenant <slug> [--tier 0|1|2] [--changed-only]
+  src/index.ts         evaluate(scope) — the one interface other systems call
+```
+
+**Execution split.** Pure checks run in the caller's process (agent tool, API inline). Browser checks are **enqueued to BullMQ** and executed by a worker — never inside the API request path:
+
+```
+queue: eval
+  job: { runId, tenant, route, width, specHash, checkIds }
+  concurrency: 4 contexts per worker
+  shards:    additional worker replicas
+```
+
+Playwright and Chromium are already installed; BullMQ is already a dependency; the repeatable-job pattern already exists (retention reapers `1128929`, transition relay `3f13a64`).
+
+## 6. Cost control — three levers
+
+1. **Tiers** — most checks never touch a browser.
+2. **Change detection** — hash the composed spec (content + layout + `page_tree` + machine definitions). Skip any `(route, width)` whose `specHash` already passed. This is the difference between "verify every publish" being affordable or not, and it is what makes AI iteration cheap: only what changed is re-checked.
+3. **Sampling** — tier 2 nightly for changed tenants, full sweep weekly; tier 1 always.
+
+Worked number: 20 routes × 3 widths = 60 renders ≈ **3–5 min** at 4-way concurrency per tenant. 50 tenants nightly ≈ 4 h on one node — shard, or rely on change detection so most nights are near-empty.
+
+## 7. Result contract
+
+```ts
+type EvalScope = {
+  orgId: string;
+  tenantSlug: string;
+  routes?: string[];        // default: all published
+  widths?: number[];        // default: [375, 768, 1440]
+  tiers?: (0 | 1 | 2)[];
+  changedSince?: string;    // change detection
+  reason: "draft" | "publish" | "cohort" | "sweep" | "agent";
+};
+
+type EvalCheckResult = {
+  id: string;               // "B2.overflow"
+  status: "pass" | "fail" | "skip" | "error";
+  severity: "blocking" | "warning";
+  route?: string;
+  width?: number;
+  detail: string;           // human sentence, not a stack trace
+  fix?: { kind: string; payload?: unknown };   // what the UI can offer
+};
+
+type EvalResult = {
+  runId: string;
+  specHash: string;
+  passed: boolean;          // no blocking failures
+  checks: EvalCheckResult[];
+  evidenceId: string;       // platform.eval.run
+};
+```
+
+`passed` is derived, never passed in: **no blocking failure ⇒ passed.** Warnings never block.
+
+## 8. Where results are stored
+
+- **Per run → Evidence**: `type: "platform.eval.run"`, `subjectType: "tenant.storefront"`, `subjectId: tenantSlug`, `correlationId: runId`, idempotency key `eval:<runId>:<specHash>`. Data carries `specHash`, platform version, git sha, failing check ids and human details.
+- **Aggregates → metrics** (existing registry):
+  `eval_checks_total{result,check}`, `tenant_eval_failures{tenant,check}`,
+  `tenant_storefront_healthy{tenant}`, `tenant_last_verified_timestamp{tenant}`,
+  `eval_run_duration_seconds`, `eval_browser_failures_total`.
+- **No new tables in phase 1.** Evidence + metrics answer "what failed" and "is the fleet healthy". A dedicated `eval_runs`/`eval_checks` table is added only when per-check history queries are actually needed (open question Q3).
+
+## 9. Isolation and cleanup
+
+Tier 2 creates real artifacts (cart, order, evidence rows). Rules:
+
+- reserved **test product** and sandbox checkout, never a live product;
+- everything tagged with the run's `correlationId`;
+- cleanup deletes by `correlationId` — the precise key fixed on 2026-10-24 (`7caf130`), not by guessing a column;
+- runs are idempotent: a re-run with the same `runId` + `specHash` returns the stored result instead of re-executing.
+
+## 10. Determinism (the thing that decides whether anyone trusts it)
+
+- **Structural assertions, not pixels, in phase 1.** Pixel diffing arrives later with baselines and tolerances, if ever.
+- One explicit readiness signal (`data-eval-ready` on the root) instead of arbitrary sleeps.
+- Animations disabled (`prefers-reduced-motion`), network idle awaited, fixed fonts.
+- Retries: 2 for tier 2, with attempts recorded in the result — a flaky pass is not silently a pass.
+- A check that cannot run reports `skip`/`error`, never `pass`. **Silence is not success.**
+
+## 11. Consumers and how they call it
+
+| Consumer | Call | Behaviour on failure |
+|---|---|---|
+| Agent tool (`read_rendered_page`) | `evaluate({reason:"agent", tiers:[0,1,2], routes:[current]})` | returns failures to the model so it self-corrects |
+| Draft save | `evaluate({reason:"draft", tiers:[0]})` | inline field errors |
+| Publish | `evaluate({reason:"publish", tiers:[0,1]})` then tier 2 async | warn-only for the first 2 weeks, then blocking |
+| Cohort promotion | `evaluate({reason:"cohort", tiers:[1,2]})` per cohort | gate advance/halt |
+| Nightly sweep | `evaluate({reason:"sweep", tiers:[1,2], changedSince})` | regression alert |
+
+The agent's self-check and the platform's guarantee are **the same implementation** — that is the point of building it once.
+
+## 12. Non-goals
+
+- Not a general CI/CD or monitoring product.
+- Not pixel-perfect visual regression in phase 1.
+- Not load testing or performance budgets (separate concern; `/metrics` covers throughput).
+- Not a security scanner for tenant extension code (see [`TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md)).
+- Not evaluating *content quality* — only whether the app works.
+
+## 13. Phasing and falsification
+
+| Phase | Ship | Acceptance (observed) |
+|---|---|---|
+| **P1** | tier 0 + `M1..M5` + CLI | add a dangling content-type reference → `M1` fails; remove a page from `page_tree` → `M3` fails; restore → passes |
+| **P2** | tier 1 + `R1..R3` | rename a `page_tree` slug → `R1` fails with the route named; publish an empty collection → `R3` fails |
+| **P3** | tier 2 + render/a11y | remove an `alt` → `B3` fails; force a 400px-wide element at 375 → `B2` fails; both recorded in Evidence + metrics |
+| **P4** | behaviour + commerce | break the cart action → `B5` fails; restore → passes; order row appears and is cleaned by `correlationId` |
+| **P5** | change detection + sweep + regression alert | re-run with unchanged spec → all `skip` (fast); change one route → only that route re-runs |
+
+Every phase ships only with a demonstrated failure. **A harness that has never been seen to fail is decoration.**
+
+## 14. Open questions
+
+| # | Question | Recommendation |
+|---|---|---|
+| Q1 | Tier 2 blocking at launch, or warn-only? | warn-only 2 weeks, then blocking for `B1,B2,B3,B5` |
+| Q2 | Which routes get tier 2 by default? | all published routes for small tenants; top-10 + checkout for >20 routes |
+| Q3 | Evidence-only results, or an `eval_runs` table? | Evidence + metrics first; table only when per-check history is needed |
+| Q4 | Browser-minute budget and concurrency cap? | 4 contexts/worker; cap nightly wall time at 2 h |
+| Q5 | Should `read_rendered_page` be one agent tool or several (`read_render`, `read_a11y`)? | one tool returning all checks, model picks what to act on |
+| Q6 | Do tenant extensions get their own checks (their blocks)? | yes, later — `B1`/`B2` per extension block, own severity class |
