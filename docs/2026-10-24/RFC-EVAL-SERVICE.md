@@ -373,6 +373,36 @@ Nothing is rebuilt; each step is shippable on its own and the later ones only ad
 
 At every step the catalogue is shared, so an assertion written once is immediately available to whichever modes exist. That is the "unify the core, separate the seams" property: **adding a mode never re-implements a check, and adding a check never touches a mode.**
 
+### 5.5 Local development of the browser fleet — contract first, cluster later
+
+"Run Kubernetes locally so we build for the real thing" is the right instinct and the wrong first step. What must match production is **the contract and the manifests**, not the presence of a control plane — because the parts of Kubernetes this design actually depends on are only two: **pod-level resource limits** and **egress policy**. Everything else (HPA/KEDA decisions) is configuration that no local cluster will validate honestly.
+
+**Local tooling as it stands** (checked): `kubectl`, `helm` and `kompose` are installed; `minikube`, `kind`, `k3d` are not; podman 6.1.4 with a WSL machine at **4 CPU / 2 GiB**. That 2 GiB is the real blocker for any cluster — a browser pod alone wants ~2 GB.
+
+Three local options, and what each is actually good for:
+
+| Option | What it proves | Verdict |
+|---|---|---|
+| **compose** (today) | the container image, the `/pressure` + `CONCURRENT` + `QUEUED` contract, CDP from a worker | **use now** — this is where the checks get built |
+| **`podman kube play deploy/browser-fleet.yaml`** | the *pod* shape: shared network namespace, resource limits, probes, the CDP connection between two containers in one pod | **adopt next** — real manifests, no control plane, no RAM cost |
+| **`minikube start --driver=podman --memory=8192`** | HPA/KEDA behaviour, PDB, service discovery | **only when scaling policy needs validating**, after the VM is resized |
+
+**So the deliverable now is manifests, not a cluster.** Commit `deploy/` with the real objects — `Deployment` (browser), `Service` (CDP endpoint), `NetworkPolicy` (egress allowlist + private-range deny), `PodDisruptionBudget`, and the `ScaledObject` for KEDA. Those are reviewable, diffable and correct without anything running them. `podman kube play` then proves the pod-level half locally, using the same file.
+
+**What cannot be validated locally, stated plainly:**
+
+- **KEDA/HPA scaling decisions.** No local cluster with 2 GiB will reproduce the queue-depth behaviour. Validate with a load test that drives the eval queue until `/pressure` saturates and asserts the *caller* backs off (that part is our code, and it is testable anywhere).
+- **`NetworkPolicy` enforcement** only exists with a CNI that implements it (Calico, Cilium). kind/minikube defaults often do not. So "egress is blocked" is **never** proven by a local run.
+
+**Which is exactly why the SSRF guard should be a check, not a claim.** Add `S1.no_internal_egress`: a canary page that attempts to reach a known internal endpoint (the API on `:3000`, Redis on `:6379`, the metadata address) and reports success/failure; the check passes only if every attempt fails. That turns a security assumption into a falsifiable test that runs in **every** mode, locally included — and it is the only way to know the allowlist is real before a cluster enforces it.
+
+Recommended order:
+
+1. compose: build the checks and the contract (`gate` mode tier 0/1 needs no browser at all).
+2. `deploy/` manifests authored and reviewed; `S1.no_internal_egress` added.
+3. `podman kube play` to prove the pod shape.
+4. Resize the podman machine and run minikube **only** if KEDA behaviour must be validated before production.
+
 ## 6. Cost control — three levers
 
 1. **Tiers** — most checks never touch a browser.
