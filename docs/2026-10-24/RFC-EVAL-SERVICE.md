@@ -87,6 +87,10 @@ Tier 2 runs at three fixed widths and records them, so "verified" always means "
 
 ## 5. Architecture
 
+> **The target shape, in one paragraph.** A **browser pool** — Chromium in its own pods, exposing a CDP endpoint behind `/pressure` — connected to by **stateless eval workers** that drain the `eval` queue; the same pool also serves the **agent** when it browses to check its own work. One pool, two consumers, separated contexts.
+>
+> **What that is not:** it is not where we start, and it is not Kubernetes today — the repository runs on podman compose, and adding an orchestrator before the checks exist would be building the roof first. The ladder is: `checks → CLI → worker → browser service → autoscaled service`, each step only after the previous one is proven. §5 "Browser runtime" defines the trigger for the fourth step.
+
 ```
 packages/eval/
   src/checks/{manifest,routes,render,a11y,commerce}.ts   pure check functions
