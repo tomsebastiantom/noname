@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md](2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md)** — **Proposal, awaiting review.** Compose stays the developer/OSS path; Kubernetes manifests become the production contract (`deploy/`). Shared images and environment contract, deliberately different isolation and scaling, plus what a local podman machine can and cannot prove.
 - **[2026-10-24/RFC-EVAL-SERVICE.md](2026-10-24/RFC-EVAL-SERVICE.md)** — **Proposal, awaiting review.** The eval service: four fidelity dimensions (structure, content, design, behaviour), a check catalogue with stable ids and severities, three cost tiers, the result contract, isolation and determinism rules, and its five consumers (agent, draft save, publish, cohort gate, nightly sweep).
 - **[2026-10-24/RFC-PROGRESSIVE-DELIVERY.md](2026-10-24/RFC-PROGRESSIVE-DELIVERY.md)** — **Proposal, awaiting review.** Versioned machine definitions with instance pinning, tenant channels for canary rollout, the eval gate as promotion input, and pointer-based rollback. Copies Camunda, Argo Rollouts, Unleash and Kubernetes rather than inventing patterns.
 - **[2026-10-24/DATABASE-MIGRATIONS.md](2026-10-24/DATABASE-MIGRATIONS.md)** — The schema baseline and the migration workflow. Every schema change made by the remediation work had been applied by hand; this makes a fresh environment reproducible (`db:migrate`) and marks the existing database as baselined.
