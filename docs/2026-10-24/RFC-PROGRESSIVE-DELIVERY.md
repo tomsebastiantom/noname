@@ -115,7 +115,7 @@ create table machine_definition_active (
 - New instances record `definition_version = active_version`.
 - **Existing instances keep their `definition_version`** and continue under it — a definition change cannot alter an order mid-flow.
 - `transition()` resolves the definition by `(orgId, machineName, instance.definition_version)`.
-- Moving instances is an explicit, audited operation: `migrateInstance(orgId, instanceId, toVersion)` writing an Evidence record. Not automatic.
+- Moving instances is an explicit, audited operation: `migrateInstance(orgId, instanceId, toVersion)` writing an Evidence record. **Not automatic** — see §9.1 for the decision and the agent boundary (agents propose a plan, humans execute).
 
 ### Why this matters most
 
@@ -175,14 +175,30 @@ A **rollout** is a record: `{ id, platformVersion, artifactHash, cohort, state, 
 
 ## 9. Open questions (need a decision before implementation)
 
-| # | Question | Recommendation |
+| # | Question | Status / recommendation |
 |---|---|---|
-| **Q1** | In-flight instances: pin (Camunda default) or auto-migrate? | **Pin.** Auto-migration is the thing that breaks orders mid-flow |
+| **Q1** | In-flight instances: pin (Camunda default) or auto-migrate? | **DECIDED 2026-10-24 — pin. Auto-migration never runs automatically.** Rationale in §9.1 |
 | **Q2** | Does `channel` live on `tenants`/`organizations` or as a flag? | **Column** — configuration, not experimentation. Flags stay for behaviour toggles |
 | **Q3** | Is the gate blocking at launch? | **Warn-only for 2 weeks**, then blocking for routes/a11y/commerce. Never block on visual diffs |
 | **Q4** | Who may promote a cohort? | A dedicated role; promotion is an audited action (Evidence), same class as capability commands |
 | **Q5** | Eval-specific questions live in [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) §14 | — |
 | **Q6** | Tier 2 sampling policy and browser-minute budget? | Nightly changed-only + weekly full; cap concurrent contexts at 4/worker |
+
+### 9.1 Q1 decision — pin, and why
+
+**Pinned.** An instance records `definition_version` at creation and resolves its definition by that version for its whole life. `machine_definition_active` only affects **new** instances.
+
+Three reasons:
+
+1. **Auto-migration changes the rules under live work.** An order in `awaiting_payment` under a definition with states the successor lacks can end up stranded in a state it cannot leave. That is a customer-facing data fault, not a deploy artefact.
+2. **Pinning and migrating are different risk classes.** Pinning is a deployment policy; migration rewrites individual live records. Collapsing them means a deploy silently edits business data.
+3. **It matches the platform's existing model** — draft → review → publish. Pin is "the change applies to new work". Migration is an explicit, permissioned, idempotent, Evidence-recorded action, exactly like every capability command.
+
+**Exception, which does not weaken the rule:** if a definition is genuinely broken (it lacks a transition in-flight instances need), pinning keeps them broken. That is the argument for migration *existing* — not for running it automatically. The repair path is an explicit migration with a dry-run report first.
+
+**Agent boundary.** An agent may **propose** a migration plan — instances, source and target version, what would break — and may not execute it. `machine.migrate` is a capability with its own permission; agents do not hold it by default. Same principle as "an agent must never mint permissions".
+
+**Retirement.** A version may be retired only when no instance references it, and drains must be reportable (the Temporal model). Pinning without retirement is the only form of it that causes version sprawl.
 
 ## 10. Non-goals
 
