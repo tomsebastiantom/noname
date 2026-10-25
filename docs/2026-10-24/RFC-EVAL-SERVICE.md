@@ -134,6 +134,7 @@ packages/eval/src/worker.ts        # start:eval-worker — never binds HTTP
 - `init: true` (or a tiny init) in the container: Chromium leaves zombie processes and they accumulate until PID exhaustion.
 - Memory limit above the concurrency budget (4 contexts ≈ 1.5 GB, plus Node), and a **per-job timeout** so a hung page fails the check instead of the worker.
 - Non-root user; if user namespaces are unavailable, `--no-sandbox` is required — that is a real safety reduction, so the network isolation below is not optional.
+- **`--shm-size=2g`.** `/dev/shm` defaults to 64 MB in containers and Chrome crashes under load because of it — the most common "works locally, dies in prod" browser failure. Details in "Browser runtime" below.
 - Throwaway browser profile per run: no persisted state, no reuse across tenants.
 
 ### Security: the browser renders untrusted content
@@ -152,9 +153,58 @@ Eval loads tenant storefronts — content the tenant controls, and (once tenant 
 - Cap total concurrent contexts per environment (start at 8) so an evals storm cannot starve the delivery queues of memory on a shared host.
 - Nightly wall-time cap: 2 h, then defer the remainder to the next night with a recorded `skip` (never a silent pass).
 
-### Path if ops burden exceeds value
+### Browser runtime — two topologies, and when to switch
 
-A hosted browser service (Browserless, or a cloud browser-rendering product) removes the image and reaper concerns but adds per-page cost, egress through a third party, and less control over fonts and networking — which is exactly what determines layout fidelity. Recommend self-hosted until it demonstrably costs more than it saves.
+There are two ways to run Chrome, and the decision is not "self-hosted vs cloud" — it is **in-process vs a browser service**. [Browserless's production guide](https://docs.browserless.io/enterprise/docker/enterprise-image.md) documents the second shape well enough to copy, and [Steel](https://steel.dev/blog/self-hosting-steel-browser) is an open-source reference implementation of the same idea.
+
+**A — in-process (start here).** Playwright launches Chromium inside the eval worker.
+
+- Simplest, one image, no network hop.
+- Good to roughly **4 contexts per worker**.
+- Fine for the nightly sweep and for a handful of tenants.
+
+**B — browser service (when A saturates).** Chromium runs as its own deployment exposing a CDP endpoint; workers stay small and stateless and connect over it:
+
+```ts
+// eval worker — no browser in the process
+const browser = await chromium.connectOverCDP(`ws://eval-browser:3000/chromium`);
+const context = await browser.newContext();          // isolated per check
+const page = await context.newPage();
+await page.goto(url, { waitUntil: "domcontentloaded" });
+```
+
+This is the Kubernetes-native split: **two deployments, scaled independently** — browser pods are memory-heavy and churn; eval workers are light and long-lived. `playwright run-server` + `connect()` is the same topology without a third-party image.
+
+**The service contract to copy** (these are the things you otherwise rediscover in production):
+
+| Knob | Why it exists |
+|---|---|
+| `/pressure` | readiness *as the pool sees it*, so the caller or the queue throttles instead of timing out |
+| `CONCURRENT` | hard cap on simultaneous sessions |
+| `QUEUED` | bounded wait — beyond it requests are **rejected**, not buffered into memory |
+| `TIMEOUT` | per-session ceiling so a hung page cannot hold a slot forever |
+| `/metrics` | pool-level metrics, so saturation is visible before it becomes failures |
+
+We already hold ourselves to `/health` + `/ready` + `/metrics`; the browser pool should meet the same bar, and `/pressure` is the missing analogue for "can I take more work".
+
+**Sizing** (adapted from their table):
+
+| Concurrency | CPU | Memory |
+|---|---|---|
+| 4 (our starting cap) | 2 cores | 4 GB |
+| 10–20 | 4 cores | 8 GB |
+| 20–50 | 8+ cores | 16 GB+ |
+
+**Scaling in Kubernetes:** scale the browser deployment on **queue depth**, not CPU — [KEDA](https://keda.sh) has Redis and Prometheus scalers, so the eval queue is the signal. Keep a small warm floor (min 1 replica); a cold Chromium start is seconds of latency on the first check of every run.
+
+**Two footguns worth writing down now:**
+
+- **`/dev/shm` is 64 MB by default in containers**, and Chrome crashes under load because of it. Set `--shm-size=2g` (or mount a memory volume). This is the single most common "works locally, dies in prod" browser failure.
+- **Fonts must be mounted or baked in** — otherwise layouts shift and overflow checks fail for reasons that have nothing to do with the tenant's page.
+
+**Where the cloud service fits.** A hosted browser product removes the image, the reaper and the warm pool, but adds per-page cost, egress through a third party, and — critically — less control over **fonts and networking**, which is exactly what determines layout fidelity and SSRF safety. Recommend self-hosted until it demonstrably costs more than it saves.
+
+**One pool, two consumers.** The agent needs to *browse* (to check its own work); eval needs to *verify*. Both want the same pool. Build it once, but keep the contexts separate: eval contexts carry no platform credentials, and neither does the agent's browsing context.
 
 ### 5.1 Assertion model — borrowed from Lighthouse CI
 
