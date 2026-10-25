@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-24/RFC-PROGRESSIVE-DELIVERY.md](2026-10-24/RFC-PROGRESSIVE-DELIVERY.md)** — **Proposal, awaiting review.** Versioned machine definitions with instance pinning, tenant channels for canary rollout, an eval harness as the promotion gate (routes, device widths, a11y, commerce path), and pointer-based rollback. Copies Camunda, Argo Rollouts, Unleash and Kubernetes rather than inventing patterns.
 - **[2026-10-24/DATABASE-MIGRATIONS.md](2026-10-24/DATABASE-MIGRATIONS.md)** — The schema baseline and the migration workflow. Every schema change made by the remediation work had been applied by hand; this makes a fresh environment reproducible (`db:migrate`) and marks the existing database as baselined.
 - **[2026-10-23/CODE-VERIFIED-STATUS.md](2026-10-23/CODE-VERIFIED-STATUS.md)** — **Most current status.** Dated, command-verified snapshot: gate results, Phase 0/1 item status, report-05 risk status, open correctness findings, the not-verified commerce list, and a register of stale doc claims. Docs are claims, code is truth.
 - **[2026-10-15/ARCHITECTURE-AUDIT-RECONCILIATION.md](2026-10-15/ARCHITECTURE-AUDIT-RECONCILIATION.md)** — Per-risk reconciliation of the 2026-10-10 audit (S7–S17) with evidence and falsification for each fix.
