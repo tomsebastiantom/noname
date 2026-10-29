@@ -45,6 +45,9 @@ Measured on the development machine (2026-10-24): host 15.7 GB total, ~5 GB free
 ## 2. Path A — local dev, no browser (the default)
 
 ```bash
+# 0. FIRST RUN ON A FRESH VM ONLY — identity must exist before anything reads it
+pnpm init:zitadel      # provisions org/project/OIDC app, writes root .env + wrangler.toml
+
 # 1. infrastructure: postgres, redis (dragonfly), clickhouse, s3, zitadel, keto, vault, nango, jaeger
 podman compose -f docker-compose.yml up -d
 
@@ -52,6 +55,7 @@ podman compose -f docker-compose.yml up -d
 pnpm --filter @noname/server db:migrate
 
 # 3. three app processes (separate terminals, or the noname-dev skill)
+#    NOTE: start these AFTER init:zitadel — the API reads the root .env at process start
 pnpm --filter @noname/server dev      # API   :3000
 pnpm --filter @noname/workers dev     # edge  :8787
 pnpm --filter @noname/client dev      # client:5173
@@ -62,6 +66,16 @@ pnpm seed:demo:full
 # 5. prove it
 curl -sf localhost:3000/health && curl -sf localhost:3000/ready && echo ok
 ```
+
+**The order is not cosmetic.** Measured on a fresh VM (2026-10-24): running the seed before `init:zitadel`, or starting the API before it, fails with
+
+```
+ZITADEL management token failed: invalid assertion
+```
+
+because a fresh ZITADEL instance generates its own keys while the repository still holds the *previous* instance's IDs. `init:zitadel` rewrites the root `.env` (`ZITADEL_DEMO_ORG_ID`, `ZITADEL_CLIENT_ID`, `ZITADEL_PROJECT_ID`) and `wrangler.toml`, and `packages/server/src/load-env.ts` deliberately loads the **root** `.env` first — so the API must be (re)started *after* provisioning, not merely have its files updated.
+
+Expect new IDs each time the VM is recreated; the old ones are worthless. After the restart, `seed:demo:full` completes and verifies both machine definitions (`cart`, `inventory_reservation`).
 
 Then open `http://yogastore.localhost:5173` (Chrome resolves `*.localhost` to loopback; no hosts file needed).
 
