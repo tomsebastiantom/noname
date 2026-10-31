@@ -107,6 +107,20 @@ So the honest position: **B2 is the parity target; B1 is what this machine can d
 
 Both tracks use **the same images and the same env contract**; the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
 
+### When each track is *required*
+
+Compose is two things — an **onboarding shortcut** and a **fast loop** — and neither of them is "the way we validate a deployment". That distinction is the practical answer to "shouldn't real work happen on the cluster?":
+
+| Kind of change | Required track | Why |
+|---|---|---|
+| Product code: domains, checks, UI, capabilities | **A — fast loop** (processes or compose) | substrate-independent; a kube-play cycle per edit would cost minutes for no signal |
+| Manifests, probes, resource limits, Jobs, ingress, secrets, network policy, service DNS | **B — cluster** (B1 minimum, B2 before cutover) | these *are* the substrate; compose cannot express most of them |
+| Anything shipping to production | **production cluster only** | compose must never be the shape we ship |
+
+So: **compose is never the answer for a deployment question, and always acceptable for a feature question.** Requiring a cluster for every edit would make the loop slow enough that people route around it — the same failure mode as a flaky gate.
+
+If cluster-first development becomes a goal, the missing piece is tooling, not policy: file sync / hot reload into pods (Skaffold, Tilt, DevSpace, or `kubectl cp`-style watch). Without that, the inner loop is rebuild-image-and-redeploy per change, which is why most teams keep the fast loop outside the cluster and use it for integration and parity checks.
+
 | Need | Workloads |
 |---|---|
 | Enforced egress / SSRF deny | **browser** (untrusted content) |
