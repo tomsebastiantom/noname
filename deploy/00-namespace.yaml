@@ -1,0 +1,8 @@
+# Namespace for the whole platform. Everything lives here: infra, app services, eval, browser.
+# One namespace now; per-environment namespaces later (see RFC-DEPLOYMENT-TOPOLOGY §9 Q2).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: noname
+  labels:
+    app.kubernetes.io/part-of: noname

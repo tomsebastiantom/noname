@@ -1,0 +1,47 @@
+# Dragonfly (Redis-compatible) — BullMQ, SSE fan-out, cache.
+#
+# Ported from `docker-compose.yml#dragonfly`. The three command flags are NOT optional:
+#   --proactor_threads=1        keeps memory flat on a laptop
+#   --cluster_mode=emulated     what BullMQ expects
+#   --lock_on_hashtags          required for BullMQ's key-tag locking; without it queue operations can
+#                               deadlock under concurrency, which presents as hung jobs rather than errors
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dragonfly
+  namespace: noname
+  labels: { app: dragonfly }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: dragonfly }
+  template:
+    metadata:
+      labels: { app: dragonfly }
+    spec:
+      containers:
+        - name: dragonfly
+          image: docker.dragonflydb.io/dragonflydb/dragonfly:latest
+          args:
+            - "--proactor_threads=1"
+            - "--cluster_mode=emulated"
+            - "--lock_on_hashtags"
+          ports:
+            - { name: redis, containerPort: 6379 }
+          readinessProbe:
+            exec: { command: ["redis-cli", "-h", "localhost", "ping"] }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dragonfly
+  namespace: noname
+spec:
+  selector: { app: dragonfly }
+  ports:
+    - { name: redis, port: 6379, targetPort: redis }

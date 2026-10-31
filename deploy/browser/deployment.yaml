@@ -1,0 +1,68 @@
+# Browser pool — Chromium behind CDP, for eval tier 2.
+#
+# Why this workload is the reason the cluster exists: it is the only one that executes
+# tenant-controlled content, so it is the only one that needs enforced egress policy. See
+# docs/2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md §5.
+#
+# Three details are load-bearing and each has a documented failure mode:
+#   1. /dev/shm is an emptyDir with medium: Memory. The container default (64 MB) is the classic
+#      "Chromium crashes under load" cause; `--shm-size` has no meaning in Kubernetes.
+#   2. The image must carry FONTS. Without them layouts shift and overflow checks report phantom
+#      failures — bugs that do not exist. mcr.microsoft.com/playwright ships browsers + fonts.
+#   3. automountServiceAccountToken: false. A page can read a mounted token; there is no reason for
+#      it to have one. Cheapest possible hardening for an untrusted-content workload.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: browser
+  namespace: noname
+  labels: { app: browser, component: eval }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: browser }
+  template:
+    metadata:
+      labels: { app: browser }
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: chromium
+          image: mcr.microsoft.com/playwright:v1.63.0-noble
+          command: ["npx", "playwright", "run-server", "--host", "0.0.0.0", "--port", "3000"]
+          ports:
+            - { name: cdp, containerPort: 3000 }
+          env:
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=1024" }
+          volumeMounts:
+            - { name: shm, mountPath: /dev/shm }
+          readinessProbe:
+            tcpSocket: { port: cdp }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            tcpSocket: { port: cdp }
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests: { cpu: 250m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+      volumes:
+        - name: shm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: browser
+  namespace: noname
+spec:
+  selector: { app: browser }
+  ports:
+    - { name: cdp, port: 3000, targetPort: cdp }
