@@ -1,4 +1,4 @@
-# RFC — Deployment topology: compose for development, Kubernetes for production
+# RFC — Deployment topology: compose for development, the whole workload for production
 
 > **Status:** **Proposed** — awaiting review.
 > **Date:** 2026-10-24 (America/New_York)
@@ -35,6 +35,8 @@ The browser fleet makes this urgent: it is the first component whose *isolation*
 
 The rule that keeps the two honest: **the manifests are the source of truth for production; compose is a convenience that must never encode behaviour production cannot express.** If a compose-only flag is needed to make something work, it is a bug in the production design, not a feature of composes.
 
+**And the two states are exclusive: all services in the cluster, or none.** A cluster hosting only the browser is not a smaller step towards the same thing — it is a different, worse architecture (full control-plane cost, plus cross-boundary calls from the browser to the API and edge). See §5.
+
 ## 3. What is shared (and must never diverge)
 
 Both substrates run the identical:
@@ -55,18 +57,62 @@ Both substrates run the identical:
 
 ```
 deploy/
-  browser/
-    deployment.yaml        Chromium pool, resources, probes (/pressure), shm, fonts
-    service.yaml           CDP endpoint
-    networkpolicy.yaml     egress: tenant edge + CDN only; deny private ranges
-    pdb.yaml               keep one replica during disruption
-    scaledobject.yaml      KEDA on eval queue depth, warm floor 1
-  eval/
-    deployment.yaml        eval worker (no browser), queue concurrency 4
-  README.md                what each object is for, and what cannot be tested locally
+  api/            deployment (index.ts), service, probes /health /ready, HPA
+  worker/         deployment (worker.ts) — jobs: delivery, catalog builds, analytics
+  e2e-worker/     deployment — agent orchestration / long jobs, separate queue
+  eval/           deployment (eval worker, no browser), queue concurrency 4
+  edge/           deployment + the only public ingress
+  client/         static assets (CDN or nginx image), cache headers
+  browser/        Chromium pool
+                    deployment.yaml    resources, probes (/pressure), shm 2g, fonts
+                    service.yaml       CDP endpoint
+                    networkpolicy.yaml egress: tenant edge + CDN only; deny private ranges
+                    pdb.yaml           keep one replica during disruption
+                    scaledobject.yaml  KEDA on eval queue depth, warm floor 1
+  jobs/
+    migrate.yaml    Job that must complete before rollouts
+    seed.yaml       Job (demo/first-run only)
+  kustomization.yaml
+  README.md         what each object is for, and what cannot be tested locally
 ```
 
-Deliberately **not** included yet: API/edge/client manifests. They are stateless and can follow once the browser fleet proves the pattern; adding them now would be a bigger surface with no new lesson.
+### The rule: all in, or stay out
+
+**There are two states and no hybrid.**
+
+| State | Runs | When |
+|---|---|---|
+| **Compose** | infra + every service, no cluster | local dev, OSS first-run |
+| **Cluster** | every service + eval + browser, infra managed or external | production, after one cutover |
+
+**No half-cluster.** A cluster that hosts only the browser is the worst of both: the full control-plane cost, and the browser must then reach the API and edge *across a boundary* (service DNS, ports, TLS, policy on both sides) — exactly the glue that produces "works locally, fails in prod".
+
+The browser is the **reason** a cluster becomes necessary (it is the only workload that must execute untrusted tenant content, so it is the only one that needs enforced egress policy). It is **not** the only thing that belongs in one. **The trigger is the browser; the answer is the workload.**
+
+| Need | Workloads |
+|---|---|
+| Enforced egress / SSRF deny | **browser** (untrusted content) |
+| Memory-heavy and churny | browser, eval worker |
+| Queue-driven scaling | worker, e2e-worker, eval worker |
+| Horizontal scale + self-healing | api, edge, client |
+| Ordered execution before rollout | migrate job, seed job |
+
+### Preconditions for the cutover (the real work list)
+
+Because the cutover moves the whole workload in one step, these must all be true first. None of them exist today.
+
+| # | Precondition | Status |
+|---|---|---|
+| 1 | **An image per service** — api, worker, e2e-worker, edge (`Dockerfile`, multi-stage, non-root) | ❌ none exist |
+| 2 | **One registry, one tag**, referenced by compose *and* manifests so the two substrates cannot diverge | ❌ |
+| 3 | **Env contract validated at boot**, injected as Secret/Vault instead of `.env` | ⚠️ env validation is still unbuilt (Phase 1.6 / risk S17) |
+| 4 | **`migrate` and `seed` as ordered Jobs** — they exist as commands but have no Job semantics (must complete before rollout, and be re-runnable) | ⚠️ commands exist, Job shape does not |
+| 5 | **Probes** — `/health`, `/ready` shipped ✅; `/pressure` only for the browser | ⚠️ browser probe is specified, not built |
+| 6 | **Egress policy** — NetworkPolicy for the browser, deny private ranges | ❌ |
+| 7 | **Ingress** — edge is the only public surface; everything else internal | ❌ |
+| 8 | **Secrets bootstrapping** — `init:zitadel` writes `.env` and `wrangler.toml`; in a cluster that becomes a Job whose output is a Secret | ❌ |
+
+That list is why the cutover is a project, not a deployment: **six of eight are missing**, and two of them (env validation, images) are pre-existing gaps rather than new work.
 
 ## 6. Local reality — what we can and cannot mirror
 
@@ -82,26 +128,40 @@ Measured on this machine (2026-10-24):
 Three local rungs, in order:
 
 1. **compose** — build the checks; tier 0/1 needs no browser at all.
-2. **`podman kube play deploy/browser/*.yaml`** — proves the *pod* shape: shared network namespace, resource limits, probes, CDP between two containers. Same file, no control plane.
+2. **`podman kube play deploy/`** — proves the *pod* shape for **the whole workload**: resource limits, probes, shared network namespace inside a pod, the CDP hop, the migrate job. Same YAML as production, no control plane. This is the closest thing to a rehearsal of the cutover.
 3. **`minikube start --driver=podman`** — only when KEDA/PDB behaviour must be validated, and only after freeing RAM (the default machine must be stopped/removed first).
 
 **Honest limits of the local mirror:** `NetworkPolicy` is only enforced by a CNI that implements it (Calico/Cilium), and minikube/kind defaults often do not. So **"egress is blocked" can never be proven locally** — only that the app-level guard refuses internal endpoints.
 
 ## 7. Non-goals
 
-- Helm charts. Two deployments do not need a chart; `kubectl apply -k` over `deploy/` is enough until a third consumer appears.
+- Helm charts. `kubectl apply -k` over `deploy/` is enough; a chart adds templating we do not need yet.
 - Replacing compose for OSS users. It is the first-run experience and should stay one command.
+- **A hybrid: some services in the cluster, some outside.** See §5.
 - Running a cluster in CI. The gate runs against the app, not the substrate.
 - Multi-region / multi-cluster. Not before one production cluster exists.
-- Migrating the dev database into a cluster. Postgres stays where it is for now; this RFC is about the compute plane.
+- Migrating Postgres/ClickHouse into the cluster. Managed or external for now; this RFC is about the compute plane.
 
 ## 8. Sequencing
 
-1. Author `deploy/browser/**` and `deploy/eval/**`; review them like code (they *are* the production contract).
-2. `podman kube play` the browser pod against the local stack; confirm CDP, probes, shm, fonts.
-3. Add `S1.no_internal_egress`; fail it deliberately to prove the check is real.
-4. Free RAM (stop/remove the old machine), install minikube with the podman driver, and validate KEDA only once the pool's contract is already trustworthy from step 2.
-5. Only then decide whether API/edge/client follow into manifests.
+**Before the cutover (works today, no cluster):**
+
+1. Author `deploy/**` for the full workload; review it like code — it *is* the production contract.
+2. `podman kube play deploy/` against the local stack: confirm probes, limits, the CDP hop, and the migrate Job ordering.
+3. Add `S1.no_internal_egress` and fail it deliberately, proving the check is real.
+
+**Closing the preconditions (§5):**
+
+4. Images + registry (§5 items 1–2) — the largest piece, and independent of everything else.
+5. Env validation (§5 item 3) — already on the Phase 1 list as S17.
+6. Jobs for migrate/seed, ingress, egress policy, secret bootstrap (§5 items 4, 6–8).
+
+**The cutover itself:**
+
+7. One environment, all services, migrate Job first, then rollouts, gated by the eval sweep on a canary cohort.
+8. Only after that: minikube/podman-driver to validate KEDA and PDB decisions.
+
+**Do not** start with the browser. It is the trigger for needing a cluster, not the first thing to move.
 
 ## 9. Open questions
 
