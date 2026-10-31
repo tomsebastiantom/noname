@@ -184,9 +184,7 @@ function status() {
       console.log(`  [${pass ? c.green(" OK ") : c.red("FAIL")}] ${name.padEnd(16)} ${line}`);
     }
   }
-  const free = sh("sh", ["-c", "true"]) // no-op guard for platforms without `sh`
-    ? sh(IS_WIN ? "wsl" : "sh", IS_WIN ? ["-d", "Ubuntu", "-u", "root", "--", "free", "-m"] : ["-c", "free -m"])
-    : { out: "" };
+  const free = sh(IS_WIN ? "wsl" : "sh", IS_WIN ? ["-d", "Ubuntu", "-u", "root", "--", "free", "-m"] : ["-c", "free -m"]);
   if (free.out) console.log(`\n  memory: ${free.out.split("\n")[1]?.replace(/\s+/g, " ") ?? ""}`);
 
   console.log("");
@@ -243,13 +241,16 @@ async function up({ rebuild = false, skipImages = false } = {}) {
   const active = sh(IS_WIN ? "wsl" : "sh", IS_WIN
     ? ["-d", "Ubuntu", "-u", "root", "--", "sh", "-c", "systemctl is-active k3s"]
     : ["-c", "systemctl is-active k3s"]);
-  if (!/active/.test(active.out)) {
+  // `/active/.test("inactive")` is TRUE, so the earlier guard never started a stopped k3s and `up` then
+  // failed 120 s later waiting for a node that was never coming. Match the exact state word.
+  if (!/^active$/m.test(active.out.trim())) {
     must(IS_WIN ? "wsl" : "sh", IS_WIN
       ? ["-d", "Ubuntu", "-u", "root", "--", "sh", "-c", "systemctl start k3s"]
       : ["-c", "sudo systemctl start k3s"]);
   }
   if (!existsSync(KUBECONFIG)) throw new Error(`missing kubeconfig: ${KUBECONFIG}`);
-  await waitFor("node", probes.node, { timeoutMs: 120_000 });
+  // A cold k3s start brings the API server up in ~10 s here, but give a slow host room.
+  await waitFor("node", probes.node, { timeoutMs: 180_000, intervalMs: 3_000 });
 
   step("namespace + infra");
   must("kubectl", ["apply", "-f", "deploy/00-namespace.yaml"]);

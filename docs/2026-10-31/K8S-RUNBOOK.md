@@ -112,6 +112,23 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 | seed Job: `fetch failed` although `busybox` reaches the API | the seeder logs in through `ZITADEL_ISSUER=http://localhost:8080`, and the Job had **no loopback proxy** | add the `localhost-proxy` sidecar to the seed Job |
 | seed Job never reaches `Completed` although the logs say success | the socat sidecar kept running, so the pod stayed at `1/2` | make it a **native sidecar** (`initContainers` + `restartPolicy: Always`, k8s ≥1.29; this cluster is 1.36) |
 | `Upload google.svg → 500`; API log `getaddrinfo ENOTFOUND noname-assets.s3` | `forcePathStyle` was enabled only for `localhost`/`127.0.0.1`, so a Service endpoint (`http://s3:9000`) got virtual-hosted addressing | inverted: path-style for everything except Cloudflare R2, with `R2_FORCE_PATH_STYLE` as an explicit override |
+| `up` fails with "node did not become ready" right after `down` | `systemctl is-active` prints `inactive`, and the guard tested `/active/` — which matches the substring, so k3s was never started | match `^active$` exactly |
+| migrate Job: pod dies at **container creation**, `runc create failed` | the command pointed at `/app/node_modules/.bin/drizzle-kit`, but `drizzle-kit` is a devDependency of the *server package*, so its bin is under `packages/server/node_modules/.bin` | use the package-local bin path |
+
+## 6b. Restart resilience, verified
+
+Stopping k3s entirely and converging again is the test that matters, and it passes:
+
+```powershell
+node scripts/k8s.mjs down            # systemctl stop k3s
+node scripts/k8s.mjs up --skip-images
+#   ok node ready -> ok all nine infra -> ok Secret refreshed -> ok migrate ready
+#   -> ok api /ready -> all checks passed (exit 0)
+```
+
+Data survives because it lives on PVCs (`postgres-data`, `clickhouse-data`, `zitadel-keys`), not in pods:
+`machine_definitions=2`, 44 documents, 5 pages after the restart. Nothing needs a host `kubectl cp` — the
+seed Job and identity bootstrap read the machine key from the `zitadel-keys` PVC.
 
 ## 7. Open gaps (reported by `node scripts/k8s.mjs status`)
 

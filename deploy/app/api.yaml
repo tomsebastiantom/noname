@@ -149,7 +149,10 @@ spec:
         - name: migrate
           image: localhost/noname-api:dev
           imagePullPolicy: IfNotPresent
-          command: ["/app/node_modules/.bin/drizzle-kit", "migrate"]
+          # drizzle-kit is a devDependency of the server package, so its bin is under that package
+          # (/app/node_modules/.bin has no drizzle-kit - the first attempt pointed there and the pod died
+          # at container creation with "runc create failed ... no such file or directory").
+          command: ["/app/packages/server/node_modules/.bin/drizzle-kit", "migrate"]
           workingDir: /app/packages/server
           envFrom:
             - secretRef: { name: noname-env }
