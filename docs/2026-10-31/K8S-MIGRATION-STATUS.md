@@ -1,6 +1,6 @@
 # Kubernetes migration — live status tracker
 
-> **Status:** **in progress.** Infra core running (postgres, dragonfly, clickhouse, s3 + bucket job). Browser pod Running but its image needs pinning. App images not built.
+> **Status:** **in progress.** **All nine infra services running** in the cluster. Browser running with a pinned image. App images not built.
 > **Date started:** 2026-10-31 (America/New_York)
 > **Decision:** full move, **not** incremental — everything (infra + app + eval + browser) into the cluster.
 > **Related:** [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (the cluster itself) · [`RFC-DEPLOYMENT-TOPOLOGY.md`](../2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md) (why all-in-or-none) · [`PUBLISH-VERIFICATION-SCALES.md`](./PUBLISH-VERIFICATION-SCALES.md)
@@ -39,8 +39,8 @@ namespace: noname
 | 4 | apply **dragonfly** | **done** | `exec deploy/dragonfly -- redis-cli ping` → `PONG` |
 | 5 | apply **clickhouse** | **done** | `exec deploy/clickhouse -- clickhouse-client --query "SELECT 1"` → `1` |
 | 6 | apply **s3** + `s3-init` job | **done** | pod `1/1 Running`; `logs job/s3-init` → `bucket already present` |
-| 7 | apply **vault**, **jaeger**, **nango** | pending | vault `sys/health` 200, jaeger UI 200, nango `/health` 200 |
-| 8 | apply **zitadel** + **keto** (+ migrate job) | pending | `zitadel ready`; keto `/health/ready` 200 |
+| 7 | apply **vault**, **jaeger**, **nango** | **done** | all three `1/1 Running`; nango `/health` → `{"result":"ok"}` from an in-cluster probe pod |
+| 8 | apply **zitadel** + **keto** (+ migrate job) | **done** | `keto-migrate` Job `Completed`; keto `1/1 Running`; zitadel `1/1 Running` after the service-link fix (§5) |
 | 9 | re-run `pnpm init:zitadel` against cluster → **new org IDs** | blocked (needs 8) | `.env` rewritten; `noname eval` still authenticates |
 | 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | pending | `podman build` succeeds for each |
 | 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
@@ -75,6 +75,8 @@ images that do not exist produces files nobody has run.
 | **Edge is a Cloudflare Worker** | `wrangler dev` is a dev tool, not a runtime. Options: (a) run `workerd` in a container, (b) run wrangler in a container — fragile, (c) keep edge outside the cluster initially and document it. **Pending decision**, tracked as a blocker rather than hand-waved. |
 | **Client is a static bundle** | rspack build → nginx image. Straightforward. |
 | **Flannel CNI** | `NetworkPolicy` is accepted and **unenforced**. Policy work is blocked until Calico/Cilium is installed; do not record "policy applied" as done before that. |
+| **Kubernetes service-link env injection** | **Fixed with `enableServiceLinks: false`.** Kubernetes injects `{SERVICE_NAME}_PORT=tcp://…` for every Service. A Service called `zitadel` therefore set `ZITADEL_PORT`, which Zitadel's config decoder reads as `Port` and cannot parse as `uint16` — it crash-looped *after* finishing every migration. The same mechanism made `NANGO_PORT` a NaN. This is the archetypal "works in compose, fails in Kubernetes" bug and it is now documented in both manifests. |
+| **Floating image tags** | `nangohq/nango-server:hosted` moved between compose's pull (2026-10-24) and the cluster's (2026-10-31): the newer digest additionally requires `NANGO_PORT`. Set explicitly now; pin by digest before production. |
 | **RAM** | pool 7.8 GB, 5.3 GB available, all-in ≈ 3–3.5 GB + browser 1.5–2 GB. Fits; watch for OOM in staging of the browser. |
 | **`traefik`/`servicelb` disabled** | exposure via **NodePort** or `port-forward` only; no Ingress controller locally by choice (saves ~200 MB). |
 
@@ -88,3 +90,6 @@ images that do not exist produces files nobody has run.
 | 15:2x | applied clickhouse + s3 + `s3-init` Job → all Running/Completed; `SELECT 1` = 1; bucket present |
 | 15:2x | applied browser → Running, `/dev/shm` 2.0G, 50 fonts, CDP 200; **defect found**: unpinned `npx` download of playwright 1.64.1 at container start |
 | 15:3x | built `deploy/browser/Containerfile` with the CLI pinned → `podman build` ok; `podman save` (2432 MB) → `k3s ctr images import` (187s) → Deployment rolled out; `playwright --version` = **1.63.0**, no npm at startup |
+| 15:4x | vault + jaeger Running; **nango crash-looped on `NANGO_PORT` NaN** → root cause was service-link injection + a moved image tag; fixed with explicit `NANGO_PORT` and `PORT` |
+| 15:5x | keto-migrate Completed, keto Running; **zitadel crash-looped after all migrations** with `'Port' cannot parse value as 'uint16'` → `enableServiceLinks: false` fixed it; zitadel Running |
+| 15:5x | **all nine infra services Running**; only app images and identity re-init remain |

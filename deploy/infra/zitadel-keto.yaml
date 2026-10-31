@@ -1,0 +1,313 @@
+# Keto (permissions / ReBAC) and Zitadel (identity).
+#
+# Both config files are embedded as a ConfigMap so the manifests are self-contained: the cluster does
+# not need a checkout of config/keto to run. Drift risk: if config/keto/* changes, this ConfigMap
+# must be regenerated - tracked as a follow-up (external ConfigMap / kustomize configMapGenerator).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keto-config
+  namespace: noname
+data:
+  keto.yml: |
+    version: v25.4.0
+
+    log:
+      level: info
+
+    # DSN overridden by DSN env in docker-compose / K8s
+    dsn: postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable
+
+    namespaces:
+      location: file:///etc/keto/namespaces.ts
+
+    serve:
+      read:
+        host: 0.0.0.0
+        port: 4466
+      write:
+        host: 0.0.0.0
+        port: 4467
+      metrics:
+        host: 0.0.0.0
+        port: 4468
+  namespaces.ts: |
+    /**
+     * Noname Zanzibar model for Ory Keto (OPL).
+     * Folders (Collection) = access buckets; Teams = people groups; Postgres owns doc â†” folder.
+     * Spec: docs/2026-08-03/ACCESS-AND-ROLES.md
+     */
+    import { Namespace, Context, SubjectSet } from "@ory/keto-namespace-types";
+
+    class User implements Namespace {}
+
+    class Agent implements Namespace {
+      related: {
+        owners: User[];
+      };
+    }
+
+    class Store implements Namespace {
+      related: {
+        owners: User[];
+        admins: User[];
+        editors: (User | Agent | SubjectSet<Store, "editors">)[];
+        viewers: (User | Agent | SubjectSet<Store, "viewers">)[];
+      };
+
+      permits = {
+        view: (ctx: Context): boolean =>
+          this.related.viewers.includes(ctx.subject) ||
+          this.related.editors.includes(ctx.subject) ||
+          this.related.admins.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject),
+        edit: (ctx: Context): boolean =>
+          this.related.editors.includes(ctx.subject) ||
+          this.related.admins.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject),
+        admin: (ctx: Context): boolean =>
+          this.related.admins.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject),
+      };
+    }
+
+    class Team implements Namespace {
+      related: {
+        editors: (User | Agent)[];
+        publishers: (User | Agent)[];
+      };
+
+      permits = {
+        edit: (ctx: Context): boolean => this.related.editors.includes(ctx.subject),
+        publish: (ctx: Context): boolean => this.related.publishers.includes(ctx.subject),
+      };
+    }
+
+    class Tag implements Namespace {
+      related: {
+        editors: (User | Agent | SubjectSet<Team, "editors">)[];
+        publishers: (User | Agent | SubjectSet<Team, "publishers">)[];
+      };
+
+      permits = {
+        view: (ctx: Context): boolean =>
+          this.related.editors.includes(ctx.subject) ||
+          this.related.publishers.includes(ctx.subject),
+        edit: (ctx: Context): boolean => this.related.editors.includes(ctx.subject),
+        publish: (ctx: Context): boolean => this.related.publishers.includes(ctx.subject),
+      };
+    }
+
+    class Collection implements Namespace {
+      related: {
+        parents: Collection[];
+        editors: (User | Agent | SubjectSet<Team, "editors">)[];
+        publishers: (User | Agent | SubjectSet<Team, "publishers">)[];
+        viewers: (User | Agent | SubjectSet<Team, "editors">)[];
+      };
+
+      permits = {
+        view: (ctx: Context): boolean =>
+          this.related.viewers.includes(ctx.subject) ||
+          this.related.publishers.includes(ctx.subject) ||
+          this.related.editors.includes(ctx.subject) ||
+          this.related.parents.traverse((p) => p.permits.view(ctx)),
+        edit: (ctx: Context): boolean =>
+          this.related.editors.includes(ctx.subject) ||
+          this.related.parents.traverse((p) => p.permits.edit(ctx)),
+        publish: (ctx: Context): boolean =>
+          this.related.publishers.includes(ctx.subject) ||
+          this.related.editors.includes(ctx.subject) ||
+          this.related.parents.traverse((p) => p.permits.publish(ctx)),
+      };
+    }
+
+    class Document implements Namespace {
+      related: {
+        parents: Collection[];
+        owners: User[];
+        editors: (User | Agent | SubjectSet<Store, "editors">)[];
+        publishers: (User | Agent | SubjectSet<Store, "editors">)[];
+        viewers: (User | Agent | SubjectSet<Store, "viewers">)[];
+      };
+
+      permits = {
+        view: (ctx: Context): boolean =>
+          this.related.viewers.includes(ctx.subject) ||
+          this.related.editors.includes(ctx.subject) ||
+          this.related.publishers.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject) ||
+          this.related.parents.traverse((p) => p.permits.view(ctx)),
+        edit: (ctx: Context): boolean =>
+          this.related.editors.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject) ||
+          this.related.parents.traverse((p) => p.permits.edit(ctx)),
+        publish: (ctx: Context): boolean =>
+          this.related.publishers.includes(ctx.subject) ||
+          this.related.editors.includes(ctx.subject) ||
+          this.related.owners.includes(ctx.subject),
+      };
+    }
+---
+# Migrations must finish before the server starts: a Job, not an initContainer, so a failure is visible
+# as a failed Job rather than a crash-looping pod.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: keto-migrate
+  namespace: noname
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: keto-migrate
+          image: docker.io/oryd/keto:v25.4.0
+          args: ["migrate", "up", "-y", "-c", "/etc/keto/keto.yml"]
+          env:
+            - { name: DSN, value: "postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable" }
+          volumeMounts:
+            - { name: config, mountPath: /etc/keto }
+      volumes:
+        - name: config
+          configMap: { name: keto-config }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keto
+  namespace: noname
+  labels: { app: keto }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: keto }
+  template:
+    metadata:
+      labels: { app: keto }
+    spec:
+      # Kubernetes injects `{SERVICE_NAME}_PORT=tcp://…` for every Service in the namespace, so a
+      # Service called `keto` yields KETO_PORT. Harmless for Keto today, disabled for consistency with
+      # Zitadel and because this class of clash is invisible until something parses the variable.
+      enableServiceLinks: false
+      containers:
+        - name: keto
+          image: docker.io/oryd/keto:v25.4.0
+          args: ["serve", "-c", "/etc/keto/keto.yml"]
+          env:
+            - { name: DSN, value: "postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable" }
+          ports:
+            - { name: read, containerPort: 4466 }
+            - { name: write, containerPort: 4467 }
+            - { name: metrics, containerPort: 4468 }
+          volumeMounts:
+            - { name: config, mountPath: /etc/keto }
+          readinessProbe:
+            httpGet: { path: /health/ready, port: read }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 12
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+      volumes:
+        - name: config
+          configMap: { name: keto-config }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keto
+  namespace: noname
+spec:
+  selector: { app: keto }
+  ports:
+    - { name: read, port: 4466, targetPort: read }
+    - { name: write, port: 4467, targetPort: write }
+    - { name: metrics, port: 4468, targetPort: metrics }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zitadel
+  namespace: noname
+  labels: { app: zitadel }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: zitadel }
+  template:
+    metadata:
+      labels: { app: zitadel }
+    spec:
+      # REQUIRED, and the reason this file has a comment here.
+      #
+      # Kubernetes injects `{SERVICE_NAME}_PORT=tcp://10.43.x.y:8080` for every Service in the
+      # namespace. Zitadel's config decoder reads variables with the ZITADEL_ prefix, so the Service
+      # named `zitadel` produced:
+      #
+      #   'Port' cannot parse value as 'uint16': strconv.ParseUint: invalid syntax
+      #
+      # and the container crash-looped *after* completing all its migrations. The same mechanism made
+      # NANGO_PORT a NaN (`tcp://…`) for Nango. Disabling service links removes the category rather
+      # than patching variables one at a time.
+      enableServiceLinks: false
+      containers:
+        - name: zitadel
+          image: ghcr.io/zitadel/zitadel:latest
+          # start-from-init performs the first-instance setup on first boot and is what compose uses.
+          # The masterkey MUST match what pnpm init:zitadel expects and is a dev value.
+          args:
+            - start-from-init
+            - --masterkey
+            - xV9kL2mN4pQ7rS1tU8wY3aB6cD0eF5hJ
+            - --tlsMode
+            - disabled
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: ZITADEL_DATABASE_POSTGRES_HOST, value: postgres }
+            - { name: ZITADEL_DATABASE_POSTGRES_PORT, value: "5432" }
+            - { name: ZITADEL_DATABASE_POSTGRES_DATABASE, value: zitadel }
+            - { name: ZITADEL_DATABASE_POSTGRES_USER_USERNAME, value: noname }
+            - { name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD, value: noname_dev }
+            - { name: ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE, value: disable }
+            - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME, value: noname }
+            - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD, value: noname_dev }
+            - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE, value: disable }
+            - { name: ZITADEL_EXTERNALSECURE, value: "false" }
+            - { name: ZITADEL_EXTERNALPORT, value: "8080" }
+            - { name: ZITADEL_EXTERNALDOMAIN, value: localhost }
+            - { name: ZITADEL_TLS_ENABLED, value: "false" }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME, value: admin }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD, value: NonameAdmin1! }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED, value: "false" }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME, value: noname-backend }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME, value: noname-backend }
+            - { name: ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINEKEY_TYPE, value: "1" }
+            - { name: ZITADEL_FIRSTINSTANCE_MACHINEKEYPATH, value: /output/noname-backend-sa.json }
+          volumeMounts:
+            - { name: keys, mountPath: /output }
+          readinessProbe:
+            # distroless image: use its own readiness command, as compose does.
+            exec: { command: ["/app/zitadel", "ready"] }
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 30
+          resources:
+            requests: { cpu: 200m, memory: 384Mi }
+            limits: { memory: 1Gi }
+      volumes:
+        - name: keys
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zitadel
+  namespace: noname
+spec:
+  selector: { app: zitadel }
+  ports:
+    - { name: http, port: 8080, targetPort: http }

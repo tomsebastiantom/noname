@@ -1,0 +1,168 @@
+# Vault (dev server), Jaeger (tracing), Nango (OAuth integrations).
+#
+# Ported from `docker-compose.yml`. Notes specific to Kubernetes:
+#   - Vault dev mode: the root token is a *dev* value; a real deployment uses a sealed server + unseal
+#     keys, which is deliberately out of scope here (documented in the tracker as local-only).
+#   - Jaeger: OTLP HTTP on 4318, UI on 16686.
+#   - Nango keeps its own DB (`nango`) and uses dragonfly for Redis; it is reachable by the API at
+#     `nango:3003`, which is also what NANGO_SERVER_URL must say.
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault
+  namespace: noname
+  labels: { app: vault }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: vault }
+  template:
+    metadata:
+      labels: { app: vault }
+    spec:
+      containers:
+        - name: vault
+          image: hashicorp/vault:1.17
+          args: ["server", "-dev"]
+          ports:
+            - { name: http, containerPort: 8200 }
+          env:
+            - { name: VAULT_DEV_ROOT_TOKEN_ID, value: dev-root-token }
+            - { name: VAULT_DEV_LISTEN_ADDRESS, value: "0.0.0.0:8200" }
+          readinessProbe:
+            exec:
+              command: ["vault", "status", "-address=http://127.0.0.1:8200"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+            failureThreshold: 12
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: noname
+spec:
+  selector: { app: vault }
+  ports:
+    - { name: http, port: 8200, targetPort: http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jaeger
+  namespace: noname
+  labels: { app: jaeger }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: jaeger }
+  template:
+    metadata:
+      labels: { app: jaeger }
+    spec:
+      containers:
+        - name: jaeger
+          image: docker.io/jaegertracing/all-in-one:latest
+          ports:
+            - { name: ui, containerPort: 16686 }
+            - { name: otlp-http, containerPort: 4318 }
+          env:
+            - { name: COLLECTOR_OTLP_ENABLED, value: "true" }
+          readinessProbe:
+            httpGet: { path: /, port: ui }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: jaeger
+  namespace: noname
+spec:
+  selector: { app: jaeger }
+  ports:
+    - { name: ui, port: 16686, targetPort: ui }
+    - { name: otlp-http, port: 4318, targetPort: otlp-http }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nango
+  namespace: noname
+  labels: { app: nango }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: nango }
+  template:
+    metadata:
+      labels: { app: nango }
+    spec:
+      containers:
+        - name: nango
+          image: docker.io/nangohq/nango-server:hosted
+          ports:
+            - { name: server, containerPort: 3003 }
+            - { name: connect, containerPort: 3009 }
+          env:
+            - { name: SERVER_PORT, value: "3003" }
+            # REQUIRED by the hosted image (observed: it dies with
+            #   "Missing or invalid env vars: NANGO_PORT (expected number, received NaN)").
+            # The image derives NANGO_PORT from PORT; compose sets PORT=8080 even though the API
+            # listens on 3003 via SERVER_PORT, so this looks redundant but is not.
+            - { name: PORT, value: "8080" }
+            # The image validates NANGO_PORT itself and does NOT derive it from PORT in the digest
+            # pulled on 2026-10-31 (the compose container from 2026-10-24 runs an older digest under
+            # the same floating `:hosted` tag and does not need this). Set explicitly; pin by digest
+            # when this moves to production.
+            - { name: NANGO_PORT, value: "3003" }
+            - { name: NANGO_CONNECT_UI_PORT, value: "3009" }
+            # In-cluster URL: the API reaches Nango at `nango:3003`, so the public/self URLs must
+            # match, otherwise generated OAuth callbacks point at localhost from inside the pod.
+            - { name: NANGO_SERVER_URL, value: "http://nango:3003" }
+            - { name: NANGO_PUBLIC_SERVER_URL, value: "http://localhost:3003" }
+            - { name: NANGO_PUBLIC_CONNECT_URL, value: "http://localhost:3009" }
+            - { name: FLAG_SERVE_CONNECT_UI, value: "true" }
+            - { name: NANGO_LOGS_ENABLED, value: "false" }
+            - { name: NANGO_DB_HOST, value: postgres }
+            - { name: NANGO_DB_PORT, value: "5432" }
+            - { name: NANGO_DB_USER, value: noname }
+            - { name: NANGO_DB_PASSWORD, value: noname_dev }
+            - { name: NANGO_DB_NAME, value: nango }
+            - { name: NANGO_DB_SSL, value: "false" }
+            - { name: RECORDS_DATABASE_URL, value: postgresql://noname:noname_dev@postgres:5432/nango }
+            - { name: NANGO_REDIS_URL, value: redis://dragonfly:6379 }
+            # Must be a UUID - the image's schema validates the shape, not just presence.
+            - { name: NANGO_SECRET_KEY, value: 256716d6-6cb0-4c99-91ab-cf44fb9034fb }
+            - { name: NANGO_ENCRYPTION_KEY, value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= }
+          readinessProbe:
+            # The image has node but no wget/curl; probe with node's own fetch.
+            exec:
+              command:
+                - node
+                - -e
+                - "fetch('http://localhost:3003/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 20
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nango
+  namespace: noname
+spec:
+  selector: { app: nango }
+  ports:
+    - { name: server, port: 3003, targetPort: server }
+    - { name: connect, port: 3009, targetPort: connect }
