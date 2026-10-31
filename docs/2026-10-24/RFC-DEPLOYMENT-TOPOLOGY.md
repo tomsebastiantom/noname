@@ -93,14 +93,19 @@ The browser is the **reason** a cluster becomes necessary (it is the only worklo
 
 ### Two developer tracks, one artefact set
 
-| Track | Runs | Who |
+| Track | Runs | What it actually validates |
 |---|---|---|
-| **A — compose** (default) | everything, one command | anyone wanting to see it work; OSS first-run |
-| **B — local cluster** | infra in compose + app in `podman kube play deploy/` | anyone debugging deployment parity |
+| **A — compose** (default) | everything, one command | the product works at all |
+| **B1 — app in a local cluster** | infra in compose + app in `podman kube play deploy/` | **app parity only**: pod shapes, probes, resource limits, service DNS between app services, the CDP hop, migrate-Job ordering |
+| **B2 — everything in a local cluster** | infra + app + browser inside Kubernetes | **real deployment parity**: StatefulSets/PVCs, init ordering, secrets as Secrets, DNS names that differ from compose, data-service networking |
 
-Both tracks use **the same images and the same env contract**, and the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
+**B1 is not "deployment parity" — it is app parity, and the distinction matters.** It cannot validate: Postgres/ClickHouse as StatefulSets, PVC behaviour, secret injection, compose-to-cluster DNS differences, or NetworkPolicy (no enforcing CNI). Calling it parity would let us believe the cutover is rehearsed when only half of it is.
 
-Memory measured on this machine (2026-10-31): host **15.7 GB / ~4 GB free**, VM **6 GiB** already holding nine infra services. A *full* cluster (infra + app + browser inside Kubernetes) needs a **12 GiB+ VM**, which on this host means replacing the current VM, not adding one. Hence track B starts as app-services-only against compose infrastructure.
+**Why B1 exists at all:** memory, not architecture. Measured on this machine (2026-10-31): host **15.7 GB total, ~4 GB free** while the 6 GiB VM holds nine infra services. Stopping the VM frees ≈10 GB, so the practical ceiling here is an **8 GiB VM** — and a full cluster (ClickHouse + Zitadel + Keto + Vault + Nango + S3 + Jaeger + Postgres + app + browser) does not fit in 8 GiB. A comfortable B2 needs **12 GiB+**, i.e. a different host or a lot more RAM.
+
+So the honest position: **B2 is the parity target; B1 is what this machine can do today.** B1 is worth having because the failures that actually bite at cutover — probes, limits, ordering, DNS between app services — are exactly what it exercises. It is not a substitute for one B2 run before the real cutover.
+
+Both tracks use **the same images and the same env contract**; the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
 
 | Need | Workloads |
 |---|---|

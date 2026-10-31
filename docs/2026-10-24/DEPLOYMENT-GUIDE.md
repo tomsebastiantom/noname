@@ -12,11 +12,13 @@ There are **two developer tracks** and **one production shape**:
 | You want | Track | Needs KUbernetes? | Needs a browser? |
 |---|---|---|---|
 | **Try it / normal development** | **A — compose** (default) | no | no |
-| **Debug deployment parity** | **B — local cluster** (`podman kube play`) | locally, app only | no |
+| **Debug app-level deployment** (pod shapes, probes, limits, CDP) | **B1 — app in local cluster** (`podman kube play`) | locally, app only | no |
 | **Verify rendering / a11y / checkout** | compose `--profile browser` | no | yes |
 | **Run for real** | one cluster, whole workload | yes | yes |
 
 Track A is one command and stays that way. Track B exists for people who need to see the manifests actually run; it uses the same images and the same env contract, and it is **not** a second system.
+
+**B1 is app parity, not deployment parity.** With infrastructure outside the cluster it cannot validate StatefulSets, PVCs, secret injection, or compose-vs-cluster DNS. Full parity (**B2**: infra + app + browser inside Kubernetes) needs a 12 GiB+ VM, which this host cannot provide — so B2 is the target, B1 is what a laptop can rehearse.
 
 Production is **all in or stay out**: every service in the cluster, or none. A cluster holding only the browser pays the full control-plane cost and then makes the browser reach the API across a boundary — the exact glue that breaks in production. (Locally, `podman kube play` of the app services against compose infrastructure is fine — that is a dev convenience, not a production shape.)
 
