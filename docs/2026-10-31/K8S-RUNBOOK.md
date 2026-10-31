@@ -14,9 +14,14 @@
 **Run the script. Do not re-derive the steps by hand.**
 
 ```powershell
-pwsh scripts/k8s-up.ps1          # bring everything up, idempotent
-pwsh scripts/k8s-status.ps1      # read-only health summary, exit 0 only if all green
+node scripts/k8s.mjs up        # bring everything up, idempotent
+node scripts/k8s.mjs status    # read-only health summary, exit 0 only if all green
 ```
+
+One CLI, four verbs: up, status, identity, seed (plus down). It is **Node, not PowerShell or bash**, so
+it works the same on Windows, macOS, Linux and in CI - and every external command goes through a
+wrapper that **throws on a non-zero exit**, printing the command and its stderr. Earlier PowerShell versions
+piped several calls to Out-Null and ignored the result, so a failed kubectl apply looked like success.
 
 Everything below exists because a manual sequence failed at least once. Re-running the manual steps is
 how this cluster gets broken: they are not all idempotent (`init:zitadel` mints **new** identity IDs;
@@ -35,11 +40,11 @@ how this cluster gets broken: they are not all idempotent (`init:zitadel` mints 
 ## 3. Up / status / down
 
 ```powershell
-# up (converges; add -Rebuild to rebuild images, -SkipImages to forbid building)
-pwsh scripts/k8s-up.ps1
+# up (converges; add --rebuild to rebuild images, --skip-images to forbid building)
+node scripts/k8s.mjs up
 
 # health
-pwsh scripts/k8s-status.ps1
+node scripts/k8s.mjs status
 
 # stop the cluster without losing data
 wsl -d Ubuntu -u root -- systemctl stop k3s
@@ -101,11 +106,11 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 | Playwright version drifts from the image tag | the official image ships browsers but **no CLI**, so `npx` downloaded 1.64.x at runtime | `deploy/browser/Containerfile` bakes the CLI in at 1.63.0 |
 | `wrangler dev` "works" but is not a runtime | the edge is a Cloudflare Worker | documented: production is `wrangler deploy`; the cluster runs `wrangler dev --local` only for local completeness |
 
-## 7. Open gaps (reported by `k8s-status.ps1`)
+## 7. Open gaps (reported by `node scripts/k8s.mjs status`)
 
 | Gap | Why it is not done | Next action |
 |---|---|---|
-| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be deliberate | `pwsh scripts/k8s-identity.ps1 -Yes` — does the whole sequence in order (§9) |
+| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be deliberate | `node scripts/k8s.mjs identity --yes` — does the whole sequence in order (§9) |
 | `client` image | static rspack build → nginx | write `deploy/client/Containerfile` |
 | `edge` not applied | needs its image built (`deploy/edge/Containerfile`) | build + apply, or accept it stays on the host |
 | `eval-worker` | `packages/eval` has no worker entrypoint yet | implement the eval ladder (RFC-EVAL-SERVICE P1) |
@@ -117,10 +122,10 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 |---|---|
 | re-run `pnpm init:zitadel` unless identity is meant to change | it mints **new** org/client IDs; `.env`, `wrangler.toml`, `oidc.json` and the cluster Secret all change, and existing tokens become invalid |
 | `kubectl apply` any Secret manifest | client-side apply prunes keys other tooling created (see §6) |
-| rebuild images "just in case" | `k8s-up.ps1` detects them in containerd; a rebuild is ~4 minutes (build + save + import) |
+| rebuild images "just in case" | `k8s.mjs up` detects them in containerd; a rebuild is ~4 minutes (build + save + import) |
 | re-run `podman compose up` alongside the cluster | two copies of the same infra, ~1.9 GB each |
 | hand-edit `.env.cluster` | regenerate it with `scripts/cluster-env.mjs`, or the next run silently reverts your edit |
-| assume a pod is healthy because it is `Running` | the Secret-pruning bug produced exactly that: `Running` and unable to reach anything. Use `k8s-status.ps1`. |
+| assume a pod is healthy because it is `Running` | the Secret-pruning bug produced exactly that: `Running` and unable to reach anything. Use `node scripts/k8s.mjs status`. |
 
 ## 9. Identity bootstrap — why it is one command and not a Job
 
@@ -131,7 +136,7 @@ is what we do:
 | Approach | Verdict |
 |---|---|
 | **Manual, four steps by hand** (port-forward → `init:zitadel` → regenerate Secret → seed) | the original plan; every step is a chance to get the order wrong, and step order is exactly what fails (`seed` before identity, Secret not regenerated) |
-| **One confirmed command** — `pwsh scripts/k8s-identity.ps1 -Yes` | **what we do.** Keeps the deliberate signal (`-Yes`, exit 2 otherwise) and removes the ordering error surface. Port-forward is opened and closed by the script. |
+| **One confirmed command** — `node scripts/k8s.mjs identity --yes` | **what we do.** Keeps the deliberate signal (`-Yes`, exit 2 otherwise) and removes the ordering error surface. Port-forward is opened and closed by the script. |
 | **A bootstrap Job inside the cluster** | the eventual shape, and it removes the last real weakness: `.env` on the host is currently the source of truth for cluster identity. Blocked on two things: `init:zitadel` writes host files (`ENV_FILE` override exists, but the output must become a **Secret patch**, which needs `kubectl` + RBAC inside the Job), and the machine key/PAT would have to be mounted as a Secret. Worth doing when identity churn becomes routine; not worth it before then. |
 
 What the script enforces, in order:
@@ -143,6 +148,6 @@ What the script enforces, in order:
    produces a green pod that cannot reach anything
 4. rollout restart of `api` + `worker`, so they pick up the new IDs
 5. `seed` Job (`deploy/jobs/seed.yaml`), which drives the HTTP API and therefore needs 3–4 to have happened
-6. `k8s-status.ps1`, which is where `seed data machine_definitions=2` finally turns green
+6. `node scripts/k8s.mjs status`, which is where `seed data machine_definitions=2` finally turns green
 
-`-SkipSeed` initialises identity without seeding.
+`--skip-seed` initialises identity without seeding.
