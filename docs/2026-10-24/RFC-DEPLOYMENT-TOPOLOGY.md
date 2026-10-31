@@ -139,6 +139,30 @@ Developers do not run a production-shaped cluster on a laptop, and we should not
 
 So "what developers spend" is **a couple of GB, single node, no HA** — and the measured ~5.9 GB free is comfortably inside that.
 
+#### A laptop cluster is not an EKS cluster — know which parts port
+
+Same API, same `kubectl`, same manifests. **Not** the same cluster, and the differences are exactly where production bugs live.
+
+| Dimension | Local (kube play / k3s / kind) | EKS (or AKS/GKE) | Ports? |
+|---|---|---|---|
+| Manifests, `kubectl`, probes, resource limits | identical | identical | ✅ |
+| Service DNS, init containers, Jobs, PDB objects | identical objects | identical objects | ✅ (PDB has no effect on one node) |
+| **CNI + `NetworkPolicy` enforcement** | usually **absent** — policy objects are accepted and ignored | VPC CNI + Calico/Cilium | ❌ **never proven locally** |
+| **Pod identity / IAM** | none | IRSA / Pod Identity, OIDC trust to IAM roles | ❌ |
+| **Load balancing / ingress** | NodePort, port-forward | ALB/NLB, TLS, health checks, private subnets | ❌ |
+| **Storage** | `emptyDir` / `local-path` | EBS CSI, gp3, snapshots, multi-AZ | ❌ |
+| **Autoscaling** | none | Cluster Autoscaler/Karpenter + HPA/KEDA | ❌ |
+| **Multi-AZ / node failure** | single node — a drain kills everything | spread, real failover | ❌ |
+| **Secrets from cloud** | plain Secrets | Secrets Manager / CSI / External Secrets | ❌ |
+| **CloudWatch logs, audit, tracing** | none | managed | ❌ |
+| **Control-plane HA / upgrades / SLA** | none | managed | ❌ |
+
+**What this means for our plan, concretely:** the browser's *reason to exist in a cluster* — enforced egress denial so a tenant page cannot reach Postgres, Redis or Vault — is **the one property no laptop cluster can demonstrate**. The object is accepted; the enforcement does not exist without an enforcing CNI.
+
+Therefore the cutover needs a **staging cluster of the same class as production** (EKS/AKS/GKE with an enforcing CNI). A laptop cluster validates manifests and pod semantics; it cannot validate the security boundary, IAM, ingress or storage. Steps 1–2 of the sequence below stay on the laptop; the policy and IAM work needs a real cluster **before** production, not after.
+
+This is also why "we ran it locally and it worked" is not evidence for the two things most likely to break: **policy and identity**.
+
 **Deploy only what the change touches.** For app-manifest work a local cluster needs the app and at most `postgres` + `redis`; ClickHouse, Zitadel, Keto, Vault, Nango and Jaeger can stay in compose because the change has nothing to do with them. That is the difference between *a cluster* and *a copy of production*.
 
 Two guards that keep a small cluster honest:
@@ -192,7 +216,6 @@ Because the cutover moves the whole workload in one step, these must all be true
 That list is why the cutover is a project, not a deployment: **six of eight are missing**, and two of them (env validation, images) are pre-existing gaps rather than new work.
 
 ## 6. Local reality — what we can and cannot mirror
-
 Measured on this machine (2026-10-24):
 
 | Fact | Consequence |
@@ -233,10 +256,15 @@ Three local rungs, in order:
 5. Env validation (§5 item 3) — already on the Phase 1 list as S17.
 6. Jobs for migrate/seed, ingress, egress policy, secret bootstrap (§5 items 4, 6–8).
 
+**Staging gate (needs a real cluster of the production class):**
+
+7. Apply `deploy/` to staging (EKS/AKS/GKE with an enforcing CNI). Verify what a laptop cannot: `NetworkPolicy` actually denies the internal endpoints, IAM/pod identity grants only what each service needs, ingress terminates TLS, storage binds, and the migrate Job runs before rollouts.
+8. Prove `S1.no_internal_egress` in staging, where the CNI can actually enforce it.
+
 **The cutover itself:**
 
-7. One environment, all services, migrate Job first, then rollouts, gated by the eval sweep on a canary cohort.
-8. Only after that: minikube/podman-driver to validate KEDA and PDB decisions.
+9. One environment, all services, migrate Job first, then rollouts, gated by the eval sweep on a canary cohort.
+10. Only after that: KEDA and PDB decisions validated under real load and multiple nodes.
 
 **Do not** start with the browser. It is the trigger for needing a cluster, not the first thing to move.
 
