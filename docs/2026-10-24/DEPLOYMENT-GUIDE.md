@@ -7,15 +7,20 @@
 
 ## The short version
 
-| You want | Use | Needs a browser? | Needs Kubernetes? |
-|---|---|---|---|
-| **Try the platform** | `docker compose up` (podman or docker) | **no** | no |
-| **Develop a tenant/store** | compose + `pnpm dev` | no | no |
-| **Verify a storefront** (tier 0/1) | `noname eval --tier 0,1` | **no** | no |
-| **Verify rendering / a11y / checkout** (tier 2) | compose `--profile browser` | yes | no |
-| **Run for real** | `deploy/` manifests | yes | yes |
+There are **two developer tracks** and **one production shape**:
 
-**Compose is the easy path and it deliberately ships without the browser fleet.** Chromium is ~400 MB of image, needs `/dev/shm`, fonts and non-trivial memory — none of which belongs in a first-run experience. People should be able to see the platform working in one command.
+| You want | Track | Needs KUbernetes? | Needs a browser? |
+|---|---|---|---|
+| **Try it / normal development** | **A — compose** (default) | no | no |
+| **Debug deployment parity** | **B — local cluster** (`podman kube play`) | locally, app only | no |
+| **Verify rendering / a11y / checkout** | compose `--profile browser` | no | yes |
+| **Run for real** | one cluster, whole workload | yes | yes |
+
+Track A is one command and stays that way. Track B exists for people who need to see the manifests actually run; it uses the same images and the same env contract, and it is **not** a second system.
+
+Production is **all in or stay out**: every service in the cluster, or none. A cluster holding only the browser pays the full control-plane cost and then makes the browser reach the API across a boundary — the exact glue that breaks in production. (Locally, `podman kube play` of the app services against compose infrastructure is fine — that is a dev convenience, not a production shape.)
+
+**Compose deliberately ships without the browser fleet.** Chromium is ~400 MB of image, needs `/dev/shm`, fonts and real memory — none of which belongs in a first-run experience. People should see the platform working in one command.
 
 ---
 

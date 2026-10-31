@@ -78,7 +78,7 @@ deploy/
 
 ### The rule: all in, or stay out
 
-**There are two states and no hybrid.**
+**There are two production states and no hybrid.**
 
 | State | Runs | When |
 |---|---|---|
@@ -87,7 +87,20 @@ deploy/
 
 **No half-cluster.** A cluster that hosts only the browser is the worst of both: the full control-plane cost, and the browser must then reach the API and edge *across a boundary* (service DNS, ports, TLS, policy on both sides) — exactly the glue that produces "works locally, fails in prod".
 
+**Scope: production.** Locally a split is allowed and often necessary — stateful infrastructure (Postgres, ClickHouse, Zitadel, Keto, Vault, Nango, S3) is heavy and is not what we are validating, so a developer may run **infra in compose** and **the app services in a local cluster** via `podman kube play`. That is a dev convenience, not a production shape.
+
 The browser is the **reason** a cluster becomes necessary (it is the only workload that must execute untrusted tenant content, so it is the only one that needs enforced egress policy). It is **not** the only thing that belongs in one. **The trigger is the browser; the answer is the workload.**
+
+### Two developer tracks, one artefact set
+
+| Track | Runs | Who |
+|---|---|---|
+| **A — compose** (default) | everything, one command | anyone wanting to see it work; OSS first-run |
+| **B — local cluster** | infra in compose + app in `podman kube play deploy/` | anyone debugging deployment parity |
+
+Both tracks use **the same images and the same env contract**, and the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
+
+Memory measured on this machine (2026-10-31): host **15.7 GB / ~4 GB free**, VM **6 GiB** already holding nine infra services. A *full* cluster (infra + app + browser inside Kubernetes) needs a **12 GiB+ VM**, which on this host means replacing the current VM, not adding one. Hence track B starts as app-services-only against compose infrastructure.
 
 | Need | Workloads |
 |---|---|
