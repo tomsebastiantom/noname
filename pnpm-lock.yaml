@@ -70,9 +70,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@noname/eval':
+        specifier: workspace:*
+        version: link:../eval
       commander:
         specifier: ^15.0.0
         version: 15.0.0
+      dotenv:
+        specifier: ^17.0.0
+        version: 17.4.2
       execa:
         specifier: ^9.0.0
         version: 9.6.1
@@ -261,6 +267,12 @@ importers:
       zod:
         specifier: ^4.4.3
         version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
+  packages/eval:
     devDependencies:
       typescript:
         specifier: ^7.0.0

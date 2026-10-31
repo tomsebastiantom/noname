@@ -17,7 +17,9 @@
   },
   "dependencies": {
     "commander": "^15.0.0",
-    "execa": "^9.0.0"
+    "execa": "^9.0.0",
+    "@noname/eval": "workspace:*",
+    "dotenv": "^17.0.0"
   },
   "devDependencies": {
     "typescript": "^7.0.0",
