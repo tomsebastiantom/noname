@@ -20,18 +20,19 @@
 #     in the browser. Local-only, and honest about being so.
 #
 # Production has none of this: the issuer is a real DNS name reachable from both sides.
-apiVersion: v1
-kind: Secret
-metadata:
-  name: noname-env
-  namespace: noname
-type: Opaque
-stringData:
-  # Placeholder keys only — the real values are created out-of-band so no credential is committed:
-  #   kubectl -n noname create secret generic noname-env --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
-  # Regenerate after `pnpm init:zitadel` rewrites .env (it issues new org/client IDs).
-  DATABASE_URL: postgres://noname:noname_dev@postgres:5432/app
-  REDIS_URL: redis://dragonfly:6379
+# The app env Secret is NOT declared here on purpose.
+#
+# Declaring it in this file and applying it pruned the 25 keys the generated Secret had: `kubectl apply`
+# removes keys that were in the previously applied manifest but are absent from the new one. The symptom
+# was subtle - CLICKHOUSE_URL vanished and the analytics adapter silently fell back to its
+# `http://localhost:8123` default, so the pod was "Running" while unable to reach anything it needed.
+#
+# Create it out-of-band from the cluster env file instead:
+#   kubectl -n noname create secret generic noname-env --from-env-file=.env.cluster \
+#     --dry-run=client -o yaml | kubectl apply -f -
+#
+# Regenerate that file after `pnpm init:zitadel` (new org/client IDs) and after changing any URL.
+
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -52,7 +53,8 @@ spec:
         - name: api
           image: localhost/noname-api:dev
           imagePullPolicy: IfNotPresent
-          command: ["pnpm", "exec", "tsx", "src/index.ts"]
+          # Call the binary directly. `pnpm exec` resolved the workspace and installed on every boot.
+          command: ["/app/node_modules/.bin/tsx", "src/index.ts"]
           workingDir: /app/packages/server
           ports:
             - { name: http, containerPort: 3000 }
@@ -113,7 +115,7 @@ spec:
           image: localhost/noname-api:dev
           imagePullPolicy: IfNotPresent
           # Same image, different entrypoint: `worker.ts` never binds HTTP.
-          command: ["pnpm", "exec", "tsx", "src/worker.ts"]
+          command: ["/app/node_modules/.bin/tsx", "src/worker.ts"]
           workingDir: /app/packages/server
           envFrom:
             - secretRef: { name: noname-env }
@@ -147,7 +149,7 @@ spec:
         - name: migrate
           image: localhost/noname-api:dev
           imagePullPolicy: IfNotPresent
-          command: ["pnpm", "exec", "drizzle-kit", "migrate"]
+          command: ["/app/node_modules/.bin/drizzle-kit", "migrate"]
           workingDir: /app/packages/server
           envFrom:
             - secretRef: { name: noname-env }

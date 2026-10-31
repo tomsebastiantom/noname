@@ -1,6 +1,6 @@
 # Kubernetes migration — live status tracker
 
-> **Status:** **in progress.** **All nine infra services running** in the cluster. Browser running with a pinned image. App images not built.
+> **Status:** **in progress — the app runs in the cluster.** Infra (9), browser, API and worker are all `Running`, and `/ready` reports `database:true, analyticsReady:true`. Compose is **stopped**; the cluster is the only stack. Remaining: identity re-init + seed, client, edge, policy.
 > **Date started:** 2026-10-31 (America/New_York)
 > **Decision:** full move, **not** incremental — everything (infra + app + eval + browser) into the cluster.
 > **Related:** [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (the cluster itself) · [`RFC-DEPLOYMENT-TOPOLOGY.md`](../2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md) (why all-in-or-none) · [`PUBLISH-VERIFICATION-SCALES.md`](./PUBLISH-VERIFICATION-SCALES.md)
@@ -42,10 +42,10 @@ namespace: noname
 | 7 | apply **vault**, **jaeger**, **nango** | **done** | all three `1/1 Running`; nango `/health` → `{"result":"ok"}` from an in-cluster probe pod |
 | 8 | apply **zitadel** + **keto** (+ migrate job) | **done** | `keto-migrate` Job `Completed`; keto `1/1 Running`; zitadel `1/1 Running` after the service-link fix (§5) |
 | 9 | re-run `pnpm init:zitadel` against cluster → **new org IDs** | blocked (needs 8) | `.env` rewritten; `noname eval` still authenticates |
-| 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | **in progress** | api/worker share `deploy/app/server.Containerfile` (dev-grade: runs tsx from source); browser done. eval-worker has no entrypoint yet; edge needs a decision |
+| 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | **partial** | api/worker image built and loaded; browser done; **edge Containerfile + manifest written** (wrangler dev in-container; production is Cloudflare); client and eval-worker still to do |
 | 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
-| 12 | apply **app** Deployments + Services | pending (manifests written) | `/ready` 200 through the Service |
-| 13 | run **migrate** job, then **seed** job | pending | 36 tables; 2 machine definitions |
+| 12 | apply **app** Deployments + Services | **done** | api `2/2 Running`; `/ready` → `{"ready":true,"checks":{"database":true,"analyticsReady":true}}`; `/health` ok with all redis subsystems true |
+| 13 | run **migrate** job, then **seed** job | **partial** | `migrate` Job `Completed` (schema applied to cluster postgres); **seed not run** — needs identity re-init first (step 9) |
 | 14 | apply **browser** (CDP service) | **done** | `playwright --version` → **1.63.0** (pinned, no runtime npm download); log only `Listening on ws://0.0.0.0:3000/`; CDP **200**; `/dev/shm` **2.0G**; 50 font families |
 | 15 | wire eval: `EVAL_CDP_ENDPOINT` + tier 2 check | pending | `noname eval` catches a forced overflow |
 | 16 | **NetworkPolicy** enforcement | **blocked** | needs Calico/Cilium; Flannel accepts-and-ignores |
@@ -91,7 +91,12 @@ The compose stack (9 containers in `podman-noname`) **and** the cluster (9 pods 
 | **Flannel CNI** | `NetworkPolicy` is accepted and **unenforced**. Policy work is blocked until Calico/Cilium is installed; do not record "policy applied" as done before that. |
 | **Kubernetes service-link env injection** | **Fixed with `enableServiceLinks: false`.** Kubernetes injects `{SERVICE_NAME}_PORT=tcp://…` for every Service. A Service called `zitadel` therefore set `ZITADEL_PORT`, which Zitadel's config decoder reads as `Port` and cannot parse as `uint16` — it crash-looped *after* finishing every migration. The same mechanism made `NANGO_PORT` a NaN. This is the archetypal "works in compose, fails in Kubernetes" bug and it is now documented in both manifests. |
 | **Floating image tags** | `nangohq/nango-server:hosted` moved between compose's pull (2026-10-24) and the cluster's (2026-10-31): the newer digest additionally requires `NANGO_PORT`. Set explicitly now; pin by digest before production. |
-| **RAM** | pool 7.8 GB, 5.3 GB available, all-in ≈ 3–3.5 GB + browser 1.5–2 GB. Fits; watch for OOM in staging of the browser. |
+| **`pnpm exec` re-installed the workspace at every container start** | `pnpm` resolved the workspace and ran an install (21 s + network) before the app started. Fixed by calling `/app/node_modules/.bin/tsx` directly. `packageManager: pnpm@11.12.0` is now pinned in the root `package.json` so the container cannot pick a different major than the host. |
+| **The image baked in `.env`** | `COPY . .` carried `packages/server/.env` into the image and `load-env` injected 9 vars at startup — credential leakage *and* stale localhost URLs shadowing the Secret. Fixed with `**/.env` in the ignore file. |
+| **Excluding `.env` then removed required config** | the R2/S3 asset-storage vars live only in `packages/server/.env`, so the API crash-looped with `Asset storage requires R2/S3 config`. Fixed properly: `scripts/cluster-env.mjs` flattens **both** env files (root wins, package-local fills gaps) and rewrites loopback → Service DNS, keeping ZITADEL on localhost:8080 for the socat sidecar. |
+| **`kubectl apply` pruned the Secret** | declaring `noname-env` inside `api.yaml` deleted the 25 keys the generated Secret had. `CLICKHOUSE_URL` vanished and the adapter silently fell back to `http://localhost:8123` while the pod looked healthy. The Secret is now created out-of-band and is **not** in any manifest. |
+| **Jobs are immutable** | changing the `migrate` Job's command failed with `field is immutable`; it must be deleted and recreated. |
+| **RAM** | after stopping compose: 3.2 GB used, **4.2 GB available** for k3s + app + browser. `podman compose down` freed the duplicate stack as intended. |
 | **`traefik`/`servicelb` disabled** | exposure via **NodePort** or `port-forward` only; no Ingress controller locally by choice (saves ~200 MB). |
 
 ## 6. Log
@@ -107,4 +112,7 @@ The compose stack (9 containers in `podman-noname`) **and** the cluster (9 pods 
 | 15:4x | vault + jaeger Running; **nango crash-looped on `NANGO_PORT` NaN** → root cause was service-link injection + a moved image tag; fixed with explicit `NANGO_PORT` and `PORT` |
 | 15:5x | keto-migrate Completed, keto Running; **zitadel crash-looped after all migrations** with `'Port' cannot parse value as 'uint16'` → `enableServiceLinks: false` fixed it; zitadel Running |
 | 15:5x | **all nine infra services Running**; only app images and identity re-init remain |
+| 16:1x | **compose stopped** (`podman compose down`, volumes kept) — the cluster is now the only stack |
+| 16:2x | API image built (1.26 GB) → `podman save` → `k3s ctr images import`; `migrate` Job `Completed` |
+| 16:4x | **api `2/2 Running`**, `/ready` true (db + analytics), `/health` ok, tracing to `jaeger:4318`. Six defects found and fixed — see §5 |
 | 16:0x | app manifests written (`deploy/app/api.yaml`: api + worker + migrate Job + socat sidecar, one Secret); `deploy/app/server.Containerfile` + `.dockerignore` written; image build running (pnpm install inside the container is the slow step) |

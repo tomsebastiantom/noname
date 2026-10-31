@@ -1,0 +1,45 @@
+# Edge worker image — Cloudflare Worker, run locally by workerd via `wrangler dev`.
+#
+# ── Why this image is dev-grade, and what production actually is ─────────────────────────────────
+# `packages/workers` is a **Cloudflare Worker**: it targets workerd and uses wrangler bindings (KV, R2),
+# which is why `wrangler dev` — not `node` — is its runtime. Three ways to host it:
+#
+#   1. **Cloudflare Workers (production).** The worker's real home. `wrangler deploy` publishes it to
+#      Cloudflare's edge; a cluster adds nothing except a second internet hop.
+#   2. **`wrangler dev --local` in a container (this file).** Same workerd runtime, KV/R2 emulated
+#      locally. Correct for a one-command local stack, and exactly what the host-based dev flow does
+#      today — just containerised.
+#   3. **`workerd serve` with a hand-written capnp config.** Production-grade self-hosting; there is
+#      even a Helm chart for it (github.com/willswire/union). It needs every binding described in capnp
+#      and a real KV/R2 implementation behind it.
+#
+# We take (2) for the local cluster and state plainly that **production is (1)**. Self-hosting a Worker
+# is possible but it is a project, not a Dockerfile: you re-implement the very services (KV, R2, cache)
+# that make the platform valuable.
+FROM node:24-bookworm-slim
+
+ENV NODE_ENV=development \
+    PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH
+
+RUN corepack enable && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates git && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/workers/package.json packages/workers/
+COPY packages/auth/package.json packages/auth/
+COPY packages/shared/package.json packages/shared/
+COPY packages/documents/package.json packages/documents/
+RUN pnpm install --frozen-lockfile || pnpm install
+
+COPY . .
+
+WORKDIR /app/packages/workers
+EXPOSE 8787
+# `--local` keeps everything in-process (workerd + emulated KV/R2) so no Cloudflare account is needed.
+# `--ip 0.0.0.0` is required for the port to be reachable from outside the container.
+CMD ["pnpm", "exec", "wrangler", "dev", "--local", "--ip", "0.0.0.0", "--port", "8787"]

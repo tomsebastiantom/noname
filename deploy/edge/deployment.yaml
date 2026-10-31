@@ -1,0 +1,52 @@
+# Edge worker (Cloudflare Worker) running locally via workerd.
+#
+# `wrangler dev --local` runs the worker in workerd with KV/R2 emulated in-process, so no Cloudflare
+# account or network egress is involved. In production this worker deploys to Cloudflare Workers instead —
+# see the header of deploy/edge/Containerfile. The cluster hosts it here only so the local stack is one
+# `kubectl apply` away from complete.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: edge
+  namespace: noname
+  labels: { app: edge }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: edge }
+  template:
+    metadata:
+      labels: { app: edge }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: edge
+          image: localhost/noname-edge:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8787 }
+          envFrom:
+            - secretRef: { name: noname-env }
+          env:
+            - { name: NODE_ENV, value: development }
+            # The worker proxies to the origin; inside the cluster that is the `api` Service, not
+            # localhost. `wrangler dev` also needs the vars its wrangler.toml expects.
+            - { name: API_BASE, value: "http://api:3000" }
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 15
+            periodSeconds: 10
+            failureThreshold: 30
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edge
+  namespace: noname
+spec:
+  selector: { app: edge }
+  ports:
+    - { name: http, port: 8787, targetPort: http }

@@ -1,18 +1,35 @@
-# Keep the build context small: everything here is regenerable or irrelevant to running the app.
+# Build-context exclusions for the app images (api / worker).
+#
+# Must be passed explicitly: `podman build --ignorefile deploy/app/.dockerignore ...` because the build
+# context is the repository root and this file does not live there. With it missing, `apps/` alone pushed
+# ~1 GB of Docusaurus build output and node_modules into the context and `COPY . .` appeared to hang.
 .git
 .github
-node_modules
-**/node_modules
-.next
-dist
-build
-coverage
+.vscode
+.dsh
+.kilo
+.tools
+skills
 docs
-apps/docs
+**/node_modules
+node_modules
+apps
 .playwright-mcp
-AGENTS.md
-*.log
-*.tar
-.wrangler
 **/.wrangler
 packages/workers/.wrangler
+**/.docusaurus
+**/build
+**/dist
+**/coverage
+*.log
+*.tar
+*.tsbuildinfo
+build-api.log
+build-edge.log
+
+# Every .env, not just the root one: COPY . . otherwise bakes packages/server/.env into the image and
+# load-env injects it at startup (observed: 'injected env (9) from .env'), which both leaks
+# credentials into the image and lets stale localhost URLs shadow the cluster Secret.
+**/.env
+.env*
+!.env.example
