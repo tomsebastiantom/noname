@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-31/K8S-RUNBOOK.md](2026-10-31/K8S-RUNBOOK.md)** — **Start here to run the cluster.** `pwsh scripts/k8s-up.ps1` (idempotent) and `pwsh scripts/k8s-status.ps1` (read-only health, exit 0 only if all green). Contains the 12-entry failure catalogue — every item actually happened — plus the list of manual steps never to repeat, so a session cannot break the cluster by re-deriving them.
 - **[2026-10-31/K8S-MIGRATION-STATUS.md](2026-10-31/K8S-MIGRATION-STATUS.md)** — **Live tracker for the full move into Kubernetes.** Every step has a verification command; a step is only done when that output was seen. Records the blockers honestly (Flannel cannot enforce NetworkPolicy, Zitadel re-init changes org IDs, edge is a Cloudflare Worker).
 - **[2026-10-31/LOCAL-K3S-CLUSTER.md](2026-10-31/LOCAL-K3S-CLUSTER.md)** — **A local cluster is running.** k3s in the Ubuntu WSL distro (podman untouched, since minikube needs rootful on WSL). Includes the WSL-shutdown gotcha that looks like a network fault, what the cluster can and cannot prove, and the teardown command.
 - **[2026-10-31/LOCAL-K8S-AND-BROWSER.md](2026-10-31/LOCAL-K8S-AND-BROWSER.md)** — Local cluster survey (kube play / k3s / k3d / kind / minikube) with the minikube trap spelled out, plus the browser-in-cluster recipe (emptyDir for /dev/shm, fonts, no SA token) and how eval plugs in via CDP.

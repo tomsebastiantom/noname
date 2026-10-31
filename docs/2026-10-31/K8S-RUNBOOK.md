@@ -1,0 +1,123 @@
+# Kubernetes runbook — start, check, recover
+
+> **Date:** 2026-10-31 (America/New_York)
+> **Scope:** the local k3s cluster that now runs the entire platform (infra + app + browser).
+> **Companions:** [`K8S-MIGRATION-STATUS.md`](./K8S-MIGRATION-STATUS.md) (what has been moved and what is
+> blocked) · [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (how the cluster itself was created) ·
+> [`../2026-10-24/DEPLOYMENT-GUIDE.md`](../2026-10-24/DEPLOYMENT-GUIDE.md) (the compose path, still valid
+> for OSS users).
+
+---
+
+## 1. The rule
+
+**Run the script. Do not re-derive the steps by hand.**
+
+```powershell
+pwsh scripts/k8s-up.ps1          # bring everything up, idempotent
+pwsh scripts/k8s-status.ps1      # read-only health summary, exit 0 only if all green
+```
+
+Everything below exists because a manual sequence failed at least once. Re-running the manual steps is
+how this cluster gets broken: they are not all idempotent (`init:zitadel` mints **new** identity IDs;
+`kubectl apply` of a Secret manifest **prunes** keys; a Job's spec is **immutable**).
+
+## 2. Prerequisites
+
+| Thing | Requirement |
+|---|---|
+| Podman machine | running (`podman machine list`); WSL, 6+ GiB. **Cannot be resized** — recreate if needed. |
+| k3s | systemd unit ``k3s`` inside the **Ubuntu** WSL distro. Started by the script if stopped. |
+| kubeconfig | `~/.kube/k3s.yaml`, pointed at the **WSL IP** (not `127.0.0.1`). Kept separate from the AKS/DO contexts on purpose. |
+| Images | `localhost/noname-api:dev`, `localhost/noname-browser:1.63.0` — built and imported by the script when missing. |
+| Env | root `.env` (written by `pnpm init:zitadel`) + `packages/server/.env` (R2/S3), flattened into `.env.cluster` by `scripts/cluster-env.mjs`. |
+
+## 3. Up / status / down
+
+```powershell
+# up (converges; add -Rebuild to rebuild images, -SkipImages to forbid building)
+pwsh scripts/k8s-up.ps1
+
+# health
+pwsh scripts/k8s-status.ps1
+
+# stop the cluster without losing data
+wsl -d Ubuntu -u root -- systemctl stop k3s
+
+# stop the container VM entirely (frees everything)
+podman machine stop noname
+
+# teardown of k3s itself (destroys the cluster, not the repo)
+wsl -d Ubuntu -u root -- k3s-uninstall.sh
+```
+
+The **compose** stack remains available for OSS users and as an escape hatch:
+
+```bash
+podman compose -f docker-compose.yml up -d      # volumes preserved from before the migration
+```
+
+Do **not** run both unless you are deliberately comparing behaviour — they are two copies of the same
+infrastructure (measured: ~1.9 GB each).
+
+## 4. What runs where
+
+```
+namespace: noname
+  infra   postgres · dragonfly · clickhouse · s3 (+init Job) · vault · jaeger · nango · keto (+migrate Job) · zitadel
+  app     api (2/2: app + localhost-proxy) · worker (2/2) · migrate Job
+  eval    browser (CDP on :3000, /dev/shm 2Gi)
+  edge    manifest + Containerfile written, not applied yet
+```
+
+Manifests: `deploy/00-namespace.yaml`, `deploy/infra/*`, `deploy/app/*`, `deploy/browser/*`, `deploy/edge/*`.
+
+## 5. Two designs that look odd and are not
+
+**`localhost-proxy` (socat) sidecar.** `ZITADEL_ISSUER` is used both as the expected `iss` claim and as
+the discovery base URL, with no JWKS override. Tokens say `http://localhost:8080` because the browser
+reaches ZITADEL through a port-forward; inside a pod `localhost` is the pod. The sidecar forwards
+pod-loopback `8080 → zitadel:8080`, so the issuer means the same thing on both sides. **Production does
+not have this** — it uses a real DNS name.
+
+**`.env.cluster` is generated, never committed.** It holds real credentials. `scripts/cluster-env.mjs`
+flattens *both* env files the way `load-env.ts` does (root wins, package-local fills gaps) and rewrites
+loopback to Service DNS — except `8080`, which must stay `localhost` for the reason above.
+
+## 6. Failure catalogue — every one of these actually happened
+
+| Symptom | Cause | Fix permanently applied |
+|---|---|---|
+| `'Port' cannot parse value as 'uint16'`; zitadel crash-loops **after** successful migrations | Kubernetes injects `{SERVICE_NAME}_PORT` for every Service; the Service `zitadel` set `ZITADEL_PORT` | `enableServiceLinks: false` on pods |
+| `NANGO_PORT` NaN | same mechanism (Service `nango`) | `enableServiceLinks: false` + explicit `NANGO_PORT` |
+| App starts, then "Cannot connect to Podman" / `dial tcp …:6443 refused` | WSL shuts the distro down when idle | detached `wsl … sleep infinity` keep-alive (a background *job* dies with the job) |
+| Container installs packages on every start (21 s, network) | `pnpm exec` resolved the workspace; container had pnpm 12 vs host 11 | call `/app/node_modules/.bin/tsx`; `packageManager: pnpm@11.12.0` pinned |
+| Secret loses most keys; analytics falls back to `localhost:8123` while the pod looks healthy | declaring the Secret in `api.yaml` and applying it **pruned** keys the generated Secret had | Secret is created out-of-band and appears in **no** manifest |
+| `Asset storage requires R2/S3 config` | R2 vars live only in `packages/server/.env`, which the image now (correctly) excludes | `scripts/cluster-env.mjs` merges both env files |
+| Credentials baked into an image | `COPY . .` carried `packages/server/.env`; `load-env` injected 9 vars at startup | `**/.env` in `deploy/app/.dockerignore` |
+| `podman build` appears to hang | build context included `apps/` (1 GB of Docusaurus output) because `.dockerignore` sat outside the context root | `--ignorefile deploy/app/.dockerignore`, and `apps` excluded |
+| `Job … field is immutable` | Job pod templates cannot be updated | delete the Job, then apply |
+| Chromium crashes under load | 64 MB `/dev/shm` | `emptyDir` with `medium: Memory`, `sizeLimit: 2Gi` |
+| Playwright version drifts from the image tag | the official image ships browsers but **no CLI**, so `npx` downloaded 1.64.x at runtime | `deploy/browser/Containerfile` bakes the CLI in at 1.63.0 |
+| `wrangler dev` "works" but is not a runtime | the edge is a Cloudflare Worker | documented: production is `wrangler deploy`; the cluster runs `wrangler dev --local` only for local completeness |
+
+## 7. Open gaps (reported by `k8s-status.ps1`)
+
+| Gap | Why it is not done | Next action |
+|---|---|---|
+| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be done deliberately, then the Secret regenerated, then the seed Job run | run `init:zitadel` against a `kubectl port-forward svc/zitadel 8080`, regenerate the Secret, apply a `seed` Job |
+| `client` image | static rspack build → nginx | write `deploy/client/Containerfile` |
+| `edge` not applied | needs its image built (`deploy/edge/Containerfile`) | build + apply, or accept it stays on the host |
+| `eval-worker` | `packages/eval` has no worker entrypoint yet | implement the eval ladder (RFC-EVAL-SERVICE P1) |
+| `NetworkPolicy` | k3s ships **Flannel**: accepts the object, enforces nothing | install Calico, or validate in a production-class cluster |
+
+## 8. Session hygiene — what NOT to redo
+
+| Do not | Why |
+|---|---|
+| re-run `pnpm init:zitadel` unless identity is meant to change | it mints **new** org/client IDs; `.env`, `wrangler.toml`, `oidc.json` and the cluster Secret all change, and existing tokens become invalid |
+| `kubectl apply` any Secret manifest | client-side apply prunes keys other tooling created (see §6) |
+| rebuild images "just in case" | `k8s-up.ps1` detects them in containerd; a rebuild is ~4 minutes (build + save + import) |
+| re-run `podman compose up` alongside the cluster | two copies of the same infra, ~1.9 GB each |
+| hand-edit `.env.cluster` | regenerate it with `scripts/cluster-env.mjs`, or the next run silently reverts your edit |
+| assume a pod is healthy because it is `Running` | the Secret-pruning bug produced exactly that: `Running` and unable to reach anything. Use `k8s-status.ps1`. |
