@@ -42,9 +42,9 @@ namespace: noname
 | 7 | apply **vault**, **jaeger**, **nango** | **done** | all three `1/1 Running`; nango `/health` → `{"result":"ok"}` from an in-cluster probe pod |
 | 8 | apply **zitadel** + **keto** (+ migrate job) | **done** | `keto-migrate` Job `Completed`; keto `1/1 Running`; zitadel `1/1 Running` after the service-link fix (§5) |
 | 9 | re-run `pnpm init:zitadel` against cluster → **new org IDs** | blocked (needs 8) | `.env` rewritten; `noname eval` still authenticates |
-| 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | pending | `podman build` succeeds for each |
+| 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | **in progress** | api/worker share `deploy/app/server.Containerfile` (dev-grade: runs tsx from source); browser done. eval-worker has no entrypoint yet; edge needs a decision |
 | 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
-| 12 | apply **app** Deployments + Services | pending | `/ready` 200 through the Service |
+| 12 | apply **app** Deployments + Services | pending (manifests written) | `/ready` 200 through the Service |
 | 13 | run **migrate** job, then **seed** job | pending | 36 tables; 2 machine definitions |
 | 14 | apply **browser** (CDP service) | **done** | `playwright --version` → **1.63.0** (pinned, no runtime npm download); log only `Listening on ws://0.0.0.0:3000/`; CDP **200**; `/dev/shm` **2.0G**; 50 font families |
 | 15 | wire eval: `EVAL_CDP_ENDPOINT` + tier 2 check | pending | `noname eval` catches a forced overflow |
@@ -65,6 +65,20 @@ namespace: noname
 
 Deliberately **not** written yet: app manifests, because they need images first, and writing manifests for
 images that do not exist produces files nobody has run.
+
+## 4b. App-side decisions (written before the image existed)
+
+| Decision | Why |
+|---|---|
+| **Dev-grade image** (`tsx` from source, not `tsc` build) | the checks are still being built; a production build pipeline would be pretending. Follow-up: compile + prune prod deps. |
+| **One Secret `noname-env`** created out-of-band from `.env` | keeps credentials out of git, and `kubectl create secret … --from-env-file` is the documented way. **Must be regenerated after `init:zitadel`**, which rewrites `.env` with new IDs. |
+| **`localhost-proxy` (socat) sidecar** in api + worker | `ZITADEL_ISSUER` is used as both the expected `iss` claim **and** the discovery base URL, and there is no separate JWKS override. Tokens say `http://localhost:8080` (browser reaches ZITADEL through a port-forward), and inside a pod `localhost` is the pod. The sidecar forwards pod-loopback 8080 → the `zitadel` Service, so the issuer means the same thing on both sides. Production has none of this: it uses a real DNS name. |
+| **`enableServiceLinks: false` on every app pod** | same class of bug as the ZITADEL_PORT crash — a Service named `api` would inject `API_PORT`. |
+| **`migrate` as a Job**, `seed` as a Job | a failed migration must be a failed object, and must complete before the API rolls out. |
+
+## 4c. Two infrastructures are running right now
+
+The compose stack (9 containers in `podman-noname`) **and** the cluster (9 pods in k3s) are both up, so the infra is running twice — measured 3.3 GB used of the 7.8 GB pool. That is deliberate while the migration is being proven, and it is the next thing to fix: once the cluster serves the app, `podman compose down` (without `-v`) frees the RAM and leaves compose as a documented fallback rather than a parallel system.
 
 ## 5. Known blockers and decisions taken
 
@@ -93,3 +107,4 @@ images that do not exist produces files nobody has run.
 | 15:4x | vault + jaeger Running; **nango crash-looped on `NANGO_PORT` NaN** → root cause was service-link injection + a moved image tag; fixed with explicit `NANGO_PORT` and `PORT` |
 | 15:5x | keto-migrate Completed, keto Running; **zitadel crash-looped after all migrations** with `'Port' cannot parse value as 'uint16'` → `enableServiceLinks: false` fixed it; zitadel Running |
 | 15:5x | **all nine infra services Running**; only app images and identity re-init remain |
+| 16:0x | app manifests written (`deploy/app/api.yaml`: api + worker + migrate Job + socat sidecar, one Secret); `deploy/app/server.Containerfile` + `.dockerignore` written; image build running (pnpm install inside the container is the slow step) |
