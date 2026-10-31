@@ -161,7 +161,7 @@ export async function createApp(): Promise<Hono> {
   const databaseUrl = process.env.DATABASE_URL;
   if (!databaseUrl) {
     throw new ServiceUnavailableError(
-      "DATABASE_URL is required (Postgres). Start Postgres via Docker: `docker compose up postgres`.",
+      "DATABASE_URL is required (Postgres). Start Postgres via `podman compose up postgres` (Docker also works).",
     );
   }
   const db = createDatabase(databaseUrl);

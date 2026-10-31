@@ -18,17 +18,41 @@ program
     console.log("Run from the repo root: pnpm install && cp .env.example .env");
   });
 
+/**
+ * Container engine detection — the platform is **engine-agnostic**.
+ *
+ * Nothing in the application depends on a container engine: services reach Postgres/Redis/etc. over
+ * normal network URLs. An engine is only needed to *start the local infrastructure* and to *build
+ * images*, and either podman or docker is acceptable.
+ *
+ * The CLI previously called `docker compose` unconditionally, which fails on a podman-only machine.
+ * Now it detects what is installed: podman first (the development default), docker as the fallback.
+ * Neither is required by the runtime.
+ */
+async function composeEngine(): Promise<"podman" | "docker"> {
+  for (const candidate of ["podman", "docker"] as const) {
+    try {
+      await execa(candidate, ["--version"]);
+      return candidate;
+    } catch {
+      // try the next engine
+    }
+  }
+  throw new Error("No container engine found — install podman (preferred) or docker");
+}
+
 program
   .command("dev")
-  .description("Start the development server (Postgres + Dragonfly via Docker)")
+  .description("Start the development server (Postgres + Dragonfly via podman or docker compose)")
   .action(async () => {
-    await execa("docker", ["compose", "up", "-d"], { stdio: "inherit" });
+    const engine = await composeEngine();
+    await execa(engine, ["compose", "up", "-d"], { stdio: "inherit" });
     await execa("pnpm", ["--filter", "@noname/server", "dev"], { stdio: "inherit" });
   });
 
 program
   .command("status")
-  .description("Check API health and Docker services")
+  .description("Check API health and container services")
   .action(async () => {
     const port = process.env.PORT || "3000";
     try {
@@ -38,10 +62,11 @@ program
     } catch {
       console.log(`API (${port}): unreachable`);
     }
+    const engine = await composeEngine();
     try {
-      await execa("docker", ["compose", "ps"], { stdio: "inherit" });
+      await execa(engine, ["compose", "ps"], { stdio: "inherit" });
     } catch {
-      console.log("Docker compose: not running or unavailable");
+      console.log(`${engine} compose: not running or unavailable`);
     }
   });
 

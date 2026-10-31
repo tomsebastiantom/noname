@@ -18,40 +18,46 @@
 | `operations` context (AKS) | configured, **host does not resolve** from here |
 | `do-tor1-nexa` (DigitalOcean) | configured, not tested — treat as off-limits |
 
-## 2. The options, honestly compared — **Docker is not in this stack**
+## 2. The options, honestly compared — **engine-agnostic**
 
-We run **podman**. So the first question for each tool is not "does it work" but **"does it need a Docker daemon?"**
+The platform has **no container-engine dependency**: services reach Postgres/Redis/etc. over ordinary network URLs. An engine is needed only to *start local infrastructure* and to *build images*, and **either podman or docker is acceptable**. podman is the development default; docker is supported, not required, and not excluded.
 
-| Tool | Needs Docker? | How it runs | Real API server? | Control-plane cost |
-|---|---|---|---|---|
-| **`podman kube play`** | **no** — native podman | pods directly in the podman VM | ❌ | **0** |
-| **k3s in its own WSL distro** | **no** — k3s embeds containerd | systemd service, independent of podman | ✅ | ~0.5–1 GB |
-| **minikube `--driver=podman`** | **no** — native podman driver | a container in the podman VM | ✅ | ~1–1.5 GB |
-| **k3d** | **yes, effectively** — a Docker-API tool; works only by pointing `DOCKER_HOST` at `podman system service` | k3s inside containers via that shim | ✅ | ~0.7–1.2 GB |
-| **kind** | **yes, effectively** — same shim (`KIND_EXPERIMENTAL_PROVIDER=podman`) | node containers via a Docker API | ✅ | ~1–1.5 GB |
-| **Docker Desktop k8s** | yes, explicitly | its own VM | ✅ | ~2 GB |
+The nuance worth internalising: several local-Kubernetes tools are built on a **Docker API**, not on Docker the product. podman can serve that API (`podman system service`), so those tools work — but through a shim, which matters when something breaks.
 
-So in a podman-only environment the honest ranking is:
+| Tool | Container API needed | Real API server? | Control-plane cost |
+|---|---|---|---|
+| **`podman kube play`** | native podman | ❌ | **0** |
+| **k3s in its own WSL distro** | none — embeds containerd | ✅ | ~0.5–1 GB |
+| **minikube `--driver=podman`** | native podman driver | ✅ | ~1–1.5 GB |
+| **k3d** | **Docker API** → `podman system service` works | ✅ | ~0.7–1.2 GB |
+| **kind** | **Docker API** → `KIND_EXPERIMENTAL_PROVIDER=podman` works | ✅ | ~1–1.5 GB |
+| **Docker Desktop k8s** | Docker | ✅ | ~2 GB |
 
-1. **`podman kube play`** — no Docker, no extra daemon, no control plane.
-2. **k3s in a separate WSL distro** — no Docker, real API server, does not touch the podman machine.
-3. **minikube `--driver=podman`** — no Docker, but see the rootful trap below.
-4. **k3d / kind** — only via podman's Docker-compatibility socket (`podman system service`). That is a shim with a second daemon to keep alive and a class of failures that are neither podman's nor Kubernetes' fault. Use only if 1–3 are ruled out.
-5. **Docker Desktop** — not applicable to this project.
+**Recommendation order** — cheapest and fewest moving parts first:
+
+1. **`podman kube play deploy/`** — no control plane, no Docker API; validates pod shape, probes, limits, CDP hop.
+2. **k3s in a separate WSL distro** — real API server, embeds containerd, touches neither podman nor docker.
+3. **minikube `--driver=podman`** — native podman; rootful caveat below.
+4. **k3d / kind** — only if 1–3 are ruled out; both put a Docker-API shim in the failure path.
+5. **Docker Desktop** — supported like any Docker path, but it is a second VM competing for the same RAM.
+
+### What is genuinely engine-specific (document once, not twice)
+
+| Concern | podman | docker |
+|---|---|---|
+| Compose | `podman compose` (podman-compose or the docker-compose provider) | `docker compose` (v2 plugin) |
+| SELinux bind mounts | may need `:z` / `:Z` | ignored |
+| Rootless ports < 1024 | user namespaces / port config | similar caveats |
+| Machine/VM | `podman machine` (WSL on Windows) | Docker Desktop or WSL backend |
+| Image build | `podman build` — reads `Dockerfile` **or** `Containerfile` | `docker build` — same files |
+
+Agnostic in practice means: **one `docker-compose.yml`** (both engines read it), **one `Containerfile`** (both build it), and the CLI **detects which engine exists** instead of assuming one.
 
 ### The minikube trap worth knowing
 
 minikube is the obvious choice and it is the one that **cannot** be used here without changing the machine that holds your data: on WSL it requires a **rootful** podman machine ([Podman Desktop doc](https://github.com/podman-desktop/podman-desktop/blob/main/website/docs/minikube/configuring-podman-for-minikube-on-windows.md): *"With a Podman machine running on WSL, Minikube requires a rootful machine"*), and `podman machine set --rootful` re-owns existing volumes. Do that only on a **fresh** machine, never on `noname` while the stack lives there.
 
-## 3. Recommendation, in order
-
-1. **`podman kube play deploy/`** — no Docker, no extra daemon, no control plane. Validates pod shape, probes, limits and the CDP hop. First real exercise of the manifests.
-2. **k3s in a separate WSL distro** when a real API server is needed (Jobs, probes, KEDA/PDB later). No Docker; k3s embeds containerd; it does not touch the podman machine.
-3. **minikube `--driver=podman`** on a *fresh* machine that is allowed to be rootful — never on `noname` while the stack lives there.
-4. **k3d / kind** only if the above are ruled out: both are Docker-API tools that work solely through `podman system service`, i.e. a second daemon and a shim in the failure path.
-5. **Docker Desktop** — not applicable; this project does not use Docker.
-
-## 4. Browser in the cluster — the recipe
+## 3. Browser in the cluster — the recipe
 
 ```yaml
 # deploy/browser/deployment.yaml (essentials)
@@ -96,7 +102,7 @@ EVAL_CDP_ENDPOINT=ws://127.0.0.1:3000/
 
 Tier 0/1 (`M4`, `M5`, `R1`, `R2`) already work without any of this. The browser unlocks **tier 2**: render at 375/768/1440 and assert `scrollWidth <= clientWidth`, a11y labels, and key content.
 
-## 5. What a local cluster still cannot prove
+## 4. What a local cluster still cannot prove
 
 | Claim | Why it stays unproven locally |
 |---|---|
@@ -107,7 +113,7 @@ Tier 0/1 (`M4`, `M5`, `R1`, `R2`) already work without any of this. The browser 
 
 So a local cluster buys **manifest correctness and the browser loop**, not production behaviour. That is still the majority of what breaks at cutover.
 
-## 6. Next steps
+## 5. Next steps
 
 1. Write `deploy/browser/{deployment,service}.yaml` from the recipe above.
 2. `podman kube play deploy/browser/` → confirm the pod starts, `/dev/shm` is 2 GiB inside it, and CDP answers.

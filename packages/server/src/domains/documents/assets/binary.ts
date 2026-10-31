@@ -15,7 +15,7 @@ export function createAssetStorage(): AssetBinaryStorage {
   if (!cfg) {
     throw new ServiceUnavailableError(
       "Asset storage requires R2/S3 config. For local dev run s3rver " +
-        "(docker compose up) and set R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, " +
+        "(podman compose up) and set R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, " +
         "R2_SECRET_ACCESS_KEY, R2_PUBLIC_URL. For prod use Cloudflare R2 values.",
     );
   }
