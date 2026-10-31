@@ -18,7 +18,9 @@ There are **two developer tracks** and **one production shape**:
 
 Track A is one command and stays that way. Track B exists for people who need to see the manifests actually run; it uses the same images and the same env contract, and it is **not** a second system.
 
-**B1 is app parity, not deployment parity.** With infrastructure outside the cluster it cannot validate StatefulSets, PVCs, secret injection, or compose-vs-cluster DNS. Full parity (**B2**: infra + app + browser inside Kubernetes) needs a 12 GiB+ VM, which this host cannot provide — so B2 is the target, B1 is what a laptop can rehearse.
+**B1 is app parity, not deployment parity.** With infrastructure outside the cluster it cannot validate StatefulSets, PVCs, secret injection, or compose-vs-cluster DNS. Full parity is **B2** (infra + app + browser inside Kubernetes).
+
+**Capacity is not what stops B2 here** — measured inside the VM: 7.8 GB total, **~1.9 GB used** by the whole compose stack, **~5.9 GB available**, 2 GB swap unused. B1 (no control plane) fits comfortably; B2-lite (control plane + app pods) also fits with ~2 GB headroom; B2 *with* the browser pool is tight and competes with the host. So B1 is the first step because `podman kube play` has **no control plane to pay for** and validates the same manifests — not because the machine is too small.
 
 Production is **all in or stay out**: every service in the cluster, or none. A cluster holding only the browser pays the full control-plane cost and then makes the browser reach the API across a boundary — the exact glue that breaks in production. (Locally, `podman kube play` of the app services against compose infrastructure is fine — that is a dev convenience, not a production shape.)
 

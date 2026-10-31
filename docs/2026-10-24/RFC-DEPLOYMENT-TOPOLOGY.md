@@ -101,9 +101,32 @@ The browser is the **reason** a cluster becomes necessary (it is the only worklo
 
 **B1 is not "deployment parity" — it is app parity, and the distinction matters.** It cannot validate: Postgres/ClickHouse as StatefulSets, PVC behaviour, secret injection, compose-to-cluster DNS differences, or NetworkPolicy (no enforcing CNI). Calling it parity would let us believe the cutover is rehearsed when only half of it is.
 
-**Why B1 exists at all:** memory, not architecture. Measured on this machine (2026-10-31): host **15.7 GB total, ~4 GB free** while the 6 GiB VM holds nine infra services. Stopping the VM frees ≈10 GB, so the practical ceiling here is an **8 GiB VM** — and a full cluster (ClickHouse + Zitadel + Keto + Vault + Nango + S3 + Jaeger + Postgres + app + browser) does not fit in 8 GiB. A comfortable B2 needs **12 GiB+**, i.e. a different host or a lot more RAM.
+### Capacity: measured, not assumed
 
-So the honest position: **B2 is the parity target; B1 is what this machine can do today.** B1 is worth having because the failures that actually bite at cutover — probes, limits, ordering, DNS between app services — are exactly what it exercises. It is not a substitute for one B2 run before the real cutover.
+An earlier draft of this document claimed a local cluster needs "12 GiB+". That was an estimate and it was **wrong**. Measured inside the `noname` VM (2026-10-31):
+
+```
+Mem:  7797 MB total   |  used 1853 MB  |  buff/cache 5896 MB  |  available 5943 MB
+Swap: 2048 MB, unused |  nproc: 8
+heaviest: clickhouse 868 MB · podman 660 MB · node(API) 498 MB · zitadel 183 MB · vault 158 MB
+```
+
+The **whole compose stack uses ~1.9 GB of 7.8 GB**, leaving ~5.9 GB available. So:
+
+| Variant | Estimated need on top of the current 1.9 GB | Fits? |
+|---|---|---|
+| **B1** — app pods in `podman kube play` (no control plane) | ~1 GB | **comfortably** |
+| **B2-lite** — k3s/k3s-class control plane + app pods | ~1.5–2 GB | **yes, ~2 GB headroom** |
+| **B2 + browser pool** (4 contexts ≈ 1.5–2 GB) | ~3.5–4 GB | tight, and it competes with the host |
+
+Two corrections that follow:
+
+- **The `--memory 6144` flag did not produce a 6 GiB VM** — WSL reports 7.8 GB and manages memory dynamically, so treat the flag as advisory, not a hard cap.
+- **"Needs more RAM" is not a reason to defer a local cluster.** The reason to prefer B1 first is that `podman kube play` has **no control plane to pay for** and validates the manifests directly — not capacity.
+
+The capacity answer is therefore: **work with what we have; measure before buying.**
+
+**Why B1 first, then:** not capacity (measured above) but overhead — podman kube play has no control plane, so it validates the same manifests for free. B1 is worth having because the failures that actually bite at cutover — probes, limits, ordering, DNS between app services — are exactly what it exercises. It is not a substitute for one B2 run before the real cutover.
 
 Both tracks use **the same images and the same env contract**; the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
 
