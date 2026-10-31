@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-31/LOCAL-K3S-CLUSTER.md](2026-10-31/LOCAL-K3S-CLUSTER.md)** — **A local cluster is running.** k3s in the Ubuntu WSL distro (podman untouched, since minikube needs rootful on WSL). Includes the WSL-shutdown gotcha that looks like a network fault, what the cluster can and cannot prove, and the teardown command.
 - **[2026-10-31/LOCAL-K8S-AND-BROWSER.md](2026-10-31/LOCAL-K8S-AND-BROWSER.md)** — Local cluster survey (kube play / k3s / k3d / kind / minikube) with the minikube trap spelled out, plus the browser-in-cluster recipe (emptyDir for /dev/shm, fonts, no SA token) and how eval plugs in via CDP.
 - **[2026-10-31/PUBLISH-VERIFICATION-SCALES.md](2026-10-31/PUBLISH-VERIFICATION-SCALES.md)** — **Decision note.** A tenant publish (one route, ~25 ms of checks) and a platform change (every tenant, minutes to hours) need different mechanisms: synchronous gate vs asynchronous attestation + cohort. Also fixes what happens when verification itself is unavailable.
 - **[2026-10-31/RFC-CRITICAL-REVIEW.md](2026-10-31/RFC-CRITICAL-REVIEW.md)** — **Read before implementing any of the RFCs.** Adversarial review: two load-bearing assumptions fail when tested against the code (no DOM block marker for structure fidelity, retention does not cover eval Evidence), plus what to cut, the minimal MVP, and the missing outcome metrics.
