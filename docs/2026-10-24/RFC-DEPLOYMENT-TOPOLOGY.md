@@ -147,7 +147,7 @@ Same API, same `kubectl`, same manifests. **Not** the same cluster, and the diff
 |---|---|---|---|
 | Manifests, `kubectl`, probes, resource limits | identical | identical | ✅ |
 | Service DNS, init containers, Jobs, PDB objects | identical objects | identical objects | ✅ (PDB has no effect on one node) |
-| **CNI + `NetworkPolicy` enforcement** | usually **absent** — policy objects are accepted and ignored | VPC CNI + Calico/Cilium | ❌ **never proven locally** |
+| **CNI + `NetworkPolicy` enforcement** | **absent by default** — objects accepted and ignored; **can be enabled** with minikube `--cni=calico`, or k3s/kind + Calico/Cilium | VPC CNI + Calico/Cilium | ⚠️ only with an enforcing CNI |
 | **Pod identity / IAM** | none | IRSA / Pod Identity, OIDC trust to IAM roles | ❌ |
 | **Load balancing / ingress** | NodePort, port-forward | ALB/NLB, TLS, health checks, private subnets | ❌ |
 | **Storage** | `emptyDir` / `local-path` | EBS CSI, gp3, snapshots, multi-AZ | ❌ |
@@ -157,11 +157,15 @@ Same API, same `kubectl`, same manifests. **Not** the same cluster, and the diff
 | **CloudWatch logs, audit, tracing** | none | managed | ❌ |
 | **Control-plane HA / upgrades / SLA** | none | managed | ❌ |
 
-**What this means for our plan, concretely:** the browser's *reason to exist in a cluster* — enforced egress denial so a tenant page cannot reach Postgres, Redis or Vault — is **the one property no laptop cluster can demonstrate**. The object is accepted; the enforcement does not exist without an enforcing CNI.
+**What this means for our plan, concretely:** the browser's *reason to exist in a cluster* is enforced egress denial, so a tenant page cannot reach Postgres, Redis or Vault. That property is **not automatic locally** — a default local CNI accepts the policy object and enforces nothing — but it **is achievable locally** by choosing an enforcing CNI:
 
-Therefore the cutover needs a **staging cluster of the same class as production** (EKS/AKS/GKE with an enforcing CNI). A laptop cluster validates manifests and pod semantics; it cannot validate the security boundary, IAM, ingress or storage. Steps 1–2 of the sequence below stay on the laptop; the policy and IAM work needs a real cluster **before** production, not after.
+- `minikube --cni=calico` (or `--cni=cilium`)
+- k3s or kind with Calico/Cilium installed
+- Rancher Desktop is k3s with Flannel by default, so policy is *not* enforced there unless you replace the CNI
 
-This is also why "we ran it locally and it worked" is not evidence for the two things most likely to break: **policy and identity**.
+So the honest position is: **policy can be proven on a laptop, but only on a deliberately configured cluster**, and a staging cluster of the production class (EKS/AKS/GKE) remains the final check because it also exercises IAM, ingress, storage and managed secrets. Steps 1–2 of the sequence stay on a plain laptop cluster; the policy work needs either a Calico/Cilium local cluster or the staging one.
+
+And "we ran it locally and it worked" is still not evidence for **identity** — IAM/IRSA has no local equivalent.
 
 **Deploy only what the change touches.** For app-manifest work a local cluster needs the app and at most `postgres` + `redis`; ClickHouse, Zitadel, Keto, Vault, Nango and Jaeger can stay in compose because the change has nothing to do with them. That is the difference between *a cluster* and *a copy of production*.
 

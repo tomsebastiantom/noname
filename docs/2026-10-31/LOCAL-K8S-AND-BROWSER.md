@@ -31,6 +31,7 @@ The nuance worth internalising: several local-Kubernetes tools are built on a **
 | **minikube `--driver=podman`** | native podman driver | ✅ | ~1–1.5 GB |
 | **k3d** | **Docker API** → `podman system service` works | ✅ | ~0.7–1.2 GB |
 | **kind** | **Docker API** → `KIND_EXPERIMENTAL_PROVIDER=podman` works | ✅ | ~1–1.5 GB |
+| **Rancher Desktop** | Docker or containerd (bundles **k3s**) | ✅ | ~2 GB |
 | **Docker Desktop k8s** | Docker | ✅ | ~2 GB |
 
 **Recommendation order** — cheapest and fewest moving parts first:
@@ -106,7 +107,7 @@ Tier 0/1 (`M4`, `M5`, `R1`, `R2`) already work without any of this. The browser 
 
 | Claim | Why it stays unproven locally |
 |---|---|
-| "Egress is blocked" | `NetworkPolicy` needs a CNI that enforces it (Calico/Cilium); the common local setups do not |
+| "Egress is blocked" | needs an **enforcing CNI** — the default local setups (k3s/Flannel, Rancher Desktop, kube play) accept the object and enforce nothing. **It *is* provable locally** with `minikube --cni=calico`, or k3s/kind + Calico/Cilium |
 | KEDA scaling decisions | needs a working autoscaler and load; not reproducible on a laptop |
 | PDB behaviour under drain | needs multiple nodes |
 | Production secret injection | local Secrets are not a Vault/CSI path |
