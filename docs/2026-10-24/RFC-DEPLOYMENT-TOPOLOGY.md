@@ -126,6 +126,28 @@ Two corrections that follow:
 
 The capacity answer is therefore: **work with what we have; measure before buying.**
 
+#### Right-sizing a local cluster
+
+Developers do not run a production-shaped cluster on a laptop, and we should not either. The common local sizes:
+
+| Distribution | Idle cost | Typical developer setting |
+|---|---|---|
+| **`podman kube play`** | **0** — no control plane | runs pods directly in the existing VM |
+| **k3s** (single node) | ~0.5–1 GB | the lightest real control plane; fine at 2 GB |
+| **k3d / kind** | ~0.7–1.5 GB | 2–4 GB is what people usually pass |
+| **minikube** | ~1–1.5 GB | 2–4 GB default |
+
+So "what developers spend" is **a couple of GB, single node, no HA** — and the measured ~5.9 GB free is comfortably inside that.
+
+**Deploy only what the change touches.** For app-manifest work a local cluster needs the app and at most `postgres` + `redis`; ClickHouse, Zitadel, Keto, Vault, Nango and Jaeger can stay in compose because the change has nothing to do with them. That is the difference between *a cluster* and *a copy of production*.
+
+Two guards that keep a small cluster honest:
+
+- **Resource requests/limits on every container**, derived from the manifests — a bad manifest then fails visibly instead of taking the whole VM down.
+- **A namespace `ResourceQuota`**, so an unbounded pod is rejected at admission rather than discovered later through OOM kills.
+
+And the tooling caveat that decides whether a local cluster is pleasant or painful: without file sync / hot reload into pods, every edit costs an image rebuild. **Small clusters are cheap; slow loops are not.**
+
 **Why B1 first, then:** not capacity (measured above) but overhead — podman kube play has no control plane, so it validates the same manifests for free. B1 is worth having because the failures that actually bite at cutover — probes, limits, ordering, DNS between app services — are exactly what it exercises. It is not a substitute for one B2 run before the real cutover.
 
 Both tracks use **the same images and the same env contract**; the manifests are the single artefact applied locally or in production. That is what stops track B from becoming a second, divergent system.
