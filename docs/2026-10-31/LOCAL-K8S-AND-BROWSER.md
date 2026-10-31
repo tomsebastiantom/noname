@@ -18,28 +18,38 @@
 | `operations` context (AKS) | configured, **host does not resolve** from here |
 | `do-tor1-nexa` (DigitalOcean) | configured, not tested — treat as off-limits |
 
-## 2. The options, honestly compared
+## 2. The options, honestly compared — **Docker is not in this stack**
 
-| Tool | How it runs | Works with **rootless** podman here? | Control plane cost | Real API server? |
+We run **podman**. So the first question for each tool is not "does it work" but **"does it need a Docker daemon?"**
+
+| Tool | Needs Docker? | How it runs | Real API server? | Control-plane cost |
 |---|---|---|---|---|
-| **`podman kube play`** | pods directly in the podman VM | ✅ native | **0** | ❌ no API server |
-| **[k3s](https://docs.k3s.io/) in its own WSL distro** | systemd service in a separate distro | ✅ independent of podman | ~0.5–1 GB | ✅ |
-| **[k3d](https://github.com/k3d-io/k3d/blob/main/docs/usage/advanced/podman.md)** | k3s inside containers, via the podman socket | ✅ (`DOCKER_HOST` → podman socket) | ~0.7–1.2 GB | ✅ |
-| **[kind](https://kind.sigs.k8s.io/docs/user/rootless/)** | node containers via a container API | ⚠️ rootless supported but fragile on WSL | ~1–1.5 GB | ✅ |
-| **minikube `--driver=podman`** | a container in the podman VM | ❌ **requires a rootful machine** ([Podman Desktop doc](https://github.com/podman-desktop/podman-desktop/blob/main/website/docs/minikube/configuring-podman-for-minikube-on-windows.md): *"With a Podman machine running on WSL, Minikube requires a rootful machine"*) | ~1–1.5 GB | ✅ |
-| **Docker Desktop k8s** | its own VM | n/a — separate from podman | ~2 GB | ✅ (currently off) |
+| **`podman kube play`** | **no** — native podman | pods directly in the podman VM | ❌ | **0** |
+| **k3s in its own WSL distro** | **no** — k3s embeds containerd | systemd service, independent of podman | ✅ | ~0.5–1 GB |
+| **minikube `--driver=podman`** | **no** — native podman driver | a container in the podman VM | ✅ | ~1–1.5 GB |
+| **k3d** | **yes, effectively** — a Docker-API tool; works only by pointing `DOCKER_HOST` at `podman system service` | k3s inside containers via that shim | ✅ | ~0.7–1.2 GB |
+| **kind** | **yes, effectively** — same shim (`KIND_EXPERIMENTAL_PROVIDER=podman`) | node containers via a Docker API | ✅ | ~1–1.5 GB |
+| **Docker Desktop k8s** | yes, explicitly | its own VM | ✅ | ~2 GB |
+
+So in a podman-only environment the honest ranking is:
+
+1. **`podman kube play`** — no Docker, no extra daemon, no control plane.
+2. **k3s in a separate WSL distro** — no Docker, real API server, does not touch the podman machine.
+3. **minikube `--driver=podman`** — no Docker, but see the rootful trap below.
+4. **k3d / kind** — only via podman's Docker-compatibility socket (`podman system service`). That is a shim with a second daemon to keep alive and a class of failures that are neither podman's nor Kubernetes' fault. Use only if 1–3 are ruled out.
+5. **Docker Desktop** — not applicable to this project.
 
 ### The minikube trap worth knowing
 
-minikube is the obvious choice and it is the one that **cannot** be used here without changing the machine that holds your data: `podman machine set --rootful` re-owns existing volumes. Do that only on a **fresh** machine, never on `noname` while the stack lives there.
+minikube is the obvious choice and it is the one that **cannot** be used here without changing the machine that holds your data: on WSL it requires a **rootful** podman machine ([Podman Desktop doc](https://github.com/podman-desktop/podman-desktop/blob/main/website/docs/minikube/configuring-podman-for-minikube-on-windows.md): *"With a Podman machine running on WSL, Minikube requires a rootful machine"*), and `podman machine set --rootful` re-owns existing volumes. Do that only on a **fresh** machine, never on `noname` while the stack lives there.
 
 ## 3. Recommendation, in order
 
-1. **`podman kube play deploy/`** — no cluster, no cost, validates pod shape, probes, limits and the CDP hop. This is where the manifests get their first real exercise.
-2. **k3s in a separate WSL distro** when a real API server is needed (KEDA/PDB/Jobs). It does not touch the podman machine, and ~1 GB idle is the cheapest real control plane.
-3. **k3d** if you prefer everything inside the podman VM and don't mind the socket plumbing.
-4. **minikube** only on a dedicated machine that is allowed to be rootful.
-5. **Docker Desktop k8s** if you enable it — zero install, but a second VM competing for the same 15.7 GB.
+1. **`podman kube play deploy/`** — no Docker, no extra daemon, no control plane. Validates pod shape, probes, limits and the CDP hop. First real exercise of the manifests.
+2. **k3s in a separate WSL distro** when a real API server is needed (Jobs, probes, KEDA/PDB later). No Docker; k3s embeds containerd; it does not touch the podman machine.
+3. **minikube `--driver=podman`** on a *fresh* machine that is allowed to be rootful — never on `noname` while the stack lives there.
+4. **k3d / kind** only if the above are ruled out: both are Docker-API tools that work solely through `podman system service`, i.e. a second daemon and a shim in the failure path.
+5. **Docker Desktop** — not applicable; this project does not use Docker.
 
 ## 4. Browser in the cluster — the recipe
 
