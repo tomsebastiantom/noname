@@ -108,6 +108,21 @@ Without this profile, `noname eval --tier 2` should **skip with a clear message*
 
 ## 4. Path C — production (Kubernetes)
 
+> **⚠️ Check your context before every apply.** This development machine has three kubeconfig contexts, and the **default is a real AKS cluster**:
+>
+> | Context | Server | What it is |
+> |---|---|---|
+> | `operations` **(current)** | `*.hcp.eastus.azmk8s.io` | a real AKS cluster — **not ours** |
+> | `do-tor1-nexa` | `*.k8s.ondigitalocean.com` | a real DigitalOcean cluster — **not ours** |
+> | `docker-desktop` | `kubernetes.docker.internal:6443` | a local cluster (may not be running) |
+>
+> A bare `kubectl apply -f …` goes to whichever context is current. Always pass it explicitly:
+>
+> ```bash
+> kubectl --context docker-desktop apply -k deploy/     # local, safe
+> kubectl --context <the-intended-cluster> apply -k deploy/
+> ```
+
 ```bash
 kubectl apply -k deploy/          # browser pool, eval worker, policies
 ```
