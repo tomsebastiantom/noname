@@ -105,7 +105,7 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 
 | Gap | Why it is not done | Next action |
 |---|---|---|
-| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be done deliberately, then the Secret regenerated, then the seed Job run | run `init:zitadel` against a `kubectl port-forward svc/zitadel 8080`, regenerate the Secret, apply a `seed` Job |
+| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be deliberate | `pwsh scripts/k8s-identity.ps1 -Yes` — does the whole sequence in order (§9) |
 | `client` image | static rspack build → nginx | write `deploy/client/Containerfile` |
 | `edge` not applied | needs its image built (`deploy/edge/Containerfile`) | build + apply, or accept it stays on the host |
 | `eval-worker` | `packages/eval` has no worker entrypoint yet | implement the eval ladder (RFC-EVAL-SERVICE P1) |
@@ -121,3 +121,28 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 | re-run `podman compose up` alongside the cluster | two copies of the same infra, ~1.9 GB each |
 | hand-edit `.env.cluster` | regenerate it with `scripts/cluster-env.mjs`, or the next run silently reverts your edit |
 | assume a pod is healthy because it is `Running` | the Secret-pruning bug produced exactly that: `Running` and unable to reach anything. Use `k8s-status.ps1`. |
+
+## 9. Identity bootstrap — why it is one command and not a Job
+
+Re-issuing identity mints **new** org / project / client IDs and invalidates every existing token. It
+must therefore never happen as a side effect of "bringing things up". The options, and why the middle one
+is what we do:
+
+| Approach | Verdict |
+|---|---|
+| **Manual, four steps by hand** (port-forward → `init:zitadel` → regenerate Secret → seed) | the original plan; every step is a chance to get the order wrong, and step order is exactly what fails (`seed` before identity, Secret not regenerated) |
+| **One confirmed command** — `pwsh scripts/k8s-identity.ps1 -Yes` | **what we do.** Keeps the deliberate signal (`-Yes`, exit 2 otherwise) and removes the ordering error surface. Port-forward is opened and closed by the script. |
+| **A bootstrap Job inside the cluster** | the eventual shape, and it removes the last real weakness: `.env` on the host is currently the source of truth for cluster identity. Blocked on two things: `init:zitadel` writes host files (`ENV_FILE` override exists, but the output must become a **Secret patch**, which needs `kubectl` + RBAC inside the Job), and the machine key/PAT would have to be mounted as a Secret. Worth doing when identity churn becomes routine; not worth it before then. |
+
+What the script enforces, in order:
+
+1. `kubectl port-forward svc/zitadel 8080` (and it waits for `/.well-known/openid-configuration` to
+   answer, rather than assuming it is up)
+2. `pnpm init:zitadel` — re-issues identity, rewrites `.env`, `wrangler.toml`, `oidc.json`
+3. `scripts/cluster-env.mjs` + Secret refresh — **the step people forget**, and the one whose absence
+   produces a green pod that cannot reach anything
+4. rollout restart of `api` + `worker`, so they pick up the new IDs
+5. `seed` Job (`deploy/jobs/seed.yaml`), which drives the HTTP API and therefore needs 3–4 to have happened
+6. `k8s-status.ps1`, which is where `seed data machine_definitions=2` finally turns green
+
+`-SkipSeed` initialises identity without seeding.

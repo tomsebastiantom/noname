@@ -1,0 +1,39 @@
+# Seed Job — fills a freshly bootstrapped cluster with demo data.
+#
+# Runs the same image as the API and drives the **HTTP API** (`API_BASE`), which is how the seeder has
+# always worked: it is a client, not a database script. That is also why it must run *after* the API is
+# Ready and *after* identity exists — every call is authenticated.
+#
+# Not applied by `k8s-up.ps1`: seeding is a deliberate act (it writes demo content and rebinding
+# evidence). Apply it explicitly after `scripts/k8s-identity.ps1`:
+#   kubectl -n noname delete job seed --ignore-not-found
+#   kubectl apply -f deploy/jobs/seed.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed
+  namespace: noname
+spec:
+  backoffLimit: 1
+  # Keep the finished Job around long enough to read its logs, then delete it.
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      enableServiceLinks: false
+      containers:
+        - name: seed
+          image: localhost/noname-api:dev
+          imagePullPolicy: IfNotPresent
+          # `full` = platform profile then commerce profile (the same command as `pnpm seed:demo:full`).
+          command: ["/app/node_modules/.bin/tsx", "packages/seeding/src/cli.ts", "full"]
+          workingDir: /app
+          envFrom:
+            - secretRef: { name: noname-env }
+          env:
+            # The seeder talks to the API through the Service, not localhost.
+            - { name: API_BASE, value: "http://api:3000" }
+            - { name: NODE_ENV, value: development }
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 1Gi }
