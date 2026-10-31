@@ -1,0 +1,67 @@
+# ClickHouse — analytics sink. Never gates boot (S6): the API retries in the background.
+#
+# Ported from `docker-compose.yml#clickhouse`. Compose maps host 9001 -> container 9000 because 9000 is
+# taken by s3rver; inside the cluster that collision disappears, so the native port is simply 9000 and the
+# service is addressed as `clickhouse:9000`.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: clickhouse-data
+  namespace: noname
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: clickhouse
+  namespace: noname
+  labels: { app: clickhouse }
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels: { app: clickhouse }
+  template:
+    metadata:
+      labels: { app: clickhouse }
+    spec:
+      containers:
+        - name: clickhouse
+          image: docker.io/clickhouse/clickhouse-server:latest
+          ports:
+            - { name: http, containerPort: 8123 }
+            - { name: native, containerPort: 9000 }
+          env:
+            - { name: CLICKHOUSE_DB, value: app }
+            - { name: CLICKHOUSE_USER, value: noname }
+            - { name: CLICKHOUSE_PASSWORD, value: noname_dev }
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/clickhouse }
+          readinessProbe:
+            exec: { command: ["clickhouse-client", "--query", "SELECT 1"] }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 12
+          resources:
+            requests: { cpu: 200m, memory: 512Mi }
+            limits: { memory: 2Gi }
+      volumes:
+        - name: data
+          persistentVolumeClaim: { claimName: clickhouse-data }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: clickhouse
+  namespace: noname
+spec:
+  selector: { app: clickhouse }
+  ports:
+    - { name: http, port: 8123, targetPort: http }
+    - { name: native, port: 9000, targetPort: native }

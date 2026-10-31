@@ -1,6 +1,6 @@
 # Kubernetes migration — live status tracker
 
-> **Status:** **in progress.** Infra partial, app images not built, browser manifest written.
+> **Status:** **in progress.** Infra core running (postgres, dragonfly, clickhouse, s3 + bucket job). Browser pod Running but its image needs pinning. App images not built.
 > **Date started:** 2026-10-31 (America/New_York)
 > **Decision:** full move, **not** incremental — everything (infra + app + eval + browser) into the cluster.
 > **Related:** [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (the cluster itself) · [`RFC-DEPLOYMENT-TOPOLOGY.md`](../2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md) (why all-in-or-none) · [`PUBLISH-VERIFICATION-SCALES.md`](./PUBLISH-VERIFICATION-SCALES.md)
@@ -35,18 +35,18 @@ namespace: noname
 |---|---|---|---|
 | 1 | k3s cluster running in Ubuntu WSL | **done** | `kubectl get nodes` → `Ready` |
 | 2 | namespace + core infra manifests written | **done** | files exist under `deploy/` |
-| 3 | apply **postgres** | in progress | `kubectl -n noname get pod -l app=postgres` → `Ready 1/1`; `psql -c '\l'` shows `app,zitadel,nango,keto` |
-| 4 | apply **dragonfly** | pending | `redis-cli -h dragonfly ping` → `PONG` |
-| 5 | apply **clickhouse** | pending | `clickhouse-client --query 'SELECT 1'` → `1` |
-| 6 | apply **s3** + `s3-init` job | pending | `aws --endpoint-url http://s3:9000 s3 ls s3://noname-assets` → exit 0 |
+| 3 | apply **postgres** | **done** | `Ready 1/1`; databases `app,keto,nango,zitadel`; extensions `pgcrypto, pg_trgm, uuid-ossp, plpgsql` |
+| 4 | apply **dragonfly** | **done** | `exec deploy/dragonfly -- redis-cli ping` → `PONG` |
+| 5 | apply **clickhouse** | **done** | `exec deploy/clickhouse -- clickhouse-client --query "SELECT 1"` → `1` |
+| 6 | apply **s3** + `s3-init` job | **done** | pod `1/1 Running`; `logs job/s3-init` → `bucket already present` |
 | 7 | apply **vault**, **jaeger**, **nango** | pending | vault `sys/health` 200, jaeger UI 200, nango `/health` 200 |
 | 8 | apply **zitadel** + **keto** (+ migrate job) | pending | `zitadel ready`; keto `/health/ready` 200 |
 | 9 | re-run `pnpm init:zitadel` against cluster → **new org IDs** | blocked (needs 8) | `.env` rewritten; `noname eval` still authenticates |
 | 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | pending | `podman build` succeeds for each |
-| 11 | load images into k3s | pending | `k3s ctr images ls` lists them |
+| 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
 | 12 | apply **app** Deployments + Services | pending | `/ready` 200 through the Service |
 | 13 | run **migrate** job, then **seed** job | pending | 36 tables; 2 machine definitions |
-| 14 | apply **browser** (CDP service) | pending | `exec -- df -h /dev/shm` → 2 GiB; CDP answers |
+| 14 | apply **browser** (CDP service) | **done** | `playwright --version` → **1.63.0** (pinned, no runtime npm download); log only `Listening on ws://0.0.0.0:3000/`; CDP **200**; `/dev/shm` **2.0G**; 50 font families |
 | 15 | wire eval: `EVAL_CDP_ENDPOINT` + tier 2 check | pending | `noname eval` catches a forced overflow |
 | 16 | **NetworkPolicy** enforcement | **blocked** | needs Calico/Cilium; Flannel accepts-and-ignores |
 | 17 | update compose docs so track A stays accurate | pending | `DEPLOYMENT-GUIDE.md` reflects both tracks |
@@ -58,7 +58,10 @@ namespace: noname
 | `deploy/00-namespace.yaml` | `noname` namespace |
 | `deploy/infra/postgres.yaml` | Deployment + Service + PVC + init ConfigMap (extra DBs & `pgcrypto`/`uuid-ossp`/`pg_trgm`) |
 | `deploy/infra/dragonfly.yaml` | Deployment + Service, with the three BullMQ-critical flags |
-| `deploy/browser/*.yaml` | browser Deployment + Service — **written in this step, see §6** |
+| `deploy/browser/deployment.yaml` | browser Deployment + Service (pinned image, 2Gi `emptyDir` shm) |
+| `deploy/browser/Containerfile` | official Playwright image **+ the CLI baked in** — fixes the unpinned runtime download |
+| `deploy/infra/clickhouse.yaml` | Deployment + Service + local-path PVC |
+| `deploy/infra/s3.yaml` | Deployment + Service + idempotent `s3-init` Job |
 
 Deliberately **not** written yet: app manifests, because they need images first, and writing manifests for
 images that do not exist produces files nobody has run.
@@ -81,3 +84,7 @@ images that do not exist produces files nobody has run.
 |---|---|
 | 14:0x | k3s installed in Ubuntu WSL, `Ready`, namespace `noname` created, smoke pod ran and logged |
 | 15:2x | tracker created; `postgres` + `dragonfly` manifests written; browser manifests written |
+| 15:2x | applied namespace + postgres + dragonfly → both `Ready 1/1`; DBs and extensions verified |
+| 15:2x | applied clickhouse + s3 + `s3-init` Job → all Running/Completed; `SELECT 1` = 1; bucket present |
+| 15:2x | applied browser → Running, `/dev/shm` 2.0G, 50 fonts, CDP 200; **defect found**: unpinned `npx` download of playwright 1.64.1 at container start |
+| 15:3x | built `deploy/browser/Containerfile` with the CLI pinned → `podman build` ok; `podman save` (2432 MB) → `k3s ctr images import` (187s) → Deployment rolled out; `playwright --version` = **1.63.0**, no npm at startup |

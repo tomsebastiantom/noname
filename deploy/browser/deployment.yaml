@@ -31,8 +31,10 @@ spec:
         runAsUser: 1000
       containers:
         - name: chromium
-          image: mcr.microsoft.com/playwright:v1.63.0-noble
-          command: ["npx", "playwright", "run-server", "--host", "0.0.0.0", "--port", "3000"]
+          # Built by deploy/browser/Containerfile: official image + the pinned CLI baked in.
+          # Loaded into k3s with `podman save` -> `k3s ctr images import` (no registry).
+          image: localhost/noname-browser:1.63.0
+          imagePullPolicy: IfNotPresent
           ports:
             - { name: cdp, containerPort: 3000 }
           env:

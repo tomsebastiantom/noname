@@ -1,0 +1,25 @@
+# Browser image — the official Playwright image, plus the CLI baked in.
+#
+# Why this Dockerfile exists at all: `mcr.microsoft.com/playwright:v1.63.0-noble` ships the *browsers*
+# under /ms-playwright but **no `playwright` CLI on PATH**. Running `npx playwright run-server` in that
+# image therefore downloads `playwright@1.64.x` from npm at container start, which is:
+#   - unpinned (the pod's version drifts from the image tag),
+#   - network-dependent (a pod cannot start without npm access),
+#   - slow (a few seconds of npm resolution on every start).
+# Observed in the cluster on 2026-10-31, which is why this file exists.
+#
+# Building it also exercises the image pipeline we documented for every app service:
+#   podman build -> podman save -> k3s ctr images import
+FROM mcr.microsoft.com/playwright:v1.63.0-noble
+
+USER root
+# Pin to the exact version matching the browser build already present in the image.
+RUN npm install --global playwright@1.63.0 && npm cache clean --force
+
+# The image's own non-root user; the manifest also sets runAsNonRoot.
+USER pwuser
+
+EXPOSE 3000
+# `playwright run-server` speaks the driver protocol over WebSocket, which is what
+# `chromium.connect()` / `connectOverCDP` consume from the eval worker.
+ENTRYPOINT ["playwright", "run-server", "--host", "0.0.0.0", "--port", "3000"]

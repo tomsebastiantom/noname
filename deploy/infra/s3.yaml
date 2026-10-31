@@ -1,0 +1,78 @@
+# S3 (s3rver) — asset storage for the platform.
+#
+# Ported from `docker-compose.yml#s3` + `#s3-init`. In compose the bucket is created by a shell `depends_on`
+# chain; in Kubernetes that becomes a Job ordered by an explicit probe loop, because `depends_on` has no
+# equivalent and a Job that races the service is a classic flake.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3
+  namespace: noname
+  labels: { app: s3 }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: s3 }
+  template:
+    metadata:
+      labels: { app: s3 }
+    spec:
+      containers:
+        - name: s3
+          image: ghcr.io/clockwisesoftware/s3rver:latest
+          ports:
+            - { name: http, containerPort: 9000 }
+          env:
+            - { name: BUCKETS, value: noname-assets }
+            - { name: HOST, value: "0.0.0.0" }
+            - { name: PORT, value: "9000" }
+            - { name: VHOST_BUCKETS, value: "0" }
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3
+  namespace: noname
+spec:
+  selector: { app: s3 }
+  ports:
+    - { name: http, port: 9000, targetPort: http }
+---
+# Bucket creation, idempotent and retried: the loop replaces compose's `depends_on: service_healthy`.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: s3-init
+  namespace: noname
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: aws-cli
+          image: docker.io/amazon/aws-cli:latest
+          env:
+            - { name: AWS_ACCESS_KEY_ID, value: S3RVER }
+            - { name: AWS_SECRET_ACCESS_KEY, value: S3RVER }
+            - { name: AWS_DEFAULT_REGION, value: us-east-1 }
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              for i in $(seq 1 30); do
+                if aws --endpoint-url http://s3:9000 s3 ls s3://noname-assets >/dev/null 2>&1; then
+                  echo "bucket already present"; exit 0
+                fi
+                echo "waiting for s3 ($i)..."; sleep 2
+              done
+              aws --endpoint-url http://s3:9000 s3 mb s3://noname-assets
+              aws --endpoint-url http://s3:9000 s3 ls
