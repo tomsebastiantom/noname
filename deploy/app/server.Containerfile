@@ -33,6 +33,11 @@ COPY packages/fixtures/package.json packages/fixtures/
 COPY packages/browser-sdk/package.json packages/browser-sdk/
 COPY packages/cli/package.json packages/cli/
 COPY packages/eval/package.json packages/eval/
+# `seeding` depends on `@noname/client`, and `workers` is needed by the edge build; without their
+# package.json files pnpm does not create their node_modules, and the seeder then fails at runtime with
+# ERR_MODULE_NOT_FOUND for a dependency of the client package (observed: zod).
+COPY packages/client/package.json packages/client/
+COPY packages/workers/package.json packages/workers/
 RUN pnpm install --frozen-lockfile || pnpm install
 
 # Then the sources.

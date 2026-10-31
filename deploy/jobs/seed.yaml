@@ -25,9 +25,11 @@ spec:
         - name: seed
           image: localhost/noname-api:dev
           imagePullPolicy: IfNotPresent
-          # `full` = platform profile then commerce profile (the same command as `pnpm seed:demo:full`).
-          command: ["/app/node_modules/.bin/tsx", "packages/seeding/src/cli.ts", "full"]
-          workingDir: /app
+          # Run from the package directory, like the API does. Running from /app resolved the entrypoint
+          # but not its dependencies (observed: ERR_MODULE_NOT_FOUND for zod), because pnpm's isolated
+          # layout keeps a package's deps under that package's own node_modules.
+          command: ["/app/node_modules/.bin/tsx", "src/cli.ts", "full"]
+          workingDir: /app/packages/seeding
           envFrom:
             - secretRef: { name: noname-env }
           env:
@@ -37,3 +39,20 @@ spec:
           resources:
             requests: { cpu: 200m, memory: 512Mi }
             limits: { memory: 1Gi }
+      # The seeder logs in through ZITADEL, and `ZITADEL_ISSUER` is `http://localhost:8080` (tokens are
+      # issued for that name; the browser reaches it through a port-forward). Inside a pod `localhost` is
+      # the pod itself, so a loopback proxy is needed - see the comment block in deploy/app/api.yaml.
+      #
+      # It is an *initContainer with restartPolicy: Always*, i.e. a **native sidecar** (GA in k8s 1.29;
+      # this cluster is 1.36). As a plain container it kept running after the seed finished, so the Job
+      # never reached Completed (observed: pod stuck at `1/2 NotReady` while the logs clearly said
+      # "completed full/commerce"). Native sidecars are terminated when the main containers exit, which
+      # is exactly the semantics a Job needs.
+      initContainers:
+        - name: localhost-proxy
+          image: docker.io/alpine/socat:latest
+          restartPolicy: Always
+          args: ["TCP-LISTEN:8080,fork,reuseaddr,bind=127.0.0.1", "TCP:zitadel:8080"]
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }

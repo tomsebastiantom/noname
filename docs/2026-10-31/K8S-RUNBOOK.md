@@ -105,12 +105,19 @@ loopback to Service DNS — except `8080`, which must stay `localhost` for the r
 | Chromium crashes under load | 64 MB `/dev/shm` | `emptyDir` with `medium: Memory`, `sizeLimit: 2Gi` |
 | Playwright version drifts from the image tag | the official image ships browsers but **no CLI**, so `npx` downloaded 1.64.x at runtime | `deploy/browser/Containerfile` bakes the CLI in at 1.63.0 |
 | `wrangler dev` "works" but is not a runtime | the edge is a Cloudflare Worker | documented: production is `wrangler deploy`; the cluster runs `wrangler dev --local` only for local completeness |
+| ZITADEL machine key vanishes and identity can never be re-issued | `/output` was an `emptyDir`, and the image is distroless (no shell, no `tar`) so the key cannot even be read out | `zitadel-keys` **PVC**, read via a helper pod |
+| `invalid_grant: invalid assertion` with a key that is actually fine | `init:zitadel` treated the **compose volume** as the source of truth and *overwrote* a working key with one from the deleted instance (ZITADEL log: `Errors.AuthNKey.NotFound`) | a **working key wins**; the volume is only a last-resort fallback |
+| `AuthNKey.NotFound` even after resetting the database | `start-from-init` writes the key only when `/output` is empty, so resetting the DB alone left the old key | reset **both together**: drop the `zitadel` database **and** delete the `zitadel-keys` PVC |
+| `ERR_MODULE_NOT_FOUND` for `zod` while seeding | the image copied only some `package.json` files, so pnpm never installed the client package dependencies | copy `packages/client` and `packages/workers` manifests before `pnpm install` |
+| seed Job: `fetch failed` although `busybox` reaches the API | the seeder logs in through `ZITADEL_ISSUER=http://localhost:8080`, and the Job had **no loopback proxy** | add the `localhost-proxy` sidecar to the seed Job |
+| seed Job never reaches `Completed` although the logs say success | the socat sidecar kept running, so the pod stayed at `1/2` | make it a **native sidecar** (`initContainers` + `restartPolicy: Always`, k8s ≥1.29; this cluster is 1.36) |
+| `Upload google.svg → 500`; API log `getaddrinfo ENOTFOUND noname-assets.s3` | `forcePathStyle` was enabled only for `localhost`/`127.0.0.1`, so a Service endpoint (`http://s3:9000`) got virtual-hosted addressing | inverted: path-style for everything except Cloudflare R2, with `R2_FORCE_PATH_STYLE` as an explicit override |
 
 ## 7. Open gaps (reported by `node scripts/k8s.mjs status`)
 
 | Gap | Why it is not done | Next action |
 |---|---|---|
-| **`seed data machine_definitions=0`** | seeding needs a valid identity, which needs `init:zitadel` to run against the **cluster** ZITADEL — that mints new org/client IDs, so it must be deliberate | `node scripts/k8s.mjs identity --yes` — does the whole sequence in order (§9) |
+| ~~`seed data machine_definitions=0`~~ | **closed**: identity was re-issued and the seed Job completed (`machine_definitions=2`, 44 documents) | — |
 | `client` image | static rspack build → nginx | write `deploy/client/Containerfile` |
 | `edge` not applied | needs its image built (`deploy/edge/Containerfile`) | build + apply, or accept it stays on the host |
 | `eval-worker` | `packages/eval` has no worker entrypoint yet | implement the eval ladder (RFC-EVAL-SERVICE P1) |

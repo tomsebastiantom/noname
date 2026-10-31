@@ -60,6 +60,33 @@ export function createR2AssetStorage(config?: R2Config): AssetBinaryStorage {
   const store = cfg;
 
   const isLocal = /localhost|127\.0\.0\.1/.test(store.endpoint);
+
+  /**
+   * Path-style addressing: **the default for anything that is not Cloudflare R2.**
+   *
+   * The old rule was "path style only when the endpoint says localhost", which broke the moment the
+   * stack moved into Kubernetes: the endpoint became `http://s3:9000` (a Service name), the regex
+   * missed, and the SDK switched to virtual-hosted style — `noname-assets.s3` — which cannot resolve.
+   * Every asset upload then failed with `getaddrinfo ENOTFOUND noname-assets.s3`, reported as a bare
+   * 500 (observed on `Upload google.svg` during seeding).
+   *
+   * Inverting the rule is the robust direction: s3rver, MinIO and AWS S3 all accept path style, while
+   * Cloudflare R2 is the one endpoint that wants virtual-hosted style. `R2_FORCE_PATH_STYLE` overrides
+   * both if a deployment needs to be explicit.
+   */
+  const explicitlySet = process.env.R2_FORCE_PATH_STYLE?.trim().toLowerCase();
+  const isCloudflareR2 = /\.r2\.cloudflarestorage\.com$/i.test(
+    (() => {
+      try {
+        return new URL(store.endpoint).hostname;
+      } catch {
+        return "";
+      }
+    })(),
+  );
+  const forcePathStyle =
+    explicitlySet === "true" ? true : explicitlySet === "false" ? false : !isCloudflareR2;
+
   let region = cfg.region;
   if (region == null) {
     region = isLocal ? "us-east-1" : "auto";
@@ -72,7 +99,7 @@ export function createR2AssetStorage(config?: R2Config): AssetBinaryStorage {
       accessKeyId: store.accessKeyId,
       secretAccessKey: store.secretAccessKey,
     },
-    forcePathStyle: isLocal,
+    forcePathStyle,
   });
 
   const publicBase = store.publicUrl || `${store.endpoint.replace(/\/$/, "")}/${store.bucket}`;

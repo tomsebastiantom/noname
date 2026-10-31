@@ -299,8 +299,27 @@ spec:
             requests: { cpu: 200m, memory: 384Mi }
             limits: { memory: 1Gi }
       volumes:
+        # NOT an emptyDir. `start-from-init` writes the first-instance machine key here
+        # (`/output/noname-backend-sa.json`), and that key is the *only* way to authenticate the
+        # `init:zitadel` provisioning script afterwards. An emptyDir loses it on every pod restart,
+        # which silently makes identity re-issuance impossible later - the exact opposite of
+        # "rerunnable after a restart". The image is distroless (no sh, no tar), so the key can only
+        # be read by mounting the same PVC into a helper pod.
         - name: keys
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: zitadel-keys
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: zitadel-keys
+  namespace: noname
+spec:
+  accessModes: ["ReadWriteOnce"]
+  storageClassName: local-path
+  resources:
+    requests:
+      storage: 64Mi
 ---
 apiVersion: v1
 kind: Service

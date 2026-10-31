@@ -110,36 +110,48 @@ async function keyWorks(key: ServiceAccountKey): Promise<boolean> {
   }
 }
 
-/** Prefer a working key. After `compose down -v`, local cache is stale — refresh from volume. */
+/**
+ * Resolve a machine key that actually authenticates.
+ *
+ * Rule: **a key that works wins.** The compose volume is only a fallback for legacy dev setups.
+ *
+ * This used to be the other way round — a working cached key was *discarded* whenever its `keyId` differed
+ * from the compose volume, and the volume's key was written over it. After moving identity into a cluster
+ * that is precisely wrong: the `noname_zitadel_keys` volume still exists and still holds the key of the
+ * **deleted** compose instance, so the script replaced a valid key with a dead one and every assertion
+ * came back as `invalid_grant: invalid assertion` (ZITADEL's log: `Errors.AuthNKey.NotFound`).
+ *
+ * In a cluster the key lives on the `zitadel-keys` PVC, and this script is given it via
+ * `ZITADEL_MACHINE_KEY_PATH`; there may be no compose volume at all.
+ */
 async function loadServiceAccountKey(): Promise<ServiceAccountKey> {
-  const volumeKey = readKeyFromVolume();
-
   for (const path of KEY_CANDIDATES) {
     if (!existsSync(path)) continue;
     const cached = JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
-    if (await keyWorks(cached)) {
-      if (cached.keyId === volumeKey.keyId) {
-        return cached;
-      }
-      console.warn("Local machine key does not match compose volume — refreshing cache.");
-      clearStaleLoginPat();
-      cacheKeyLocally(volumeKey);
-      console.log(`Cached machine key → ${LOCAL_KEY_PATH}`);
-      return volumeKey;
-    }
-    console.warn(`Stale ZITADEL machine key at ${path} — trying compose volume...`);
+    if (await keyWorks(cached)) return cached;
+    console.warn(`Stale ZITADEL machine key at ${path} — ignored.`);
   }
 
-  if (!(await keyWorks(volumeKey))) {
-    throw new Error(
-      "ZITADEL machine key from compose volume is not accepted yet — wait for ZITADEL (curl http://localhost:8080/.well-known/openid-configuration) then retry",
-    );
+  // Nothing cached authenticates. Legacy fallback: the compose volume.
+  let volumeKey: ServiceAccountKey | undefined;
+  try {
+    volumeKey = readKeyFromVolume();
+  } catch {
+    volumeKey = undefined;
+  }
+  if (volumeKey && (await keyWorks(volumeKey))) {
+    clearStaleLoginPat();
+    cacheKeyLocally(volumeKey);
+    console.log(`Cached machine key → ${LOCAL_KEY_PATH}`);
+    return volumeKey;
   }
 
-  clearStaleLoginPat();
-  cacheKeyLocally(volumeKey);
-  console.log(`Cached machine key → ${LOCAL_KEY_PATH}`);
-  return volumeKey;
+  throw new Error(
+    "no valid ZITADEL machine key found. In the local cluster the key lives on the `zitadel-keys` PVC " +
+      "(/output/noname-backend-sa.json): read it with a helper pod and point ZITADEL_MACHINE_KEY_PATH at it, " +
+      "or reset identity (drop the `zitadel` database AND delete the `zitadel-keys` claim together) so a " +
+      "matching key is generated.",
+  );
 }
 
 function signAssertion(sa: ServiceAccountKey): string {

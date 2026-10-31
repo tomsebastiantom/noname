@@ -1,6 +1,6 @@
 # Kubernetes migration — live status tracker
 
-> **Status:** **in progress — the app runs in the cluster.** Infra (9), browser, API and worker are all `Running`, and `/ready` reports `database:true, analyticsReady:true`. Compose is **stopped**; the cluster is the only stack. Remaining: identity re-init + seed, client, edge, policy.
+> **Status:** **operational.** `node scripts/k8s.mjs status` reports **all checks passed** (exit 0): infra (9), browser, API, worker, and seeded data (`machine_definitions=2`, 44 documents, 5 pages). Compose is stopped. Remaining: client image, edge applied, eval-worker, NetworkPolicy.
 > **Date started:** 2026-10-31 (America/New_York)
 > **Decision:** full move, **not** incremental — everything (infra + app + eval + browser) into the cluster.
 > **Related:** [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (the cluster itself) · [`RFC-DEPLOYMENT-TOPOLOGY.md`](../2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md) (why all-in-or-none) · [`PUBLISH-VERIFICATION-SCALES.md`](./PUBLISH-VERIFICATION-SCALES.md)
@@ -41,11 +41,11 @@ namespace: noname
 | 6 | apply **s3** + `s3-init` job | **done** | pod `1/1 Running`; `logs job/s3-init` → `bucket already present` |
 | 7 | apply **vault**, **jaeger**, **nango** | **done** | all three `1/1 Running`; nango `/health` → `{"result":"ok"}` from an in-cluster probe pod |
 | 8 | apply **zitadel** + **keto** (+ migrate job) | **done** | `keto-migrate` Job `Completed`; keto `1/1 Running`; zitadel `1/1 Running` after the service-link fix (§5) |
-| 9 | re-run `pnpm init:zitadel` against cluster → **new org IDs** | blocked (needs 8) | `.env` rewritten; `noname eval` still authenticates |
+| 9 | re-run `init:zitadel` against cluster → new org IDs | **done** | org `397606127111569464`, project `397606456951570488`, client `397606457689833528`; assertion to ZITADEL returns **200** |
 | 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | **partial** | api/worker image built and loaded; browser done; **edge Containerfile + manifest written** (wrangler dev in-container; production is Cloudflare); client and eval-worker still to do |
 | 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
 | 12 | apply **app** Deployments + Services | **done** | api `2/2 Running`; `/ready` → `{"ready":true,"checks":{"database":true,"analyticsReady":true}}`; `/health` ok with all redis subsystems true |
-| 13 | run **migrate** job, then **seed** job | **partial** | `migrate` Job `Completed` (schema applied to cluster postgres); **seed not run** — needs identity re-init first (step 9) |
+| 13 | run **migrate** job, then **seed** job | **done** | `migrate` `Completed`; `seed` `Completed`; `machine_definitions=2`, 44 documents, 5 pages, evidence 2 |
 | 14 | apply **browser** (CDP service) | **done** | `playwright --version` → **1.63.0** (pinned, no runtime npm download); log only `Listening on ws://0.0.0.0:3000/`; CDP **200**; `/dev/shm` **2.0G**; 50 font families |
 | 15 | wire eval: `EVAL_CDP_ENDPOINT` + tier 2 check | pending | `noname eval` catches a forced overflow |
 | 16 | **NetworkPolicy** enforcement | **blocked** | needs Calico/Cilium; Flannel accepts-and-ignores |
