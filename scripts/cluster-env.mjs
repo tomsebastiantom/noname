@@ -39,11 +39,37 @@ const SERVICE_BY_PORT = {
 /** Ports that must NOT be rewritten — see the header. */
 const KEEP_LOCAL_PORTS = new Set(["8080"]);
 
+/**
+ * NodePort → Service DNS.
+ *
+ * `node scripts/k8s.mjs nodeports` rewrites the local `.env` files to the node IP so host services can reach
+ * cluster infra without port-forwards. That is a *host* concern: inside the cluster the node IP is the wrong
+ * address, and it changes on every WSL reboot. So the generator normalises both forms back to Service DNS, and
+ * the Secret is correct whichever mode the developer left `.env` in.
+ */
+const SERVICE_BY_NODEPORT = {
+  30432: "postgres:5432",
+  30379: "dragonfly:6379",
+  30123: "clickhouse:8123",
+  30901: "clickhouse:9000",
+  30900: "s3:9000",
+  30200: "vault:8200",
+  30466: "keto:4466",
+  30467: "keto:4467",
+  30003: "nango:3003",
+  30009: "nango:3009",
+  30686: "jaeger:16686",
+  30431: "jaeger:4318",
+};
+
 function rewrite(text) {
-  return text.replace(/\b(?:localhost|127\.0\.0\.1):(\d+)\b/g, (match, port) => {
+  const byHost = text.replace(/\b(?:localhost|127\.0\.0\.1):(\d+)\b/g, (match, port) => {
     if (KEEP_LOCAL_PORTS.has(port)) return match;
     return SERVICE_BY_PORT[port] ?? match;
   });
+  return byHost.replace(/\b\d{1,3}(?:\.\d{1,3}){3}:(\d+)\b/g, (match, port) =>
+    SERVICE_BY_NODEPORT[port] ?? match,
+  );
 }
 
 function keysOf(text) {

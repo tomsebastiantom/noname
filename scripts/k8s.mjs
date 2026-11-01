@@ -413,6 +413,124 @@ async function pullHostIdentity() {
   }
 }
 
+// ── nodeports: host → cluster infra, and the .env rewrite that goes with it ──────────────────────
+/**
+ * The NodePort map. Fixed numbers so `.env` never has to guess, and so the rewrite below is a lookup rather
+ * than a search.
+ *
+ * 9000 is deliberately NOT in this list: clickhouse's native port and s3's HTTP port are both 9000, so a blind
+ * port rewrite is ambiguous. In the env files port 9000 only ever means s3 (R2_ENDPOINT/R2_PUBLIC_URL), and
+ * rewriting it as clickhouse put the wrong Service in the cluster Secret - observed as
+ * `R2_ENDPOINT=http://clickhouse:9000`, which uploads would have failed against.
+ *
+ * ZITADEL is absent on purpose: `ZITADEL_ISSUER` is `http://localhost:8080` and that name is baked into every
+ * token, so it stays on a port-forward. See deploy/overlays/local/kustomization.yaml.
+ */
+const NODEPORTS = [
+  { service: "postgres", from: 5432, to: 30432, label: "postgres" },
+  { service: "dragonfly", from: 6379, to: 30379, label: "dragonfly (redis)" },
+  { service: "clickhouse", from: 8123, to: 30123, label: "clickhouse http" },
+  { service: "s3", from: 9000, to: 30900, label: "s3 (s3rver)" },
+  { service: "vault", from: 8200, to: 30200, label: "vault" },
+  { service: "keto", from: 4466, to: 30466, label: "keto read" },
+  { service: "keto", from: 4467, to: 30467, label: "keto write" },
+  { service: "nango", from: 3003, to: 30003, label: "nango server" },
+  { service: "nango", from: 3009, to: 30009, label: "nango connect" },
+  { service: "jaeger", from: 16686, to: 30686, label: "jaeger UI" },
+  { service: "jaeger", from: 4318, to: 30431, label: "jaeger OTLP" },
+];
+
+/** The .env files the server actually reads (root wins, package-local fills gaps — see load-env.ts). */
+const ENV_FILES = [".env", "packages/server/.env"];
+
+function nodeAddress() {
+  const raw = must("kubectl", ["get", "nodes", "-o", "json"]).out;
+  const nodes = JSON.parse(raw).items ?? [];
+  for (const node of nodes) {
+    const internal = (node.status?.addresses ?? []).find((a) => a.type === "InternalIP");
+    if (internal?.address) return internal.address;
+  }
+  throw new Error("no InternalIP on any node");
+}
+
+/**
+ * Rewrite infra addresses in the env files.
+ *
+ * `--revert` matches *any* IPv4 + NodePort, not the remembered one, so it still works after WSL renumbers the
+ * node — which it does on every reboot.
+ */
+function rewriteEnv({ toNode, ip }) {
+  let touched = 0;
+  for (const file of ENV_FILES) {
+    const path = join(ROOT, file);
+    if (!existsSync(path)) continue;
+    let text = readFileSync(path, "utf8");
+    const before = text;
+    for (const { from, to } of NODEPORTS) {
+      if (toNode) {
+        text = text
+          .replace(new RegExp(`localhost:${from}\\b`, "g"), `${ip}:${to}`)
+          .replace(new RegExp(`127\\.0\\.0\\.1:${from}\\b`, "g"), `${ip}:${to}`);
+      } else {
+        text = text.replace(new RegExp(`\\b\\d{1,3}(?:\\.\\d{1,3}){3}:${to}\\b`, "g"), `localhost:${from}`);
+      }
+    }
+    if (text !== before) {
+      writeFileSync(path, text);
+      touched += 1;
+      ok(`${file} rewritten`);
+    }
+  }
+  return touched;
+}
+
+async function nodeports({ revert = false } = {}) {
+  step("node address");
+  const ip = nodeAddress();
+  ok(ip);
+
+  if (revert) {
+    step("revert the env files to localhost");
+    const n = rewriteEnv({ toNode: false, ip });
+    if (n === 0) info("nothing to revert — already using localhost");
+    info("port-forwards are the way back: `kubectl -n noname port-forward svc/<name> <port>:<port>`");
+    return 0;
+  }
+
+  step("apply the local overlay (it carries the NodePort patches)");
+  must("kubectl", ["apply", "-k", "deploy/overlays/local"]);
+  for (const { service } of NODEPORTS) {
+    const r = sh("kubectl", ["-n", NS, "get", "svc", service, "-o",
+      "jsonpath={.spec.ports[*].nodePort}"]);
+    if (!r.out.trim()) info(`svc/${service} has no nodePort yet`);
+  }
+  ok("services patched");
+
+  step(`nodePort map (${ip})`);
+  for (const { label, from, to } of NODEPORTS) {
+    console.log(`   ${label.padEnd(20)} ${String(from).padStart(5)} → ${String(to).padStart(5)}`);
+  }
+  console.log(`   ${"zitadel".padEnd(20)} ${"8080".padStart(5)} → port-forward (issuer must stay localhost)`);
+
+  step("rewrite the env files");
+  const n = rewriteEnv({ toNode: true, ip });
+  ok(`${n} file(s) rewritten to ${ip}`);
+
+  step("reachability");
+  for (const { label, to } of NODEPORTS) {
+    const probe = sh("node", ["-e",
+      `const s=require('node:net').connect({host:'${ip}',port:${to},timeout:2000});` +
+      `s.on('connect',()=>{s.end();process.exit(0)});` +
+      `s.on('error',()=>process.exit(1));s.on('timeout',()=>{s.destroy();process.exit(1)});`]);
+    console.log(`   ${probe.ok ? c.green("ok") : c.red("FAIL")}   ${label} ${ip}:${to}`);
+  }
+
+  step("what still needs a port-forward");
+  info("zitadel:8080 — the issuer name is baked into every token; `kubectl -n noname port-forward svc/zitadel 8080:8080`");
+  info(`after a reboot the node IP changes: re-run this command (revert is not needed)`);
+  return 0;
+}
+
 // ── seed ─────────────────────────────────────────────────────────────────────────────────────────
 async function seed() {
   step("seed Job");
@@ -454,6 +572,9 @@ try {
       await pullHostIdentity();
       code = 0;
       break;
+    case "nodeports":
+      code = await nodeports({ revert: flags.has("--revert") });
+      break;
     case "seed":
       code = await seed();
       break;
@@ -462,7 +583,7 @@ try {
       break;
     default:
       console.log(
-        `usage: node scripts/k8s.mjs <status|up|identity|pull|seed|down> [--rebuild] [--skip-images] [--yes]`,
+        `usage: node scripts/k8s.mjs <status|up|nodeports|identity|pull|seed|down> [--rebuild] [--skip-images] [--yes]`,
       );
       code = 1;
   }

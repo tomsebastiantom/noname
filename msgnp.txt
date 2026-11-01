@@ -1,0 +1,36 @@
+feat(cluster): NodePort exposure for host services, and one command to regenerate
+
+Services run on the host (`pnpm dev`); infra runs in the cluster. Reaching nine services
+meant nine `kubectl port-forward` processes that die with their terminal. Now the local
+overlay exposes the eight infra Services as NodePorts, and one command handles the volatile
+part:
+
+  node scripts/k8s.mjs nodeports           apply, print the map, rewrite .env, verify each port
+  node scripts/k8s.mjs nodeports --revert  put .env back on localhost
+
+NodePort lives in overlays/local only. base/ stays ClusterIP, because a NodePort binds a port
+on every node and that is wrong for staging and production (it bypasses Ingress, TLS and
+NetworkPolicy).
+
+ZITADEL is deliberately NOT exposed: ZITADEL_ISSUER is http://localhost:8080 and that name is
+baked into every issued token. Exposing it would mean re-issuing identity against a different
+issuer and invalidating every token - to chase a name that moves on reboot. It keeps a single
+port-forward.
+
+Why a command rather than a static .env: WSL renumbers the node on every reboot. The rewrite is
+keyed by NodePort, not by a remembered IP, so re-running it converges and --revert still works
+after the address changed. Both env files are rewritten, because the server reads `.env` and
+`packages/server/.env` (the R2 settings live in the second).
+
+One bug caught by verifying rather than assuming: port 9000 is ambiguous - clickhouse's native
+port and s3's HTTP port are both 9000 - and a blind rewrite mapped R2_ENDPOINT to
+clickhouse:9000, which the asset uploads would have failed against. The 9000 entry is gone from
+the rewrite list, and cluster-env.mjs normalises node IPs back to Service DNS so a rewritten
+.env can never leak a node IP into a pod.
+
+Verified: all twelve NodePorts reachable from the host, .env rewritten, .env.cluster generated
+with Service DNS (R2_ENDPOINT=http://s3:9000), Secret refreshed, `status` all checks passed
+(exit 0).
+
+Docs: runbook section 3b (NodePort + regenerate, with the map and the three traps) and
+ENVIRONMENTS-AND-PROMOTION section 3 rewritten to match.

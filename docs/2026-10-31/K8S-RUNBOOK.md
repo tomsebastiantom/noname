@@ -71,6 +71,39 @@ podman compose -f docker-compose.yml up -d      # volumes preserved from before 
 Do **not** run both unless you are deliberately comparing behaviour — they are two copies of the same
 infrastructure (measured: ~1.9 GB each).
 
+## 3b. Host → cluster infra (NodePort + one regenerate command)
+
+Services run on the **host** (`pnpm dev`); infra runs **in the cluster**. The local overlay exposes the eight
+infra Services as NodePorts on the node IP, so no port-forward processes are needed:
+
+```bash
+node scripts/k8s.mjs nodeports           # apply, print the map, rewrite .env, verify reachability
+node scripts/k8s.mjs nodeports --revert  # put .env back on localhost
+```
+
+| Service | in-cluster | NodePort |
+|---|---|---|
+| postgres | 5432 | 30432 |
+| dragonfly | 6379 | 30379 |
+| clickhouse | 8123 / 9000 | 30123 / 30901 |
+| s3 | 9000 | 30900 |
+| vault | 8200 | 30200 |
+| keto | 4466 / 4467 | 30466 / 30467 |
+| nango | 3003 / 3009 | 30003 / 30009 |
+| jaeger | 16686 / 4318 | 30686 / 30431 |
+| **zitadel** | 8080 | **port-forward, deliberately** |
+
+Three things this command exists to handle:
+
+1. **The node IP changes on every WSL reboot** — the rewrite is by NodePort, not by remembered IP, so re-running
+   it is enough and `--revert` works even after the address moved.
+2. **`ZITADEL_ISSUER` must stay `localhost:8080`.** It is baked into every issued token, so zitadel is the one
+   service still reached by port-forward: `kubectl -n noname port-forward svc/zitadel 8080:8080`.
+3. **`.env` and `packages/server/.env` are both rewritten** — the server reads both (root wins, package-local
+   fills gaps), and the R2 settings live in the second one.
+
+The cluster side is unaffected: `scripts/cluster-env.mjs` normalises node IPs back to Service DNS when it builds
+the Secret, so a rewritten `.env` cannot leak a node IP into a pod.
 ## 4. What runs where
 
 ```

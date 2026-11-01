@@ -38,28 +38,41 @@ not there to make service development faster — it makes it slower, which is wh
 
 ## 3. Reaching the cluster's infra from the host
 
-Services on the host must talk to infra in the cluster. There is no NodePort in this design (it binds every
-node's IP and bypasses Ingress/TLS/policy), so access is explicit:
+Services run on the host; infra runs in the cluster. The local overlay exposes the eight infra Services as
+**NodePorts** on the node IP, so there are no port-forward processes to babysit:
 
 ```bash
-kubectl -n noname port-forward svc/postgres     5432:5432
-kubectl -n noname port-forward svc/dragonfly    6379:6379
-kubectl -n noname port-forward svc/clickhouse   8123:8123
-kubectl -n noname port-forward svc/s3           9000:9000
-kubectl -n noname port-forward svc/vault        8200:8200
-kubectl -n noname port-forward svc/keto         4466:4466
-kubectl -n noname port-forward svc/zitadel      8080:8080
-kubectl -n noname port-forward svc/nango        3003:3003
-kubectl -n noname port-forward svc/jaeger       4318:4318
+node scripts/k8s.mjs nodeports           # apply, print the map, rewrite .env, verify each port
+node scripts/k8s.mjs nodeports --revert  # back to localhost
 ```
 
-`.env` then keeps **exactly the values it has today** (`localhost:5432`, `localhost:8080`, …) — nothing to
-rewrite, because port-forwarding makes the cluster look like a local server. That is the whole reason to prefer
-it over inventing node IPs.
+| Service | in-cluster | NodePort |
+|---|---|---|
+| postgres | 5432 | 30432 |
+| dragonfly | 6379 | 30379 |
+| clickhouse | 8123 / 9000 | 30123 / 30901 |
+| s3 | 9000 | 30900 |
+| vault | 8200 | 30200 |
+| keto | 4466 / 4467 | 30466 / 30467 |
+| nango | 3003 / 3009 | 30003 / 30009 |
+| jaeger | 16686 / 4318 | 30686 / 30431 |
+| **zitadel** | 8080 | **port-forward, deliberately** |
 
-Behaviour to know: a forward dies with its terminal, and a dropped `zitadel` forward shows up as
-`invalid assertion` (identity is unreachable), not as a network error. Start them in one terminal and leave it.
+Why each of those choices:
 
+- **NodePort lives in `overlays/local`, never in `base/`.** A NodePort binds a port on every node, which is
+  wrong for staging and production (it bypasses Ingress, TLS and NetworkPolicy). Base stays `ClusterIP`.
+- **ZITADEL is not exposed.** `ZITADEL_ISSUER` is `http://localhost:8080`, and that name is baked into every
+  issued token; pods already reach it through the `localhost-proxy` sidecar. A NodePort would mean re-issuing
+  identity against a different issuer and invalidating every token, only for the browser to chase a name that
+  moves on reboot. One port-forward, and the tokens keep working.
+- **The rewrite is by NodePort, not by remembered IP.** WSL renumbers the node on every reboot, so
+  `nodeports` re-runs cleanly and `--revert` still works after the address moved.
+- **Both env files are rewritten** (`.env` and `packages/server/.env`) because the server reads both, and the
+  R2 settings live in the second one.
+- **None of this reaches the cluster.** `scripts/cluster-env.mjs` normalises node IPs back to Service DNS when
+  it builds the Secret. That is not theoretical: rewriting port 9000 blindly mapped s3 to clickhouse's native
+  port, and the generated Secret read `R2_ENDPOINT=http://clickhouse:9000` until the ambiguity was handled.
 ## 4. The compose environment (for contributors)
 
 `docker-compose.yml` provides the same nine services, so the repo works without k3s:
