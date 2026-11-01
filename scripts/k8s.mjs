@@ -531,6 +531,111 @@ async function nodeports({ revert = false } = {}) {
   return 0;
 }
 
+// ── smoke: does the whole chain actually work end to end ─────────────────────────────────────────
+/**
+ * End-to-end verification of the *running* platform, including the parts a unit test cannot reach.
+ *
+ * The chain a real request takes locally:
+ *
+ *   browser -> client (5173, host) -> edge (8787, host, wrangler dev) -> api (3000, cluster) -> postgres/...
+ *
+ * So this opens port-forwards for the cluster side, then walks the chain hop by hop. It deliberately asserts
+ * *negative* results where they are the correct outcome (an unsigned `/api` call must be 401, an unsigned
+ * webhook must be 4xx) - a 200 there would mean the auth or signature gate is missing.
+ */
+async function smoke() {
+  const forwards = [
+    ["svc/api", "3000:3000", "http://127.0.0.1:3000/health"],
+    ["svc/zitadel", "8080:8080", "http://localhost:8080/.well-known/openid-configuration"],
+    ["svc/browser", "9222:3000", "http://127.0.0.1:9222/json/version"],
+  ];
+  const children = [];
+  const results = [];
+
+  const record = (name, pass, detail) => {
+    results.push({ name, pass });
+    console.log(`  [${pass ? c.green(" OK ") : c.red("FAIL")}] ${name.padEnd(28)} ${String(detail).slice(0, 68)}`);
+  };
+
+  const fetchText = async (url, init) => {
+    const r = sh("node", ["-e",
+      `fetch(${JSON.stringify(url)},${JSON.stringify(init ?? {})})` +
+      `.then(async r=>{const t=await r.text();process.stdout.write(r.status+' '+t.slice(0,110))})` +
+      `.catch(e=>{process.stdout.write('ERR '+e.message)})`]);
+    return r.out || r.err || "no output";
+  };
+
+  step("open the cluster-side hops");
+  for (const [target, ports, probeUrl] of forwards) {
+    const child = spawnSync("kubectl", ["-n", NS, "port-forward", target, ports], {
+      cwd: ROOT, env, detached: true, stdio: "ignore",
+    });
+    if (child.pid) children.push(child.pid);
+    await waitFor(target, () => {
+      const r = sh("node", ["-e",
+        `fetch(${JSON.stringify(probeUrl)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))`]);
+      return r.ok;
+    }, { timeoutMs: 30_000, intervalMs: 1_000 });
+  }
+
+  try {
+    step("cluster: api, identity, browser fleet");
+    const health = await fetchText("http://127.0.0.1:3000/health");
+    record("api /health", /^200/.test(health), health);
+    const ready = await fetchText("http://127.0.0.1:3000/ready");
+    record("api /ready", /"ready":true/.test(ready), ready);
+    const discovery = await fetchText("http://localhost:8080/.well-known/openid-configuration");
+    record("zitadel discovery", /^200/.test(discovery), "issuer reachable");
+    const cdp = await fetchText("http://127.0.0.1:9222/json/version");
+    record("browser CDP", /^200/.test(cdp) && /Protocol-Version/.test(cdp), cdp);
+
+    step("negative controls (these MUST be rejected)");
+    const unsignedApi = await fetchText("http://127.0.0.1:3000/api/tenants/resolve/demo");
+    record("api unsigned /api", /^401|^403/.test(unsignedApi), unsignedApi);
+    const unsignedWebhook = await fetchText("http://127.0.0.1:3000/api/webhooks/generic",
+      { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
+    record("webhook unsigned", /^4\d\d/.test(unsignedWebhook), unsignedWebhook);
+
+    step("through the edge (needs `pnpm --filter @noname/workers dev`)");
+    const edgeHealth = await fetchText("http://127.0.0.1:8787/health");
+    if (!/^200/.test(edgeHealth)) {
+      info("edge not running - start it with: pnpm --filter @noname/workers dev");
+      info("through-edge checks skipped (the edge is a host process, see docs/2026-10-31/EDGE.md)");
+    } else {
+      record("edge /health", true, edgeHealth);
+      const edgeApi = await fetchText("http://127.0.0.1:8787/api/health");
+      record("edge /api unsigned", /^401|^403/.test(edgeApi), `${edgeApi} - auth gate works`);
+      const edgeRoot = await fetchText("http://127.0.0.1:8787/",
+        { headers: { Host: "yogastore.localhost" } });
+      // 200 = SSR/SPA served, 503 = bucket not seeded. Both prove the worker routed the request.
+      record("edge serves /", /^200|^503/.test(edgeRoot), edgeRoot);
+    }
+
+    step("client (needs `pnpm --filter @noname/client dev`)");
+    const client = await fetchText("http://127.0.0.1:5173/");
+    record("client dev server", /^200/.test(client), /^200/.test(client) ? "200" : `${client} - not running?`);
+  } finally {
+    for (const pid of children) {
+      try {
+        if (IS_WIN) sh("taskkill", ["/PID", String(pid), "/T", "/F"]);
+        else process.kill(-pid);
+      } catch {
+        /* already gone */
+      }
+    }
+    info("port-forwards closed");
+  }
+
+  const failed = results.filter((r) => !r.pass);
+  console.log("");
+  if (failed.length === 0) {
+    console.log(c.green("  chain verified end to end"));
+    return 0;
+  }
+  console.log(c.red(`  ${failed.length} check(s) failed: ${failed.map((f) => f.name).join(", ")}`));
+  return 1;
+}
+
 // ── seed ─────────────────────────────────────────────────────────────────────────────────────────
 async function seed() {
   step("seed Job");
@@ -572,6 +677,9 @@ try {
       await pullHostIdentity();
       code = 0;
       break;
+    case "smoke":
+      code = await smoke();
+      break;
     case "nodeports":
       code = await nodeports({ revert: flags.has("--revert") });
       break;
@@ -583,7 +691,7 @@ try {
       break;
     default:
       console.log(
-        `usage: node scripts/k8s.mjs <status|up|nodeports|identity|pull|seed|down> [--rebuild] [--skip-images] [--yes]`,
+        `usage: node scripts/k8s.mjs <status|up|smoke|nodeports|identity|pull|seed|down> [--rebuild] [--skip-images] [--yes]`,
       );
       code = 1;
   }
