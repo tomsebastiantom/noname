@@ -289,10 +289,20 @@ async function up({ rebuild = false, skipImages = false } = {}) {
     }
   }
 
-  step("migrate Job (immutable: delete, then re-apply the overlay)");
-  sh("kubectl", ["-n", NS, "delete", "job", "migrate", "--ignore-not-found"]);
+  // Job pod templates are immutable, and *every* credential rotation changes them (the env now comes from
+  // secretKeyRef). Deleting only `migrate` meant the next rotation failed on keto-migrate and s3-init with
+  // "spec.template: Invalid value ... immutable". All three are safe to recreate: `migrate up` is idempotent
+  // and s3-init checks for the bucket before creating it. `identity` and `seed` are NOT in the overlay, so
+  // they cannot be recreated by accident here - they are deliberate acts.
+  const ONE_SHOT_JOBS = ["migrate", "keto-migrate", "s3-init"];
+  step(`one-shot Jobs (immutable: recreate ${ONE_SHOT_JOBS.join(", ")})`);
+  for (const job of ONE_SHOT_JOBS) {
+    sh("kubectl", ["-n", NS, "delete", "job", job, "--ignore-not-found"]);
+  }
   must("kubectl", ["apply", "-k", "deploy/overlays/local"]);
-  await waitFor("migrate", () => probes.jobDone("migrate"), { timeoutMs: 300_000 });
+  for (const job of ONE_SHOT_JOBS) {
+    await waitFor(job, () => probes.jobDone(job), { timeoutMs: 300_000 });
+  }
 
   step("rollout");
   must("kubectl", ["-n", NS, "rollout", "status", "deploy/api", "--timeout=300s"]);

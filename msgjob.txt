@@ -1,0 +1,18 @@
+fix(cluster): recreate every idempotent one-shot Job in up, not just migrate
+
+The Job-immutability trap was documented but not fixed: `up` deleted only `migrate` before
+applying the overlay, so the next credential rotation would fail on keto-migrate and
+s3-init with "spec.template: Invalid value ... immutable" - which is exactly what happened
+when credentials moved into secretKeyRef.
+
+All three idempotent one-shot Jobs are now deleted and recreated first:
+
+  migrate        drizzle-kit migrate    no-op when the schema is up to date
+  keto-migrate   keto migrate up        idempotent
+  s3-init        checks the bucket before creating it
+
+`identity` and `seed` stay out of the overlay, so a converge cannot recreate them by
+accident - they remain deliberate acts.
+
+Verified: `node scripts/k8s.mjs up --skip-images` recreates all three, each reports ready,
+and `status` ends with all checks passed (exit 0).
