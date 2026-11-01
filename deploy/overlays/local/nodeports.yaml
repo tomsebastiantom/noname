@@ -1,0 +1,76 @@
+- target: { kind: Service, name: postgres }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30432
+- target: { kind: Service, name: dragonfly }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30379
+- target: { kind: Service, name: clickhouse }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30123
+    - op: add
+      path: /spec/ports/1/nodePort
+      value: 30901
+- target: { kind: Service, name: s3 }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30900
+- target: { kind: Service, name: vault }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30200
+- target: { kind: Service, name: keto }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30466
+    - op: add
+      path: /spec/ports/1/nodePort
+      value: 30467
+- target: { kind: Service, name: nango }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30003
+    - op: add
+      path: /spec/ports/1/nodePort
+      value: 30009
+- target: { kind: Service, name: jaeger }
+  patch: |-
+    - op: add
+      path: /spec/type
+      value: NodePort
+    - op: add
+      path: /spec/ports/0/nodePort
+      value: 30686
+    - op: add
+      path: /spec/ports/1/nodePort
+      value: 30431
