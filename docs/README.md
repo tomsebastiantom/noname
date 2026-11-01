@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-10-31/ENVIRONMENTS-AND-PROMOTION.md](2026-10-31/ENVIRONMENTS-AND-PROMOTION.md)** — **What runs where, and how it promotes.** Local: infra + browser fleet in k8s, services still pnpm dev, edge wrangler dev; compose stays as the contributor path. Staging/prod: everything in k8s except the edge (Cloudflare). Includes the port-forward map, the ase/overlays layout, the 7 gaps before staging is real, and a decision log.
 - **[2026-10-31/EDGE.md](2026-10-31/EDGE.md)** — **What the edge worker is and where it runs.** Daily dev = compose + wrangler dev; local parity = wrangler dev pointed at k8s; production = Cloudflare Workers. The edge never runs inside the cluster, and this says why (plus the Lambda@Edge comparison and the R2-upload 503 trap).
 - **[2026-10-31/K8S-RUNBOOK.md](2026-10-31/K8S-RUNBOOK.md)** — **Start here to run the cluster.** `node scripts/k8s.mjs up` (idempotent) and `node scripts/k8s.mjs status` (read-only health, exit 0 only if all green). Contains the 12-entry failure catalogue — every item actually happened — plus the list of manual steps never to repeat, so a session cannot break the cluster by re-deriving them.
 - **[2026-10-31/K8S-MIGRATION-STATUS.md](2026-10-31/K8S-MIGRATION-STATUS.md)** — **Live tracker for the full move into Kubernetes.** Every step has a verification command; a step is only done when that output was seen. Records the blockers honestly (Flannel cannot enforce NetworkPolicy, Zitadel re-init changes org IDs, edge is a Cloudflare Worker).
