@@ -1,4 +1,5 @@
-# Edge worker (Cloudflare Worker) running locally via workerd.
+# Edge worker (Cloudflare Worker) running locally via workerd — LOCAL ONLY. Production is `wrangler deploy` to
+# Cloudflare; see docs/2026-10-31/EDGE-DEPLOYMENT-DECISION.md for why the cluster hosts it here at all.
 #
 # `wrangler dev --local` runs the worker in workerd with KV/R2 emulated in-process, so no Cloudflare
 # account or network egress is involved. In production this worker deploys to Cloudflare Workers instead —

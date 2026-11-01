@@ -1,4 +1,6 @@
-# Edge worker image — Cloudflare Worker, run locally by workerd via `wrangler dev`.
+# Edge worker image — Cloudflare Worker, run locally by workerd via `wrangler dev` — LOCAL ONLY.
+# Production deploys this worker to Cloudflare with `wrangler deploy`. The reasoning, and the escape hatch
+# if it must ever run inside Kubernetes, is in docs/2026-10-31/EDGE-DEPLOYMENT-DECISION.md.
 #
 # ── Why this image is dev-grade, and what production actually is ─────────────────────────────────
 # `packages/workers` is a **Cloudflare Worker**: it targets workerd and uses wrangler bindings (KV, R2),
