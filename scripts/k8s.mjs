@@ -22,7 +22,7 @@ import { spawnSync } from "node:child_process";
 import { homedir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const IS_WIN = process.platform === "win32";
@@ -293,55 +293,100 @@ async function up({ rebuild = false, skipImages = false } = {}) {
 }
 
 // ── identity ─────────────────────────────────────────────────────────────────────────────────────
-async function identity({ yes = false, skipSeed = false } = {}) {
+/**
+ * Provision identity **inside the cluster** and patch the Secret from there.
+ *
+ * The earlier flow ran on the host: port-forward, `pnpm init:zitadel`, regenerate `.env.cluster`, apply
+ * the Secret. That made the developer's `.env` the source of truth for cluster identity, so a fresh clone
+ * could not reproduce the cluster. `deploy/jobs/identity.yaml` now does all of it in-cluster —
+ * `scripts/init/zitadel-oidc.ts` reads the machine key from the `zitadel-keys` PVC, and
+ * `scripts/init/patch-secret.mjs` merges the results into `noname-env` through the Kubernetes API and
+ * rolls api + worker. No kubectl binary, no host copy, narrow RBAC.
+ *
+ * Still deliberate (`--yes`): it mints IDs and invalidates existing tokens.
+ */
+async function identity({ yes = false } = {}) {
   if (!yes) {
     console.log(c.yellow(`
   This RE-ISSUES identity:
     - new ZITADEL org / project / client IDs
-    - rewrites .env, wrangler.toml, oidc.json and the cluster Secret
+    - patches the noname-env Secret and rolls api + worker
     - every existing token becomes invalid
 
   Re-run with --yes if that is what you want.`));
     return 2;
   }
 
-  step("port-forward zitadel:8080");
-  const pf = spawnSync("kubectl", ["-n", NS, "port-forward", "svc/zitadel", "8080:8080"], {
-    cwd: ROOT, env, detached: true, stdio: "ignore",
-  });
-  try {
-    await waitFor("issuer", () => {
-      const r = sh("node", ["-e", "fetch('http://localhost:8080/.well-known/openid-configuration').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]);
-      return r.ok;
-    }, { timeoutMs: 30_000, intervalMs: 1_000 });
+  step("identity Job (in-cluster)");
+  sh("kubectl", ["-n", NS, "delete", "job", "identity", "--ignore-not-found"]);
+  must("kubectl", ["apply", "-f", "deploy/jobs/identity.yaml"]);
+  await waitFor("identity", () => probes.jobDone("identity"), { timeoutMs: 600_000 });
+  console.log(must("kubectl", ["-n", NS, "logs", "job/identity", "-c", "identity", "--tail=8"]).out);
 
-    step("init:zitadel (re-issues identity)");
-    must("pnpm", ["init:zitadel"], { timeout: 10 * 60_000 });
+  step("wait for the rolled workloads");
+  must("kubectl", ["-n", NS, "rollout", "status", "deploy/api", "--timeout=300s"]);
+  await waitFor("api /ready", probes.apiReady, { timeoutMs: 300_000 });
 
-    step("regenerate .env.cluster + Secret");
-    must("node", ["scripts/cluster-env.mjs"]);
-    const rendered = must("kubectl", ["-n", NS, "create", "secret", "generic", "noname-env",
-      "--from-env-file=.env.cluster", "--dry-run=client", "-o", "yaml"]).out;
-    const applied = spawnSync("kubectl", ["apply", "-f", "-"], { input: rendered, encoding: "utf8", cwd: ROOT, env });
-    if (applied.status !== 0) throw new Error(`secret apply failed: ${applied.stderr}`);
-    ok("Secret refreshed");
-
-    step("restart api + worker");
-    must("kubectl", ["-n", NS, "rollout", "restart", "deploy/api", "deploy/worker"]);
-    must("kubectl", ["-n", NS, "rollout", "status", "deploy/api", "--timeout=300s"]);
-    await waitFor("api /ready", probes.apiReady, { timeoutMs: 300_000 });
-
-    if (skipSeed) info("seed skipped by request");
-    else await seed();
-  } finally {
-    if (pf.pid) {
-      try { process.kill(-pf.pid); } catch { try { process.kill(pf.pid); } catch { /* already gone */ } }
-      info("port-forward closed");
-    }
-  }
+  step("sync host files from the Secret");
+  await pullHostIdentity();
   return status();
 }
 
+/**
+ * Copy the identity keys from the cluster Secret into the host files that local tooling reads:
+ * root `.env`, `packages/workers/wrangler.toml`, `packages/client/public/oidc.json`.
+ *
+ * These are **derived** artifacts now. The cluster Secret is the source of truth; this function exists so
+ * client dev and the workers runtime on the host stay in step without anyone hand-editing IDs.
+ */
+async function pullHostIdentity() {
+  const raw = must("kubectl", ["-n", NS, "get", "secret", "noname-env", "-o", "json"]).out;
+  const secret = JSON.parse(raw);
+  const value = (key) => {
+    const encoded = secret.data?.[key];
+    return encoded ? Buffer.from(encoded, "base64").toString("utf8") : undefined;
+  };
+
+  const issuer = value("ZITADEL_ISSUER");
+  const clientId = value("ZITADEL_CLIENT_ID");
+  const projectId = value("ZITADEL_PROJECT_ID");
+  const orgId = value("ZITADEL_DEMO_ORG_ID");
+  if (!clientId || !projectId) throw new Error("Secret has no ZITADEL_CLIENT_ID / ZITADEL_PROJECT_ID");
+
+  const upsert = (text, key, val) =>
+    new RegExp(`^${key}=.*$`, "m").test(text)
+      ? text.replace(new RegExp(`^${key}=.*$`, "m"), `${key}=${val}`)
+      : `${text.trimEnd()}\n${key}=${val}\n`;
+
+  const envPath = join(ROOT, ".env");
+  if (existsSync(envPath)) {
+    let env = readFileSync(envPath, "utf8");
+    env = upsert(env, "ZITADEL_ISSUER", issuer);
+    env = upsert(env, "ZITADEL_CLIENT_ID", clientId);
+    env = upsert(env, "ZITADEL_PROJECT_ID", projectId);
+    if (orgId) env = upsert(env, "ZITADEL_DEMO_ORG_ID", orgId);
+    writeFileSync(envPath, env);
+    ok(".env updated");
+  }
+
+  const wranglerPath = join(ROOT, "packages/workers/wrangler.toml");
+  if (existsSync(wranglerPath)) {
+    let wrangler = readFileSync(wranglerPath, "utf8");
+    wrangler = wrangler.replace(/^ZITADEL_CLIENT_ID = ".*"$/m, `ZITADEL_CLIENT_ID = "${clientId}"`);
+    wrangler = wrangler.replace(/^ZITADEL_PROJECT_ID = ".*"$/m, `ZITADEL_PROJECT_ID = "${projectId}"`);
+    writeFileSync(wranglerPath, wrangler);
+    ok("wrangler.toml updated");
+  }
+
+  const oidcPath = join(ROOT, "packages/client/public/oidc.json");
+  if (existsSync(oidcPath)) {
+    const oidc = JSON.parse(readFileSync(oidcPath, "utf8"));
+    oidc.issuer = issuer;
+    oidc.clientId = clientId;
+    writeFileSync(oidcPath, `${JSON.stringify(oidc, null, 2)}\n`);
+    ok("oidc.json updated");
+  }
+}
 // ── seed ─────────────────────────────────────────────────────────────────────────────────────────
 async function seed() {
   step("seed Job");
@@ -377,7 +422,11 @@ try {
       code = await up({ rebuild: flags.has("--rebuild"), skipImages: flags.has("--skip-images") });
       break;
     case "identity":
-      code = await identity({ yes: flags.has("--yes"), skipSeed: flags.has("--skip-seed") });
+      code = await identity({ yes: flags.has("--yes") });
+      break;
+    case "pull":
+      await pullHostIdentity();
+      code = 0;
       break;
     case "seed":
       code = await seed();
@@ -386,7 +435,9 @@ try {
       code = down();
       break;
     default:
-      console.log(`usage: node scripts/k8s.mjs <status|up|identity|seed|down> [--rebuild] [--skip-images] [--yes] [--skip-seed]`);
+      console.log(
+        `usage: node scripts/k8s.mjs <status|up|identity|pull|seed|down> [--rebuild] [--skip-images] [--yes]`,
+      );
       code = 1;
   }
   process.exit(code);

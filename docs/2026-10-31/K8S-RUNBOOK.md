@@ -18,7 +18,7 @@ node scripts/k8s.mjs up        # bring everything up, idempotent
 node scripts/k8s.mjs status    # read-only health summary, exit 0 only if all green
 ```
 
-One CLI, four verbs: up, status, identity, seed (plus down). It is **Node, not PowerShell or bash**, so
+One CLI, six verbs: `up`, `status`, `identity`, `pull`, `seed`, `down`. It is **Node, not PowerShell or bash**, so
 it works the same on Windows, macOS, Linux and in CI - and every external command goes through a
 wrapper that **throws on a non-zero exit**, printing the command and its stderr. Earlier PowerShell versions
 piped several calls to Out-Null and ignored the result, so a failed kubectl apply looked like success.
@@ -151,27 +151,44 @@ seed Job and identity bootstrap read the machine key from the `zitadel-keys` PVC
 | hand-edit `.env.cluster` | regenerate it with `scripts/cluster-env.mjs`, or the next run silently reverts your edit |
 | assume a pod is healthy because it is `Running` | the Secret-pruning bug produced exactly that: `Running` and unable to reach anything. Use `node scripts/k8s.mjs status`. |
 
-## 9. Identity bootstrap — why it is one command and not a Job
+## 9. Identity bootstrap — now fully in-cluster
 
-Re-issuing identity mints **new** org / project / client IDs and invalidates every existing token. It
-must therefore never happen as a side effect of "bringing things up". The options, and why the middle one
-is what we do:
+Re-issuing identity mints new org / project / client IDs and invalidates every existing token, so it stays
+a deliberate act. What changed is **where it runs**: it used to need a human on the host
+(`kubectl port-forward` → `pnpm init:zitadel` → regenerate `.env.cluster` → apply the Secret), which made a
+developer's `.env` the source of truth for cluster identity — a fresh clone could not reproduce the cluster.
+
+```powershell
+node scripts/k8s.mjs identity --yes    # provision in-cluster, patch the Secret, roll api + worker
+node scripts/k8s.mjs pull              # sync host files (.env, wrangler.toml, oidc.json) from the Secret
+```
+
+`deploy/jobs/identity.yaml` does the work:
+
+1. mounts the machine key from the `zitadel-keys` **PVC** (read-only) — written there by `start-from-init`
+2. runs `scripts/init/zitadel-oidc.ts` with `ENV_FILE` pointed at a scratch file, so it never touches a
+   repository checkout
+3. runs `scripts/init/patch-secret.mjs`, which **merges** the four identity keys into `noname-env` through
+   the Kubernetes API and rolls `api` + `worker`
+
+No `kubectl` binary in the image, no host `cp`, no port-forward. RBAC is narrow
+(`deploy/jobs/identity.yaml`): `get`/`patch` on that one Secret and on those two Deployments, nothing
+cluster-wide.
+
+Two details that matter:
+
+- **A native sidecar** (`initContainers` + `restartPolicy: Always`) provides the loopback proxy, because
+  `ZITADEL_ISSUER` is `http://localhost:8080` (the issuer baked into every token) and inside a pod
+  `localhost` is the pod. Without it the Job cannot reach ZITADEL at all.
+- **Merge patch, not apply.** Only the keys the Job owns are sent, so nothing else in the Secret is pruned
+  — the exact failure recorded in §6 under "kubectl apply pruned the Secret".
+
+Host files are **derived** now. `pull` is the only supported way to change them.
+
+### Earlier option matrix (kept for context)
 
 | Approach | Verdict |
 |---|---|
-| **Manual, four steps by hand** (port-forward → `init:zitadel` → regenerate Secret → seed) | the original plan; every step is a chance to get the order wrong, and step order is exactly what fails (`seed` before identity, Secret not regenerated) |
-| **One confirmed command** — `node scripts/k8s.mjs identity --yes` | **what we do.** Keeps the deliberate signal (`-Yes`, exit 2 otherwise) and removes the ordering error surface. Port-forward is opened and closed by the script. |
-| **A bootstrap Job inside the cluster** | the eventual shape, and it removes the last real weakness: `.env` on the host is currently the source of truth for cluster identity. Blocked on two things: `init:zitadel` writes host files (`ENV_FILE` override exists, but the output must become a **Secret patch**, which needs `kubectl` + RBAC inside the Job), and the machine key/PAT would have to be mounted as a Secret. Worth doing when identity churn becomes routine; not worth it before then. |
-
-What the script enforces, in order:
-
-1. `kubectl port-forward svc/zitadel 8080` (and it waits for `/.well-known/openid-configuration` to
-   answer, rather than assuming it is up)
-2. `pnpm init:zitadel` — re-issues identity, rewrites `.env`, `wrangler.toml`, `oidc.json`
-3. `scripts/cluster-env.mjs` + Secret refresh — **the step people forget**, and the one whose absence
-   produces a green pod that cannot reach anything
-4. rollout restart of `api` + `worker`, so they pick up the new IDs
-5. `seed` Job (`deploy/jobs/seed.yaml`), which drives the HTTP API and therefore needs 3–4 to have happened
-6. `node scripts/k8s.mjs status`, which is where `seed data machine_definitions=2` finally turns green
-
-`--skip-seed` initialises identity without seeding.
+| manual, four steps on the host | retired — every step was an error surface, and it tied cluster identity to one machine |
+| one confirmed host command | what §9 replaced |
+| **a bootstrap Job inside the cluster** | **implemented** — see above |

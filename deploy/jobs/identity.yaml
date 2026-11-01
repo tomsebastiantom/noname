@@ -1,0 +1,109 @@
+# Identity bootstrap — runs `init:zitadel` INSIDE the cluster and patches the Secret itself.
+#
+# Why this exists: identity provisioning used to require a human on the host:
+#   kubectl port-forward svc/zitadel 8080 → pnpm init:zitadel → regenerate .env.cluster → apply Secret
+# That made the host's `.env` the source of truth for cluster identity, so a fresh clone or a new machine
+# could not reproduce the cluster. Here the whole thing runs where the state lives:
+#
+#   1. mount the machine key from the `zitadel-keys` PVC (the file `start-from-init` wrote)
+#   2. run scripts/init/zitadel-oidc.ts with ENV_FILE pointing at a scratch file, so it does not need a
+#      repository checkout to update
+#   3. scripts/init/patch-secret.mjs merges just those keys into `noname-env` and rolls api + worker,
+#      using the ServiceAccount token and the Kubernetes API (no kubectl in the image)
+#
+# Idempotent: re-running with an existing org/project reuses them; `init:zitadel` only creates what is
+# missing. It is still a deliberate act — `node scripts/k8s.mjs identity --yes` — because it mints IDs and
+# invalidates existing tokens.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: identity-bootstrapper
+  namespace: noname
+---
+# Narrow on purpose: this one Secret, and the two Deployments it must roll. Nothing cluster-wide.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: identity-bootstrapper
+  namespace: noname
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["noname-env"]
+    verbs: ["get", "patch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    resourceNames: ["api", "worker"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: identity-bootstrapper
+  namespace: noname
+subjects:
+  - kind: ServiceAccount
+    name: identity-bootstrapper
+    namespace: noname
+roleRef:
+  kind: Role
+  name: identity-bootstrapper
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: identity
+  namespace: noname
+spec:
+  backoffLimit: 2
+  ttlSecondsAfterFinished: 3600
+  template:
+    spec:
+      restartPolicy: Never
+      enableServiceLinks: false
+      serviceAccountName: identity-bootstrapper
+      initContainers:
+        # Native sidecar (k8s >= 1.29). `ZITADEL_ISSUER` is http://localhost:8080 because that is the
+        # issuer baked into every token; inside a pod, localhost is the pod, so loop the name back to the
+        # Service. Same trick as the API and the seed Job.
+        - name: localhost-proxy
+          image: docker.io/alpine/socat:latest
+          restartPolicy: Always
+          args: ["TCP-LISTEN:8080,fork,reuseaddr,bind=127.0.0.1", "TCP:zitadel:8080"]
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
+      containers:
+        - name: identity
+          image: localhost/noname-api:dev
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              /app/node_modules/.bin/tsx scripts/init/zitadel-oidc.ts
+              node scripts/init/patch-secret.mjs /work/identity.env
+          env:
+            - { name: ZITADEL_ISSUER, value: "http://localhost:8080" }
+            - { name: ZITADEL_MACHINE_KEY_PATH, value: "/keys/noname-backend-sa.json" }
+            # Scratch target so the script does not need to rewrite a repository .env.
+            - { name: ENV_FILE, value: "/work/identity.env" }
+            # The ServiceAccount CA is not in Node's trust store; this makes fetch() accept the API server.
+            - { name: NODE_EXTRA_CA_CERTS, value: "/var/run/secrets/kubernetes.io/serviceaccount/ca.crt" }
+            - { name: NODE_ENV, value: development }
+          envFrom:
+            - secretRef: { name: noname-env }
+          volumeMounts:
+            - { name: keys, mountPath: /keys, readOnly: true }
+            - { name: work, mountPath: /work }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { memory: 1Gi }
+      volumes:
+        - name: keys
+          persistentVolumeClaim: { claimName: zitadel-keys, readOnly: true }
+        - name: work
+          emptyDir: {}
