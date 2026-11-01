@@ -104,6 +104,70 @@ Three things this command exists to handle:
 
 The cluster side is unaffected: `scripts/cluster-env.mjs` normalises node IPs back to Service DNS when it builds
 the Secret, so a rewritten `.env` cannot leak a node IP into a pod.
+## 3c. Daily start — four terminals
+
+Infra lives in the cluster; everything else runs on the host. Order matters only for the health checks.
+
+```bash
+# terminal 1 — the one port-forward that is deliberately kept (see 3d)
+kubectl -n noname port-forward svc/zitadel 8080:8080
+
+# terminal 2 — API
+pnpm dev
+
+# terminal 3 — edge (Cloudflare Worker runtime)
+pnpm --filter @noname/workers dev      # http://127.0.0.1:8787
+
+# terminal 4 — client
+pnpm --filter @noname/client dev       # http://localhost:5173
+```
+
+Expected: `zitadel 8080 → 200` on discovery, `api /health → 200`, `edge /health → 200`, client serves HTML.
+Infra needs no terminal at all — it is reached over NodePorts (3b).
+
+**Two failures that look like application bugs and are not** (both cost time on 2026-10-31):
+
+| Symptom | Real cause |
+|---|---|
+| storefront shows `Error: HTTP 400`, edge log says `resolve-slug upstream unreachable … AbortError`, API logs `port 3000 is busy` | **a stale API from an earlier session owned :3000**. The new one could not bind and gave up, so the edge and the browser were talking to a process with old env. Check the log for `port 3000 is busy` before debugging anything else, and kill by command line, not by window title |
+| login returns 500, API log `TypeError: fetch failed … ECONNREFUSED` | **terminal 1 is missing**. Login goes to ZITADEL, which the API reaches at `localhost:8080` |
+
+## 3d. Verify with a real browser (not just curl)
+
+```bash
+pnpm smoke:browser        # visible Chrome, ~40s, writes shot-*.png
+```
+
+`scripts/smoke-browser.mjs` drives **installed Chrome** through `playwright-core` (already in the pnpm store) —
+no browser download, no new dependency, and **not headless**, so it can be watched. It walks the same chain a
+person does:
+
+```
+Chrome → client 5173 → edge 8787 → api 3000 → postgres/redis/zitadel
+```
+
+and checks: storefront renders, a seeded product page renders with its price, the login form exists, **login
+actually leaves `/login`**, the admin dashboard renders, and there are **no 5xx responses and no console
+errors**.
+
+Why a browser and not only HTTP checks: a script proves the hops exist; a browser proves a person can use it.
+Both found different bugs here — the HTTP checks all passed while the page was rendering `Error: HTTP 400`.
+
+## 3e. Why exactly one port-forward stays
+
+The other eight infrastructure services are NodePorts (3b). ZITADEL is not, and that is a decision, not an
+oversight:
+
+- `ZITADEL_ISSUER` is `http://localhost:8080`, and that string is the `iss` claim inside **every token**.
+- A NodePort would make it `172.29.7.40:30808` — and **WSL renumbers the node on every reboot**. So the cost is
+  not one re-init; it is a re-init every time the address moves, plus `hostAliases` in every pod (which read
+  the node IP, so they break too).
+- `localhost` never moves. One process per session is cheaper than a recurring identity ceremony.
+
+In staging and production this disappears entirely: the issuer is a real DNS name, so there is no port-forward,
+no `localhost-proxy` sidecar, and identity is issued once per environment
+([ENVIRONMENTS-AND-PROMOTION](./ENVIRONMENTS-AND-PROMOTION.md) §6).
+
 ## 4. What runs where
 
 ```

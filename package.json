@@ -5,6 +5,7 @@
   "description": "AI-native, declarative full-stack platform. Describe what you want -> AI generates a spec -> spec executes across UI (json-render), backend (XState), and integrations (Nango). Generative content, generative UI, generative logic. Identity-agnostic base — commerce is a Phase 3 use case, not the platform identity.",
   "scripts": {
     "dev": "pnpm --filter @noname/server dev",
+    "smoke:browser": "node scripts/smoke-browser.mjs",
     "build": "pnpm -r build",
     "lint": "biome lint",
     "format": "biome format --write",
