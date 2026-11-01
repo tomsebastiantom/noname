@@ -42,9 +42,9 @@ namespace: noname
 | 7 | apply **vault**, **jaeger**, **nango** | **done** | all three `1/1 Running`; nango `/health` → `{"result":"ok"}` from an in-cluster probe pod |
 | 8 | apply **zitadel** + **keto** (+ migrate job) | **done** | `keto-migrate` Job `Completed`; keto `1/1 Running`; zitadel `1/1 Running` after the service-link fix (§5) |
 | 9 | re-run `init:zitadel` against cluster → new org IDs | **done** | org `397606127111569464`, project `397606456951570488`, client `397606457689833528`; assertion to ZITADEL returns **200** |
-| 10 | build **Containerfiles**: api, worker, eval-worker, client, edge | **partial** | api/worker image built and loaded; browser done; **edge Containerfile + manifest written** (wrangler dev in-container; production is Cloudflare); client and eval-worker still to do |
+| 10 | build **Containerfiles**: api, worker, client, edge | **done** | api/worker (1.6 GB), browser (2.55 GB), client (70 MB, rspack + nginx), edge (1.06 GB, workerd). `eval-worker` has no entrypoint to build — see step 17 |
 | 11 | load images into k3s | **partial** | pipeline proven with the browser: `k3s ctr images ls` lists `localhost/noname-browser`; app images still to build |
-| 12 | apply **app** Deployments + Services | **done** | api `2/2 Running`; `/ready` → `{"ready":true,"checks":{"database":true,"analyticsReady":true}}`; `/health` ok with all redis subsystems true |
+| 12 | apply **app** Deployments + Services | **done** | api `2/2`, worker `2/2`, **client `1/1`** (serves `index.html`), **edge `2/2`** (`/health` 200; `/api` 401 from its auth layer, which proves the nginx→edge→auth chain); `/ready` → `{"ready":true,...}` |
 | 13 | run **migrate** job, then **seed** job | **done** | `migrate` `Completed`; `seed` `Completed`; `machine_definitions=2`, 44 documents, 5 pages, evidence 2 |
 | 14 | apply **browser** (CDP service) | **done** | `playwright --version` → **1.63.0** (pinned, no runtime npm download); log only `Listening on ws://0.0.0.0:3000/`; CDP **200**; `/dev/shm` **2.0G**; 50 font families |
 | 15 | wire eval: `EVAL_CDP_ENDPOINT` + tier 2 check | pending | `noname eval` catches a forced overflow |

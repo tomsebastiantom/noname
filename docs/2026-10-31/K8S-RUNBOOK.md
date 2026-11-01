@@ -72,7 +72,7 @@ namespace: noname
   infra   postgres · dragonfly · clickhouse · s3 (+init Job) · vault · jaeger · nango · keto (+migrate Job) · zitadel
   app     api (2/2: app + localhost-proxy) · worker (2/2) · migrate Job
   eval    browser (CDP on :3000, /dev/shm 2Gi)
-  edge    manifest + Containerfile written, not applied yet
+  web     client (nginx, /api proxied to edge) · edge (workerd via wrangler dev)
 ```
 
 Manifests: `deploy/00-namespace.yaml`, `deploy/infra/*`, `deploy/app/*`, `deploy/browser/*`, `deploy/edge/*`.
@@ -135,9 +135,9 @@ seed Job and identity bootstrap read the machine key from the `zitadel-keys` PVC
 | Gap | Why it is not done | Next action |
 |---|---|---|
 | ~~`seed data machine_definitions=0`~~ | **closed**: identity was re-issued and the seed Job completed (`machine_definitions=2`, 44 documents) | — |
-| `client` image | static rspack build → nginx | write `deploy/client/Containerfile` |
-| `edge` not applied | needs its image built (`deploy/edge/Containerfile`) | build + apply, or accept it stays on the host |
-| `eval-worker` | `packages/eval` has no worker entrypoint yet | implement the eval ladder (RFC-EVAL-SERVICE P1) |
+| ~~`client` image~~ | **done** — `deploy/client/Containerfile` (rspack build + nginx, `/api` proxied to edge); `status` reports `index.html served` | — |
+| **edge SSR returns 503 for tenant hosts** | the worker is running (`/health` 200, `/api` 401 from its auth layer) and nginx proxies to it, but its server-side render resolves no tenant — an application path, not a deployment one | investigate the render/resolve path; the SPA served by `client` works regardless |
+| `eval-worker` | **not a deployment gap**: `packages/eval` is a library (4 of 16 checks) with no queue consumer, so there is nothing to deploy | implement the eval ladder (RFC-EVAL-SERVICE P1), then add the worker |
 | `NetworkPolicy` | k3s ships **Flannel**: accepts the object, enforces nothing | install Calico, or validate in a production-class cluster |
 
 ## 8. Session hygiene — what NOT to redo

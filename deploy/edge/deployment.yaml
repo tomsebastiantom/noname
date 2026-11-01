@@ -2,8 +2,15 @@
 #
 # `wrangler dev --local` runs the worker in workerd with KV/R2 emulated in-process, so no Cloudflare
 # account or network egress is involved. In production this worker deploys to Cloudflare Workers instead —
-# see the header of deploy/edge/Containerfile. The cluster hosts it here only so the local stack is one
-# `kubectl apply` away from complete.
+# see the header of deploy/edge/Containerfile. The cluster hosts it here only so the local stack is
+# complete: the client's nginx proxies /api to it, exactly like the dev server does.
+#
+# Two details that cost real time to discover:
+#   - `wrangler dev` takes its variables from **wrangler.toml**, not from container environment, so the
+#     cluster's origin has to be injected with `--var API_ORIGIN:...`. Setting an env var alone is ignored
+#     and the worker keeps trying `http://127.0.0.1:3000`, which inside a pod is the pod itself.
+#   - `WORKER_SERVER_SECRET` is a secret in the toml-less sense; it is passed through from the Kubernetes
+#     Secret at container start so it never appears in a committed file.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -19,19 +26,35 @@ spec:
       labels: { app: edge }
     spec:
       enableServiceLinks: false
+      initContainers:
+        # Native sidecar: the worker validates tokens against ZITADEL_ISSUER=http://localhost:8080, which
+        # inside a pod is the pod. Same loopback trick as the API, worker and seed Job.
+        - name: localhost-proxy
+          image: docker.io/alpine/socat:latest
+          restartPolicy: Always
+          args: ["TCP-LISTEN:8080,fork,reuseaddr,bind=127.0.0.1", "TCP:zitadel:8080"]
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { memory: 64Mi }
       containers:
         - name: edge
           image: localhost/noname-edge:dev
           imagePullPolicy: IfNotPresent
+          workingDir: /app/packages/workers
+          command:
+            - /bin/sh
+            - -c
+            - |
+              exec /app/packages/workers/node_modules/.bin/wrangler dev --local \
+                --ip 0.0.0.0 --port 8787 \
+                --var API_ORIGIN:http://api:3000 \
+                --var WORKER_SERVER_SECRET:${WORKER_SERVER_SECRET}
           ports:
             - { name: http, containerPort: 8787 }
           envFrom:
             - secretRef: { name: noname-env }
           env:
             - { name: NODE_ENV, value: development }
-            # The worker proxies to the origin; inside the cluster that is the `api` Service, not
-            # localhost. `wrangler dev` also needs the vars its wrangler.toml expects.
-            - { name: API_BASE, value: "http://api:3000" }
           readinessProbe:
             httpGet: { path: /health, port: http }
             initialDelaySeconds: 15

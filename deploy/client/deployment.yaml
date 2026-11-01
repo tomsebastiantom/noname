@@ -1,0 +1,39 @@
+# Client — static bundle on nginx, with /api proxied to the edge worker (same rule as the dev server).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: client
+  namespace: noname
+  labels: { app: client }
+spec:
+  replicas: 1
+  selector:
+    matchLabels: { app: client }
+  template:
+    metadata:
+      labels: { app: client }
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: client
+          image: localhost/noname-client:dev
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 80 }
+          readinessProbe:
+            httpGet: { path: /index.html, port: http }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 256Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: client
+  namespace: noname
+spec:
+  selector: { app: client }
+  ports:
+    - { name: http, port: 80, targetPort: http }

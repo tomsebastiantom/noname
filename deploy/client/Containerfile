@@ -1,0 +1,40 @@
+# Client image — the browser bundle, served by nginx.
+#
+# The client is a static SPA (rspack). Its `/api` calls go to the **edge** worker, which proxies the API;
+# the dev server does exactly that with `context: ["/api"] → http://localhost:8787`, so nginx reproduces the
+# same rule here. `changeOrigin: false` in the dev config matters: the browser's Host header must survive,
+# because the edge resolves the org from the hostname.
+#
+# Two stages: build with the full toolchain, ship only static files on nginx.
+FROM node:24-bookworm-slim AS build
+
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    NODE_ENV=production
+
+RUN corepack enable && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates git && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Manifests first, so the install layer survives source edits.
+COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./
+COPY packages/client/package.json packages/client/
+COPY packages/browser-sdk/package.json packages/browser-sdk/
+COPY packages/shared/package.json packages/shared/
+COPY packages/auth/package.json packages/auth/
+RUN pnpm install --frozen-lockfile || pnpm install
+
+COPY . .
+
+# browser-sdk must be built first: the client imports its built output.
+RUN pnpm --filter @noname/browser-sdk build && pnpm --filter @noname/client build
+
+FROM nginx:1.27-alpine
+
+COPY deploy/client/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/packages/client/dist /usr/share/nginx/html
+
+EXPOSE 80
