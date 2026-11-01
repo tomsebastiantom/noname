@@ -15,8 +15,8 @@ data:
     log:
       level: info
 
-    # DSN overridden by DSN env in docker-compose / K8s
-    dsn: postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable
+    # No `dsn` here: this is a ConfigMap and cannot hold a credential. The DSN comes from the DSN env var,
+    # which is wired to the noname-infra-secrets Secret.
 
     namespaces:
       location: file:///etc/keto/namespaces.ts
@@ -166,7 +166,11 @@ spec:
           image: docker.io/oryd/keto:v25.4.0
           args: ["migrate", "up", "-y", "-c", "/etc/keto/keto.yml"]
           env:
-            - { name: DSN, value: "postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable" }
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: KETO_DSN
           volumeMounts:
             - { name: config, mountPath: /etc/keto }
       volumes:
@@ -196,7 +200,11 @@ spec:
           image: docker.io/oryd/keto:v25.4.0
           args: ["serve", "-c", "/etc/keto/keto.yml"]
           env:
-            - { name: DSN, value: "postgres://noname:noname_dev@postgres:5432/keto?sslmode=disable" }
+            - name: DSN
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: KETO_DSN
           ports:
             - { name: read, containerPort: 4466 }
             - { name: write, containerPort: 4467 }
@@ -257,31 +265,53 @@ spec:
         - name: zitadel
           image: ghcr.io/zitadel/zitadel:latest
           # start-from-init performs the first-instance setup on first boot and is what compose uses.
-          # The masterkey MUST match what pnpm init:zitadel expects and is a dev value.
           args:
             - start-from-init
-            - --masterkey
-            - xV9kL2mN4pQ7rS1tU8wY3aB6cD0eF5hJ
+            # Required: without it ZITADEL ignores ZITADEL_MASTERKEY and exits with
+            #   "no master key provided: masterkey must either be provided by file path, value or
+            #    environment variable"
+            # The value comes from the Secret, because args cannot reference secretKeyRef.
+            - --masterkeyFromEnv
             - --tlsMode
             - disabled
           ports:
             - { name: http, containerPort: 8080 }
           env:
+            # The masterkey is an env var rather than an argument so it can come from the Secret: args
+            # cannot reference secretKeyRef. It must stay constant for the life of an instance, or
+            # existing data cannot be decrypted.
+            - name: ZITADEL_MASTERKEY
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: ZITADEL_MASTERKEY
             - { name: ZITADEL_DATABASE_POSTGRES_HOST, value: postgres }
             - { name: ZITADEL_DATABASE_POSTGRES_PORT, value: "5432" }
             - { name: ZITADEL_DATABASE_POSTGRES_DATABASE, value: zitadel }
             - { name: ZITADEL_DATABASE_POSTGRES_USER_USERNAME, value: noname }
-            - { name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD, value: noname_dev }
+            - name: ZITADEL_DATABASE_POSTGRES_USER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: POSTGRES_PASSWORD
             - { name: ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE, value: disable }
             - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME, value: noname }
-            - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD, value: noname_dev }
+            - name: ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: POSTGRES_PASSWORD
             - { name: ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE, value: disable }
             - { name: ZITADEL_EXTERNALSECURE, value: "false" }
             - { name: ZITADEL_EXTERNALPORT, value: "8080" }
             - { name: ZITADEL_EXTERNALDOMAIN, value: localhost }
             - { name: ZITADEL_TLS_ENABLED, value: "false" }
             - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME, value: admin }
-            - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD, value: NonameAdmin1! }
+            - name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: ZITADEL_ADMIN_PASSWORD
             - { name: ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED, value: "false" }
             - { name: ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME, value: noname-backend }
             - { name: ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME, value: noname-backend }
@@ -316,7 +346,7 @@ metadata:
   namespace: noname
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
+  # see postgres.yaml: provisioner is an environment concern
   resources:
     requests:
       storage: 64Mi

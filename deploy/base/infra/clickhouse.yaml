@@ -10,7 +10,7 @@ metadata:
   namespace: noname
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
+  # see postgres.yaml: provisioner is an environment concern, not a property of the shape
   resources:
     requests:
       storage: 10Gi
@@ -40,7 +40,11 @@ spec:
           env:
             - { name: CLICKHOUSE_DB, value: app }
             - { name: CLICKHOUSE_USER, value: noname }
-            - { name: CLICKHOUSE_PASSWORD, value: noname_dev }
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: CLICKHOUSE_PASSWORD
           volumeMounts:
             - { name: data, mountPath: /var/lib/clickhouse }
           readinessProbe:

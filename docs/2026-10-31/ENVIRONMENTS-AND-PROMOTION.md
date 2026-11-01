@@ -155,10 +155,10 @@ overlays/prod + prod worker          ← promote the same digest
 |---|---|---|
 | 1 | container registry | images move by `podman save` → `k3s ctr import`, which only works on one machine |
 | 2 | Ingress + TLS | no public entry point; the edge has no origin to reach |
-| 3 | external secrets | `noname_dev`, `dev-root-token`, the ZITADEL masterkey are in the manifests |
+| 3 | external secrets | **half done**: `base/` no longer contains a single credential — every value is a `secretKeyRef` to `noname-infra-secrets`, and the dev values live in `overlays/local/secrets.yaml`. Still needed: that overlay must reference an external manager (Vault/SOPS/ESO) instead of a checked-in Secret |
 | 4 | managed storage + backups | `local-path` PVCs are single-node, with no restore story |
 | 5 | NetworkPolicy enforcement | Flannel accepts the object and enforces nothing (needs Calico/Cilium) |
-| 6 | base/overlays split (§5) | dev values sit one `apply` away from production |
+| 6 | ~~base/overlays split (§5)~~ | **done** — structure split, and credentials + storage class extracted. `base/` is now credential-free; the values live in `overlays/local` (§11) |
 | 7 | eval worker | the fleet is healthy but **idle** — nothing drives it, so its value is unproven |
 
 ## 9. Decision log (this session)
@@ -192,3 +192,26 @@ overlay re-provisioned identity and re-seeded the database. They are now exclude
 | `s3-init` | yes | checks for the bucket before creating it |
 | `identity` | **no** | mints IDs and invalidates tokens — an act, not a state |
 | `seed` | **no** | writes demo content — an act, not a state |
+## 11. What "extracting the dev values" actually required
+
+Done: 18 credential sites and 3 storage-class declarations moved out of `base/`.
+
+| Value | Where it lives now | Note |
+|---|---|---|
+| postgres / clickhouse / zitadel / nango passwords | `overlays/local/secrets.yaml` | one Secret, `noname-infra-secrets`, referenced by `valueFrom.secretKeyRef` |
+| vault root token, s3rver keys | same | dev-only by nature |
+| ZITADEL masterkey | same, via **`--masterkeyFromEnv`** | args cannot reference `secretKeyRef`; and ZITADEL ignores the env var unless that flag is present |
+| keto DSN | same (`KETO_DSN`) | the keto config is a ConfigMap, and a ConfigMap cannot hold a credential — the `dsn:` line was removed so the env var wins |
+| `storageClassName` | `overlays/local` as a patch | base omits it; a **bound** PVC cannot have the field removed, so the overlay adds it explicitly |
+
+URLs and hosts (`postgres:5432`, `zitadel:8080`, `api:3000`) stay in `base/` on purpose: they are the wiring,
+not the environment. What differs per environment is credentials, storage class, replicas, ingress and image
+tags.
+
+Three traps surfaced while doing it, all now in the runbook's failure catalogue:
+
+1. **`--masterkeyFromEnv`** — the env var alone is silently ignored and the container exits.
+2. **PVC immutability** — `storageClassName` cannot be removed from a bound claim, so "omit it in base" only
+   works if the overlay adds it back.
+3. **Job immutability on spec change** — moving credentials into `secretKeyRef` changes a Job's pod template,
+   so `keto-migrate`, `s3-init` and `migrate` had to be deleted and re-applied.

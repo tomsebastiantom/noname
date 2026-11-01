@@ -37,7 +37,8 @@ metadata:
   namespace: noname
 spec:
   accessModes: ["ReadWriteOnce"]
-  storageClassName: local-path
+  # storageClassName intentionally omitted: base must not pin a provisioner. The cluster default
+  # applies locally (k3s: local-path); staging/prod overlays set their own explicitly.
   resources:
     requests:
       storage: 10Gi
@@ -66,7 +67,11 @@ spec:
             - { name: postgres, containerPort: 5432 }
           env:
             - { name: POSTGRES_USER, value: noname }
-            - { name: POSTGRES_PASSWORD, value: noname_dev }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: POSTGRES_PASSWORD
             - { name: POSTGRES_DB, value: app }
           volumeMounts:
             - { name: data, mountPath: /var/lib/postgresql/data }

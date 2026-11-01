@@ -15,6 +15,19 @@ namespace: noname
 
 resources:
   - ../../base
+  # Dev credentials. `base/` references these keys by name; the values only exist here. A staging or production
+  # overlay must not copy this file — it references an external secret manager instead.
+  - secrets.yaml
+
+patches:
+  # `base/` deliberately omits storageClassName (a provisioner is an environment concern), but a *bound* PVC
+  # cannot have the field removed - "spec is immutable after creation". So the local overlay sets it explicitly
+  # instead of inheriting the cluster default. Staging/prod overlays do the same with their own class.
+  - target: { kind: PersistentVolumeClaim }
+    patch: |-
+      - op: add
+        path: /spec/storageClassName
+        value: local-path
 
 # Local-only knobs live here, never in base/.
 # Right now base/ still carries local values (see its header); this block is where they will land when they are

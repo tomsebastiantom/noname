@@ -28,7 +28,11 @@ spec:
           ports:
             - { name: http, containerPort: 8200 }
           env:
-            - { name: VAULT_DEV_ROOT_TOKEN_ID, value: dev-root-token }
+            - name: VAULT_DEV_ROOT_TOKEN_ID
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: VAULT_ROOT_TOKEN
             - { name: VAULT_DEV_LISTEN_ADDRESS, value: "0.0.0.0:8200" }
           readinessProbe:
             exec:
@@ -134,14 +138,30 @@ spec:
             - { name: NANGO_DB_HOST, value: postgres }
             - { name: NANGO_DB_PORT, value: "5432" }
             - { name: NANGO_DB_USER, value: noname }
-            - { name: NANGO_DB_PASSWORD, value: noname_dev }
+            - name: NANGO_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: NANGO_DB_PASSWORD
             - { name: NANGO_DB_NAME, value: nango }
             - { name: NANGO_DB_SSL, value: "false" }
-            - { name: RECORDS_DATABASE_URL, value: postgresql://noname:noname_dev@postgres:5432/nango }
+            - name: RECORDS_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: RECORDS_DATABASE_URL
             - { name: NANGO_REDIS_URL, value: redis://dragonfly:6379 }
             # Must be a UUID - the image's schema validates the shape, not just presence.
-            - { name: NANGO_SECRET_KEY, value: 256716d6-6cb0-4c99-91ab-cf44fb9034fb }
-            - { name: NANGO_ENCRYPTION_KEY, value: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA= }
+            - name: NANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: NANGO_SECRET_KEY
+            - name: NANGO_ENCRYPTION_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: noname-infra-secrets
+                  key: NANGO_ENCRYPTION_KEY
           readinessProbe:
             # The image has node but no wget/curl; probe with node's own fetch.
             exec:
