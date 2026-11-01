@@ -157,7 +157,7 @@ overlays/prod + prod worker          ← promote the same digest
 | 2 | Ingress + TLS | no public entry point; the edge has no origin to reach |
 | 3 | external secrets | **half done**: `base/` no longer contains a single credential — every value is a `secretKeyRef` to `noname-infra-secrets`, and the dev values live in `overlays/local/secrets.yaml`. Still needed: that overlay must reference an external manager (Vault/SOPS/ESO) instead of a checked-in Secret |
 | 4 | managed storage + backups | `local-path` PVCs are single-node, with no restore story |
-| 5 | NetworkPolicy enforcement | Flannel accepts the object and enforces nothing (needs Calico/Cilium) |
+| 5 | ~~NetworkPolicy enforcement~~ | **closed by decision** — see §12. Policy is a staging/production requirement, not a laptop one |
 | 6 | ~~base/overlays split (§5)~~ | **done** — structure split, and credentials + storage class extracted. `base/` is now credential-free; the values live in `overlays/local` (§11) |
 | 7 | eval worker | the fleet is healthy but **idle** — nothing drives it, so its value is unproven |
 
@@ -215,3 +215,31 @@ Three traps surfaced while doing it, all now in the runbook's failure catalogue:
    works if the overlay adds it back.
 3. **Job immutability on spec change** — moving credentials into `secretKeyRef` changes a Job's pod template,
    so `keto-migrate`, `s3-init` and `migrate` had to be deleted and re-applied.
+## 12. Decision: no CNI replacement on the local cluster
+
+**NetworkPolicy will not be enforced locally, and no policy manifests will be authored against this cluster.**
+
+Why:
+
+- k3s ships **Flannel**, which accepts `NetworkPolicy` objects and enforces nothing. The object applying
+  successfully is therefore *not* evidence of anything — and recording it as done would be exactly the kind of
+  "silence is not success" mistake this repo keeps catching.
+- Replacing Flannel means restarting k3s with `--flannel-backend=none --disable-network-policy` and applying
+  Calico. That restarts cluster networking: **every pod bounces**, and a mid-way failure leaves the local
+  environment broken. All of that to prove a property that only staging and production must guarantee.
+- Policy is an *environment* property (like TLS and replica counts), not a property of the application shape.
+  It belongs in `overlays/staging` and `overlays/prod`, where an enforcing CNI exists by default on managed
+  clusters.
+
+What this costs, stated plainly: locally we cannot prove that the browser can reach the tenant edge and nothing
+else (the `S1.no_internal_egress` check). That check is marked unverifiable here rather than passing by default.
+
+What staging must do instead:
+
+1. confirm the CNI enforces (Calico/Cilium on EKS/AKS/GKE, or install it),
+2. author `NetworkPolicy` in the staging overlay: default-deny ingress, then explicit allows
+   (browser → edge, api → postgres/dragonfly/clickhouse/s3, ingress → client/zitadel/api),
+3. prove it with two connections — one that must succeed, one that must be refused — and record both.
+
+Until that exists, `deploy/base/` contains **no** NetworkPolicy objects. An unenforced policy file is worse than
+none: it looks like a control and is not one.

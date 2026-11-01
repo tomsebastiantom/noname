@@ -1,0 +1,26 @@
+docs: close the NetworkPolicy gap by decision, not by installing Calico
+
+Policy enforcement was the last gap that looked "doable locally". It is not, and pretending
+otherwise would be worse than leaving it open.
+
+Flannel accepts NetworkPolicy objects and enforces nothing, so a file applying cleanly proves
+nothing. Replacing Flannel means restarting k3s with --flannel-backend=none
+--disable-network-policy and applying Calico: cluster networking restarts, every pod bounces,
+and a mid-way failure leaves the local environment broken - all to prove a property only
+staging and production must guarantee. Policy is an environment property (like TLS and
+replica counts), not part of the application shape.
+
+So:
+
+  - the gap is closed by decision, not implemented
+  - deploy/base/ contains NO NetworkPolicy objects. An unenforced policy file looks like a
+    control and is not one.
+  - the cost is stated: S1.no_internal_egress cannot be verified locally, and is marked
+    unverifiable here rather than passing by default
+  - section 12 records what staging must do instead: confirm the CNI enforces, author
+    default-deny plus explicit allows in the staging overlay, and prove it with one connection
+    that must succeed and one that must be refused
+
+Updated in three places so the answer is the same wherever it is read: the environments doc
+(new section 12 + gap table), the migration tracker (step 16 and the Flannel blocker row), and
+the runbook's gap table.

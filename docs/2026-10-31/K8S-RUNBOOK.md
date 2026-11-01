@@ -149,7 +149,7 @@ seed Job and identity bootstrap read the machine key from the `zitadel-keys` PVC
 | ~~`client` image~~ | **done** — `deploy/client/Containerfile` (rspack build + nginx, `/api` proxied to edge); `status` reports `index.html served` | — |
 | **client `nginx` proxies `/api` to a host-run edge** | the edge is not in the cluster by design ([EDGE.md](./EDGE.md)); in-cluster, `/api` therefore 502s until `wrangler dev` is running on the host | expected — start the edge locally, or test the origin directly via port-forward |
 | `eval-worker` | **not a deployment gap**: `packages/eval` is a library (4 of 16 checks) with no queue consumer, so there is nothing to deploy | implement the eval ladder (RFC-EVAL-SERVICE P1), then add the worker |
-| `NetworkPolicy` | k3s ships **Flannel**: accepts the object, enforces nothing | install Calico, or validate in a production-class cluster |
+| `NetworkPolicy` | k3s ships **Flannel**: accepts the object, enforces nothing | **won't fix locally** (decision in ENVIRONMENTS-AND-PROMOTION §12): authoring policy is a staging task, verified there |
 
 ## 8. Session hygiene — what NOT to redo
 
