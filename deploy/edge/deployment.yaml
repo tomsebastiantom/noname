@@ -42,19 +42,16 @@ spec:
           image: localhost/noname-edge:dev
           imagePullPolicy: IfNotPresent
           workingDir: /app/packages/workers
-          command:
-            - /bin/sh
-            - -c
-            - |
-              exec /app/packages/workers/node_modules/.bin/wrangler dev --local \
-                --ip 0.0.0.0 --port 8787 \
-                --var API_ORIGIN:http://api:3000 \
-                --var WORKER_SERVER_SECRET:${WORKER_SERVER_SECRET}
+          # The image's entrypoint seeds the emulated R2 bucket from the built client, then starts the worker
+          # (see deploy/edge/entrypoint.sh). Variables still have to be passed explicitly: `wrangler dev` reads
+          # them from wrangler.toml, not from the container environment.
+          command: ["/app/deploy/edge/entrypoint.sh"]
           ports:
             - { name: http, containerPort: 8787 }
           envFrom:
             - secretRef: { name: noname-env }
           env:
+            - { name: API_ORIGIN, value: "http://api:3000" }
             - { name: NODE_ENV, value: development }
           readinessProbe:
             httpGet: { path: /health, port: http }

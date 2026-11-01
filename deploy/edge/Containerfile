@@ -40,8 +40,20 @@ RUN pnpm install --frozen-lockfile || pnpm install
 
 COPY . .
 
+# The worker serves the SPA from R2 (`/_assets/*` and the "/" fallback). Build the client into the image so
+# the entrypoint can seed the local emulated bucket — otherwise every page request is a 503.
+COPY packages/client/package.json packages/client/
+COPY packages/browser-sdk/package.json packages/browser-sdk/
+COPY packages/shared/package.json packages/shared/
+COPY packages/auth/package.json packages/auth/
+RUN pnpm install --frozen-lockfile || pnpm install
+RUN pnpm --filter @noname/browser-sdk build && pnpm --filter @noname/client build
+
+COPY deploy/edge/entrypoint.sh /app/deploy/edge/entrypoint.sh
+RUN chmod +x /app/deploy/edge/entrypoint.sh
+
 WORKDIR /app/packages/workers
 EXPOSE 8787
 # `--local` keeps everything in-process (workerd + emulated KV/R2) so no Cloudflare account is needed.
 # `--ip 0.0.0.0` is required for the port to be reachable from outside the container.
-CMD ["pnpm", "exec", "wrangler", "dev", "--local", "--ip", "0.0.0.0", "--port", "8787"]
+CMD ["/app/deploy/edge/entrypoint.sh"]
