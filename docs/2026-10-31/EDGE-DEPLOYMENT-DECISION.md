@@ -21,12 +21,13 @@ Its Cloudflare-specific surface is **three KV operations**:
 | `env.KV.put(key, value, { expirationTtl })` | `src/cache.ts:41` | populate that cache |
 | `env.KV.delete(key)` | `src/jwks-cache.ts:88` | invalidate a cached JWKS |
 
-`R2` is **declared in the `Env` type and in `wrangler.toml` but never used by any code path** (verified by
-grep: the only occurrence is the type declaration). So the "R2 binding" is dead weight in the worker, not a
-dependency.
+`R2` is **used**, in two places: `src/routes/static.ts` (serves `/_assets/*`) and `src/routes/storefront.ts`
+(serves `_assets/index.html` as the SPA fallback). An earlier version of this document claimed it was unused;
+that was wrong — the grep behind it did not recurse into `src/routes/`. Full inventory and the corrected
+architecture analysis: [`EDGE-ARCHITECTURE-ANALYSIS.md`](./EDGE-ARCHITECTURE-ANALYSIS.md).
 
-That matters: **the portability problem is far smaller than it looks.** It is not "Cloudflare primitives
-everywhere"; it is one small cache interface.
+That also explains the 503 in the local cluster: the emulated bucket is empty because nothing uploads the client
+build outside `wrangler deploy`. It is a pipeline gap, not a Kubernetes one.
 
 ## 2. The three ways to host it
 
