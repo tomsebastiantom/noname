@@ -1,0 +1,29 @@
+refactor(deploy): kustomize base + local overlay, and the trap that came with it
+
+Manifests move from one flat pile to an environment-scoped structure:
+
+  deploy/base/                the shape: namespace, infra, app, jobs, browser
+  deploy/overlays/local/      this environment: base + namespace: noname
+
+Everything applies with `kubectl apply -k deploy/overlays/local`. Applying individual
+files - `kubectl apply -f deploy/...` - is no longer valid: there is no flat manifest root
+any more, which is the point. A local-only setting cannot reach another environment
+because it lives in the overlay, and `base/` does not contain it.
+
+`scripts/k8s.mjs` now uses `-k` in `up` and the job paths in `identity`/`seed` follow the
+move. Docs updated (runbook, tracker, LOCAL-K8S-AND-BROWSER) for the new paths.
+
+The trap this surfaced, and it is worth the paragraph: a Job inside an overlay re-runs on
+every `apply -k`. The first version listed jobs/identity.yaml and jobs/seed.yaml in the
+base, so re-applying the overlay re-provisioned identity and re-seeded the database -
+visible immediately as fresh identity and seed pods. They are now excluded:
+
+  in the overlay   migrate (schema convergence is steady state), keto-migrate
+                   (migrate up is idempotent), s3-init (checks before creating)
+  applied by hand  identity (mints IDs, invalidates tokens), seed (writes demo content)
+
+Both are deliberate acts, reachable through the CLI, and the rule now matches the one
+already used for seeding everywhere else in this repo.
+
+Verified: `kubectl kustomize deploy/overlays/local` -> 34 objects; applied to the live
+cluster; `node scripts/k8s.mjs status` -> all checks passed (exit 0).

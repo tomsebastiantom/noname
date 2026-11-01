@@ -61,7 +61,7 @@ minikube is the obvious choice and it is the one that **cannot** be used here wi
 ## 3. Browser in the cluster — the recipe
 
 ```yaml
-# deploy/browser/deployment.yaml (essentials)
+# deploy/base/browser/deployment.yaml (essentials)
 spec:
   replicas: 1
   template:

@@ -55,13 +55,13 @@ namespace: noname
 
 | File | Purpose |
 |---|---|
-| `deploy/00-namespace.yaml` | `noname` namespace |
-| `deploy/infra/postgres.yaml` | Deployment + Service + PVC + init ConfigMap (extra DBs & `pgcrypto`/`uuid-ossp`/`pg_trgm`) |
-| `deploy/infra/dragonfly.yaml` | Deployment + Service, with the three BullMQ-critical flags |
-| `deploy/browser/deployment.yaml` | browser Deployment + Service (pinned image, 2Gi `emptyDir` shm) |
+| `deploy/base/namespace.yaml` | `noname` namespace |
+| `deploy/base/infra/postgres.yaml` | Deployment + Service + PVC + init ConfigMap (extra DBs & `pgcrypto`/`uuid-ossp`/`pg_trgm`) |
+| `deploy/base/infra/dragonfly.yaml` | Deployment + Service, with the three BullMQ-critical flags |
+| `deploy/base/browser/deployment.yaml` | browser Deployment + Service (pinned image, 2Gi `emptyDir` shm) |
 | `deploy/browser/Containerfile` | official Playwright image **+ the CLI baked in** — fixes the unpinned runtime download |
-| `deploy/infra/clickhouse.yaml` | Deployment + Service + local-path PVC |
-| `deploy/infra/s3.yaml` | Deployment + Service + idempotent `s3-init` Job |
+| `deploy/base/infra/clickhouse.yaml` | Deployment + Service + local-path PVC |
+| `deploy/base/infra/s3.yaml` | Deployment + Service + idempotent `s3-init` Job |
 
 Deliberately **not** written yet: app manifests, because they need images first, and writing manifests for
 images that do not exist produces files nobody has run.
@@ -85,7 +85,7 @@ The compose stack (9 containers in `podman-noname`) **and** the cluster (9 pods 
 | Blocker | Decision |
 |---|---|
 | **No container registry** | images are built with `podman build` and loaded with `podman save \| k3s ctr images import`. No registry needed locally; production uses one tag. |
-| **Zitadel state** | ~~recreate in-cluster and re-run `init:zitadel` by hand~~ → **automated**. `node scripts/k8s.mjs identity --yes` applies `deploy/jobs/identity.yaml`, which runs the bootstrap **inside** the cluster: the machine key comes from the `zitadel-keys` PVC, `scripts/init/zitadel-oidc.ts` provisions org/project/roles/app, and `scripts/init/patch-secret.mjs` merges the new IDs into `noname-env` through the Kubernetes API (narrow RBAC: get/patch that Secret and two Deployments) and rolls api + worker. `node scripts/k8s.mjs pull` then writes `.env`, `wrangler.toml` and `oidc.json` from the Secret — those are **derived** artifacts now, not the source of truth. |
+| **Zitadel state** | ~~recreate in-cluster and re-run `init:zitadel` by hand~~ → **automated**. `node scripts/k8s.mjs identity --yes` applies `deploy/base/jobs/identity.yaml`, which runs the bootstrap **inside** the cluster: the machine key comes from the `zitadel-keys` PVC, `scripts/init/zitadel-oidc.ts` provisions org/project/roles/app, and `scripts/init/patch-secret.mjs` merges the new IDs into `noname-env` through the Kubernetes API (narrow RBAC: get/patch that Secret and two Deployments) and rolls api + worker. `node scripts/k8s.mjs pull` then writes `.env`, `wrangler.toml` and `oidc.json` from the Secret — those are **derived** artifacts now, not the source of truth. |
 | **Edge is a Cloudflare Worker** | `wrangler dev` is a dev tool, not a runtime. Options: (a) run `workerd` in a container, (b) run wrangler in a container — fragile, (c) keep edge outside the cluster initially and document it. **Pending decision**, tracked as a blocker rather than hand-waved. |
 | **Client is a static bundle** | rspack build → nginx image. Straightforward. |
 | **Flannel CNI** | `NetworkPolicy` is accepted and **unenforced**. Policy work is blocked until Calico/Cilium is installed; do not record "policy applied" as done before that. |
@@ -115,4 +115,4 @@ The compose stack (9 containers in `podman-noname`) **and** the cluster (9 pods 
 | 16:1x | **compose stopped** (`podman compose down`, volumes kept) — the cluster is now the only stack |
 | 16:2x | API image built (1.26 GB) → `podman save` → `k3s ctr images import`; `migrate` Job `Completed` |
 | 16:4x | **api `2/2 Running`**, `/ready` true (db + analytics), `/health` ok, tracing to `jaeger:4318`. Six defects found and fixed — see §5 |
-| 16:0x | app manifests written (`deploy/app/api.yaml`: api + worker + migrate Job + socat sidecar, one Secret); `deploy/app/server.Containerfile` + `.dockerignore` written; image build running (pnpm install inside the container is the slow step) |
+| 16:0x | app manifests written (`deploy/base/app/api.yaml`: api + worker + migrate Job + socat sidecar, one Secret); `deploy/app/server.Containerfile` + `.dockerignore` written; image build running (pnpm install inside the container is the slow step) |

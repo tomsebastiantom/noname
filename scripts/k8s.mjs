@@ -257,9 +257,11 @@ async function up({ rebuild = false, skipImages = false } = {}) {
   // A cold k3s start brings the API server up in ~10 s here, but give a slow host room.
   await waitFor("node", probes.node, { timeoutMs: 180_000, intervalMs: 3_000 });
 
-  step("namespace + infra");
-  must("kubectl", ["apply", "-f", "deploy/00-namespace.yaml"]);
-  must("kubectl", ["apply", "-f", "deploy/infra/"]);
+  // One kustomize overlay for the whole shape: base + the local overlay. Applying individual files was how
+  // dev values ended up one careless `apply -f deploy/` away from another environment - see
+  // docs/2026-10-31/ENVIRONMENTS-AND-PROMOTION.md §5.
+  step("namespace + infra (kustomize overlay)");
+  must("kubectl", ["apply", "-k", "deploy/overlays/local"]);
   for (const app of ["postgres", "dragonfly", "clickhouse", "s3", "vault", "jaeger", "nango", "keto", "zitadel"]) {
     await waitFor(app, () => probes.podRunning(app), { timeoutMs: 420_000 });
   }
@@ -287,9 +289,9 @@ async function up({ rebuild = false, skipImages = false } = {}) {
     }
   }
 
-  step("migrate Job (immutable: delete, then apply)");
+  step("migrate Job (immutable: delete, then re-apply the overlay)");
   sh("kubectl", ["-n", NS, "delete", "job", "migrate", "--ignore-not-found"]);
-  must("kubectl", ["apply", "-f", "deploy/app/api.yaml"]);
+  must("kubectl", ["apply", "-k", "deploy/overlays/local"]);
   await waitFor("migrate", () => probes.jobDone("migrate"), { timeoutMs: 300_000 });
 
   step("rollout");
@@ -297,10 +299,9 @@ async function up({ rebuild = false, skipImages = false } = {}) {
   must("kubectl", ["-n", NS, "rollout", "status", "deploy/worker", "--timeout=300s"]);
   await waitFor("api /ready", probes.apiReady, { timeoutMs: 300_000 });
 
-  // The client last: its nginx proxies /api to the edge, and the edge is NOT in the cluster (see
-  // docs/2026-10-31/EDGE-DEVELOPMENT.md) - it runs on the host via `wrangler dev`.
+  // The client is part of the overlay; it is stated separately here because its nginx proxies /api to the edge,
+  // and the edge is NOT in the cluster (docs/2026-10-31/EDGE.md) - it runs on the host via `wrangler dev`.
   step("client");
-  must("kubectl", ["apply", "-f", "deploy/client/deployment.yaml"]);
   must("kubectl", ["-n", NS, "rollout", "status", "deploy/client", "--timeout=300s"]);
 
   return status();
@@ -312,7 +313,7 @@ async function up({ rebuild = false, skipImages = false } = {}) {
  *
  * The earlier flow ran on the host: port-forward, `pnpm init:zitadel`, regenerate `.env.cluster`, apply
  * the Secret. That made the developer's `.env` the source of truth for cluster identity, so a fresh clone
- * could not reproduce the cluster. `deploy/jobs/identity.yaml` now does all of it in-cluster —
+ * could not reproduce the cluster. `deploy/base/jobs/identity.yaml` now does all of it in-cluster —
  * `scripts/init/zitadel-oidc.ts` reads the machine key from the `zitadel-keys` PVC, and
  * `scripts/init/patch-secret.mjs` merges the results into `noname-env` through the Kubernetes API and
  * rolls api + worker. No kubectl binary, no host copy, narrow RBAC.
@@ -333,7 +334,7 @@ async function identity({ yes = false } = {}) {
 
   step("identity Job (in-cluster)");
   sh("kubectl", ["-n", NS, "delete", "job", "identity", "--ignore-not-found"]);
-  must("kubectl", ["apply", "-f", "deploy/jobs/identity.yaml"]);
+  must("kubectl", ["apply", "-f", "deploy/base/jobs/identity.yaml"]);
   await waitFor("identity", () => probes.jobDone("identity"), { timeoutMs: 600_000 });
   console.log(must("kubectl", ["-n", NS, "logs", "job/identity", "-c", "identity", "--tail=8"]).out);
 
@@ -406,7 +407,7 @@ async function pullHostIdentity() {
 async function seed() {
   step("seed Job");
   sh("kubectl", ["-n", NS, "delete", "job", "seed", "--ignore-not-found"]);
-  must("kubectl", ["apply", "-f", "deploy/jobs/seed.yaml"]);
+  must("kubectl", ["apply", "-f", "deploy/base/jobs/seed.yaml"]);
   await waitFor("seed", () => probes.jobDone("seed"), { timeoutMs: 900_000, intervalMs: 5_000 });
   console.log(must("kubectl", ["-n", NS, "logs", "job/seed", "--tail=12"]).out);
   ok("seed completed");

@@ -171,6 +171,24 @@ overlays/prod + prod worker          ← promote the same digest
 | **Services stay on the host** (`pnpm dev`) | k8s makes iteration 3–5 minutes per change; the cluster is for the fleet and for parity, not for speed | decided |
 | **Browser fleet lives in k8s** | cgroups isolation per browser, `/dev/shm` sizing, `/pressure` autoscaling — none of which compose can do | deployed, **idle until eval exists** |
 | **Compose stays** as a first-class path | contributors without a cluster; also the fallback when the cluster is down | documented (§4) |
-| **kustomize base + overlays**, not Helm | built into `kubectl`, no packaging requirement, and the property that local settings cannot leak into prod | **pending** (§5) |
-| **Identity is per environment**, bootstrapped by an in-cluster Job | `init:zitadel` mints IDs and invalidates tokens; the host `.env` must stop being the source of truth | done (`deploy/jobs/identity.yaml`) |
+| **kustomize base + overlays**, not Helm | built into `kubectl`, no packaging requirement, and the property that local settings cannot leak into prod | **done** — `deploy/base/` + `deploy/overlays/local/`; 34 objects, cluster verified green |
+| **Identity is per environment**, bootstrapped by an in-cluster Job | `init:zitadel` mints IDs and invalidates tokens; the host `.env` must stop being the source of truth | done (`deploy/base/jobs/identity.yaml`) |
 | **Promote digests, never rebuild** | a rebuild silently changes the artifact that was verified | policy (§7) |
+## 10. Applying the layout — one rule and one trap
+
+```bash
+kubectl apply -k deploy/overlays/local     # correct
+kubectl apply -f deploy/                   # wrong: no longer a manifest root, and never environment-scoped
+```
+
+**The trap found while wiring this:** a Job inside the overlay re-runs on every `apply -k`. The first
+implementation listed `jobs/identity.yaml` and `jobs/seed.yaml` in `base/kustomization.yaml`, and re-applying the
+overlay re-provisioned identity and re-seeded the database. They are now excluded and applied explicitly:
+
+| Job | In the overlay? | Why |
+|---|---|---|
+| `migrate` | yes | schema convergence *is* steady state; the CLI deletes and re-creates it because Jobs are immutable |
+| `keto-migrate` | yes | `migrate up` is idempotent |
+| `s3-init` | yes | checks for the bucket before creating it |
+| `identity` | **no** | mints IDs and invalidates tokens — an act, not a state |
+| `seed` | **no** | writes demo content — an act, not a state |

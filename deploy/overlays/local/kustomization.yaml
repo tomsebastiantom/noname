@@ -1,0 +1,28 @@
+# Local overlay — the cluster's only job here is infra + the browser fleet.
+#
+# Services (api, worker) and the client are NOT the way this developer works locally: they run from the host
+# with `pnpm dev` / rspack, against this cluster's infra through port-forwards. They are applied here anyway
+# because the parity check ("do the manifests still work?") needs them, and because staging uses the same base
+# plus its own overlay. See docs/2026-10-31/ENVIRONMENTS-AND-PROMOTION.md §1.
+#
+# Access: no NodePort. `kubectl -n noname port-forward svc/<service> <port>:<port>` — the map is in §3 of that
+# document. Nine explicit forwards are preferable to binding a port on every node, which would bypass Ingress,
+# TLS and NetworkPolicy.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: noname
+
+resources:
+  - ../../base
+
+# Local-only knobs live here, never in base/.
+# Right now base/ still carries local values (see its header); this block is where they will land when they are
+# extracted, e.g.:
+#
+#   patches:
+#     - target: { kind: Deployment, name: api }
+#       patch: |-
+#         - { op: replace, path: /spec/replicas, value: 1 }
+#
+# Kept empty on purpose: an empty, working overlay proves the split before anything is moved into it.

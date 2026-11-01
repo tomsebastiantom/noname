@@ -81,7 +81,9 @@ namespace: noname
   web     client (nginx; /api is proxied to the edge, which runs on the HOST — not in the cluster)
 ```
 
-Manifests: `deploy/00-namespace.yaml`, `deploy/infra/*`, `deploy/app/*`, `deploy/browser/*`, `deploy/edge/*`.
+Manifests: **kustomize** — `deploy/base/` (the shape) + `deploy/overlays/local/` (this environment). Apply with
+`kubectl apply -k deploy/overlays/local`; never `kubectl apply -f deploy/`. One-shot Jobs (`identity`, `seed`)
+are deliberately *not* in the overlay: they are deliberate acts, applied through the CLI.
 
 ## 5. Two designs that look odd and are not
 
@@ -169,7 +171,7 @@ node scripts/k8s.mjs identity --yes    # provision in-cluster, patch the Secret,
 node scripts/k8s.mjs pull              # sync host files (.env, wrangler.toml, oidc.json) from the Secret
 ```
 
-`deploy/jobs/identity.yaml` does the work:
+`deploy/base/jobs/identity.yaml` does the work:
 
 1. mounts the machine key from the `zitadel-keys` **PVC** (read-only) — written there by `start-from-init`
 2. runs `scripts/init/zitadel-oidc.ts` with `ENV_FILE` pointed at a scratch file, so it never touches a
@@ -178,7 +180,7 @@ node scripts/k8s.mjs pull              # sync host files (.env, wrangler.toml, o
    the Kubernetes API and rolls `api` + `worker`
 
 No `kubectl` binary in the image, no host `cp`, no port-forward. RBAC is narrow
-(`deploy/jobs/identity.yaml`): `get`/`patch` on that one Secret and on those two Deployments, nothing
+(`deploy/base/jobs/identity.yaml`): `get`/`patch` on that one Secret and on those two Deployments, nothing
 cluster-wide.
 
 Two details that matter:

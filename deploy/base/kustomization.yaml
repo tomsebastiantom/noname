@@ -1,0 +1,42 @@
+# Environment-neutral shape of the platform.
+#
+# What belongs here: the objects, their names, their wiring. What does NOT belong here: anything that only
+# makes sense in one environment — dev passwords, `local-path` storage, TLS hosts, replica counts tuned for a
+# laptop. Those live in `deploy/overlays/<env>/`, which is what makes it structurally impossible for a
+# development shortcut to be applied to production by accident (see docs/2026-10-31/ENVIRONMENTS-AND-PROMOTION.md).
+#
+# Honest status: the manifests currently still carry local values (dev passwords, `local-path`, single
+# replicas) because they were promoted from a working cluster rather than designed up front. Extracting them
+# into `overlays/local` is the next step and is tracked in the doc's gap table; doing it here in one go would
+# have meant editing every file without being able to verify the cluster still came up.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+
+  # infra — stateful services the app depends on
+  - infra/postgres.yaml
+  - infra/dragonfly.yaml
+  - infra/clickhouse.yaml
+  - infra/s3.yaml
+  - infra/support.yaml # vault, jaeger, nango
+  - infra/zitadel-keto.yaml # zitadel, keto, keto-migrate Job
+
+  # app — API + worker + client. The edge is deliberately absent: it is a Cloudflare Worker, see
+  # docs/2026-10-31/EDGE.md.
+  - app/api.yaml
+  - app/client.yaml
+
+  # NOT included: jobs/identity.yaml and jobs/seed.yaml.
+  #
+  # They are deliberate acts, not convergent state. In an overlay, every `kubectl apply -k` would re-run them -
+  # observed: re-applying the overlay re-provisioned identity and re-seeded the database. They are applied
+  # explicitly instead:
+  #   node scripts/k8s.mjs identity --yes     (adopt/refresh identity)
+  #   node scripts/k8s.mjs seed               (demo data)
+  # keto-migrate and s3-init stay in the overlay because they are safe to re-run: keto-migrate is
+  # `migrate up` (idempotent) and s3-init checks for the bucket before creating it.
+
+  # the browser fleet: the reason a local cluster exists at all
+  - browser/deployment.yaml
