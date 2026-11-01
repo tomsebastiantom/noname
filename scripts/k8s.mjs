@@ -145,11 +145,6 @@ const checks = [
     const r = kubeOut("exec", "deploy/client", "--", "wget", "-qO-", "http://127.0.0.1/index.html");
     return { detail: r.out ? "index.html served" : r.err, pass: /doctype html/i.test(r.out) };
   }],
-  ["edge", () => {
-    // The worker answers /health; its /api route requires auth, so a 401 there is also proof of life.
-    const r = kubeOut("exec", "deploy/edge", "-c", "edge", "--", "node", "-e", "fetch('http://127.0.0.1:8787/health').then(r=>process.stdout.write(String(r.status)))");
-    return { detail: r.out, pass: r.out.trim() === "200" };
-  }],
   ["seed data", () => {
     const r = kubeOut("exec", "deploy/postgres", "--", "psql", "-U", "noname", "-d", "app", "-t", "-A", "-c", "select count(*) from machine_definitions");
     const n = Number((r.out || "0").trim());
@@ -167,7 +162,7 @@ function status() {
   const groups = [
     ["cluster", ["node", "pods healthy"]],
     ["infrastructure", ["postgres", "dragonfly", "clickhouse", "vault", "s3", "nango", "keto", "zitadel"]],
-    ["application", ["api /ready", "worker", "client", "edge", "browser CDP", "seed data"]],
+    ["application", ["api /ready", "worker", "client", "browser CDP", "seed data"]],
   ];
   console.log("");
   let failures = 0;
@@ -285,7 +280,6 @@ async function up({ rebuild = false, skipImages = false } = {}) {
       ["deploy/app/server.Containerfile", "localhost/noname-api:dev", "deploy/app/.dockerignore", ".", "noname-api"],
       ["deploy/browser/Containerfile", "localhost/noname-browser:1.63.0", null, "deploy/browser", "noname-browser"],
       ["deploy/client/Containerfile", "localhost/noname-client:dev", "deploy/app/.dockerignore", ".", "noname-client"],
-      ["deploy/edge/Containerfile", "localhost/noname-edge:dev", "deploy/app/.dockerignore", ".", "noname-edge"],
     ];
     for (const [dockerfile, tag, ignorefile, context, marker] of images) {
       if (rebuild || !imageLoaded(marker)) buildAndLoad(dockerfile, tag, ignorefile, context);
@@ -303,11 +297,10 @@ async function up({ rebuild = false, skipImages = false } = {}) {
   must("kubectl", ["-n", NS, "rollout", "status", "deploy/worker", "--timeout=300s"]);
   await waitFor("api /ready", probes.apiReady, { timeoutMs: 300_000 });
 
-  // Front ends last: the client's nginx proxies /api to the edge, and the edge proxies to the API, so
-  // their backends must already be serving.
-  step("front ends (edge + client)");
-  must("kubectl", ["apply", "-f", "deploy/edge/deployment.yaml", "-f", "deploy/client/deployment.yaml"]);
-  must("kubectl", ["-n", NS, "rollout", "status", "deploy/edge", "--timeout=300s"]);
+  // The client last: its nginx proxies /api to the edge, and the edge is NOT in the cluster (see
+  // docs/2026-10-31/EDGE-DEVELOPMENT.md) - it runs on the host via `wrangler dev`.
+  step("client");
+  must("kubectl", ["apply", "-f", "deploy/client/deployment.yaml"]);
   must("kubectl", ["-n", NS, "rollout", "status", "deploy/client", "--timeout=300s"]);
 
   return status();
@@ -408,6 +401,7 @@ async function pullHostIdentity() {
     ok("oidc.json updated");
   }
 }
+
 // ── seed ─────────────────────────────────────────────────────────────────────────────────────────
 async function seed() {
   step("seed Job");

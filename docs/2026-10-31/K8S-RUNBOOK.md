@@ -1,7 +1,11 @@
 # Kubernetes runbook — start, check, recover
 
 > **Date:** 2026-10-31 (America/New_York)
-> **Scope:** the local k3s cluster that now runs the entire platform (infra + app + browser).
+> **Scope:** the local k3s cluster — the **parity environment**, not the daily dev loop.
+> Daily development is `podman compose up -d` + `pnpm --filter @noname/client dev` + `pnpm --filter @noname/workers dev`;
+> see [`EDGE.md`](./EDGE.md) §4 and [`../2026-10-24/DEPLOYMENT-GUIDE.md`](../2026-10-24/DEPLOYMENT-GUIDE.md). Kubernetes adds a
+> build → save → import → rollout cycle (3-5 minutes per change) in exchange for prod-like topology, secrets,
+> Jobs and the browser fleet. Use it to *prove* things, not to iterate.
 > **Companions:** [`K8S-MIGRATION-STATUS.md`](./K8S-MIGRATION-STATUS.md) (what has been moved and what is
 > blocked) · [`LOCAL-K3S-CLUSTER.md`](./LOCAL-K3S-CLUSTER.md) (how the cluster itself was created) ·
 > [`../2026-10-24/DEPLOYMENT-GUIDE.md`](../2026-10-24/DEPLOYMENT-GUIDE.md) (the compose path, still valid
@@ -10,6 +14,8 @@
 ---
 
 ## 1. The rule
+
+**This script manages the parity environment.** For day-to-day work use compose — see the banner above.
 
 **Run the script. Do not re-derive the steps by hand.**
 
@@ -72,7 +78,7 @@ namespace: noname
   infra   postgres · dragonfly · clickhouse · s3 (+init Job) · vault · jaeger · nango · keto (+migrate Job) · zitadel
   app     api (2/2: app + localhost-proxy) · worker (2/2) · migrate Job
   eval    browser (CDP on :3000, /dev/shm 2Gi)
-  web     client (nginx, /api proxied to edge) · edge (workerd via wrangler dev)
+  web     client (nginx; /api is proxied to the edge, which runs on the HOST — not in the cluster)
 ```
 
 Manifests: `deploy/00-namespace.yaml`, `deploy/infra/*`, `deploy/app/*`, `deploy/browser/*`, `deploy/edge/*`.
@@ -136,7 +142,7 @@ seed Job and identity bootstrap read the machine key from the `zitadel-keys` PVC
 |---|---|---|
 | ~~`seed data machine_definitions=0`~~ | **closed**: identity was re-issued and the seed Job completed (`machine_definitions=2`, 44 documents) | — |
 | ~~`client` image~~ | **done** — `deploy/client/Containerfile` (rspack build + nginx, `/api` proxied to edge); `status` reports `index.html served` | — |
-| **edge SSR returns 503 for tenant hosts** | the worker is running (`/health` 200, `/api` 401 from its auth layer) and nginx proxies to it, but its server-side render resolves no tenant — an application path, not a deployment one | investigate the render/resolve path; the SPA served by `client` works regardless |
+| **client `nginx` proxies `/api` to a host-run edge** | the edge is not in the cluster by design ([EDGE.md](./EDGE.md)); in-cluster, `/api` therefore 502s until `wrangler dev` is running on the host | expected — start the edge locally, or test the origin directly via port-forward |
 | `eval-worker` | **not a deployment gap**: `packages/eval` is a library (4 of 16 checks) with no queue consumer, so there is nothing to deploy | implement the eval ladder (RFC-EVAL-SERVICE P1), then add the worker |
 | `NetworkPolicy` | k3s ships **Flannel**: accepts the object, enforces nothing | install Calico, or validate in a production-class cluster |
 
