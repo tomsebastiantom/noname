@@ -379,7 +379,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
-| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
+| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done 2026-11-07** — E8 closed: action audiences + `M2.roles` against ZITADEL role assignments | 103 eval/server tests; live `M2.roles` pass |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done except B7** — E16–E19; E21's B6 done | 84 tests; live tier 2 pass, 0 contrast advisories |
 | **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart done, checkout blocked externally | S1 warn-fail names the API; B5 pass “1 item” |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **Done 2026-11-07** — E3/E4/E23/E24/E25/E26 | 86 tests; async tier 2 verified; drafts policy verified |

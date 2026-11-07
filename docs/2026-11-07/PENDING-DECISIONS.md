@@ -18,6 +18,7 @@
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** — **implemented 2026-11-07** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
+| **D17** | Who may promote across tenants (waves) | platform service token / platform org role / env allowlist / separate control plane | **Platform service token now, platform org role later** | High — waves are unsafe without it |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **A — implemented (role map + mandatory audience; no cache yet)** | E8 closed |
@@ -618,6 +619,30 @@ database is the hard part.
 **Recommendation: A.** It is the only option compatible with blue/green and with a shared database.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D17 — Who may promote across tenants?
+
+**Status:** **proposed** — see [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md).
+
+**Question.** Promotion waves move many orgs at once. Today every org admin holds `releases:write` for its own
+org, and machine tokens are bound to one org. What identity is allowed to act **across** orgs?
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Platform service token** | `nsv.` token with `orgId = PLATFORM_ORG_ID` and `releases:platform_write`; guard checks permission + org | Smallest; reuses machine actor, audit, short TTL | No human SSO/UI |
+| **B. Platform org + role** | Dedicated ZITADEL org with a `platform_operator` role; humans log in there | Console-ready; ZITADEL-managed | New project role + init migration |
+| **C. Env allowlist** | List operator user IDs in env | No new concepts | No rotation/audit; leaks easily |
+| **D. Separate control plane** | Own service + OIDC | Strong isolation | Heavy for a pointer operation |
+
+**Recommendation: A now, B later.** `requirePlatformOperator` = actor has `releases:platform_write` **and** its
+org is `PLATFORM_ORG_ID`; unset env fails closed (503). The wave endpoint takes an explicit org list, supports
+dry-run, caps batch size, and records one Evidence row per org.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
 
 ---
 
