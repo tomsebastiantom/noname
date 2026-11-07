@@ -49,6 +49,10 @@ export type EvalResult = {
   runId: string;
   /** Hash of the catalogue + configured levels; changes when expectations change. */
   checksVersion: string;
+  /** True when the result was served from the content-addressed cache rather than recomputed. */
+  reused?: boolean;
+  /** Cache key this result was stored under, when caching was active. */
+  cacheKey?: string;
 };
 
 /**

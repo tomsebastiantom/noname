@@ -24,8 +24,6 @@ export type EvalCacheInputs = {
   checksVersion: string;
 };
 
-const SEPARATOR = "\u001f";
-
 /**
  * Stable JSON: object keys sorted, `undefined` dropped, array order preserved.
  *
@@ -61,6 +59,33 @@ export function evalCacheKey(inputs: EvalCacheInputs): string {
 }
 
 /**
+ * Whole-run reuse key: a map of route → spec hash, so any route change invalidates the run. This is the
+ * coarse but correct form; per-route reuse is the next optimisation.
+ */
+export function evalRunKey(inputs: {
+  orgId: string;
+  tenantSlug: string;
+  releaseId: string;
+  platformVersion: string;
+  browserFleetVersion: string;
+  checksVersion: string;
+  routeHashes: Record<string, string>;
+}): string {
+  const routes = Object.keys(inputs.routeHashes)
+    .sort()
+    .map((route) => [route, inputs.routeHashes[route]]);
+  return hashValue([
+    inputs.orgId,
+    inputs.tenantSlug,
+    inputs.releaseId,
+    inputs.platformVersion,
+    inputs.browserFleetVersion,
+    inputs.checksVersion,
+    routes,
+  ]);
+}
+
+/**
  * Only read-only checks are cacheable. `B5.behaviour` mutates the cart and must never be replayed from a cache.
  */
 export const READ_ONLY_CACHEABLE_CHECKS: ReadonlySet<string> = new Set([
@@ -83,4 +108,15 @@ export const READ_ONLY_CACHEABLE_CHECKS: ReadonlySet<string> = new Set([
  */
 export function isCacheableResult(checkId: string, status: string): boolean {
   return status === "pass" && READ_ONLY_CACHEABLE_CHECKS.has(checkId);
+}
+
+/**
+ * Cache only a clean pass. A run with failures is not a pass; a run with unverified required checks is not
+ * evidence of a pass, so it must not be replayed either.
+ */
+export function isCacheableRun(result: {
+  passed: boolean;
+  counts: { fail: number; unverified: number };
+}): boolean {
+  return result.passed && result.counts.fail === 0 && result.counts.unverified === 0;
 }

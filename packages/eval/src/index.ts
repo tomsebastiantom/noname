@@ -5,6 +5,14 @@ import { loadManifestObservation } from "./observers/manifest";
 import { CHECK_REGISTRY } from "./registry";
 import type { AssertionConfig, Check, CheckContext, CheckResult, EvalResult } from "./types";
 
+export {
+  canonicalJson,
+  evalCacheKey,
+  evalRunKey,
+  hashValue,
+  isCacheableResult,
+  isCacheableRun,
+} from "./cache";
 export { actionChecks } from "./checks/actions";
 export { browserChecks } from "./checks/browser";
 export { manifestChecks } from "./checks/manifest";
@@ -16,6 +24,7 @@ export { createBrowserObserver } from "./observers/browser";
 export { createHttpClient } from "./observers/http";
 export { loadManifestObservation } from "./observers/manifest";
 export { CHECK_REGISTRY } from "./registry";
+export { computeRouteHashes, loadRouteHashes } from "./route-hashes";
 export * from "./types";
 
 /** Hash of the catalogue and configured levels — changes exactly when “what verified means” changes. */
@@ -122,4 +131,9 @@ export async function evaluateChecks(
 /** Run the full catalogue. */
 export async function evaluate(ctx: CheckContext): Promise<EvalResult> {
   return evaluateChecks(CHECK_REGISTRY, ctx);
+}
+
+/** Catalogue + config fingerprint, exposed so a caller can compute the cache key before running. */
+export function computeChecksVersion(config?: AssertionConfig): string {
+  return checksVersionOf(CHECK_REGISTRY, config);
 }

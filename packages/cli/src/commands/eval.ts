@@ -6,7 +6,15 @@ import { fileURLToPath } from "node:url";
 // Load it before anything reads process.env; dotenv never overrides values already in the environment.
 import "dotenv/config";
 import type { AssertionConfig, CheckResult, EvalResult } from "@noname/eval";
-import { createBrowserObserver, createHttpClient, evaluate } from "@noname/eval";
+import {
+  computeChecksVersion,
+  createBrowserObserver,
+  createHttpClient,
+  evalRunKey,
+  evaluate,
+  isCacheableRun,
+  loadRouteHashes,
+} from "@noname/eval";
 
 /**
  * `noname eval` — the thin CLI adapter (mode "dev" in the RFC's terms).
@@ -28,6 +36,10 @@ type Options = {
   configPath?: string;
   mode: "dev" | "gate" | "agent";
   drafts: boolean;
+  noCache: boolean;
+  releaseId: string;
+  platformVersion: string;
+  browserFleetVersion: string;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -50,6 +62,10 @@ function parseArgs(argv: string[]): Options {
     configPath: get("config", "") || undefined,
     mode: get("mode", "dev") as Options["mode"],
     drafts: argv.includes("--drafts"),
+    noCache: argv.includes("--no-cache"),
+    releaseId: get("release", process.env.EVAL_RELEASE_ID ?? "") || "",
+    platformVersion: get("platform-version", process.env.EVAL_PLATFORM_VERSION ?? "unknown"),
+    browserFleetVersion: get("browser-fleet", process.env.EVAL_BROWSER_FLEET ?? "unknown"),
     json: argv.includes("--json"),
   };
 }
@@ -133,30 +149,82 @@ export async function evalCommand(argv: string[]): Promise<number> {
     headers: token ? { ...hmacHeaders(), Authorization: `Bearer ${token}` } : hmacHeaders(),
   });
 
-  const browser = options.browserEndpoint
-    ? createBrowserObserver({
-        wsEndpoint: options.browserEndpoint,
-        origin: options.siteBase ?? `http://${options.tenant}.localhost:5173`,
-      })
-    : undefined;
+  // Cache policy: the gate never reuses; everything else reuses only a clean pass whose inputs are unchanged.
+  const noCache = options.noCache || options.mode === "gate";
+  const authHeaders = {
+    ...hmacHeaders(),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+  let cacheKey: string | undefined;
+  let cached: EvalResult | null = null;
+
+  if (!noCache && options.releaseId) {
+    const routeHashes = await loadRouteHashes(client, options.tenant);
+    if (routeHashes) {
+      cacheKey = evalRunKey({
+        orgId: process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "",
+        tenantSlug: options.tenant,
+        releaseId: options.releaseId,
+        platformVersion: options.platformVersion,
+        browserFleetVersion: options.browserFleetVersion,
+        checksVersion: computeChecksVersion(config),
+        routeHashes,
+      });
+
+      try {
+        const response = await fetch(
+          `${options.apiBase.replace(/\/$/, "")}/api/eval/results/${cacheKey}`,
+          { headers: authHeaders },
+        );
+        if (response.ok) {
+          const body = (await response.json()) as { data?: { result?: EvalResult } };
+          if (body.data?.result?.passed) cached = body.data.result;
+        }
+      } catch {
+        cached = null;
+      }
+    }
+  }
+
+  const browser = cached
+    ? undefined
+    : options.browserEndpoint
+      ? createBrowserObserver({
+          wsEndpoint: options.browserEndpoint,
+          origin: options.siteBase ?? `http://${options.tenant}.localhost:5173`,
+        })
+      : undefined;
 
   let result: EvalResult;
-  try {
-    result = await evaluate({
-      client,
-      tenantSlug: options.tenant,
-      machinesDir: options.machinesDir,
-      maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
-      canReadDefinitions: Boolean(token),
-      includeDrafts: options.drafts,
-      browser,
-      siteBase: browser
-        ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`)
-        : undefined,
-      config,
-    });
-  } finally {
-    await browser?.close();
+  if (cached) {
+    result = { ...cached, reused: true, cacheKey };
+  } else {
+    try {
+      result = await evaluate({
+        client,
+        tenantSlug: options.tenant,
+        machinesDir: options.machinesDir,
+        maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
+        canReadDefinitions: Boolean(token),
+        includeDrafts: options.drafts,
+        browser,
+        siteBase: browser
+          ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`)
+          : undefined,
+        config,
+      });
+    } finally {
+      await browser?.close();
+    }
+
+    if (cacheKey) result = { ...result, cacheKey };
+    if (!noCache && cacheKey && isCacheableRun(result)) {
+      void fetch(`${options.apiBase.replace(/\/$/, "")}/api/eval/results/${cacheKey}`, {
+        method: "PUT",
+        headers: { ...authHeaders, "content-type": "application/json" },
+        body: JSON.stringify(result),
+      }).catch(() => undefined);
+    }
   }
 
   let evidenceId: string | undefined;

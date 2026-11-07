@@ -12,6 +12,7 @@ import type { EvidenceService } from "../evidence/ports";
 import type { TenantCatalogService } from "../tenant/ports";
 import { recordGateDecision } from "./gate";
 import type { EvalJobData } from "./job";
+import type { EvalResultStore } from "./results";
 
 /**
  * Machine-only eval endpoints.
@@ -62,6 +63,8 @@ export function createEvalRoutes(deps: {
   evidence: EvidenceService;
   /** Reads the org's roles from the identity provider. Null means unavailable, never “no roles”. */
   listRoles?: (orgId: string) => Promise<EvalRoleContext | null>;
+  /** Content-addressed result store. Absent → cache endpoints are unavailable. */
+  results?: EvalResultStore;
 }) {
   const routes = new Hono();
 
@@ -134,6 +137,40 @@ export function createEvalRoutes(deps: {
     });
 
     return ok(c, { jobId: job.id });
+  });
+
+  routes.get("/results/:key", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+    if (!deps.results) return c.json({ error: "Eval result store unavailable" }, 503);
+
+    const key = c.req.param("key");
+    if (!/^[a-f0-9]{64}$/.test(key)) return c.json({ error: "Invalid cache key" }, 400);
+
+    return ok(c, { result: await deps.results.get(key) });
+  });
+
+  routes.put("/results/:key", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+    if (!deps.results) return c.json({ error: "Eval result store unavailable" }, 503);
+
+    const key = c.req.param("key");
+    if (!/^[a-f0-9]{64}$/.test(key)) return c.json({ error: "Invalid cache key" }, 400);
+
+    const body = (await c.req.json().catch(() => null)) as {
+      passed?: unknown;
+      counts?: { fail?: unknown; unverified?: unknown };
+    } | null;
+    const cleanPass =
+      body?.passed === true && body.counts?.fail === 0 && body.counts?.unverified === 0;
+    if (!cleanPass) {
+      // Defence in depth: the CLI already refuses, but the store must never hold a failure or an unverified run.
+      return c.json({ error: "Only clean passes may be cached" }, 400);
+    }
+
+    await deps.results.put(key, body);
+    return ok(c, { stored: true });
   });
 
   return routes;

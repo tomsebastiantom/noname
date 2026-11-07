@@ -82,6 +82,10 @@ program
   .option("--site <url>", "storefront origin for browser checks")
   .option("--config <file>", "assertion config JSON (levels, assertMatrix)")
   .option("--drafts", "include draft layouts (dev mode only)")
+  .option("--no-cache", "ignore and do not write the result cache (gate always does this)")
+  .option("--release <id>", "release id for the cache key (env EVAL_RELEASE_ID)")
+  .option("--platform-version <v>", "server/platform version for the cache key", "unknown")
+  .option("--browser-fleet <v>", "browser fleet version for the cache key", "unknown")
   .option("--mode <mode>", "dev | gate | agent", "dev")
   .option("--json", "machine-readable output")
   .action(async () => {
