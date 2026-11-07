@@ -24,7 +24,7 @@
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
 | **D6** | Visual rubric (`B7`) | vision model / visual regression service / drop | **Drop for now** | Low |
-| **D7** | Determinism and aggregation (E6) | N runs + median / retry-on-fail / none | **Retry-once + attempts recorded** | Medium |
+| **D7** | Determinism and aggregation (E6) | N runs + median / retry-on-fail / none | **B — implemented (retry-once + attempts)** | Medium |
 | **D8** | Cost policy and change detection (E27) | `specHash@release@checks` + sampling / TTL / always full | **Key + tiered sampling** | Medium |
 | **D9** | Gate behaviour on `unverified` | block / human ack / mark only | **Human ack, block for contract/data** | Medium |
 | **D10** | Eval worker placement | same API process / separate entrypoint / separate image | **Separate entrypoint now** | Medium |
@@ -355,7 +355,7 @@ runs, no flake accounting.
 | **C. None** | Single run | Fast | Flakes become false blocks; trust erodes |
 
 **Example (B).** `B1.structure` fails on a slow hydration; retry passes; the result is `pass` with
-`runs: 2`, and the flake is counted. If it fails twice, it blocks.
+`attempts: 2`, and it is counted as `flaky`. If it fails twice, it blocks.
 
 **OSS precedent.** Lighthouse CI defaults to `numberOfRuns: 3` and supports median/pessimistic/optimistic
 aggregation ([config](https://raw.githubusercontent.com/GoogleChrome/lighthouse-ci/main/docs/configuration.md));
