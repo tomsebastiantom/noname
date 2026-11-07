@@ -410,6 +410,12 @@ reason D1 is first.
 **Dependency note (2026-11-07):** D1 is implemented (tenant pointer + catalog projection, verified). The
 `releaseId` part of the key is now available; the remaining work is the result store and the sampling policy.
 
+**Design note — cost policy and amendments.** [`EVAL-E27-COST.md`](./EVAL-E27-COST.md) specifies option A:
+content-addressed **route-level** keys including `releaseId`, `platformVersion`/server image and browser-fleet
+version; cache **passes only**; **read-only checks only** (`B5` excluded); the gate **always** runs with
+`--no-cache`; reused results carry provenance (`reused`, `key`, `computedAt`); sampling is deterministic and
+rotating. Implementation has not started.
+
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
 
 ---
