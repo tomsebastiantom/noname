@@ -7,10 +7,9 @@
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink, the async worker (including tier 2 via `EVAL_CDP_ENDPOINT`) and B6 are **done and verified** on
-> 2026-11-07. **E20 checkout→`paid` is blocked by an external dependency**, not by code: cart routes reject
-> provider payment events by design and no provider sandbox is configured. See §5 E20 and
-> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Open: E8 tenant-role projection, E4 target policy, B7 rubric.
+> sink, the async worker with tier 2, B6 and **E4 (modes, sinks, drafts target policy)** are **done and
+> verified** on 2026-11-07. **E20 checkout→`paid` is blocked by an external dependency** (provider sandbox).
+> Open: E8 tenant-role projection and B7 rubric. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -206,7 +205,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E1** | `Check` type mismatch | `Check` is `(ctx) => …`; manifest exports `{ id, run }`; browser exports `{ id, level, run }`; `evaluate` mixes them ([`index.ts:24`](../../packages/eval/src/index.ts#L24)) | **DONE 2026-11-07.** `Check = { meta, run }`; registry array; compile-time + test uniqueness | `pnpm typecheck` clean; duplicate id fails a test | S |
 | **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O. **Manifest path done 2026-11-07**; HTTP/browser I/O still lives in checks. | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
 | **E3** | No assertion config | levels are hardcoded per result | **DONE 2026-11-07.** `AssertionConfig` (`assertions`, `assertMatrix`) resolved per result: catalogue default → id override → matching route patterns (last wins); `off` removes the result; `--config <file>` loads it. Presets remain a convenience, not a mechanism | A route pattern with `B2.overflow: off` removes only that result | M |
-| **E4** | No modes/sinks | `evaluate()` returns a value only | **PARTIAL 2026-11-07.** `--mode dev|gate|agent`; gate writes one Evidence decision + metrics, dev/agent write nothing; blocking policy: `agent` exits 0, `dev`/`gate` exit non-zero on failure. **Still open:** target policy (drafts in dev) | A failing run exits 1 in dev and 0 in agent; gate writes one decision | M |
+| **E4** | No modes/sinks | `evaluate()` returns a value only | **DONE 2026-11-07.** `--mode dev|gate|agent`; gate writes one Evidence decision + metrics, dev/agent write nothing; blocking: `agent` exits 0, `dev`/`gate` non-zero on failure; target: `--drafts` includes draft layouts in `dev` only (gate refuses it) | A failing run exits 1 in dev and 0 in agent; `gate --drafts` refuses; `dev --drafts` includes drafts | M |
 | **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07.** `machine` actor + `nsv.` service token; `MACHINES_READ` split from `MACHINES_DEFINE`; token org-scoped with `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
 | **E6** | No determinism | no readiness marker; fixed 2.5 s wait in browser observer; no retries/runs | `data-eval-ready` contract, reduced motion, fixed fonts, `runs`/aggregation, recorded retries | A slow-hydrating page is waited for deterministically; flake count is reported | M |
 
@@ -382,4 +381,4 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done except B7** — E16–E19; E21's B6 done | 84 tests; live tier 2 pass, 0 contrast advisories |
 | **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart done, checkout blocked externally | S1 warn-fail names the API; B5 pass “1 item” |
-| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **Done except E4 target policy** — E25 verified with tier 2 via the worker | 84 tests; async job evidence `70 pass / 1 warn fail / 2 skip` |
+| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **Done 2026-11-07** — E3/E4/E23/E24/E25/E26 | 86 tests; async tier 2 verified; drafts policy verified |

@@ -601,9 +601,31 @@ webhook), and this environment has no provider sandbox connected. Therefore:
 **What would unblock it:** a Stripe test-mode account + Nango connection (or a dedicated test provider adapter),
 a reserved sandbox product, and cleanup keyed by `correlationId`.
 
+## 2026-11-07 — E4 target policy: drafts in dev only
+
+**Scope.** Finish the mode policy: `dev` may inspect draft layouts; `gate` verifies only what customers see and
+refuses the draft flag.
+
+**Code.** `packages/eval/src/types.ts` (`includeDrafts`), `checks/manifest.ts` + `checks/actions.ts` (candidate
+filter), `checks/{vocabulary,actions}.test.ts` (draft cases), `packages/cli` (`--drafts`, mode check).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{eval,cli} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **86/86 passed** (2 new draft tests) |
+| Unit — ignored | draft layout with an unknown block, default context | pass (draft not checked) |
+| Unit — included | same layout, `includeDrafts: true` | fail “unknown block type” |
+| Live — gate | `--mode gate --drafts` | **exit 2**, “--drafts is a dev-mode policy: a gate must verify what customers see” |
+| Live — dev | `--mode dev --drafts` with the browser | **74 pass / 1 warn failure / 0 skip** |
+
+**Limit recorded.** Drafts affect the layout-based checks (`M2`, `M5`); route and browser checks still operate on
+the published route set. “Dev may test a draft route end to end” would need a draft route resolver, which is a
+separate piece of work.
+
 ## Next steps
 
-1. **E8 remainder** — tenant-role projection (design first; roles live in ZITADEL).
-2. **E4 remainder** — target policy (drafts in dev).
-3. **B7** — visual rubric (warn only).
-4. **E20 checkout** — blocked on the provider sandbox above.
+1. **E8 remainder** — tenant-role projection (roles live in ZITADEL; design before code).
+2. **B7** — visual rubric (warn only, needs a vision model).
+3. **E20 checkout** — blocked on a provider sandbox.
