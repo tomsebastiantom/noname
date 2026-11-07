@@ -629,8 +629,40 @@ filter), `checks/{vocabulary,actions}.test.ts` (draft cases), `packages/cli` (`-
 the published route set. “Dev may test a draft route end to end” would need a draft route resolver, which is a
 separate piece of work.
 
+## 2026-11-07 — E6: retry-once, attempts and flake accounting
+
+**Scope.** A failing check should be re-run once before it blocks, the retry should be visible, and a pass that
+only happened on retry must not look clean. Option B from D7.
+
+**Code.** `packages/eval/src/types.ts` (`retryable`, `attempts`, `counts.flaky`, `retries`),
+`index.ts` (retry loop), `checks/browser.ts` (retryable set), `retry.test.ts`; CLI summary;
+`packages/server/src/domains/eval/{gate,api}.ts` (`flakyChecks`), `shared/metrics.ts` (`noname_eval_flaky_total`).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{eval,cli,server} typecheck` | clean |
+| Unit | `pnpm vitest run packages/eval/src/retry.test.ts` | **5/5**: fail→pass is `pass`, `attempts: 2`, `flaky: 1`; persistent fail stays fail with `attempts: 2`; non-retryable runs once; `retries: 0` disables; skip is not retried |
+| Unit — registry | `pnpm vitest run … registry.test.ts` | 9/9 |
+| Live | `noname eval … --browser-endpoint …` | **73 pass / 2 warn fail / 0 skip / 0 flaky**; `S1` and `B2.console` each `attempts: 2` |
+| Gate sink | `POST /api/eval/record` | accepts optional `counts.flaky`; Evidence stores `flakyChecks` |
+| Metric | `GET /metrics` after a gate run | `noname_eval_flaky_total` present (0 for this run) |
+
+**The live result is the point.** Retry re-ran the two failing warnings and left them failing; it did not turn a
+failure into a pass. `attempts: 2` is the evidence that the retry happened; `flaky: 0` is the evidence that it
+did not change the verdict.
+
+**Operational note.** Before the live run the API and the CDP server were down, and port 9222 was held by a
+stale Playwright node process whose parent job had been killed. Killed PID 13420, restarted the API and the
+browser server, then verified. Recorded because `EADDRINUSE … ::1:9222` reads like a code bug and is not one.
+
+**Limit.** No N-run median/pessimistic aggregation: the checks are boolean, and tripling tier‑2 cost to average
+booleans would buy nothing. If a numeric check is added, aggregate that check, not the suite.
+
 ## Next steps
 
 1. **E8 remainder** — tenant-role projection (roles live in ZITADEL; design before code).
-2. **B7** — visual rubric (warn only, needs a vision model).
-3. **E20 checkout** — blocked on a provider sandbox.
+2. **E27** — cost policy: `specHash@releaseId@checksVersion` reuse + sampling.
+3. **B7** — visual rubric (warn only, needs a vision model).
+4. **E20 checkout** — blocked on a provider sandbox.

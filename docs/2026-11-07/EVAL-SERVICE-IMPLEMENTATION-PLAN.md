@@ -7,9 +7,10 @@
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink, the async worker with tier 2, B6 and **E4 (modes, sinks, drafts target policy)** are **done and
+> sink, the async worker with tier 2, B6, E4 and **E6 (retry-once + flake accounting)** are **done and
 > verified** on 2026-11-07. **E20 checkout→`paid` is blocked by an external dependency** (provider sandbox).
-> Open: E8 tenant-role projection and B7 rubric. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> Open: E8 tenant-role projection, E27 cost/sampling, B7 rubric. See
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -207,7 +208,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E3** | No assertion config | levels are hardcoded per result | **DONE 2026-11-07.** `AssertionConfig` (`assertions`, `assertMatrix`) resolved per result: catalogue default → id override → matching route patterns (last wins); `off` removes the result; `--config <file>` loads it. Presets remain a convenience, not a mechanism | A route pattern with `B2.overflow: off` removes only that result | M |
 | **E4** | No modes/sinks | `evaluate()` returns a value only | **DONE 2026-11-07.** `--mode dev|gate|agent`; gate writes one Evidence decision + metrics, dev/agent write nothing; blocking: `agent` exits 0, `dev`/`gate` non-zero on failure; target: `--drafts` includes draft layouts in `dev` only (gate refuses it) | A failing run exits 1 in dev and 0 in agent; `gate --drafts` refuses; `dev --drafts` includes drafts | M |
 | **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07.** `machine` actor + `nsv.` service token; `MACHINES_READ` split from `MACHINES_DEFINE`; token org-scoped with `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
-| **E6** | No determinism | no readiness marker; fixed 2.5 s wait in browser observer; no retries/runs | `data-eval-ready` contract, reduced motion, fixed fonts, `runs`/aggregation, recorded retries | A slow-hydrating page is waited for deterministically; flake count is reported | M |
+| **E6** | No determinism | `data-eval-ready`, reduced motion, fixed widths; no retries/runs | **DONE 2026-11-07 (option B).** Retry-once for deterministic tier‑2 checks, `attempts` recorded, pass-on-retry counted as `flaky`; `B5` excluded (side effects); `retries` config. N-run median intentionally not built (boolean checks) | A retryable check that fails then passes is `pass` with `attempts: 2` and `flaky: 1`; a persistent failure stays failing after retry | M |
 
 ### 5.2 Catalogue — tier 0
 
