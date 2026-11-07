@@ -125,9 +125,37 @@ blue/green switch, one-row rollback, one Evidence record per real move. No pods 
 auto-halt, no percentage canary, no per-tenant server versions. Activation does not yet refuse a destructive
 migration set — the D16 classifier is ready to become a precondition.
 
+## 2026-11-07 — D1 C1: tenant release pointer and catalog projection
+
+**Scope.** Which client bundle a tenant loads: a pointer row per org, promote/rollback, and a catalog projection
+that returns the pointed release’s bundle URL. No waves, no UI, no caching change.
+
+**Code.** `tenant_release_pointers` table, `pointer-service.ts`, Postgres pointer store, three routes,
+`ClientBundleResolver` in the tenant catalog, migration `0004_high_doctor_octopus.sql`, 7 tests.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **37/37** (7 pointer + 8 environment + 7 release + 15 classifier) |
+| Full suite | `pnpm vitest run packages/server` | **626/626**, 140 files |
+| Promote | `POST /api/releases/:id/promote` | **200**, pointer active |
+| Catalog | `GET /api/tenants/yogastore/catalog` | `private.url` = `…/releases/r2/remoteEntry.js` |
+| Rollback | `POST /api/releases/pointer/rollback` | **200**, active/previous swapped |
+| Catalog back | same endpoint | `…/releases/r1/remoteEntry.js` |
+| Not ready | promote a `building` release | **409**, no pointer |
+| Fallback | delete pointer, fetch catalog | stored manifest unchanged (no `private`) |
+| Evidence | `platform.release.tenant_promoted` | promote/rollback rows with from/to/rollback |
+| Dependency | grep `domains/release` imports | none from tenant/eval/gate |
+
+**Limits recorded.** Tenant-at-a-time promotion; waves/UI next; catalog still reads the manifest store and the
+pointer per request; promotion does not require a `client_bundle` artifact yet (falls back instead); direct
+catalog calls need the edge HMAC, so e2e used the same headers as the edge.
+
 ## Next blocks
 
-1. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection (client ladder).
-2. Gate wiring: classify the `migration_set` artifact and refuse a destructive set.
-3. UI pointer promotion waves + rollback (D1 continuation).
+1. **D1 continuation** — promotion waves, tenant list UI, and a catalog cache key that includes `releaseId`.
+2. Gate wiring: classify the `migration_set` artifact and refuse a destructive set at promotion.
+3. Bundle retention/GC for the last N releases per tenant.
 

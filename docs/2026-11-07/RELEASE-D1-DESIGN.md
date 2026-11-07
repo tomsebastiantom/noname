@@ -1,6 +1,6 @@
 # Release block D1 — tenant release pointer and catalog projection (C1)
 
-> **Status:** proposed design, implemented in this change set · **Date:** 2026-11-07
+> **Status:** **implemented and verified 2026-11-07** · **Date:** 2026-11-07
 > **Decision:** D1 option **C1** — a release bounded context owns the pointer; tenant catalog depends on it through
 > a function/port, never the reverse.
 > **Scope guard:** this is the **client bundle** pointer. It does not version the server (D15), and it does not
@@ -114,3 +114,42 @@ stored manifest is returned unchanged — the old behaviour is the fallback.
 | Pointer to a release with no `client_bundle` | `clientBundle` returns null → catalog falls back; promote should eventually require the artifact (gate wiring) |
 | Tenant slug ↔ org confusion | pointer is keyed by `orgId`; promote uses the request org, catalog resolves slug → org first |
 | Evidence written after the move | single-writer API; a failed Evidence write is a 500 after a committed move — acceptable and visible |
+
+## 10. Implementation evidence (2026-11-07)
+
+**Code**
+
+| Path | Role |
+|---|---|
+| `domains/release/schema.ts` | `tenant_release_pointers` (org PK, active/previous FK) |
+| `domains/release/pointer-service.ts` | promote / rollback / clientBundle, ready precondition, no-op, Evidence |
+| `domains/release/adapters/postgres.ts` | `createPostgresPointerStore` (upsert) |
+| `domains/release/api.ts` | `GET /pointer`, `POST /:id/promote`, `POST /pointer/rollback` |
+| `domains/tenant/routes/{deps,catalog}.ts` | `ClientBundleResolver` + catalog projection |
+| `domains/tenant/{api,index}.ts`, `bootstrap.ts` | wiring: tenant → release through a function, not an import |
+| `drizzle/0004_high_doctor_octopus.sql` | migration |
+| `pointer-service.test.ts` | 7 tests |
+
+**Verification**
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **37/37** (7 pointer + 8 environment + 7 release + 15 classifier) |
+| Full suite | `pnpm vitest run packages/server` | **626/626**, 140 files |
+| Migration | `db:migrate` | `tenant_release_pointers` exists |
+| Promote | `POST /:id/promote` | **200**, pointer active |
+| Catalog | `GET /api/tenants/yogastore/catalog` | `private.url = tenants/<org>/releases/r2/remoteEntry.js` |
+| Rollback | `POST /pointer/rollback` | **200**, previous swapped |
+| Catalog back | same endpoint | returns `r1`’s URL |
+| Not ready | promote a `building` release | **409**, no pointer write |
+| Fallback | delete pointer, fetch catalog | stored manifest returned unchanged (no `private`) |
+| Evidence | `platform.release.tenant_promoted` | promote/rollback rows with from/to/rollback |
+| Dependency | grep imports in `domains/release` | none from tenant/eval/gate |
+
+**Limits recorded.** Promotion is tenant-at-a-time (waves/UI are next); catalog caching still uses the manifest
+store and the projection re-reads the pointer per request; promotion does not yet require a `client_bundle`
+artifact (it falls back instead); the catalog requires the edge HMAC when called directly, so e2e used the same
+headers as the edge.
+
+The runnable record is in [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md).
