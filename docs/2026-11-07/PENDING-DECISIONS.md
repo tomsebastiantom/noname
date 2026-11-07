@@ -13,9 +13,12 @@
 
 | # | Decision | Options | Recommendation | Urgency |
 |---|---|---|---|---|
-| **D1** | Release unit and tenant→release pointer | manifest pointer / DB pointer / separate service | **DB truth, manifest projection** | **Highest** — without it there is no release mechanism |
+| **D1** | **UI** release pointer (client bundle) | manifest pointer / DB pointer / separate service | **DB truth, manifest projection** | **High** — the client half; needs D14/D15 first |
+| **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** | **Highest** — defines the unit everything else moves |
+| **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
+| **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
-| **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later |
+| **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later — and only UI-deep without D15 |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
@@ -29,9 +32,15 @@
 
 ---
 
-## D1 — Release unit and the tenant→release pointer
+## D1 — UI release pointer (client bundle only)
 
-**Question.** What exactly is “a release”, where is the pointer stored, and how does a tenant get moved?
+**Question.** How do we version the **client bundle**, say which one a tenant loads, and switch it back?
+
+**Scope.** This decision covers the **UI half** of a release. It does not version the API server, the worker or
+the database — those are D14 (what a release is) and D15 (how the server rolls out). See
+[`RELEASE-UNIT-FINDING.md`](./RELEASE-UNIT-FINDING.md) for why that distinction matters. A pointer that moves a
+tenant to a new bundle while the server is on a different version is only safe when the server changes are
+backward-compatible.
 
 **Current state.** There is no release concept. The catalog worker writes
 `tenants/<orgId>/<file>` and `version: 1`
@@ -46,20 +55,24 @@ Redis is a cache, not a durable record.
 | Option | How it works | Pros | Cons |
 |---|---|---|---|
 | **A. Pointer inside the manifest** | `release: { id }` added to the Redis manifest; bundle keys become `tenants/<org>/releases/<id>/…`; the catalog endpoint reads the pointer from Redis | Smallest change; no new table; the client already consumes the manifest | Redis loss = lost pointer; no audit trail; “who moved which tenant” is unanswerable |
-| **B. DB is truth, manifest is projection** | New `releases` table (id, org, artifact hash, platform version, checks version, created_at) + `tenants.release_id`; the catalog endpoint joins and returns the release’s bundle URL; Redis caches the result | Durable, auditable, queryable; rollback is one `UPDATE`; matches how Kubernetes keeps revision history and Cloudflare keeps versions | One migration + endpoint change; cache invalidation on promote |
+| **B. DB is truth, manifest is projection** | New `releases` table + `tenant_release_pointers(org_id, release_id)`; the catalog endpoint resolves the pointer and returns the release’s bundle URL; Redis caches the result | Durable, auditable, queryable; rollback is one row; matches how Kubernetes keeps revision history and Cloudflare keeps versions | One migration + endpoint change; cache invalidation on promote |
 | **C. Separate release service** | A dedicated service owns releases and serves pointers over HTTP | Independent scaling and lifecycle | A new deployable for a pointer that is one row; premature |
 
 **Example (B).**
 
 ```
-releases: id=r_17, org=yogastore, artifact=sha256:3f…, checks=9f2a1c, state=canary
-tenants:  yogastore → release_id=r_17
-R2:       tenants/yogastore/releases/r_17/remoteEntry.js
-          tenants/yogastore/releases/r_16/remoteEntry.js   (retained for rollback)
+releases:                id=r_17, org=yogastore, artifact=sha256:3f…, checks=9f2a1c, state=canary
+tenant_release_pointers: org_id=3966… → release_id=r_17
+R2:                      tenants/3966…/releases/r_17/remoteEntry.js
+                         tenants/3966…/releases/r_16/remoteEntry.js   (retained for rollback)
 
-promote:  UPDATE tenants SET release_id='r_17' WHERE slug='yogastore'
-rollback: UPDATE tenants SET release_id='r_16' WHERE slug='yogastore'
+promote:  UPDATE tenant_release_pointers SET release_id='r_17', updated_by='tom' WHERE org_id='3966…'
+rollback: UPDATE tenant_release_pointers SET release_id='r_16', updated_by='tom' WHERE org_id='3966…'
 ```
+
+There is no `tenants` table in this codebase — a tenant is a `tenant_settings` document keyed by slug/org — which
+is why the pointer gets its own table. Promotion in production goes through an API that writes Evidence, not
+through raw SQL; the SQL above is the effect, not the interface.
 
 **OSS precedent.** Kubernetes keeps a ReplicaSet revision history and rolls back with `kubectl rollout undo`
 ([docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment));
@@ -70,6 +83,10 @@ Both separate *artifact* from *pointer*. That is exactly the missing piece here.
 **Recommendation: B.** The manifest already behaves like a projection of tenant state; making the DB the truth
 and the manifest the cache fixes durability and auditability without changing how the client loads a catalog.
 Option A is tempting for speed but loses the pointer on a Redis flush — unacceptable for rollback.
+
+**Caveat — this rolls back the client, not the server.** The API stays on whatever version is deployed. A
+pointer rollback is safe only while server changes remain compatible with the previous bundle (additive fields,
+no renamed endpoints in the same release). That constraint is D15/D16, not optional.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
 
@@ -440,15 +457,101 @@ history belongs in metrics.
 
 ---
 
+## D14 — What counts as a release?
+
+**Question.** Is a release the client bundle, or the whole deployable artifact set? This decides whether “canary
+a release” means anything for server changes.
+
+**Current state.** Bundles are overwritten; the server is one image; migrations are shared. The release-gate RFC
+says the artifact is “client bundle and server image”, while the progressive-delivery RFC versions only bundles.
+See [`RELEASE-UNIT-FINDING.md`](./RELEASE-UNIT-FINDING.md).
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Bundle only** | A release is a client bundle | Smallest; fits D1 exactly | Server changes still hit everyone; the word “release” becomes misleading |
+| **B. Release binds bundle + server image + migrations + config** | One `release_id` references all four; the gate verdict attaches to that id | Honest unit; one verdict per release; server rollout is a separate layer (D15) | Build pipeline must produce and record all four; image registry/retention work |
+| **C. Whole environment snapshot** | Each release is a complete stack (two environments) | Strongest isolation; trivial rollback by switching | Doubles infrastructure; the database is still shared, so it does not remove migration compatibility |
+
+**Example (B).** `r_17 = { image: sha256:9c…, bundle: sha256:3f…, migrations: [0042,0043], config: v12 }`. A gate
+verdict names `r_17`, not “the latest deploy”.
+
+**OSS precedent.** Cloudflare Workers separates a **version** (code) from a **deployment** (which version serves);
+Kubernetes rollouts separate the image revision from the Service selector.
+
+**Recommendation: B.** It is the smallest honest definition and it makes the gate verdict meaningful. A is what
+we accidentally have today; C is a staging/production convenience, not a release definition.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D15 — How does a server change reach a subset of tenants?
+
+**Question.** The pointer can move a tenant between bundles. How does a **server** change reach five tenants
+first?
+
+**Current state.** One API deployment, one worker, one database. Nothing routes a tenant to a server version.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Deploy-all after preview verification** | Candidate runs in preview; checks pass; deploy to all | Cheapest; catches most breakage before exposure | No real canary; rollback is a redeploy (or blue/green) |
+| **B. Blue/green whole stack** | Run `r_16` and `r_17` side by side; switch the Service selector | Seconds to roll back; no per-tenant version skew; works with one database | All-or-nothing at the switch; two stacks of capacity during the window |
+| **C. Per-tenant server versions** | Edge routes each tenant to a versioned API deployment | True tenant-level server canary | N deployments; N−1 API/queue compatibility; migration constraints; operational load |
+| **D. Deploy-all + flags/expand-contract** | One server version; behaviour per tenant behind flags; APIs additive | Behaviour canary without version skew; simple infra | Discipline: flags must be removed, contracts kept |
+
+**Example (B+D).** `r_17` adds an endpoint and a new price rule behind a flag. Preview passes; blue/green switch;
+the flag is enabled for 5 tenants; a problem is fixed by disabling the flag or switching the selector — no
+redeploy, no per-tenant server fleet.
+
+**OSS precedent.** Kubernetes blue/green and Argo Rollouts for whole-stack switching; Cloudflare Workers
+deployments with version overrides for per-version routing; LaunchDarkly/Unleash for behaviour targeting.
+
+**Recommendation: B + D, with A’s preview step before either.** C only if a hard requirement appears (regulated
+tenants, contractual isolation). The pointer (D1) is not a substitute for this decision.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+
+---
+
+## D16 — How do migrations work across a release?
+
+**Question.** A release changes the schema. Old server and new server may both run during blue/green; the client
+pointer may move back. What is the rule?
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Expand/contract mandatory** | Add new columns/tables (expand) → deploy code writing both → backfill → switch reads → remove old (contract) in a later release | Both versions work during the window; rollback stays possible; matches Fowler’s parallel change | More migrations; slower; requires discipline |
+| **B. Breaking migration + downtime** | Stop, migrate, start new | Simple | Outage; no rollback without restore |
+| **C. Per-tenant schema** | Separate schema/database per tenant | Isolation | Migration explosion; the platform is not built for it; reject |
+
+**Example (A).** Renaming `price` to `amount`: add `amount`, dual-write, backfill, switch reads, deploy, then drop
+`price` two releases later. A rollback in between still works.
+
+**OSS precedent.** Martin Fowler’s parallel change (expand/contract); every blue/green guide says the same: the
+database is the hard part.
+
+**Recommendation: A.** It is the only option compatible with blue/green and with a shared database.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
 ## Suggested order if you accept the recommendations
 
-1. **D1** (pointer) — everything release-related depends on it.
-2. **D2** (definition pinning) — the live correctness hazard.
-3. **D4** (roles) + **D9** (unverified policy) — finish the gate semantics.
-4. **D7/D8** (determinism, cost) — make the gate truthful and affordable.
-5. **D13** (provider resolution) — remove the last provider literal from the storefront.
-6. **D10** (worker split) — operational isolation.
-7. **D3/D5/D6/D11/D12** — when their preconditions are real (fleet, provider account, staging).
+1. **D14, D15, D16** — decide what a release is and how the server moves; D1 depends on the answer.
+2. **D1** (UI pointer) — the client half, once the release unit is defined.
+3. **D2** (definition pinning) — the live correctness hazard.
+4. **D4** (roles) + **D9** (unverified policy) — finish the gate semantics.
+5. **D7/D8** (determinism, cost) — make the gate truthful and affordable.
+6. **D13** (provider resolution) — remove the last provider literal from the storefront.
+7. **D10** (worker split) — operational isolation.
+8. **D3/D5/D6/D11/D12** — when their preconditions are real (fleet, provider account, staging).
 
-Nothing above requires choosing all thirteen today. D1 and D2 are the two that change what the system *is*; the
-rest are policy and operations.
+Nothing above requires choosing all sixteen today. D14–D16 decide what “release” means; D1 and D2 are the first
+two mechanisms that implement it; the rest are policy and operations.
