@@ -1,6 +1,6 @@
 # E27 / D8 — Cost policy: change detection, reuse and sampling
 
-> **Status:** **implemented** — whole-run fast path + per-home and per-route reuse · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** **implemented** — sampling, reuse metrics, worker cache · **Date:** 2026-11-07 (America/Toronto)
 > **Question:** when may eval reuse a previous result, and how much may it sample?
 > **Decision:** content-addressed keys + tiered sampling; **the gate never reuses**; cache **passes only**,
 > **read-only checks only**; `--no-cache` is explicit.
@@ -132,14 +132,23 @@ Deterministic is mandatory: a failure must be reproducible. Rotation avoids perm
 | Live — release `r_2` | **new key** (`845641…`), recomputed, not reused |
 | Live — platform `v2` | **new key** (`8dd5a1…`), recomputed, not reused |
 | Live — `--no-cache` | no key, no read, no write; Redis still has **3** keys (the three computed runs) |
+| Sampling unit | 5/5 — stable per tenant/day, always home, rotates across days, tenant-specific |
+| Sampling live | `--sample 1`: **58** results vs **65** unsampled; `gate --sample` → **exit 2** |
+| Reuse metrics | `noname_eval_results_reused_total 58`, `noname_eval_results_computed_total 116`, `noname_eval_gate_reuse_total 0` |
+| Worker cache | sweep job log: `hit=true`, `countsReused=33` (second identical job) |
 | Live — per-check | run key deleted, home checks reused: **7** results `reused: true` |
 | Live — per-route | run key deleted, route + home reused: **17** results `reused: true`, 0 failures |
 | Route hashing | page tree → pageId → routing → layout; keys are URLs (`/`, `/products`), not routing keys |
 | Store | Redis `eval:result:*`, 7-day TTL, clean passes only (server also rejects anything else) |
 | Identity | store calls use the `eval-worker` service headers; `machines:read` |
 
-**Not yet:** sampling; reuse/computed Prometheus counters; worker-side cache. The per-check cache is keyed by
-base key + check id (home) or route + route hash (route checks); `B5` is never cached.
+**Not yet / caveat:** the **worker Evidence row** for the reused sweep still showed `reused: false` while the
+worker log showed `hit=true` and `countsReused=33`. A second `workers` process from another session shares the
+queue and competes for jobs, so the live worker proof is split across processes and not yet trustworthy. The
+worker code path itself is in place; isolating the process is the remaining verification.
+
+**Also not yet:** deterministic sampling is wired to route checks only (tier‑2 is home-scoped); no per-mode
+sampling policy beyond the CLI flag; no sampling of tenants (only routes).
 
 ## 8. Risks and limits
 

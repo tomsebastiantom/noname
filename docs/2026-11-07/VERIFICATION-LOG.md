@@ -774,8 +774,37 @@ route; the whole-run fast path still handles the no-change case.
 - **E2E config** turned off `B3.a11y`, `S1`, `B2.console` so the run would be a clean pass (cache requires
   `unverified: 0`, and those checks are expected to warn/fail locally).
 
+## 2026-11-07 — E27: sampling, reuse metrics, worker cache
+
+**Scope.** Complete the cost policy: deterministic rotating sampling, Prometheus reuse counters, and the worker
+sweep cache.
+
+**Code.** `eval/src/sampling.ts` + tests, route-check sample filter, CLI `--sample`,
+`server/shared/metrics.ts` counters, `POST /api/eval/reuse`, `domains/eval/job.ts` worker cache,
+`EvalJobData` mode/release fields, API `/runs` mode support.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | eval, CLI, server | clean |
+| Sampling unit | `sampling.test.ts` | 5/5 — stable per tenant/day, always home, rotates, tenant-specific |
+| Sampling live | `--sample 1` vs unsampled | **58** vs **65** results |
+| Gate vs sample | `--mode gate --sample 1` | **exit 2**, “a gate must verify every route, not a sample” |
+| Reuse metrics | `GET /metrics` after a cached run | `noname_eval_results_reused_total 58`, `computed_total 116`, `gate_reuse_total 0` |
+| Worker mode | sweep job log | `mode=sweep release=r_w11`, `hit=true`, `countsReused=33` |
+
+**Caveat recorded.** For the worker sweep, the log shows `hit=true`/`countsReused=33` but the Evidence row for
+that job still showed `reused:false`. A `workers` process from another session shares `{eval-runs}` and competes
+for jobs, so the worker live proof is split across processes and is **not yet trustworthy**. The worker code path
+is in place; isolating the process is the remaining verification.
+
+**Limits.** Sampling applies to route checks (tier‑2 is home-scoped); no tenant sampling; no per-mode sampling
+policy beyond the CLI flag.
+
 ## Next steps
 
-1. **E27 remaining** — deterministic sampling, reuse/computed metrics, worker cache.
+1. **E27 worker** — isolate the queue consumer (one `workers` process), re-run the sweep pair, and capture the
+   Evidence row showing `reused:true` / `counts.reused > 0`.
 2. **B7** — visual rubric (warn only, needs a vision model).
 3. **E20 checkout** — blocked on a provider sandbox.
