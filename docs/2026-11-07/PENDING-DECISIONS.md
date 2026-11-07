@@ -414,12 +414,13 @@ reason D1 is first.
 **Design note — cost policy and amendments.** [`EVAL-E27-COST.md`](./EVAL-E27-COST.md) specifies option A:
 content-addressed keys including `releaseId`, `platformVersion`/server image and browser-fleet version; cache
 **passes only**; **read-only checks only** (`B5` excluded); the gate **always** runs with `--no-cache`; reused
-results carry provenance (`reused`, `cacheKey`); the store is Redis with a 7-day TTL. **Implemented v1
-2026-11-07**: whole-run reuse keyed by a route→hash map. **Not yet:** per-route recompute, sampling, reuse metrics,
-worker-side cache.
+results carry provenance (`reused`, `cacheKey`); the store is Redis with a 7-day TTL. **Implemented 2026-11-07:**
+whole-run fast path + **per-home and per-route check caches** (URL-keyed route hashes). **Not yet:** sampling,
+reuse/computed metrics, worker cache.
 
-**Decision:** ☑ **A — v1 implemented 2026-11-07.** Two identical runs reuse; a release or platform change
-invalidates; `--no-cache` bypasses. Per-route reuse remains the next optimisation.
+**Decision:** ☑ **A — implemented 2026-11-07.** Identical runs reuse; one route edit recomputes only that route
+and reuses the rest (17 reused results observed); release/platform changes invalidate; `--no-cache` bypasses;
+failures and unverified runs are never stored.
 
 ---
 

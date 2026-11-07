@@ -737,8 +737,45 @@ store clean passes, and reuse only when every input matches. The gate never reus
 - **E2E config.** Tier 2 was disabled via a local `.tools/eval-config-cache.json` so the live runs finish quickly
   and produce a clean pass; the cache logic itself is independent of which checks run.
 
+## 2026-11-07 — E27: per-home and per-route reuse
+
+**Scope.** Complete the reuse promise: when one route changes, only that route recomputes. Route hashes are keyed
+by **URL** (page tree → pageId → routing → layout); home checks cache under the home hash; route checks cache per
+route; the whole-run fast path still handles the no-change case.
+
+**Code.** `eval/src/route-hashes.ts` (`computeRouteHashesFromTree`, URL keys), `eval/src/cache.ts`
+(`evalBaseKey`, `CheckCache`), `eval/src/types.ts` (`scope`, `reused`), `eval/src/index.ts` (home cache),
+`eval/src/checks/routes.ts` (partition by cached route, persist passing route slices),
+`server/domains/eval/api.ts` (`/checks/:key`), CLI cache client, tests.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | eval, CLI, server | clean |
+| Unit — cache/key | `cache.test.ts` | 15/15 |
+| Unit — route hashes | `route-hashes.test.ts` | 5/5; keys are `/`, `/products`; editing one layout changes only that route |
+| Unit — home cache | `check-cache.test.ts` | 3/3 — hit skips the check, miss stores a pass, failure stores nothing |
+| Live — run 1 | `--release r_pc3 --platform-version pv3 --browser-fleet cf3` | computed; `reused: 0` |
+| Live — run 2 | same command after deleting only the **run** key | **`reused: 17`**, 0 failures — 7 home results + 10 route results |
+| Live — run 3 | same again | **`reused: 17`** — stable |
+| Redis | `scan eval:result:*` | run keys and per-check keys coexist; TTL 7 days |
+| Gate | `--mode gate` ⇒ `--no-cache` | no key, no read, no write |
+
+**Limits recorded.**
+
+- **The per-route live proof used cache deletion, not a spec edit.** Deleting only the run key proves the
+  per-route/per-home caches serve unchanged work; the “edit one route” invalidation itself is proven by the
+  route-hash unit test (edited layout → only that route hash changes) and by the key construction, not by a live
+  layout edit.
+- **Sampling is not implemented.** Every route still runs on a miss.
+- **No reuse/computed Prometheus counters.** `counts.reused` is in the JSON only.
+- **Worker cache is not wired.** The CLI uses it; the async worker does not.
+- **E2E config** turned off `B3.a11y`, `S1`, `B2.console` so the run would be a clean pass (cache requires
+  `unverified: 0`, and those checks are expected to warn/fail locally).
+
 ## Next steps
 
-1. **E27 remaining** — per-route recompute, deterministic sampling, reuse/computed metrics, worker cache.
+1. **E27 remaining** — deterministic sampling, reuse/computed metrics, worker cache.
 2. **B7** — visual rubric (warn only, needs a vision model).
 3. **E20 checkout** — blocked on a provider sandbox.
