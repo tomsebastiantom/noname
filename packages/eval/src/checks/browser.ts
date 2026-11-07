@@ -26,6 +26,7 @@ const render: Check = {
     needs: ["browser"],
     emits: ["B1.render"],
     retryable: true,
+    scope: "home",
     description:
       "the storefront renders real content in a browser, not an error screen or an empty shell",
   },
@@ -103,6 +104,7 @@ const structure: Check = {
     needs: ["api", "browser"],
     emits: ["B1.structure"],
     retryable: true,
+    scope: "home",
     description: "the rendered DOM contains exactly the blocks the spec declares, by type",
   },
   async run(ctx) {
@@ -183,6 +185,7 @@ const overflowCheck: Check = {
     needs: ["browser"],
     emits: ["B2.overflow"],
     retryable: true,
+    scope: "home",
     description: "the page has no horizontal overflow at 375, 768 and 1440 pixels",
   },
   async run(ctx) {
@@ -243,6 +246,7 @@ const a11y: Check = {
     needs: ["browser"],
     emits: ["B3.a11y"],
     retryable: true,
+    scope: "home",
     description: "images, form fields, buttons and links have accessible names",
   },
   async run(ctx) {
@@ -294,6 +298,7 @@ const content: Check = {
     needs: ["api", "browser"],
     emits: ["B4.content"],
     retryable: true,
+    scope: "home",
     description:
       "page title, product name and price from the resolved spec are visible in the browser",
   },
@@ -475,6 +480,7 @@ const egress: Check = {
     needs: ["browser"],
     emits: ["S1.no_internal_egress"],
     retryable: true,
+    scope: "home",
     description: "the eval browser cannot reach internal platform endpoints",
   },
   async run(ctx) {
@@ -540,6 +546,7 @@ const design: Check = {
     needs: ["browser"],
     emits: ["B6.design"],
     retryable: true,
+    scope: "home",
     description: "contrast advisories from axe-core (warning only)",
   },
   async run(ctx) {
@@ -587,6 +594,7 @@ const consoleClean: Check = {
     needs: ["browser"],
     emits: ["B2.console"],
     retryable: true,
+    scope: "home",
     description: "the storefront raises no console errors during a browser visit",
   },
   async run(ctx) {

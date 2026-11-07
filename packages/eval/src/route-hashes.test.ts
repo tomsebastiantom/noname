@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeRouteHashes } from "./route-hashes";
+import { computeRouteHashes, computeRouteHashesFromTree } from "./route-hashes";
 
 const pages = [
   { key: "home", layoutRef: "home-layout", contentRef: "home-content" },
@@ -43,5 +43,39 @@ describe("computeRouteHashes", () => {
       layouts,
     );
     expect(after.home).not.toBe(before.home);
+  });
+});
+
+describe("computeRouteHashesFromTree", () => {
+  const tree = [
+    { slug: { "en-US": "/" }, pageId: "home" },
+    { slug: { "en-US": "products" }, pageId: "products" },
+  ];
+  const routing = [
+    { key: "home", layoutRef: "home-layout" },
+    { key: "products", layoutRef: "products-layout" },
+  ];
+
+  it("keys hashes by URL, not by routing key", () => {
+    const hashes = computeRouteHashesFromTree(tree, routing, layouts);
+    expect(Object.keys(hashes).sort()).toEqual(["/", "/products"]);
+  });
+
+  it("changes only the edited route", () => {
+    const before = computeRouteHashesFromTree(tree, routing, layouts);
+    const after = computeRouteHashesFromTree(
+      tree,
+      routing,
+      layouts.map((layout) =>
+        layout.key === "products-layout"
+          ? {
+              ...layout,
+              data: { elements: { b: { type: "ProductGrid" }, c: { type: "TextBase" } } },
+            }
+          : layout,
+      ),
+    );
+    expect(after["/products"]).not.toBe(before["/products"]);
+    expect(after["/"]).toBe(before["/"]);
   });
 });

@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import type { CheckResult } from "./types";
 
 /**
  * Content-addressed cache for eval results.
@@ -84,6 +85,30 @@ export function evalRunKey(inputs: {
     routes,
   ]);
 }
+
+/** Same as the run key, without the route map — the prefix for per-check, per-route cache entries. */
+export function evalBaseKey(inputs: {
+  orgId: string;
+  tenantSlug: string;
+  releaseId: string;
+  platformVersion: string;
+  browserFleetVersion: string;
+  checksVersion: string;
+}): string {
+  return hashValue([
+    inputs.orgId,
+    inputs.tenantSlug,
+    inputs.releaseId,
+    inputs.platformVersion,
+    inputs.browserFleetVersion,
+    inputs.checksVersion,
+  ]);
+}
+
+export type CheckCache = {
+  get(key: string): Promise<CheckResult[] | null>;
+  put(key: string, results: CheckResult[]): Promise<void>;
+};
 
 /**
  * Only read-only checks are cacheable. `B5.behaviour` mutates the cart and must never be replayed from a cache.

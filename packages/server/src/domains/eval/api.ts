@@ -173,5 +173,41 @@ export function createEvalRoutes(deps: {
     return ok(c, { stored: true });
   });
 
+  routes.get("/checks/:key", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+    if (!deps.results) return c.json({ error: "Eval result store unavailable" }, 503);
+
+    const key = c.req.param("key");
+    if (key.length > 300) return c.json({ error: "Invalid cache key" }, 400);
+    return ok(c, { results: await deps.results.get(key) });
+  });
+
+  routes.put("/checks/:key", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+    if (!deps.results) return c.json({ error: "Eval result store unavailable" }, 503);
+
+    const key = c.req.param("key");
+    if (key.length > 300) return c.json({ error: "Invalid cache key" }, 400);
+
+    const body = (await c.req.json().catch(() => null)) as unknown;
+    const results = Array.isArray(body) ? body : null;
+    const allPass =
+      results !== null &&
+      results.length > 0 &&
+      results.every(
+        (entry) =>
+          typeof entry === "object" &&
+          entry !== null &&
+          (entry as { status?: unknown }).status === "pass" &&
+          (entry as { id?: unknown }).id !== "B5.behaviour",
+      );
+    if (!allPass) return c.json({ error: "Only passing read-only results may be cached" }, 400);
+
+    await deps.results.put(key, results);
+    return ok(c, { stored: true });
+  });
+
   return routes;
 }

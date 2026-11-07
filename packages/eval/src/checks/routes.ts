@@ -180,7 +180,35 @@ const routes: Check["run"] = async (ctx) => {
     });
   }
 
-  for (const { route, pageId } of routeList) {
+  const routeCacheKey = (route: string): string | null =>
+    ctx.checkCache && ctx.cacheBaseKey && ctx.routeHashes?.[route]
+      ? `${ctx.cacheBaseKey}:route:${route}:${ctx.routeHashes[route]}`
+      : null;
+
+  const persistRoute = async (route: string, start: number): Promise<void> => {
+    const key = routeCacheKey(route);
+    if (!key) return;
+    const slice = results.slice(start);
+    if (slice.length > 0 && slice.every((result) => result.status === "pass")) {
+      await ctx.checkCache?.put(key, slice);
+    }
+  };
+
+  // Per-route reuse: unchanged routes come from the cache; changed routes run below.
+  const changedRoutes: typeof routeList = [];
+  for (const entry of routeList) {
+    const key = routeCacheKey(entry.route);
+    const cached = key ? await ctx.checkCache?.get(key) : null;
+    if (cached) {
+      if (cached.some((result) => result.id === "R3.content")) r3Checked = true;
+      results.push(...cached.map((result) => ({ ...result, reused: true })));
+    } else {
+      changedRoutes.push(entry);
+    }
+  }
+
+  for (const { route, pageId } of changedRoutes) {
+    const start = results.length;
     const response = await ctx.client.getJson<EdgeSchemaResponse>(
       `/api/edge/schema/${encodeURIComponent(ctx.tenantSlug)}?url=${encodeURIComponent(route)}`,
     );
@@ -193,6 +221,7 @@ const routes: Check["run"] = async (ctx) => {
         subject: route,
         detail: `route does not resolve (${response.error}) — page_tree declares pageId "${pageId ?? "?"}"`,
       });
+      await persistRoute(route, start);
       continue;
     }
 
@@ -207,6 +236,7 @@ const routes: Check["run"] = async (ctx) => {
         subject: route,
         detail: `silently serves the fallback template "${template}" — page_tree declares pageId "${pageId ?? "?"}", which does not resolve to its own page`,
       });
+      await persistRoute(route, start);
       continue;
     }
 
@@ -317,6 +347,8 @@ const routes: Check["run"] = async (ctx) => {
         });
       }
     }
+
+    await persistRoute(route, start);
   }
 
   if (layouts.ok && !r3Checked) {

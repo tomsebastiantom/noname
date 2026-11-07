@@ -1,12 +1,15 @@
 import { createHash, randomUUID } from "node:crypto";
 import "./contracts";
+import { READ_ONLY_CACHEABLE_CHECKS } from "./cache";
 import { resolveLevel } from "./config";
 import { loadManifestObservation } from "./observers/manifest";
 import { CHECK_REGISTRY } from "./registry";
 import type { AssertionConfig, Check, CheckContext, CheckResult, EvalResult } from "./types";
 
 export {
+  type CheckCache,
   canonicalJson,
+  evalBaseKey,
   evalCacheKey,
   evalRunKey,
   hashValue,
@@ -24,7 +27,11 @@ export { createBrowserObserver } from "./observers/browser";
 export { createHttpClient } from "./observers/http";
 export { loadManifestObservation } from "./observers/manifest";
 export { CHECK_REGISTRY } from "./registry";
-export { computeRouteHashes, loadRouteHashes } from "./route-hashes";
+export {
+  computeRouteHashes,
+  computeRouteHashesFromTree,
+  loadRouteHashes,
+} from "./route-hashes";
 export * from "./types";
 
 /** Hash of the catalogue and configured levels — changes exactly when “what verified means” changes. */
@@ -77,6 +84,20 @@ export async function evaluateChecks(
   let flaky = 0;
 
   for (const check of checks) {
+    const homeCacheable =
+      Boolean(ctx.checkCache && ctx.cacheBaseKey) &&
+      check.meta.scope === "home" &&
+      READ_ONLY_CACHEABLE_CHECKS.has(check.meta.id);
+
+    if (homeCacheable) {
+      const key = `${ctx.cacheBaseKey}:home:${ctx.routeHashes?.["/"] ?? ""}:${check.meta.id}`;
+      const cached = await ctx.checkCache?.get(key);
+      if (cached) {
+        results.push(...cached.map((result) => ({ ...result, reused: true })));
+        continue;
+      }
+    }
+
     try {
       const maxRetries = check.meta.retryable ? Math.max(0, ctx.config?.retries ?? 1) : 0;
       let attempts = 0;
@@ -95,6 +116,11 @@ export async function evaluateChecks(
       results.push(
         ...(attempts > 1 ? checkResults.map((result) => ({ ...result, attempts })) : checkResults),
       );
+
+      if (homeCacheable && checkResults.every((result) => result.status === "pass")) {
+        const key = `${ctx.cacheBaseKey}:home:${ctx.routeHashes?.["/"] ?? ""}:${check.meta.id}`;
+        await ctx.checkCache?.put(key, checkResults);
+      }
     } catch (cause) {
       results.push({
         id: check.meta.id,
@@ -112,10 +138,11 @@ export async function evaluateChecks(
     adjusted.push({ ...result, level });
   }
 
-  const counts = { pass: 0, fail: 0, skip: 0, unverified: 0, flaky };
+  const counts = { pass: 0, fail: 0, skip: 0, unverified: 0, flaky, reused: 0 };
   for (const result of adjusted) {
     counts[result.status] += 1;
     if (result.status === "skip" && result.level === "error") counts.unverified += 1;
+    if (result.reused) counts.reused += 1;
   }
 
   const passed = !adjusted.some((check) => check.status === "fail" && check.level === "error");

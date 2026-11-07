@@ -36,6 +36,8 @@ export type CheckResult = {
   runs?: number;
   /** How many attempts this check took when a retry policy applied (>1 means it failed once). */
   attempts?: number;
+  /** True when this result was served from the per-check cache. */
+  reused?: boolean;
   /** What the UI can offer to fix it. */
   fix?: { kind: string; payload?: unknown };
 };
@@ -44,7 +46,14 @@ export type EvalResult = {
   checks: CheckResult[];
   /** Derived: no `error`-level failure. Never passed in. */
   passed: boolean;
-  counts: { pass: number; fail: number; skip: number; unverified: number; flaky: number };
+  counts: {
+    pass: number;
+    fail: number;
+    skip: number;
+    unverified: number;
+    flaky: number;
+    reused: number;
+  };
   /** Stable id for this run (caller-supplied or generated). */
   runId: string;
   /** Hash of the catalogue + configured levels; changes when expectations change. */
@@ -88,6 +97,8 @@ export type CheckMeta = {
   emits: string[];
   /** Whether a failing result may be retried. Side-effecting checks (behaviour) must not set this. */
   retryable?: boolean;
+  /** Cache scope: a single home page, each route, or the whole tenant. */
+  scope?: "home" | "route" | "global";
   description: string;
 };
 
@@ -127,6 +138,12 @@ export type CheckContext = {
   canReadDefinitions: boolean;
   /** Dev policy: include draft layouts instead of only published ones. */
   includeDrafts?: boolean;
+  /** Per-check cache (home checks and per-route HTTP checks); absent in gate/`--no-cache` runs. */
+  checkCache?: import("./cache").CheckCache;
+  /** Prefix for cache entries: org/tenant/release/platform/fleet/checks, without the route map. */
+  cacheBaseKey?: string;
+  /** route → spec hash, from the pre-step; used for per-route cache keys. */
+  routeHashes?: Record<string, string>;
   /** Assertion overrides (levels, per-route matrix). Absent means the catalogue defaults. */
   config?: AssertionConfig;
   /** Caller-supplied run id; generated when absent. */

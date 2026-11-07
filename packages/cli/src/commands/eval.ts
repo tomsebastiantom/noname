@@ -5,11 +5,12 @@ import { fileURLToPath } from "node:url";
 // The repository root `.env` is the single source of truth for identity (written by `pnpm init:zitadel`).
 // Load it before anything reads process.env; dotenv never overrides values already in the environment.
 import "dotenv/config";
-import type { AssertionConfig, CheckResult, EvalResult } from "@noname/eval";
+import type { AssertionConfig, CheckCache, CheckResult, EvalResult } from "@noname/eval";
 import {
   computeChecksVersion,
   createBrowserObserver,
   createHttpClient,
+  evalBaseKey,
   evalRunKey,
   evaluate,
   isCacheableRun,
@@ -156,26 +157,54 @@ export async function evalCommand(argv: string[]): Promise<number> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
   let cacheKey: string | undefined;
+  let cacheBaseKey: string | undefined;
+  let checkCache: CheckCache | undefined;
+  let routeHashes: Record<string, string> | undefined;
   let cached: EvalResult | null = null;
 
   if (!noCache && options.releaseId) {
-    const routeHashes = await loadRouteHashes(client, options.tenant);
+    routeHashes = (await loadRouteHashes(client, options.tenant)) ?? undefined;
     if (routeHashes) {
-      cacheKey = evalRunKey({
-        orgId: process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "",
+      const orgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
+      const checksVersion = computeChecksVersion(config);
+      const keyInputs = {
+        orgId,
         tenantSlug: options.tenant,
         releaseId: options.releaseId,
         platformVersion: options.platformVersion,
         browserFleetVersion: options.browserFleetVersion,
-        checksVersion: computeChecksVersion(config),
-        routeHashes,
-      });
+        checksVersion,
+      };
+      cacheKey = evalRunKey({ ...keyInputs, routeHashes });
+      cacheBaseKey = evalBaseKey(keyInputs);
+
+      const base = options.apiBase.replace(/\/$/, "");
+      checkCache = {
+        async get(key: string): Promise<CheckResult[] | null> {
+          try {
+            const response = await fetch(`${base}/api/eval/checks/${encodeURIComponent(key)}`, {
+              headers: authHeaders,
+            });
+            if (!response.ok) return null;
+            const body = (await response.json()) as { data?: { results?: CheckResult[] } };
+            return body.data?.results ?? null;
+          } catch {
+            return null;
+          }
+        },
+        async put(key: string, results: CheckResult[]): Promise<void> {
+          await fetch(`${base}/api/eval/checks/${encodeURIComponent(key)}`, {
+            method: "PUT",
+            headers: { ...authHeaders, "content-type": "application/json" },
+            body: JSON.stringify(results),
+          }).catch(() => undefined);
+        },
+      };
 
       try {
-        const response = await fetch(
-          `${options.apiBase.replace(/\/$/, "")}/api/eval/results/${cacheKey}`,
-          { headers: authHeaders },
-        );
+        const response = await fetch(`${base}/api/eval/results/${cacheKey}`, {
+          headers: authHeaders,
+        });
         if (response.ok) {
           const body = (await response.json()) as { data?: { result?: EvalResult } };
           if (body.data?.result?.passed) cached = body.data.result;
@@ -208,6 +237,9 @@ export async function evalCommand(argv: string[]): Promise<number> {
         canReadDefinitions: Boolean(token),
         includeDrafts: options.drafts,
         browser,
+        checkCache,
+        cacheBaseKey,
+        routeHashes,
         siteBase: browser
           ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`)
           : undefined,
