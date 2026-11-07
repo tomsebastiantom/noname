@@ -14,10 +14,11 @@ const defaultCapabilities: Capability[] = [
   { name: "commerce.orders.refund", permission: "commerce:orders_manage", extension: "commerce" },
 ];
 
-function context(client: EvalClient): CheckContext {
+function context(client: EvalClient, includeDrafts = false): CheckContext {
   return {
     client,
     tenantSlug: "yogastore",
+    includeDrafts,
     machinesDir: "",
     maxRoutes: 20,
     canReadDefinitions: false,
@@ -25,7 +26,7 @@ function context(client: EvalClient): CheckContext {
 }
 
 function clientWith(options: {
-  layouts: Array<{ key: string; action?: string }> | null;
+  layouts: Array<{ key: string; action?: string; status?: string }> | null;
   capabilities?: Capability[];
   extensions?: string[];
   contextAvailable?: boolean;
@@ -43,7 +44,7 @@ function clientWith(options: {
           data: {
             data: options.layouts.map((layout) => ({
               key: layout.key,
-              status: "published",
+              status: layout.status ?? "published",
               data: {
                 spec: {
                   elements: layout.action
@@ -64,8 +65,8 @@ function clientWith(options: {
   };
 }
 
-async function run(client: EvalClient) {
-  return evaluateChecks(actionChecks, context(client));
+async function run(client: EvalClient, includeDrafts = false) {
+  return evaluateChecks(actionChecks, context(client, includeDrafts));
 }
 
 describe("M2.actions", () => {
@@ -105,6 +106,20 @@ describe("M2.actions", () => {
     const result = await run(clientWith({ layouts: null }));
 
     expect(result.checks[0]).toMatchObject({ id: "M2.actions", status: "skip", level: "error" });
+  });
+
+  it("includes draft layouts only when the caller opts in", async () => {
+    const client = clientWith({
+      layouts: [{ key: "wip", action: "doesSomethingMissing", status: "draft" }],
+    });
+
+    const ignored = await run(client);
+    expect(ignored.checks.find((check) => check.id === "M2.actions")).toMatchObject({
+      status: "pass",
+    });
+
+    const included = await run(client, true);
+    expect(included.passed).toBe(false);
   });
 });
 

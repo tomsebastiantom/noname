@@ -115,6 +115,8 @@ export type CheckContext = {
    * definition checks must report `skip` rather than guess.
    */
   canReadDefinitions: boolean;
+  /** Dev policy: include draft layouts instead of only published ones. */
+  includeDrafts?: boolean;
   /** Assertion overrides (levels, per-route matrix). Absent means the catalogue defaults. */
   config?: AssertionConfig;
   /** Caller-supplied run id; generated when absent. */

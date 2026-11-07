@@ -27,6 +27,7 @@ type Options = {
   siteBase?: string;
   configPath?: string;
   mode: "dev" | "gate" | "agent";
+  drafts: boolean;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -48,6 +49,7 @@ function parseArgs(argv: string[]): Options {
     siteBase: get("site", "") || undefined,
     configPath: get("config", "") || undefined,
     mode: get("mode", "dev") as Options["mode"],
+    drafts: argv.includes("--drafts"),
     json: argv.includes("--json"),
   };
 }
@@ -107,6 +109,10 @@ export async function evalCommand(argv: string[]): Promise<number> {
     console.error(`unknown --mode "${options.mode}" (expected dev, gate or agent)`);
     return 2;
   }
+  if (options.drafts && options.mode !== "dev") {
+    console.error("--drafts is a dev-mode policy: a gate must verify what customers see");
+    return 2;
+  }
   const token = readToken(argv);
 
   let config: AssertionConfig | undefined;
@@ -141,6 +147,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
       machinesDir: options.machinesDir,
       maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
       canReadDefinitions: Boolean(token),
+      includeDrafts: options.drafts,
       browser,
       siteBase: browser
         ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`)

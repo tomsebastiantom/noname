@@ -50,7 +50,10 @@ const actions: Check["run"] = async (ctx) => {
     ];
   }
 
-  const published = (layouts.data?.data ?? []).filter((layout) => layout.status === "published");
+  const published = (layouts.data?.data ?? []).filter(
+    (layout) =>
+      layout.status === "published" || (ctx.includeDrafts === true && layout.status === "draft"),
+  );
   const results: CheckResult[] = [];
   let referenced = 0;
 

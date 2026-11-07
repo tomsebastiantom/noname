@@ -12,6 +12,7 @@ type Layout = {
 function context(options: {
   layouts?: Layout[] | null;
   canReadDefinitions?: boolean;
+  includeDrafts?: boolean;
 }): CheckContext {
   const canReadDefinitions = options.canReadDefinitions ?? true;
   const manifest: ManifestObservation = {
@@ -45,6 +46,7 @@ function context(options: {
     machinesDir: "",
     maxRoutes: 20,
     canReadDefinitions,
+    includeDrafts: options.includeDrafts,
     manifest,
   };
 }
@@ -102,6 +104,23 @@ describe("M5.vocabulary — block catalogue", () => {
 
     expect(result.passed).toBe(true);
     expect(result.checks.some((check) => check.subject === "wip")).toBe(false);
+  });
+
+  it("ignores drafts unless the caller opts in", async () => {
+    const layout = {
+      key: "wip",
+      status: "draft",
+      elements: { a: { type: "MysteryBlock" } },
+    };
+
+    const ignored = await run({ layouts: [layout] });
+    expect(ignored.passed).toBe(true);
+
+    const included = await run({ layouts: [layout], includeDrafts: true });
+    expect(included.passed).toBe(false);
+    expect(included.checks.find((check) => check.subject === "wip")?.detail).toContain(
+      "unknown block type",
+    );
   });
 
   it("skips — never passes — when layouts cannot be listed", async () => {

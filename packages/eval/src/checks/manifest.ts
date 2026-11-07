@@ -94,8 +94,11 @@ const vocabulary: Check["run"] = async (ctx) => {
     return results;
   }
 
-  const published = (layouts.data?.data ?? []).filter((layout) => layout.status === "published");
-  if (published.length === 0) {
+  const candidates = (layouts.data?.data ?? []).filter(
+    (layout) =>
+      layout.status === "published" || (ctx.includeDrafts === true && layout.status === "draft"),
+  );
+  if (candidates.length === 0) {
     results.push({
       id: "M5.vocabulary",
       status: "pass",
@@ -105,7 +108,7 @@ const vocabulary: Check["run"] = async (ctx) => {
     return results;
   }
 
-  for (const layout of published) {
+  for (const layout of candidates) {
     const elements = layout.data?.spec?.elements ?? {};
     // Shell/panel/editor layouts receive their props from the platform at render time; only standalone
     // (customer-facing) layouts are expected to carry complete static props.
