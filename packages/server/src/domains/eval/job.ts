@@ -3,14 +3,23 @@ import { fileURLToPath } from "node:url";
 import { PERMISSIONS } from "@noname/auth";
 import {
   type AssertionConfig,
+  type CheckCache,
+  type CheckResult,
+  computeChecksVersion,
   createBrowserObserver,
   createHttpClient,
   type EvalResult,
+  evalBaseKey,
+  evalRunKey,
   evaluate,
+  isCacheableRun,
+  loadRouteHashes,
 } from "@noname/eval";
+import { recordEvalReuse } from "../../shared/metrics";
 import { signServiceToken } from "../../shared/service-token";
 import type { EvidenceService } from "../evidence/ports";
 import { recordGateDecision } from "./gate";
+import { createEvalResultStore } from "./results";
 
 /**
  * One eval job = one tenant sweep, run off the request path.
@@ -23,6 +32,12 @@ export type EvalJobData = {
   orgId: string;
   tenantSlug: string;
   config?: AssertionConfig;
+  /** `sweep` may reuse clean passes; `gate` (default) never does. */
+  mode?: "gate" | "sweep";
+  releaseId?: string;
+  platformVersion?: string;
+  browserFleetVersion?: string;
+  sampleLimit?: number;
 };
 
 export type EvalJobDeps = {
@@ -39,6 +54,9 @@ const MACHINES_DIR = fileURLToPath(
 
 export async function executeEvalJob(job: EvalJobData, deps: EvalJobDeps) {
   const result = deps.run ? await deps.run() : await evaluateForJob(job, deps);
+  console.log(
+    `[eval-worker] result reused=${result.reused ?? false} countsReused=${result.counts.reused ?? 0}`,
+  );
   return recordGateDecision(deps.evidence, {
     orgId: job.orgId,
     tenantSlug: job.tenantSlug,
@@ -73,20 +91,101 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
   const ws = deps.browserEndpoint ?? process.env.EVAL_CDP_ENDPOINT;
   const siteBase =
     deps.siteBase ?? process.env.EVAL_SITE_BASE ?? `http://${job.tenantSlug}.localhost:5173`;
-  const browser = ws ? createBrowserObserver({ wsEndpoint: ws, origin: siteBase }) : undefined;
 
-  try {
-    return await evaluate({
-      client,
-      tenantSlug: job.tenantSlug,
-      machinesDir: process.env.EVAL_MACHINES_DIR ?? MACHINES_DIR,
-      maxRoutes: 50,
-      canReadDefinitions: true,
-      browser,
-      siteBase: browser ? siteBase : undefined,
-      config: job.config,
-    });
-  } finally {
-    await browser?.close();
+  const mode = job.mode ?? "gate";
+  const releaseId = job.releaseId ?? process.env.EVAL_RELEASE_ID ?? "";
+  const platformVersion = job.platformVersion ?? process.env.EVAL_PLATFORM_VERSION ?? "unknown";
+  const browserFleetVersion =
+    job.browserFleetVersion ?? process.env.EVAL_BROWSER_FLEET ?? "unknown";
+  const sample =
+    job.sampleLimit && job.sampleLimit > 0
+      ? `${job.sampleLimit}:${new Date().toISOString().slice(0, 10)}`
+      : "";
+
+  // The worker reuses only for sweeps. A gate job never reads or writes the cache.
+  const store = mode === "sweep" && releaseId ? createEvalResultStore() : null;
+  let cacheKey: string | undefined;
+  let cacheBaseKey: string | undefined;
+  let checkCache: CheckCache | undefined;
+  let routeHashes: Record<string, string> | undefined;
+  let cached: EvalResult | null = null;
+
+  if (store) {
+    routeHashes = (await loadRouteHashes(client, job.tenantSlug)) ?? undefined;
+    if (routeHashes) {
+      const keyInputs = {
+        orgId: job.orgId,
+        tenantSlug: job.tenantSlug,
+        releaseId,
+        platformVersion,
+        browserFleetVersion,
+        checksVersion: computeChecksVersion(job.config),
+        sample,
+      };
+      cacheKey = evalRunKey({ ...keyInputs, routeHashes });
+      cacheBaseKey = evalBaseKey(keyInputs);
+      cached = (await store.get(cacheKey)) as EvalResult | null;
+      if (cached && !cached.passed) cached = null;
+      checkCache = {
+        async get(key: string) {
+          return (await store.get(key)) as CheckResult[] | null;
+        },
+        async put(key: string, results: CheckResult[]) {
+          await store.put(key, results);
+        },
+      };
+    }
   }
+
+  const browser = cached
+    ? undefined
+    : ws
+      ? createBrowserObserver({ wsEndpoint: ws, origin: siteBase })
+      : undefined;
+
+  console.log(
+    `[eval-worker] cache store=${Boolean(store)} hashes=${routeHashes ? Object.keys(routeHashes).length : "null"} key=${cacheKey ? cacheKey.slice(0, 10) : "-"} hit=${Boolean(cached)}`,
+  );
+
+  let result: EvalResult;
+  if (cached) {
+    result = {
+      ...cached,
+      reused: true,
+      cacheKey,
+      counts: { ...cached.counts, reused: cached.checks.length },
+    };
+  } else {
+    try {
+      result = await evaluate({
+        client,
+        tenantSlug: job.tenantSlug,
+        machinesDir: process.env.EVAL_MACHINES_DIR ?? MACHINES_DIR,
+        maxRoutes: 50,
+        canReadDefinitions: true,
+        browser,
+        siteBase: browser ? siteBase : undefined,
+        config: job.config,
+        checkCache,
+        cacheBaseKey,
+        routeHashes,
+        sampleLimit: job.sampleLimit && job.sampleLimit > 0 ? job.sampleLimit : undefined,
+        sampleDay: job.sampleLimit ? new Date().toISOString().slice(0, 10) : undefined,
+      });
+    } finally {
+      await browser?.close();
+    }
+
+    if (cacheKey) result = { ...result, cacheKey };
+    if (store && cacheKey && isCacheableRun(result)) await store.put(cacheKey, result);
+  }
+
+  const reused = result.counts.reused ?? (cached ? result.checks.length : 0);
+  recordEvalReuse({
+    reused,
+    computed: Math.max(0, result.checks.length - reused),
+    gate: mode === "gate",
+  });
+
+  return result;
 }

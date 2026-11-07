@@ -13,7 +13,15 @@ export type EvalGateResult = {
   runId: string;
   checksVersion: string;
   passed: boolean;
-  counts: { pass: number; fail: number; skip: number; unverified: number; flaky?: number };
+  reused?: boolean;
+  counts: {
+    pass: number;
+    fail: number;
+    skip: number;
+    unverified: number;
+    flaky?: number;
+    reused?: number;
+  };
   checks: Array<{ id: string; status: string; level: string; subject?: string }>;
 };
 
@@ -39,6 +47,7 @@ export async function recordGateDecision(
     .filter((check) => check.status === "fail" && check.level === "error")
     .map((check) => check.id)
     .slice(0, 50);
+  const reused = input.result.reused === true || (input.result.counts.reused ?? 0) > 0;
 
   const record = await evidence.appendRecord({
     orgId: input.orgId,
@@ -51,9 +60,11 @@ export async function recordGateDecision(
     data: {
       decision,
       checksVersion: input.result.checksVersion,
-      counts: input.result.counts,
+      counts: { ...input.result.counts },
       failingCheckIds,
       flakyChecks: input.result.counts.flaky ?? 0,
+      reused,
+      reusedCount: input.result.counts.reused ?? 0,
       checkCount: input.result.checks.length,
     },
     occurredAt: new Date(),

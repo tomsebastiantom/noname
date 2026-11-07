@@ -247,6 +247,31 @@ export const evalFlakyTotal = new client.Counter({
   registers: [registry],
 });
 
+export const evalResultsReusedTotal = new client.Counter({
+  name: "noname_eval_results_reused_total",
+  help: "Eval results served from the content-addressed cache.",
+  registers: [registry],
+});
+
+export const evalResultsComputedTotal = new client.Counter({
+  name: "noname_eval_results_computed_total",
+  help: "Eval results actually recomputed.",
+  registers: [registry],
+});
+
+export const evalGateReuseTotal = new client.Counter({
+  name: "noname_eval_gate_reuse_total",
+  help: "Gate runs that reused a result. Must stay 0: a gate never reuses.",
+  registers: [registry],
+});
+
+/** Report reuse/computed counts from the CLI or worker (the server does not run checks itself). */
+export function recordEvalReuse(input: { reused: number; computed: number; gate?: boolean }): void {
+  if (input.reused > 0) evalResultsReusedTotal.inc(input.reused);
+  if (input.computed > 0) evalResultsComputedTotal.inc(input.computed);
+  if (input.gate && input.reused > 0) evalGateReuseTotal.inc();
+}
+
 export function recordEvalResult(result: {
   passed: boolean;
   counts: { unverified: number; flaky?: number };

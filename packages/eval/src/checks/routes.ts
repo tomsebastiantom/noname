@@ -1,4 +1,5 @@
 import { catalogPropRequirement } from "@noname/catalog";
+import { deterministicSample } from "../sampling";
 import type { Check, CheckResult } from "../types";
 
 /**
@@ -125,6 +126,19 @@ const routes: Check["run"] = async (ctx) => {
     ];
   }
 
+  const sampleSet =
+    ctx.sampleLimit && ctx.sampleLimit > 0
+      ? new Set(
+          deterministicSample(
+            routeList.map((item) => item.route),
+            { tenantSlug: ctx.tenantSlug, limit: ctx.sampleLimit, day: ctx.sampleDay },
+          ),
+        )
+      : null;
+  const scopedRoutes = sampleSet
+    ? routeList.filter((entry) => sampleSet.has(entry.route))
+    : routeList;
+
   // The page's declared template is what R2 compares the resolved spec against. If this read fails, R2
   // must skip the comparison rather than silently pass it.
   const routing = await ctx.client.getJson<RoutingPagesResponse>("/api/documents/routing/pages");
@@ -196,7 +210,7 @@ const routes: Check["run"] = async (ctx) => {
 
   // Per-route reuse: unchanged routes come from the cache; changed routes run below.
   const changedRoutes: typeof routeList = [];
-  for (const entry of routeList) {
+  for (const entry of scopedRoutes) {
     const key = routeCacheKey(entry.route);
     const cached = key ? await ctx.checkCache?.get(key) : null;
     if (cached) {

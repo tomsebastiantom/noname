@@ -144,6 +144,10 @@ export type CheckContext = {
   cacheBaseKey?: string;
   /** route → spec hash, from the pre-step; used for per-route cache keys. */
   routeHashes?: Record<string, string>;
+  /** Sweep policy: check at most N routes, chosen deterministically per tenant/day. Gate must not sample. */
+  sampleLimit?: number;
+  /** Day used for sample rotation (defaults to UTC today). */
+  sampleDay?: string;
   /** Assertion overrides (levels, per-route matrix). Absent means the catalogue defaults. */
   config?: AssertionConfig;
   /** Caller-supplied run id; generated when absent. */

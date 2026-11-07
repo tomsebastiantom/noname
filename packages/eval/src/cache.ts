@@ -71,6 +71,8 @@ export function evalRunKey(inputs: {
   browserFleetVersion: string;
   checksVersion: string;
   routeHashes: Record<string, string>;
+  /** Sample identity (limit + day); a sampled result must never be reused as a full run. */
+  sample?: string;
 }): string {
   const routes = Object.keys(inputs.routeHashes)
     .sort()
@@ -82,6 +84,7 @@ export function evalRunKey(inputs: {
     inputs.platformVersion,
     inputs.browserFleetVersion,
     inputs.checksVersion,
+    inputs.sample ?? "",
     routes,
   ]);
 }
@@ -94,6 +97,7 @@ export function evalBaseKey(inputs: {
   platformVersion: string;
   browserFleetVersion: string;
   checksVersion: string;
+  sample?: string;
 }): string {
   return hashValue([
     inputs.orgId,
@@ -102,6 +106,7 @@ export function evalBaseKey(inputs: {
     inputs.platformVersion,
     inputs.browserFleetVersion,
     inputs.checksVersion,
+    inputs.sample ?? "",
   ]);
 }
 

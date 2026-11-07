@@ -4,6 +4,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getBullmqQueue } from "../../shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
+import { recordEvalReuse } from "../../shared/metrics";
 import { getOrgId } from "../../shared/org";
 import { ok } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
@@ -27,6 +28,7 @@ const gateResultSchema = z.object({
     runId: z.string().min(1),
     checksVersion: z.string().min(1),
     passed: z.boolean(),
+    reused: z.boolean().optional(),
     counts: z.object({
       pass: z.number().int().min(0),
       fail: z.number().int().min(0),
@@ -50,12 +52,23 @@ const gateResultSchema = z.object({
 const runRequestSchema = z.object({
   tenantSlug: z.string().min(1),
   config: z.unknown().optional(),
+  mode: z.enum(["gate", "sweep"]).optional(),
+  releaseId: z.string().optional(),
+  platformVersion: z.string().optional(),
+  browserFleetVersion: z.string().optional(),
+  sampleLimit: z.number().int().min(0).optional(),
 });
 
 export type EvalRoleContext = {
   /** role key → permissions that role grants. A map, not a union: audience coverage must be per role. */
   roles: Record<string, string[]>;
 };
+
+const reuseSchema = z.object({
+  reused: z.number().int().min(0),
+  computed: z.number().int().min(0),
+  gate: z.boolean().optional(),
+});
 
 export function createEvalRoutes(deps: {
   capabilities: CapabilityRegistry;
@@ -134,6 +147,11 @@ export function createEvalRoutes(deps: {
       orgId: getOrgId(c),
       tenantSlug: parsed.data.tenantSlug,
       config: parsed.data.config as AssertionConfig | undefined,
+      mode: parsed.data.mode,
+      releaseId: parsed.data.releaseId,
+      platformVersion: parsed.data.platformVersion,
+      browserFleetVersion: parsed.data.browserFleetVersion,
+      sampleLimit: parsed.data.sampleLimit,
     });
 
     return ok(c, { jobId: job.id });
@@ -207,6 +225,17 @@ export function createEvalRoutes(deps: {
 
     await deps.results.put(key, results);
     return ok(c, { stored: true });
+  });
+
+  routes.post("/reuse", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+
+    const parsed = reuseSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid reuse report" }, 400);
+
+    recordEvalReuse(parsed.data);
+    return ok(c, { recorded: true });
   });
 
   return routes;

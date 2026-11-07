@@ -17,7 +17,12 @@ export function startEvalWorker(evidence: EvidenceService): Worker<EvalJobData> 
 
   const worker = new Worker<EvalJobData>(
     BULLMQ_QUEUES.EVAL,
-    async (job) => executeEvalJob(job.data, { evidence }),
+    async (job) => {
+      console.log(
+        `[eval-worker] job ${job.id} mode=${job.data.mode ?? "gate"} release=${job.data.releaseId ?? "-"}`,
+      );
+      return executeEvalJob(job.data, { evidence });
+    },
     {
       connection: getRedisConnection(),
       concurrency: workerConcurrency("EVAL_WORKER_CONCURRENCY", 1),

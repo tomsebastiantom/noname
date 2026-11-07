@@ -38,6 +38,7 @@ type Options = {
   mode: "dev" | "gate" | "agent";
   drafts: boolean;
   noCache: boolean;
+  sampleLimit: number;
   releaseId: string;
   platformVersion: string;
   browserFleetVersion: string;
@@ -64,6 +65,7 @@ function parseArgs(argv: string[]): Options {
     mode: get("mode", "dev") as Options["mode"],
     drafts: argv.includes("--drafts"),
     noCache: argv.includes("--no-cache"),
+    sampleLimit: Number(get("sample", "0")) || 0,
     releaseId: get("release", process.env.EVAL_RELEASE_ID ?? "") || "",
     platformVersion: get("platform-version", process.env.EVAL_PLATFORM_VERSION ?? "unknown"),
     browserFleetVersion: get("browser-fleet", process.env.EVAL_BROWSER_FLEET ?? "unknown"),
@@ -131,6 +133,10 @@ export async function evalCommand(argv: string[]): Promise<number> {
     console.error("--drafts is a dev-mode policy: a gate must verify what customers see");
     return 2;
   }
+  if (options.sampleLimit > 0 && options.mode === "gate") {
+    console.error("--sample is a sweep policy: a gate must verify every route, not a sample");
+    return 2;
+  }
   const token = readToken(argv);
 
   let config: AssertionConfig | undefined;
@@ -149,6 +155,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
     apiBase: options.apiBase,
     headers: token ? { ...hmacHeaders(), Authorization: `Bearer ${token}` } : hmacHeaders(),
   });
+  const sampleDay = new Date().toISOString().slice(0, 10);
 
   // Cache policy: the gate never reuses; everything else reuses only a clean pass whose inputs are unchanged.
   const noCache = options.noCache || options.mode === "gate";
@@ -174,6 +181,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
         platformVersion: options.platformVersion,
         browserFleetVersion: options.browserFleetVersion,
         checksVersion,
+        sample: options.sampleLimit > 0 ? `${options.sampleLimit}:${sampleDay}` : "",
       };
       cacheKey = evalRunKey({ ...keyInputs, routeHashes });
       cacheBaseKey = evalBaseKey(keyInputs);
@@ -226,7 +234,12 @@ export async function evalCommand(argv: string[]): Promise<number> {
 
   let result: EvalResult;
   if (cached) {
-    result = { ...cached, reused: true, cacheKey };
+    result = {
+      ...cached,
+      reused: true,
+      cacheKey,
+      counts: { ...cached.counts, reused: cached.checks.length },
+    };
   } else {
     try {
       result = await evaluate({
@@ -237,6 +250,8 @@ export async function evalCommand(argv: string[]): Promise<number> {
         canReadDefinitions: Boolean(token),
         includeDrafts: options.drafts,
         browser,
+        sampleLimit: options.sampleLimit > 0 ? options.sampleLimit : undefined,
+        sampleDay: options.sampleLimit > 0 ? sampleDay : undefined,
         checkCache,
         cacheBaseKey,
         routeHashes,
@@ -258,6 +273,18 @@ export async function evalCommand(argv: string[]): Promise<number> {
       }).catch(() => undefined);
     }
   }
+
+  // Report reuse/computed so the server can expose the saving as metrics (gate reuse must stay 0).
+  const reusedCount = result.counts.reused ?? 0;
+  void fetch(`${options.apiBase.replace(/\/$/, "")}/api/eval/reuse`, {
+    method: "POST",
+    headers: { ...authHeaders, "content-type": "application/json" },
+    body: JSON.stringify({
+      reused: reusedCount,
+      computed: Math.max(0, result.checks.length - reusedCount),
+      gate: options.mode === "gate",
+    }),
+  }).catch(() => undefined);
 
   let evidenceId: string | undefined;
   let decision: string | undefined;

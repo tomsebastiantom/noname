@@ -27,11 +27,8 @@ export { createBrowserObserver } from "./observers/browser";
 export { createHttpClient } from "./observers/http";
 export { loadManifestObservation } from "./observers/manifest";
 export { CHECK_REGISTRY } from "./registry";
-export {
-  computeRouteHashes,
-  computeRouteHashesFromTree,
-  loadRouteHashes,
-} from "./route-hashes";
+export { computeRouteHashes, computeRouteHashesFromTree, loadRouteHashes } from "./route-hashes";
+export { deterministicSample } from "./sampling";
 export * from "./types";
 
 /** Hash of the catalogue and configured levels — changes exactly when “what verified means” changes. */
