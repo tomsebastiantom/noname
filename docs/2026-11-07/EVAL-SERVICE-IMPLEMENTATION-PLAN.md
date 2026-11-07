@@ -6,10 +6,10 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3 and the tier‑0/1 catalogue are **done and verified** on 2026-11-07.
-> **E8 is partial by design** (tenant-role evaluation open). Tier 2: **E16, E17, E18 done** — renderer
-> markers, `B1.structure`, `B2.overflow` at three widths, `B3.a11y` with axe-core. See
-> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next: E19 (`B4.content`).
+> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, and **tier 2 (E16–E19 + E24)** are **done and
+> verified** on 2026-11-07. `noname eval` now runs the full catalogue end-to-end against a Playwright server:
+> **72 pass / 0 fail / 0 skip**. **E8 remains partial by design** (tenant-role evaluation open). See
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next: E20/E22 (behaviour + `S1`), then modes/sinks/queue.
 
 ---
 
@@ -235,7 +235,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E16** | `B1.structure` impossible — no DOM markers | no `data-block-*` anywhere; `Renderer` passes `element` (key + type) to every registry component ([`@json-render/react` index.d.ts](../../node_modules/.pnpm/@json-render+react@0.20.0_react@19.2.7_zod@4.4.3/node_modules/@json-render/react/dist/index.d.ts#L366)) | **DONE 2026-11-07.** `withBlockMarkers(registry)` wraps every component in `display: contents` with `data-block-type`; `data-eval-ready` is set when the shell mounts. `B1.structure` compares spec element-type counts with `[data-block-type]` counts in the browser observer | A missing/extra block type fails `B1` with spec vs DOM counts | M |
 | **E17** | `B2` is console errors, not overflow | uncommitted `B2.console`; viewport fixed 1280×800 ([`observers/browser.ts:30`](../../packages/eval/src/observers/browser.ts#L30)) | **DONE 2026-11-07.** Real `B2.overflow` at 375/768/1440; observer takes a width per visit and records `scrollWidth`/`clientWidth`; `B2.console` kept separately | A forced 400 px element fails at 375 only | S |
 | **E18** | `B3.a11y` missing | no `axe-core` | **DONE 2026-11-07.** axe-core injected in the browser observer; `B3.a11y` asserts the RFC subset (`image-alt`, `label`, `button-name`, `link-name`) and fails with rule ids + node counts | Removing an `alt` fails `B3` with the rule | M |
-| **E19** | `B4.content` missing | `B1.render` only checks text length | Assert title, product name, price (currency-shaped) from the resolved spec | Removing the price from a product page fails `B4` | S |
+| **E19** | `B4.content` missing | `B1.render` only checks text length | **DONE 2026-11-07.** Title, text and price values are collected from the edge-resolved spec and looked up in the rendered body; a missing value fails with its text | Removing the price from a product page fails `B4` | S |
 | **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | Fixture tenant + reserved test product + sandbox checkout; run tagged with `correlationId`; cleanup by that id | Breaking add-to-cart fails `B5`; checkout reaches `paid`; cleanup removes the order | L |
 | **E21** | `B6`/`B7` missing | none | `B6` contrast/spacing advisories (`warn`); `B7` vision review — `warn` only, never a gate | `B6` reports a known contrast failure; `B7` never changes `passed` | M |
 | **E22** | `S1.no_internal_egress` missing | RFC §5.5; no implementation | Canary page attempts API/Redis/metadata; passes only if all fail; runs in every mode | A deliberate allow-rule makes `S1` fail | M |
@@ -245,7 +245,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | # | Gap | Current evidence | Design | Acceptance | Size |
 |---|---|---|---|---|---|
 | **E23** | Result contract incomplete | no `runId`/`releaseId`/`checksVersion`/`unverified`; `CheckResult` lacks `runs`/`fix` | Extend types; `unverified` derived from skipped *required* checks | A run with an unreachable edge reports `unverified`, not `pass` | S |
-| **E24** | CLI cannot reach the browser or choose a mode | no browser/site/mode flags; `evalCommand` re-parses `process.argv` | Add `--mode`, `--browser-endpoint`, `--site`, `--preset`, `--token`; use commander’s parsed options | `noname eval --mode dev --browser-endpoint ws://…` renders tier 2 | S |
+| **E24** | CLI cannot reach the browser or choose a mode | no browser/site/mode flags; `evalCommand` re-parses `process.argv` | **DONE 2026-11-07.** `--browser-endpoint` / `--site` (default `EVAL_CDP_ENDPOINT`, origin `http://<tenant>.localhost:5173`); observer is created, passed to `evaluate()`, and closed in `finally` | `noname eval --browser-endpoint ws://…` runs tier 2 (verified: 72 pass / 0 fail / 0 skip) | S |
 | **E25** | No queue/worker | no eval queue; browser idle | `EVAL` queue, `domains/eval` worker, separate entrypoint later | A queued run executes tier 2 and records metrics | M |
 | **E26** | No Evidence/metrics sinks | none | Gate-decision Evidence (per release-gate §8); check metrics in `shared/metrics.ts` | One decision row per gate run; `noname_eval_checks_total` visible | M |
 | **E27** | No cost policy | none | Sampling + `specHash@releaseId@checksVersion` skip, enforced in the runner | Unchanged release re-run produces skips, reported as `unverified` unless the policy says otherwise | S |
@@ -379,6 +379,6 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
-| **B5** | E16–E19, E21 — renderer markers + tier 2 | **In progress** — E16–E18 done; E19 pending | 56 tests; browser: markers 7/7, no overflow at 3 widths, 0 a11y violations |
+| **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
 | **B6** | E20, E22 — behaviour + `S1` | Not started | — |
-| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | Not started | — |
+| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E24 done; E3/E4/E23/E25/E26 pending | CLI tier 2 wiring verified end-to-end |

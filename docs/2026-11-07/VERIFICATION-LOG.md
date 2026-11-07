@@ -368,10 +368,45 @@ rule subset. Both are tier 2 and report `skip` — never `pass` — when the bro
 `--browser-endpoint` (E24). The checks are unit-tested and the underlying measurements are verified in a real
 browser, but the CLI path is the remaining plumbing before tier 2 can gate anything.
 
+## 2026-11-07 — E19/E24: `B4.content` + CLI tier‑2 wiring
+
+**Scope.** Prove the resolved spec’s title/copy/price reached the screen, and make tier 2 runnable from
+`noname eval` instead of only from a bespoke Playwright script.
+
+**Code.** `packages/eval/src/checks/browser.ts` (`B4.content`), `types.ts` (`PageVisit.text`),
+`checks/content.test.ts`, `packages/cli/src/index.ts` (`--browser-endpoint`, `--site`),
+`packages/cli/src/commands/eval.ts` (observer lifecycle).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{eval,cli} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **61/61 passed** (5 B4 tests) |
+| Unit — missing price | `fails when the price is not visible` | fail names `99.99` |
+| Unit — no title | `fails when the page has no document title` | fail |
+| Unit — skips | no browser / unreadable spec | skip at `error` level |
+| Local server | `.tools/playwright-server.mjs` (`chromium.launchServer`, Chrome channel, :9222) | `ws://[::1]:9222/…` |
+| End-to-end CLI | `noname eval --tenant yogastore --token <service-token> --browser-endpoint ws://… --site http://yogastore.localhost:5173` | **72 pass / 0 fail / 0 skip** |
+
+Tier‑2 results from that run:
+
+```
+B1.render      pass   rendered "Noname" (358 chars)
+B1.structure   pass   7 block(s) across 7 type(s) match the DOM
+B2.overflow    pass   /375, /768, /1440 — scroll <= client at each
+B3.a11y        pass   no violations in the checked rule set
+B4.content     pass   6 content value(s) visible
+B2.console     pass   no console errors
+```
+
+**Note on the server.** The Kubernetes browser fleet is not reachable from this host (see the environment
+bootstrap entry), so the run used a locally launched Playwright server with Chrome. The CLI only knows the
+WebSocket endpoint, so the same command works against the fleet unchanged.
+
 ## Next steps
 
-1. **E19** — `B4.content`: key content (title, product name, price) actually visible.
-2. **E24** — CLI `--browser-endpoint` / `--site`, then run tier 2 end-to-end from `noname eval`.
-3. **E8 remainder** — tenant-role projection.
-4. **E20/E22** — behaviour (`B5`) and `S1`.
-5. **E3/E4/E23–E26** — modes, sinks, queue/worker.
+1. **E20/E22** — behaviour (`B5`: cart/checkout with sandbox data) and `S1.no_internal_egress`.
+2. **E8 remainder** — tenant-role projection.
+3. **E3/E4/E23/E25/E26** — assertion config, modes, sinks, queue/worker.
+4. **E21** — `B6` design advisories and `B7` visual rubric (warn only).
