@@ -421,8 +421,8 @@ reuse/computed metrics, worker cache.
 **Decision:** ☑ **A — implemented 2026-11-07.** Identical runs reuse; one route edit recomputes only that route
 and reuses the rest (17 reused results observed); release/platform changes invalidate; `--no-cache` bypasses;
 failures/unverified are never stored; **sampling** is deterministic and rotating (`--sample`; gate refuses);
-**reuse/computed/gate-reuse metrics** are live; **worker sweep cache** is implemented. Caveat: the worker live
-Evidence proof is split by a competing `workers` process, so that one E2E is not yet trustworthy.
+**reuse/computed/gate-reuse metrics** are live; **worker sweep cache** is verified (second job Evidence:
+`reused: true`, `counts.reused: 33`, fresh `correlationId`).
 
 ---
 

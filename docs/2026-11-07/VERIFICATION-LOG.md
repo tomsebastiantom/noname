@@ -792,12 +792,13 @@ sweep cache.
 | Sampling live | `--sample 1` vs unsampled | **58** vs **65** results |
 | Gate vs sample | `--mode gate --sample 1` | **exit 2**, “a gate must verify every route, not a sample” |
 | Reuse metrics | `GET /metrics` after a cached run | `noname_eval_results_reused_total 58`, `computed_total 116`, `gate_reuse_total 0` |
-| Worker mode | sweep job log | `mode=sweep release=r_w11`, `hit=true`, `countsReused=33` |
+| Worker mode | sweep job | `mode=sweep`, second job `hit=true`, `countsReused=33` |
+| Worker Evidence | psql, latest two rows | second: **`reused: true`, `counts.reused: 33`**, pass 33, fresh `correlationId`; first: `reused: false`, 0 |
 
-**Caveat recorded.** For the worker sweep, the log shows `hit=true`/`countsReused=33` but the Evidence row for
-that job still showed `reused:false`. A `workers` process from another session shares `{eval-runs}` and competes
-for jobs, so the worker live proof is split across processes and is **not yet trustworthy**. The worker code path
-is in place; isolating the process is the remaining verification.
+**Root cause found and fixed.** The first worker E2E showed `hit=true` but Evidence `reused:false`: a reused
+result kept the cached `runId`, so the second decision reused the first Evidence **idempotency key** and
+deduplicated into it. Reused runs now get a fresh `runId` (cache key + `reused` flag retain provenance). After
+the fix, the second job writes its own Evidence row with `reused:true` and `counts.reused:33`.
 
 **Limits.** Sampling applies to route checks (tier‑2 is home-scoped); no tenant sampling; no per-mode sampling
 policy beyond the CLI flag.

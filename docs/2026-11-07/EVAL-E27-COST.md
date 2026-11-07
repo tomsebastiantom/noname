@@ -135,20 +135,22 @@ Deterministic is mandatory: a failure must be reproducible. Rotation avoids perm
 | Sampling unit | 5/5 — stable per tenant/day, always home, rotates across days, tenant-specific |
 | Sampling live | `--sample 1`: **58** results vs **65** unsampled; `gate --sample` → **exit 2** |
 | Reuse metrics | `noname_eval_results_reused_total 58`, `noname_eval_results_computed_total 116`, `noname_eval_gate_reuse_total 0` |
-| Worker cache | sweep job log: `hit=true`, `countsReused=33` (second identical job) |
+| Worker cache | sweep job: Evidence row `reused: true`, `counts.reused: 33`, distinct `correlationId` |
+| Worker cache — first job | `reused: false`, `counts.reused: 0` |
 | Live — per-check | run key deleted, home checks reused: **7** results `reused: true` |
 | Live — per-route | run key deleted, route + home reused: **17** results `reused: true`, 0 failures |
 | Route hashing | page tree → pageId → routing → layout; keys are URLs (`/`, `/products`), not routing keys |
 | Store | Redis `eval:result:*`, 7-day TTL, clean passes only (server also rejects anything else) |
 | Identity | store calls use the `eval-worker` service headers; `machines:read` |
 
-**Not yet / caveat:** the **worker Evidence row** for the reused sweep still showed `reused: false` while the
-worker log showed `hit=true` and `countsReused=33`. A second `workers` process from another session shares the
-queue and competes for jobs, so the live worker proof is split across processes and not yet trustworthy. The
-worker code path itself is in place; isolating the process is the remaining verification.
+**Worker proof note.** The first attempt showed `hit=true` in the worker log but `reused: false` in Evidence.
+Root cause: a reused result kept the cached `runId`, so the second gate decision used the **same Evidence
+idempotency key** as the first and deduplicated into it. Reused runs now get a fresh `runId` (the cache key and
+`reused` flag keep provenance), and the second job writes a new Evidence row with `reused: true`,
+`counts.reused: 33`.
 
-**Also not yet:** deterministic sampling is wired to route checks only (tier‑2 is home-scoped); no per-mode
-sampling policy beyond the CLI flag; no sampling of tenants (only routes).
+**Limits.** Sampling applies to route checks (tier‑2 is home-scoped); no tenant sampling; no per-mode sampling
+policy beyond the CLI flag.
 
 ## 8. Risks and limits
 
