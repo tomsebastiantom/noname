@@ -1,7 +1,7 @@
 # Pending decisions — release mechanism and eval gaps
 
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
-> **Implementation status:** **D14, D15, D16 and D1 C1 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D15-DESIGN.md`](./RELEASE-D15-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-D1-DESIGN.md`](./RELEASE-D1-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D1 waves/UI remain open.**
+> **Implementation status:** **D14, D15, D16 and D1 C1 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D15-DESIGN.md`](./RELEASE-D15-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-D1-DESIGN.md`](./RELEASE-D1-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D1 waves/UI remain open** — waves need a platform-operator identity; the UI surface does not exist yet.
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
 > repository actually does today and to how established projects solved the same problem.
 > **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
@@ -14,7 +14,7 @@
 
 | # | Decision | Options | Recommendation | Urgency |
 |---|---|---|---|---|
-| **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context**, DB truth through a port — **implemented 2026-11-07** | **High** — waves/UI remaining |
+| **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context** — pointer, catalog projection, promotion gate, prune **implemented 2026-11-07** | **High** — waves/UI remaining |
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** — **implemented 2026-11-07** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |

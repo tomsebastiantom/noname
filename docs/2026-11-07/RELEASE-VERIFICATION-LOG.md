@@ -153,9 +153,36 @@ that returns the pointed release’s bundle URL. No waves, no UI, no caching cha
 pointer per request; promotion does not require a `client_bundle` artifact yet (falls back instead); direct
 catalog calls need the edge HMAC, so e2e used the same headers as the edge.
 
+## 2026-11-07 — D1 continuation: cache key, promotion gate, retention
+
+**Scope.** Three follow-ups to the pointer: make the client cache release-aware, refuse a destructive migration
+set at promotion, and bound release growth.
+
+**Code.** `catalog-loader.ts` (version in cache key, `number | string`), `migration-policy.ts` + tests,
+`pointer-service`/`environment-service` call the assertion, `retention.ts` + `POST /api/releases/prune`,
+`ReleaseStore.delete`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **44/44** (7 pointer + 8 environment + 7 release + 15 classifier + 4 migration policy + 3 retention) |
+| Full suite | `pnpm vitest run packages/server` | **633/633**, 142 files |
+| Types | server + client | clean |
+| Destructive promote | release with `migration_set` → temp `DROP COLUMN` file | **409**, details `["DROP COLUMN"]` |
+| Additive promote | release with `ADD COLUMN` file | **200** |
+| Prune | `POST /api/releases/prune {keep:2}` | **200**, deleted 4 |
+| Protected | pointer release after prune | survives; catalog still projects it |
+| Cache key | client `manifestCacheKey` | includes `private.version` (release id) |
+
+**Limits recorded.** Unresolvable `migration_set` refs are not blocked (the classifier cannot see SQL); R2 objects
+are not deleted by prune; promotion waves and the release admin UI are deferred — waves need a platform-operator
+identity (cross-org escalation risk), and the app has no release admin surface yet.
+
 ## Next blocks
 
-1. **D1 continuation** — promotion waves, tenant list UI, and a catalog cache key that includes `releaseId`.
-2. Gate wiring: classify the `migration_set` artifact and refuse a destructive set at promotion.
-3. Bundle retention/GC for the last N releases per tenant.
+1. **Promotion waves** — requires a platform-admin role/permission first.
+2. **Release admin UI** — tenant list, pointer history, promote/rollback buttons.
+3. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
+4. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.
 

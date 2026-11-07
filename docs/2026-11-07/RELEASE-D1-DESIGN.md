@@ -153,3 +153,27 @@ artifact (it falls back instead); the catalog requires the edge HMAC when called
 headers as the edge.
 
 The runnable record is in [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md).
+
+## 11. Continuation — cache key, promotion gate, retention (2026-11-07)
+
+**Implemented**
+
+| Piece | What changed |
+|---|---|
+| **Cache key** | `CatalogManifestRemote.version` is `number | string`; the client cache key now includes `private.version`, so a pointer move invalidates the catalog cache even if a digest is reused |
+| **Promotion gate** | `assertMigrationsPromotable(release)` runs before a tenant promote and before an environment activate. It resolves `migration_set` refs (comma-separated paths) to files, classifies them with D16, and returns **409** on a destructive set. Refs that cannot be resolved to files are allowed and recorded as unverifiable |
+| **Retention** | `POST /api/releases/prune { keep }` (default 3) keeps the newest N releases plus anything referenced by the tenant pointer or an environment, and deletes the rest; artifacts cascade. R2 objects are **not** deleted — object lifecycle is separate |
+
+**Deferred, with reasons**
+
+| Piece | Why not now |
+|---|---|
+| **Promotion waves** | A wave promotes across orgs. The platform has no platform-operator identity/permission: every org admin is `admin`, so a cross-org batch endpoint would be a tenant-escalation hole. Needs a platform-admin role or an operator CLI with its own auth |
+| **Tenant list UI** | There is no release admin surface in the app yet; building one is a UI project, not a release-domain change. The API is complete (`GET /environments`, `GET /pointer`, `GET /releases`) |
+
+**Validation**
+
+- destructive set → 409 `[DROP COLUMN]`; additive set → 200;
+- prune → 200, deletes older releases, pointer/environment releases survive;
+- catalog still projects the pointed release after prune;
+- 44 release-domain tests, 633 full server tests.
