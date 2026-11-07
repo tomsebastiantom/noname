@@ -197,8 +197,9 @@ export async function evalCommand(argv: string[]): Promise<number> {
     const passed = result.checks.filter((c) => c.status === "pass").length;
     const skipped = result.checks.filter((c) => c.status === "skip").length;
     const unverified = result.counts.unverified;
+    const flaky = result.counts.flaky;
     console.log(
-      `\n  ${passed} passed, ${failed} failed, ${skipped} skipped${unverified > 0 ? ` (${unverified} unverified)` : ""}`,
+      `\n  ${passed} passed, ${failed} failed, ${skipped} skipped${unverified > 0 ? ` (${unverified} unverified)` : ""}${flaky > 0 ? ` (${flaky} flaky)` : ""}`,
     );
     if (evidenceId) console.log(`  evidence: ${evidenceId} (${decision ?? "recorded"})`);
   }

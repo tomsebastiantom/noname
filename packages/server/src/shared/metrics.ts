@@ -241,9 +241,15 @@ export const evalUnverifiedTotal = new client.Counter({
   registers: [registry],
 });
 
+export const evalFlakyTotal = new client.Counter({
+  name: "noname_eval_flaky_total",
+  help: "Eval checks that failed once and passed on retry.",
+  registers: [registry],
+});
+
 export function recordEvalResult(result: {
   passed: boolean;
-  counts: { unverified: number };
+  counts: { unverified: number; flaky?: number };
   checks: Array<{ id: string; status: string; level: string }>;
 }): void {
   evalRunsTotal.inc({ decision: result.passed ? "pass" : "blocked" });
@@ -251,6 +257,7 @@ export function recordEvalResult(result: {
     evalChecksTotal.inc({ check: check.id, status: check.status, level: check.level });
   }
   if (result.counts.unverified > 0) evalUnverifiedTotal.inc();
+  if ((result.counts.flaky ?? 0) > 0) evalFlakyTotal.inc(result.counts.flaky ?? 0);
 }
 
 // ---------------------------------------------------------------- render

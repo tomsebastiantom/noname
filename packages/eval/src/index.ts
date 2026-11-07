@@ -64,10 +64,27 @@ export async function evaluateChecks(
   }
 
   const results: EvalResult["checks"] = [];
+  let flaky = 0;
 
   for (const check of checks) {
     try {
-      results.push(...(await check.run(runCtx)));
+      const maxRetries = check.meta.retryable ? Math.max(0, ctx.config?.retries ?? 1) : 0;
+      let attempts = 0;
+      let checkResults: CheckResult[] = [];
+
+      do {
+        attempts += 1;
+        checkResults = await check.run(runCtx);
+        if (!checkResults.some((result) => result.status === "fail")) break;
+      } while (attempts <= maxRetries);
+
+      // A check that failed and then passed on retry is reported as pass, but counted as flaky: the
+      // difference between “reliable” and “passed the second time” must stay visible.
+      if (attempts > 1 && !checkResults.some((result) => result.status === "fail")) flaky += 1;
+
+      results.push(
+        ...(attempts > 1 ? checkResults.map((result) => ({ ...result, attempts })) : checkResults),
+      );
     } catch (cause) {
       results.push({
         id: check.meta.id,
@@ -85,7 +102,7 @@ export async function evaluateChecks(
     adjusted.push({ ...result, level });
   }
 
-  const counts = { pass: 0, fail: 0, skip: 0, unverified: 0 };
+  const counts = { pass: 0, fail: 0, skip: 0, unverified: 0, flaky };
   for (const result of adjusted) {
     counts[result.status] += 1;
     if (result.status === "skip" && result.level === "error") counts.unverified += 1;

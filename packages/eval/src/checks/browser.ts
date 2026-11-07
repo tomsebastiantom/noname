@@ -25,6 +25,7 @@ const render: Check = {
     defaultLevel: "error",
     needs: ["browser"],
     emits: ["B1.render"],
+    retryable: true,
     description:
       "the storefront renders real content in a browser, not an error screen or an empty shell",
   },
@@ -101,6 +102,7 @@ const structure: Check = {
     defaultLevel: "error",
     needs: ["api", "browser"],
     emits: ["B1.structure"],
+    retryable: true,
     description: "the rendered DOM contains exactly the blocks the spec declares, by type",
   },
   async run(ctx) {
@@ -180,6 +182,7 @@ const overflowCheck: Check = {
     defaultLevel: "error",
     needs: ["browser"],
     emits: ["B2.overflow"],
+    retryable: true,
     description: "the page has no horizontal overflow at 375, 768 and 1440 pixels",
   },
   async run(ctx) {
@@ -239,6 +242,7 @@ const a11y: Check = {
     defaultLevel: "error",
     needs: ["browser"],
     emits: ["B3.a11y"],
+    retryable: true,
     description: "images, form fields, buttons and links have accessible names",
   },
   async run(ctx) {
@@ -289,6 +293,7 @@ const content: Check = {
     defaultLevel: "error",
     needs: ["api", "browser"],
     emits: ["B4.content"],
+    retryable: true,
     description:
       "page title, product name and price from the resolved spec are visible in the browser",
   },
@@ -469,6 +474,7 @@ const egress: Check = {
     defaultLevel: "warn",
     needs: ["browser"],
     emits: ["S1.no_internal_egress"],
+    retryable: true,
     description: "the eval browser cannot reach internal platform endpoints",
   },
   async run(ctx) {
@@ -533,6 +539,7 @@ const design: Check = {
     defaultLevel: "warn",
     needs: ["browser"],
     emits: ["B6.design"],
+    retryable: true,
     description: "contrast advisories from axe-core (warning only)",
   },
   async run(ctx) {
@@ -579,6 +586,7 @@ const consoleClean: Check = {
     defaultLevel: "warn",
     needs: ["browser"],
     emits: ["B2.console"],
+    retryable: true,
     description: "the storefront raises no console errors during a browser visit",
   },
   async run(ctx) {

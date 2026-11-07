@@ -31,6 +31,7 @@ const gateResultSchema = z.object({
       fail: z.number().int().min(0),
       skip: z.number().int().min(0),
       unverified: z.number().int().min(0),
+      flaky: z.number().int().min(0).optional(),
     }),
     checks: z
       .array(

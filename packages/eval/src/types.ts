@@ -34,6 +34,8 @@ export type CheckResult = {
   subject?: string;
   /** How many runs were aggregated into this result (RFC §5.1). */
   runs?: number;
+  /** How many attempts this check took when a retry policy applied (>1 means it failed once). */
+  attempts?: number;
   /** What the UI can offer to fix it. */
   fix?: { kind: string; payload?: unknown };
 };
@@ -42,7 +44,7 @@ export type EvalResult = {
   checks: CheckResult[];
   /** Derived: no `error`-level failure. Never passed in. */
   passed: boolean;
-  counts: { pass: number; fail: number; skip: number; unverified: number };
+  counts: { pass: number; fail: number; skip: number; unverified: number; flaky: number };
   /** Stable id for this run (caller-supplied or generated). */
   runId: string;
   /** Hash of the catalogue + configured levels; changes when expectations change. */
@@ -56,6 +58,8 @@ export type EvalResult = {
 export type AssertionConfig = {
   assertions?: Record<string, Level>;
   assertMatrix?: Array<{ matchingRoute: string; assertions: Record<string, Level> }>;
+  /** Retries for retryable checks when the first attempt fails. Defaults to 1. */
+  retries?: number;
 };
 
 /** The only I/O surface checks are allowed to use. */
@@ -78,6 +82,8 @@ export type CheckMeta = {
   needs: CheckNeed[];
   /** Every result id the check may emit. Used to prove catalogue uniqueness. */
   emits: string[];
+  /** Whether a failing result may be retried. Side-effecting checks (behaviour) must not set this. */
+  retryable?: boolean;
   description: string;
 };
 
