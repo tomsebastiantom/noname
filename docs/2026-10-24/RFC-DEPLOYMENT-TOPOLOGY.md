@@ -222,7 +222,7 @@ That list is why the cutover is a project, not a deployment: **six of eight are 
 ## 5b. Blue/green contract — how a server release moves
 
 The cluster is also the mechanism for promoting a **server** release. The contract, added 2026-11-07
-([finding](../../2026-11-07/RELEASE-UNIT-FINDING.md)):
+([finding](../2026-11-07/RELEASE-UNIT-FINDING.md)):
 
 | Piece | Contract |
 |---|---|
@@ -230,7 +230,7 @@ The cluster is also the mechanism for promoting a **server** release. The contra
 | **One selector** | a single Service selects the active stack; switching is the promotion |
 | **Preview first** | the candidate stack is deployed first and verified against a production-like snapshot; the gate runs there |
 | **Rollback** | switch the selector back; keep the previous stack warm for the rollback window (hours, not days) |
-| **Database** | both stacks share one schema, so migrations are **expand/contract** ([`DATABASE-MIGRATIONS`](../2026-10-24/DATABASE-MIGRATIONS.md)); a breaking migration forbids blue/green |
+| **Database** | both stacks share one schema, so migrations are **expand/contract** ([`DATABASE-MIGRATIONS`](./DATABASE-MIGRATIONS.md)); a breaking migration forbids blue/green |
 | **Workers** | both worker versions may run during the window; a job produced by one must be consumable by the other, or the worker switches with its API |
 
 This is the missing counterpart to the tenant pointer: the pointer moves a **client bundle**, the selector moves
