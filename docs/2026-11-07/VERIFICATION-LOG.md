@@ -340,12 +340,38 @@ dropped or duplicated block. A per-element id is recorded as a future renderer-c
 `--browser-endpoint` flag yet (E24). The check is unit-tested and the markers are verified in a real browser;
 wiring the CLI is the next plumbing step after tier 2.
 
+## 2026-11-07 — E17/E18: `B2.overflow` + `B3.a11y`
+
+**Scope.** Viewport-aware visits (375/768/1440) with a measured overflow fact, and an axe-core audit of the RFC’s
+rule subset. Both are tier 2 and report `skip` — never `pass` — when the browser or the measurement is missing.
+
+**Code.** `packages/eval/src/types.ts` (`width`, `overflow`, `a11y` on `PageVisit`), `observers/browser.ts`
+(viewport per visit, overflow measurement, axe injection), `checks/browser.ts` (`B2.overflow`, `B3.a11y`),
+`checks/{overflow,a11y}.test.ts`, `axe-core` dependency.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **56/56 passed** (4 overflow + 4 a11y tests) |
+| Unit — overflow | `fails only the width that overflows` | fail at `/375`, detail “45px” |
+| Unit — unmeasured width | `skips a width whose overflow could not be measured` | skip at `error` level |
+| Unit — a11y | `fails and names the violated rules` | `image-alt (2 node(s)); label (1 node(s))` |
+| Unit — audit unavailable | `skips — never passes — when the audit could not run` | skip |
+| Browser — overflow | `.tools/verify-storefront.mjs` | 375: 375/375; 768: 768/768; 1440: 1440/1440 — **no overflow** |
+| Browser — a11y | same run, axe-core in the page | **0 violations** in `image-alt`, `label`, `button-name`, `link-name` |
+| Browser — markers | same run | spec/DOM match still true; `data-eval-ready` true |
+| Console | same run | 0 errors |
+
+**Not yet through the CLI.** `B2.overflow`/`B3.a11y` need a browser endpoint; `noname eval` still lacks
+`--browser-endpoint` (E24). The checks are unit-tested and the underlying measurements are verified in a real
+browser, but the CLI path is the remaining plumbing before tier 2 can gate anything.
+
 ## Next steps
 
-1. **E17–E19** — `B2.overflow` at 375/768/1440 (viewport-aware observer), `B3.a11y` with axe-core,
-   `B4.content`.
-2. **E24** — CLI `--browser-endpoint` / `--site`, so tier 2 runs from `noname eval` against the local
-   Playwright server.
+1. **E19** — `B4.content`: key content (title, product name, price) actually visible.
+2. **E24** — CLI `--browser-endpoint` / `--site`, then run tier 2 end-to-end from `noname eval`.
 3. **E8 remainder** — tenant-role projection.
 4. **E20/E22** — behaviour (`B5`) and `S1`.
 5. **E3/E4/E23–E26** — modes, sinks, queue/worker.
