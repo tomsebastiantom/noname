@@ -11,9 +11,11 @@ import { createReleasePointerService } from "./pointer-service";
 import type {
   EnvironmentService,
   ReleasePointerService,
+  ReleaseRetention,
   ReleaseService,
   ReleaseStore,
 } from "./ports";
+import { createReleaseRetention } from "./retention";
 import { createReleaseService } from "./service";
 
 export { createEnvironmentService } from "./environment-service";
@@ -30,11 +32,13 @@ export type {
   ReleaseDTO,
   ReleaseEnvironmentDTO,
   ReleasePointerService,
+  ReleaseRetention,
   ReleaseService,
   ReleaseState,
   ReleaseStore,
   TenantReleasePointerDTO,
 } from "./ports";
+export { createReleaseRetention } from "./retention";
 export { createReleaseService } from "./service";
 
 export function createReleaseDomain(deps: {
@@ -54,11 +58,17 @@ export function createReleaseDomain(deps: {
     service,
     deps.evidence,
   );
+  const retention: ReleaseRetention = createReleaseRetention(
+    storage,
+    createPostgresEnvironmentStore(deps.db),
+    createPostgresPointerStore(deps.db),
+  );
   return {
     storage,
     service,
     environments,
     pointer,
-    routes: createReleaseRoutes(service, environments, pointer),
+    retention,
+    routes: createReleaseRoutes(service, environments, pointer, retention),
   };
 }

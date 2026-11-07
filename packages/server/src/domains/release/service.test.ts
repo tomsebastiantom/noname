@@ -50,6 +50,11 @@ function memoryStore() {
       rows.set(id, updated);
       return updated;
     },
+    async delete(orgId, ids) {
+      const removed = ids.filter((id) => rows.get(id)?.orgId === orgId);
+      for (const id of removed) rows.delete(id);
+      return removed;
+    },
   };
 
   return store;

@@ -8,6 +8,7 @@ import type {
   EnvironmentService,
   ReleaseArtifactKind,
   ReleasePointerService,
+  ReleaseRetention,
   ReleaseService,
 } from "./ports";
 
@@ -35,6 +36,10 @@ const activateSchema = z.object({
   environment: z.string().min(1).default("production"),
 });
 
+const pruneSchema = z.object({
+  keep: z.number().int().min(1).max(50).default(3),
+});
+
 /**
  * Release endpoints are thin on purpose: validation lives in the service, the record is immutable, and the
  * only mutations are `building → ready` and the environment selector (D15).
@@ -43,6 +48,7 @@ export function createReleaseRoutes(
   service: ReleaseService,
   environments: EnvironmentService,
   pointer: ReleasePointerService,
+  retention: ReleaseRetention,
 ) {
   const routes = new Hono();
 
@@ -67,6 +73,16 @@ export function createReleaseRoutes(
     const denied = await denyUnless(c, PERMISSIONS.RELEASES_READ);
     if (denied) return denied;
     return ok(c, await service.list(getOrgId(c)));
+  });
+
+  routes.post("/prune", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    const parsed = pruneSchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) {
+      return c.json({ error: "Invalid prune request", details: parsed.error.flatten() }, 400);
+    }
+    return ok(c, await retention.prune(getOrgId(c), parsed.data.keep));
   });
 
   routes.get("/pointer", async (c) => {

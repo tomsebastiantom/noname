@@ -145,6 +145,15 @@ export function createPostgresReleaseStore(db: Database): ReleaseStore {
       if (!updated) throw new StorageError(`Failed to reload release ${id}`);
       return updated;
     },
+
+    async delete(orgId, ids) {
+      if (ids.length === 0) return [];
+      const rows = await db
+        .delete(releases)
+        .where(and(eq(releases.orgId, orgId), inArray(releases.id, ids)))
+        .returning({ id: releases.id });
+      return rows.map((row) => row.id);
+    },
   };
 }
 

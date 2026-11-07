@@ -42,6 +42,8 @@ export interface ReleaseStore {
   findById(orgId: string, id: string): Promise<ReleaseDTO | null>;
   list(orgId: string): Promise<ReleaseDTO[]>;
   updateState(orgId: string, id: string, state: ReleaseState): Promise<ReleaseDTO>;
+  /** Deletes the given releases (artifacts cascade) and returns the ids actually removed. */
+  delete(orgId: string, ids: string[]): Promise<string[]>;
 }
 
 export interface ReleaseService {
@@ -116,4 +118,9 @@ export interface ReleasePointerService {
   rollback(orgId: string, actor: string): Promise<TenantReleasePointerDTO>;
   /** Null means “no pointer or no client bundle” — the catalog then keeps its stored manifest. */
   clientBundle(orgId: string): Promise<ClientBundleRef | null>;
+}
+
+export interface ReleaseRetention {
+  /** Keep the newest `keep` releases plus anything currently pointed at or active/previous. */
+  prune(orgId: string, keep?: number): Promise<{ deleted: string[] }>;
 }

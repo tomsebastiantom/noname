@@ -2,7 +2,7 @@ export interface CatalogManifestRemote {
   name: string;
   url: string;
   hash: string;
-  version: number;
+  version: number | string;
 }
 
 export interface CatalogManifest {

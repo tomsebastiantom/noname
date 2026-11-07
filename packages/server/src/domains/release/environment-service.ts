@@ -1,5 +1,6 @@
 import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
+import { assertMigrationsPromotable } from "./migration-policy";
 import type {
   EnvironmentService,
   EnvironmentStore,
@@ -32,6 +33,8 @@ export function createEnvironmentService(
 
     const current = await store.get(orgId, environment);
     if (current?.activeReleaseId === releaseId) return current;
+
+    assertMigrationsPromotable(release);
 
     const updated = await store.setActive(
       orgId,

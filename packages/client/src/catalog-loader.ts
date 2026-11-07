@@ -13,7 +13,8 @@ export interface CatalogManifestRemote {
   name: string;
   url: string;
   hash: string;
-  version: number;
+  /** Campaign/build version, or the release id when the catalog is release-projected. */
+  version: number | string;
 }
 
 export interface CatalogManifest {
@@ -52,7 +53,8 @@ function manifestCacheKey(manifest: CatalogManifest): string {
     parts.push(`${pkg.name}:${pkg.hash}`);
   }
   if (manifest.private) {
-    parts.push(`${manifest.private.name}:${manifest.private.hash}`);
+    // Include the release id/version so a pointer move invalidates the client cache even when the hash is reused.
+    parts.push(`${manifest.private.name}:${manifest.private.hash}:${manifest.private.version}`);
   }
   return parts.join("|");
 }

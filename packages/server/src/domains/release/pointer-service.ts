@@ -1,5 +1,6 @@
 import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
+import { assertMigrationsPromotable } from "./migration-policy";
 import type {
   ClientBundleRef,
   PointerStore,
@@ -35,6 +36,8 @@ export function createReleasePointerService(
 
     const current = await store.get(orgId);
     if (current?.releaseId === releaseId) return current;
+
+    assertMigrationsPromotable(release);
 
     const updated = await store.set(orgId, releaseId, current?.releaseId ?? null, actor);
     await recordPointer(evidence, {
