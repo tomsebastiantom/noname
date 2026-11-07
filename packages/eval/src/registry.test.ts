@@ -2,9 +2,9 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterAll, describe, expect, it } from "vitest";
-import { CHECK_REGISTRY, evaluate, evaluateChecks } from "./index";
+import { CHECK_REGISTRY, evaluate, evaluateChecks, manifestChecks } from "./index";
 import { assertRegistryIntegrity } from "./registry";
-import type { Check, CheckContext, EvalClient } from "./types";
+import type { Check, CheckContext, EvalClient, ManifestObservation } from "./types";
 
 const machinesDir = mkdtempSync(join(tmpdir(), "eval-registry-"));
 
@@ -118,6 +118,68 @@ describe("check registry", () => {
     ).toBe(true);
     expect(result.checks.some((c) => c.id === "M4.machines" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "R2.blocks" && c.status === "pass")).toBe(true);
+  });
+});
+
+describe("manifest checks are pure", () => {
+  const definition = {
+    name: "cart",
+    states: {
+      idle: { on: { start: { target: "running" } } },
+      running: {},
+    },
+  };
+
+  const observation: ManifestObservation = {
+    files: [definition],
+    stored: { cart: definition },
+    canReadDefinitions: true,
+  };
+
+  const explodingClient: EvalClient = {
+    async getJson() {
+      throw new Error("a pure check must not reach the network");
+    },
+  };
+
+  it("runs M4/M5 from an observation without touching the filesystem or the API", async () => {
+    const result = await evaluateChecks(manifestChecks, {
+      ...context(),
+      client: explodingClient,
+      machinesDir: "Z:\\this-directory-does-not-exist",
+      manifest: observation,
+    });
+
+    expect(result.passed).toBe(true);
+    expect(result.checks.map((check) => check.id).sort()).toEqual(["M4.machines", "M5.vocabulary"]);
+  });
+
+  it("fails M4 on transition drift inside the observation", async () => {
+    const drifted = {
+      ...definition,
+      states: {
+        idle: { on: { start: { target: "paused" } } },
+        running: {},
+      },
+    };
+    const result = await evaluateChecks(manifestChecks, {
+      ...context(),
+      manifest: { ...observation, stored: { cart: drifted } },
+    });
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.find((check) => check.id === "M4.machines")?.status).toBe("fail");
+  });
+
+  it("skips — never passes — when the caller has no credential", async () => {
+    const result = await evaluateChecks(manifestChecks, {
+      ...context(),
+      canReadDefinitions: false,
+      manifest: { files: [definition], stored: {}, canReadDefinitions: false },
+    });
+
+    expect(result.checks.every((check) => check.status === "skip")).toBe(true);
+    expect(result.passed).toBe(true);
   });
 });
 

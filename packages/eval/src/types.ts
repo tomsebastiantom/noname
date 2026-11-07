@@ -68,6 +68,29 @@ export type CheckMeta = {
   description: string;
 };
 
+/** A machine definition's state machine, reduced to what the manifest checks compare. */
+export type MachineState = {
+  on?: Record<string, { target?: string }>;
+};
+
+export type MachineDefinition = {
+  name: string;
+  states: Record<string, MachineState>;
+};
+
+/**
+ * Facts the manifest observer produces: what the repository declares and what the API returned for each
+ * definition. Checks compare these two values and never touch a filesystem or the network themselves.
+ */
+export type ManifestObservation = {
+  files: MachineDefinition[];
+  stored: Record<string, MachineDefinition | null>;
+  /** False means the caller had no credential that can read definitions; checks must skip, not guess. */
+  canReadDefinitions: boolean;
+  /** Set when the API could not be read; checks report it rather than treating absent rows as "missing". */
+  error?: string;
+};
+
 export type CheckContext = {
   client: EvalClient;
   tenantSlug: string;
@@ -79,6 +102,8 @@ export type CheckContext = {
    * definition checks must report `skip` rather than guess.
    */
   canReadDefinitions: boolean;
+  /** Built by the runner when a selected check needs the manifest; never by a check. */
+  manifest?: ManifestObservation;
   /**
    * Absent when no browser endpoint was supplied. Browser checks must then report `skip` with the reason —
    * never `pass`, and never silently omitted.

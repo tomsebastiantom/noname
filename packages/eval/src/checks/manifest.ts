@@ -1,10 +1,12 @@
-import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
-import type { Check, CheckContext, CheckResult } from "../types";
+import type { Check, CheckResult } from "../types";
 
 /**
  * Tier 0 — manifest checks. No browser, no queue: these answer "does what the database holds agree
  * with what the repository declares?".
+ *
+ * If that reads like a one-line description, it is because the I/O now lives in the manifest observer:
+ * these functions receive `ctx.manifest` and compare two plain values. They are pure, so a unit test
+ * needs no temporary directory, no API and no network — and the check can never grow a second data path.
  *
  * They exist because of two real defects:
  *  - the stored cart definition held 4 states while `cart.json` declared 9, which made
@@ -13,56 +15,40 @@ import type { Check, CheckContext, CheckResult } from "../types";
  *    fresh environment had no inventory machine at all.
  */
 
-type MachineFile = {
-  name: string;
-  states?: Record<string, { on?: Record<string, { target?: string }> }>;
-};
+function skip(id: string, detail: string): CheckResult {
+  return { id, status: "skip", level: "error", detail };
+}
 
-type StoredDefinition = {
-  name: string;
-  states?: Record<string, { on?: Record<string, { target?: string }> }>;
-};
-
-function readMachineFiles(machinesDir: string): MachineFile[] {
-  const files = readdirSync(machinesDir).filter((file) => file.endsWith(".json"));
-  return files.map((file) => {
-    const parsed = JSON.parse(readFileSync(join(machinesDir, file), "utf8")) as MachineFile;
-    return { ...parsed, name: parsed.name ?? file.replace(/\.json$/, "") };
-  });
+/** Shared precondition: without an observation, or without a credential, the check cannot speak. */
+function unavailable(id: string, ctx: Parameters<Check["run"]>[0]): CheckResult | null {
+  const obs = ctx.manifest;
+  if (!obs) {
+    return skip(id, "manifest observation was not built — the runner could not read definitions");
+  }
+  if (!obs.canReadDefinitions) {
+    return skip(
+      id,
+      `reading definitions needs MACHINES_DEFINE; pass --token (${obs.files.length} file(s) on disk were not compared)`,
+    );
+  }
+  if (obs.error) {
+    return skip(id, obs.error);
+  }
+  return null;
 }
 
 /** M5.vocabulary — every definition file is registered, i.e. the runtime can actually load it. */
 const vocabulary: Check["run"] = async (ctx) => {
-  const files = readMachineFiles(ctx.machinesDir);
-  if (!ctx.canReadDefinitions) {
-    return [
-      {
-        id: "M5.vocabulary",
-        status: "skip",
-        level: "error",
-        detail: `reading definitions needs MACHINES_DEFINE; pass --token (${files.length} file(s) on disk were not compared)`,
-      },
-    ];
-  }
+  const blocked = unavailable("M5.vocabulary", ctx);
+  if (blocked) return [blocked];
+
+  const obs = ctx.manifest!;
   const results: CheckResult[] = [];
 
-  for (const file of files) {
-    const response = await ctx.client.getJson<{ data: StoredDefinition | null }>(
-      `/api/machines/definitions/${encodeURIComponent(file.name)}`,
-    );
+  for (const file of obs.files) {
+    const stored = obs.stored[file.name];
 
-    if (!response.ok) {
-      results.push({
-        id: "M5.vocabulary",
-        status: "fail",
-        level: "error",
-        subject: file.name,
-        detail: `definition "${file.name}" exists in the repository but the API could not return it (${response.error}) — is it seeded?`,
-      });
-      continue;
-    }
-
-    if (!response.data?.data) {
+    if (!stored) {
       results.push({
         id: "M5.vocabulary",
         status: "fail",
@@ -87,29 +73,19 @@ const vocabulary: Check["run"] = async (ctx) => {
 
 /** M4.machines — the stored definition agrees with the file, state for state and transition for transition. */
 const machines: Check["run"] = async (ctx) => {
-  const files = readMachineFiles(ctx.machinesDir);
-  if (!ctx.canReadDefinitions) {
-    return [
-      {
-        id: "M4.machines",
-        status: "skip",
-        level: "error",
-        detail: "reading definitions needs MACHINES_DEFINE; pass --token",
-      },
-    ];
-  }
+  const blocked = unavailable("M4.machines", ctx);
+  if (blocked) return [blocked];
+
+  const obs = ctx.manifest!;
   const results: CheckResult[] = [];
 
-  for (const file of files) {
-    const response = await ctx.client.getJson<{ data: StoredDefinition | null }>(
-      `/api/machines/definitions/${encodeURIComponent(file.name)}`,
-    );
-    if (!response.ok || !response.data?.data) {
+  for (const file of obs.files) {
+    const stored = obs.stored[file.name];
+    if (!stored) {
       // M5 already reports absence; do not double-report it here.
       continue;
     }
 
-    const stored = response.data.data;
     const fileStates = Object.keys(file.states ?? {}).sort();
     const storedStates = Object.keys(stored.states ?? {}).sort();
 
@@ -184,5 +160,3 @@ export const manifestChecks: Check[] = [
     run: machines,
   },
 ];
-
-export type { CheckContext };
