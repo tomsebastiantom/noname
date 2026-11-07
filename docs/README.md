@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-07/PENDING-DECISIONS.md](2026-11-07/PENDING-DECISIONS.md)** — **Decision document.** Twelve pending choices with options, examples, OSS precedent and a recommendation: tenant→release pointer, definition pinning, channels, tenant roles, checkout sandbox, determinism, cost, gate policy, worker placement, NetworkPolicy, retention.
 - **[2026-11-07/RFC-RELEASE-GATE.md](2026-11-07/RFC-RELEASE-GATE.md)** — **Proposed — normative for release gating.** When a release may move: release unit and tenant pointer, change-impact map, candidate-vs-control diff, gate verdict (`pass`/`block`/`unverified`), promotion ladder, rollback, Evidence and metrics. Supersedes the gate sections of the eval and progressive-delivery RFCs.
 - **[2026-11-07/RELEASE-VERIFICATION-GAPS.md](2026-11-07/RELEASE-VERIFICATION-GAPS.md)** — **Findings / build backlog.** What is missing between the eval + progressive-delivery RFCs and the tenant-level release ladder: the tenant→release pointer, preview diff, contract checks, platform-version key, and the rest. Deliberately not a runbook — the release workbook is a separate artifact.
 - **[2026-11-07/EVAL-SERVICE-IMPLEMENTATION-PLAN.md](2026-11-07/EVAL-SERVICE-IMPLEMENTATION-PLAN.md)** — **Plan (eval RFC).** Code-verified gap analysis of the measurement layer: what exists today, gaps E1–E27, the target architecture (pure checks, observer seam, modes, queue/worker), phases with falsifications, and the OSS precedents each piece copies.

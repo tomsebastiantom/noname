@@ -1,0 +1,415 @@
+# Pending decisions — release mechanism and eval gaps
+
+> **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
+> **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
+> repository actually does today and to how established projects solved the same problem.
+> **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
+> here is implemented yet except where it says “current state”.
+> **Related:** [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md) · [`EVAL-SERVICE-IMPLEMENTATION-PLAN.md`](./EVAL-SERVICE-IMPLEMENTATION-PLAN.md) · [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-PROGRESSIVE-DELIVERY.md`](../2026-10-24/RFC-PROGRESSIVE-DELIVERY.md)
+
+---
+
+## Summary — what needs a decision
+
+| # | Decision | Options | Recommendation | Urgency |
+|---|---|---|---|---|
+| **D1** | Release unit and tenant→release pointer | manifest pointer / DB pointer / separate service | **DB truth, manifest projection** | **Highest** — without it there is no release mechanism |
+| **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
+| **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later |
+| **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
+| **D5** | Checkout verification (`B5`) | Stripe sandbox / in-repo fake provider / contract test / drop | **Contract test now, sandbox in staging** | Medium — blocked externally |
+| **D6** | Visual rubric (`B7`) | vision model / visual regression service / drop | **Drop for now** | Low |
+| **D7** | Determinism and aggregation (E6) | N runs + median / retry-on-fail / none | **Retry-once + attempts recorded** | Medium |
+| **D8** | Cost policy and change detection (E27) | `specHash@release@checks` + sampling / TTL / always full | **Key + tiered sampling** | Medium |
+| **D9** | Gate behaviour on `unverified` | block / human ack / mark only | **Human ack, block for contract/data** | Medium |
+| **D10** | Eval worker placement | same API process / separate entrypoint / separate image | **Separate entrypoint now** | Medium |
+| **D11** | NetworkPolicy and staging | local Calico / kind+Calico / staging cluster | **Staging cluster** | Later |
+| **D12** | Evidence retention for eval decisions | bounded samples / `eval_runs` table / metrics only | **Bounded samples now** | Low |
+
+---
+
+## D1 — Release unit and the tenant→release pointer
+
+**Question.** What exactly is “a release”, where is the pointer stored, and how does a tenant get moved?
+
+**Current state.** There is no release concept. The catalog worker writes
+`tenants/<orgId>/<file>` and `version: 1`
+([`worker.ts:44-62`](../../packages/server/src/domains/tenant/worker.ts#L44-L62)), so every build **overwrites**
+the previous bundle. The client fetches `/api/tenants/:slug/catalog`
+([`use-app-page-loader.ts:59-75`](../../packages/client/src/platform/use-app-page-loader.ts#L59-L75)); that
+manifest lives only in Redis ([`redis-manifest-store.ts`](../../packages/server/src/domains/tenant/adapters/redis-manifest-store.ts)).
+Redis is a cache, not a durable record.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Pointer inside the manifest** | `release: { id }` added to the Redis manifest; bundle keys become `tenants/<org>/releases/<id>/…`; the catalog endpoint reads the pointer from Redis | Smallest change; no new table; the client already consumes the manifest | Redis loss = lost pointer; no audit trail; “who moved which tenant” is unanswerable |
+| **B. DB is truth, manifest is projection** | New `releases` table (id, org, artifact hash, platform version, checks version, created_at) + `tenants.release_id`; the catalog endpoint joins and returns the release’s bundle URL; Redis caches the result | Durable, auditable, queryable; rollback is one `UPDATE`; matches how Kubernetes keeps revision history and Cloudflare keeps versions | One migration + endpoint change; cache invalidation on promote |
+| **C. Separate release service** | A dedicated service owns releases and serves pointers over HTTP | Independent scaling and lifecycle | A new deployable for a pointer that is one row; premature |
+
+**Example (B).**
+
+```
+releases: id=r_17, org=yogastore, artifact=sha256:3f…, checks=9f2a1c, state=canary
+tenants:  yogastore → release_id=r_17
+R2:       tenants/yogastore/releases/r_17/remoteEntry.js
+          tenants/yogastore/releases/r_16/remoteEntry.js   (retained for rollback)
+
+promote:  UPDATE tenants SET release_id='r_17' WHERE slug='yogastore'
+rollback: UPDATE tenants SET release_id='r_16' WHERE slug='yogastore'
+```
+
+**OSS precedent.** Kubernetes keeps a ReplicaSet revision history and rolls back with `kubectl rollout undo`
+([docs](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/#rolling-back-a-deployment));
+Cloudflare Workers upload immutable **versions** and then create a **deployment** that points at one or splits
+traffic ([gradual deployments](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/)).
+Both separate *artifact* from *pointer*. That is exactly the missing piece here.
+
+**Recommendation: B.** The manifest already behaves like a projection of tenant state; making the DB the truth
+and the manifest the cache fixes durability and auditability without changing how the client loads a catalog.
+Option A is tempting for speed but loses the pointer on a Redis flush — unacceptable for rollback.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D2 — Machine-definition versions and in-flight pinning
+
+**Question.** How do we stop a definition edit from changing the behaviour of carts already in flight?
+
+**Current state.** `machine_definitions` has `(org_id, name, definition, created_at, updated_at)` — no version
+([`schema.ts`](../../packages/server/src/domains/machines/schema.ts)). `define()` updates in place. A cart that
+started under the 4-state definition can be evaluated by the 9-state definition after an edit. This is the
+original incident the progressive-delivery RFC was written for.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Append-only versions + pinned instance** | `machine_definition_versions` rows; `machine_instances.definition_version` set at start; the engine loads the pinned version | Auditable; instances never change semantics; matches Camunda/Temporal | New table + column + engine lookup; “which version is current” needs a pointer |
+| **B. Snapshot the definition into the instance** | Store the definition JSON in the instance at start; the engine reads the snapshot | No new tables; in-flight safety immediately; easy migration | Large JSON per instance; no shared version identity; updating a definition still has no history |
+| **C. Event-sourced definitions** | Definitions are events; instances replay to their start position | Full history and replay | Overkill for this stage; large refactor |
+
+**Example (A).** `cart.json` edited from 4 to 9 states creates version 4. An instance started at version 3 keeps
+transitioning under version 3; new carts start at version 4. The engine's `transition` loads
+`definitionVersion` from the instance row.
+
+**OSS precedent.** Camunda versions process definitions and pins running instances to the version they started
+on; Temporal pins workflows to a worker build and offers worker versioning for the transition period
+([Temporal worker versioning](https://docs.temporal.io/worker-versioning)). The pattern is “the run keeps the
+rules it started with”.
+
+**Recommendation: A.** It is the durable, queryable answer, and it composes with D1 (both are “pin the immutable
+thing, move the pointer”). Option B is a valid emergency stop-gap if the schema migration is unwelcome now.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D3 — Channels and canary rollout (V2)
+
+**Question.** Do we build tenant channels (`internal → canary → stable`) now, later, or never?
+
+**Current state.** No channel or cohort concept exists. The RFC describes V2; the critical review already said
+it is for “a fleet and a deploy pipeline that do not exist”.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Defer** | Build D1 + D2 first; canary is decided by moving pointers for a named list of tenants | No unused machinery; the pointer already enables a manual canary | No automated cohort logic; promotion is a script |
+| **B. Tenant channel column** | `tenants.channel` + a rules table (`channel → release_id`); pointer resolves channel→release | Small; enough for internal/canary/stable | Still manual selection of who is in a channel |
+| **C. Rules engine** | Reuse feature-flag targeting (Unleash-style constraints) to pick a release per request | Flexible targeting (tenant, region, plan) | Request-level version skew; much larger surface |
+
+**Example (A).** Canary today is: create release `r_17`, move 5 named tenants, watch the eval gate and error
+rate, then move the rest. No new table needed — D1’s pointer is the mechanism.
+
+**OSS precedent.** Unleash separates **activation strategies** (who sees a flag) from the flag itself and offers
+gradual rollout by percentage and constraints ([activation strategies](https://docs.getunleash.io/concepts/activation-strategies)).
+That is the right shape for C, but it is a product of its own.
+
+**Recommendation: A now, B when D1+D2 are proven.** Choosing C before a release pipeline exists repeats the
+mistake the critical review identified.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D4 — Where `M2` gets tenant roles from
+
+**Question.** `M2.permissions` currently proves that an action is wired to a capability; it cannot prove the
+tenant’s roles hold that capability’s permission. Where does role data come from?
+
+**Current state.** Roles live in ZITADEL. The eval context endpoint returns capability descriptors and installed
+extensions, not role assignments ([`api.ts`](../../packages/server/src/domains/eval/api.ts)). `denyUnless` uses
+the caller’s JWT/agent/machine permissions, but there is no “roles of this org” projection.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Live ZITADEL API + short cache** | On `/api/eval/context`, call ZITADEL’s authorization/role API for the org, cache 30–60 s | No new table; always current; uses the system of record | Latency and rate limits on every eval run; ZITADEL outage = eval skip |
+| **B. Projection table** | `org_role_assignments(org_id, user_id, role)` updated by ZITADEL events/webhooks or a periodic sync; eval reads it | Fast, durable, auditable; survives ZITADEL downtime | New table + sync job; staleness window |
+| **C. Token claims of the acting admin** | Pass the admin’s JWT to eval; derive permissions from the token | No new infrastructure; matches how the app authorises | The admin holds every permission, so the check becomes trivially true; not a tenant-role check |
+| **D. Drop role evaluation** | Keep capability/extension wiring only, and document it | Honest about what is known | Leaves E8 permanently partial |
+
+**Example (A).** Eval asks “which roles does org `3966…` have?” ZITADEL returns `admin, editor, analyst`;
+`expandPermissions` yields the union; `commerce:orders_manage` is present because admin holds it. A tenant with
+only `analyst` would fail `cancelOrder`.
+
+**OSS precedent.** ZITADEL exposes role assignments through the auth/management APIs and token claims, with the
+guidance to prefer the project-scoped claim
+([ZITADEL: retrieve user roles](https://zitadel.com/docs/guides/integrate/retrieve-user-roles)). OpenFGA models
+roles as relations and evaluates them per request
+([OpenFGA roles](https://openfga.dev/docs/modeling/roles-and-permissions)) — the projection-table approach is the
+local version of that.
+
+**Recommendation: A now, B if latency or ZITADEL availability becomes a problem.** It uses the existing source
+of truth and is a small addition to the context endpoint. C is not a real check; D should only be chosen if the
+decision is “M2 stays vocabulary-only”.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+
+---
+
+## D5 — How to verify checkout reaches `paid`
+
+**Question.** `B5` proves add-to-cart. Completing checkout to `paid` needs a payment provider. What do we build?
+
+**Current state.** `PAYMENT_SUCCEEDED`/`PAYMENT_FAILED` are rejected on the public cart routes by design
+([`instances.ts:121`](../../packages/server/src/domains/machines/routes/instances.ts#L121)); only the provider
+event pipeline may transition a cart to `paid`. No provider sandbox is connected locally.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Stripe test mode + CLI forwarding** | Stripe test keys, `stripe listen --forward-to` the provider webhook, Nango test connection; eval drives a test card | Real end-to-end path; same code as production | External accounts, webhook signing, cleanup; only works where network/credentials exist |
+| **B. In-repo fake provider adapter** | A `test` provider implementing `CheckoutProviderAdapter`, enabled by env, emits a signed callback | Fully local and deterministic | Adds a test-only branch to a payment path — the exact place where test paths become production incidents |
+| **C. Contract test, no E2E** | Test the checkout capability + provider adapter + callback handler against a fake provider **in the test suite**, not in eval | No production surface; catches contract breaks | Does not prove the deployed path; `B5` stays cart-only |
+| **D. Drop checkout from eval** | Keep add-to-cart; document checkout as out of scope | Honest; zero cost | The most business-critical flow is unverified |
+
+**Example (A).** `stripe listen --forward-to http://localhost:3000/api/integrations/provider-events` receives
+`checkout.session.completed`; the provider event maps to `PAYMENT_SUCCEEDED`; the cart reaches `paid`; the eval
+job’s `correlationId` is written to the order and the job cancels the order afterwards.
+
+**OSS precedent.** Stripe’s test mode and CLI webhook forwarding are the standard way to run a real checkout
+locally ([Stripe CLI](https://docs.stripe.com/stripe-cli)); the event-driven transition is exactly the machine’s
+guard design.
+
+**Recommendation: C now, A for staging/production E2E.** B should be avoided: a test-only payment adapter is a
+security-sensitive branch. C gives contract coverage today without weakening the boundary; A is the honest
+completion when a sandbox exists.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+
+---
+
+## D6 — `B7` visual rubric
+
+**Question.** Do we add a model-based visual review, a visual-regression service, or nothing?
+
+**Current state.** `B6` covers contrast only. `B7` does not exist.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Vision model** | Screenshot → multimodal model with a rubric prompt → warn-only result | Catches “looks broken” beyond rules | Cost per run, non-determinism, model/prompt drift; results hard to reproduce |
+| **B. Visual regression service** | Chromatic/Percy-style baseline snapshots, diff on change | Deterministic, reviewed baselines, good UI | Another service and cost; renderer/state noise; baselines need curation |
+| **C. Drop** | No `B7`; keep `B6` + human review | Nothing to maintain | Visual defects rely on humans |
+
+**Example (B).** A changed `ProductCard` produces a pixel diff against the approved baseline; a human approves or
+rejects it. That is reviewable; a model’s opinion is not.
+
+**OSS precedent.** Chromatic keeps a **baseline per branch** and diffs new builds against it
+([branches and baselines](https://www.chromatic.com/docs/branching-and-baselines/)); that is visual regression,
+not a model rubric.
+
+**Recommendation: C now.** The RFC already says design review should be `warn`; a non-deterministic check that
+cannot be reproduced is worse than no check. Revisit B when visual regressions are observed in practice.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D7 — Determinism and aggregation (E6)
+
+**Question.** How do we avoid flaky results and report confidence?
+
+**Current state.** One run per check; `data-eval-ready` is the only determinism control. No retries, no repeated
+runs, no flake accounting.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. N runs + aggregation** | Run each check 3×; numeric → median, correctness → pessimistic (any fail fails); record attempts | Statistically honest; Lighthouse-style | 3× tier‑2 cost; slower sweeps |
+| **B. Retry-on-fail once** | A failing check is retried; both attempts recorded; second failure is final | Cheap; removes transient flakes | Masks genuinely flaky pages; no confidence number |
+| **C. None** | Single run | Fast | Flakes become false blocks; trust erodes |
+
+**Example (B).** `B1.structure` fails on a slow hydration; retry passes; the result is `pass` with
+`runs: 2`, and the flake is counted. If it fails twice, it blocks.
+
+**OSS precedent.** Lighthouse CI defaults to `numberOfRuns: 3` and supports median/pessimistic/optimistic
+aggregation ([config](https://raw.githubusercontent.com/GoogleChrome/lighthouse-ci/main/docs/configuration.md));
+Playwright retries failing tests with `retries` and records them
+([retries](https://playwright.dev/docs/test-retries)).
+
+**Recommendation: B for tier 2, A only for a specific numeric check if one appears.** Our checks are boolean
+assertions; median of booleans is not meaningful. Recording attempts and counting flakes gives the honest signal
+without tripling browser cost.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D8 — Cost policy and change detection (E27)
+
+**Question.** When may a result be reused instead of re-run, and how much do we sample?
+
+**Current state.** Every run checks everything. There is no `specHash`/`releaseId` skip, no sampling, no budget.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Key + tiered sampling** | Key results by `specHash@releaseId@checksVersion`; tenant publishes run affected routes only; platform releases run a fixed sample + weekly full sweep | Correct invalidation; predictable cost | Needs the release id (D1) and a sample registry |
+| **B. TTL cache** | Reuse a result for N minutes | Trivial | Time is not a correctness signal; a changed page can be skipped |
+| **C. Always full** | No reuse | Simple; no stale risk | Cost grows linearly with tenants × routes; the RFC's own numbers reach hours |
+
+**Example (A).** A tenant edits one page: only that route runs. A platform release changes the renderer: the
+release id changes, so every sample is invalidated and re-run — unlike the old `specHash`-only key, which would
+have skipped everything.
+
+**OSS precedent.** Crater/CITGM run the ecosystem because a compiler change invalidates everything
+([Crater](https://rustc-dev-guide.rust-lang.org/tests/crater.html)); per-route sampling is the compromise for
+storefronts. Lighthouse budgets bound what a gate may spend.
+
+**Recommendation: A.** It is the only option that is both correct and bounded, and it depends on D1 — another
+reason D1 is first.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D9 — What the gate does with `unverified`
+
+**Question.** A required check could not run (no browser, edge down, timeout). Does the release pass, block, or
+pass with a caveat?
+
+**Current state.** `unverified` is counted and reported, but `passed` ignores it — so a release can be `pass` with
+`unverified > 0`. That is visible today in the worker run (`unverified: 2`).
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Fail closed** | Any unverified required check blocks | Strongest guarantee | An edge outage freezes every release |
+| **B. Human acknowledgement** | Promote only if a named actor acks the unverified list; recorded in Evidence | Explicit, auditable, does not block on infrastructure | Depends on discipline; ack can become rubber-stamp |
+| **C. Mark only** | Release proceeds marked unverified | No friction | “Verified” becomes meaningless |
+
+**Example (B).** “Tier 2 unavailable — browser endpoint down; 4 checks unverified.” The release role acknowledges;
+the Evidence row records `decision: pass, unverified: 4, ackedBy: tom`. For a migration or contract check,
+acknowledgement is not offered.
+
+**OSS precedent.** Google SRE’s canary analysis separates “the metric failed” from “the analysis could not run”;
+Argo Rollouts marks analysis runs inconclusive rather than successful. The rule is the same: missing data is not
+a pass.
+
+**Recommendation: B, with A for contract/data changes.** It matches the release-gate RFC’s own rule (“only the
+inability to check lets a release through, and it is recorded”) and avoids freezing releases on infrastructure
+noise.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D10 — Where the eval worker runs
+
+**Question.** The eval worker currently starts inside the API process. Keep that, split the entrypoint, or split
+the image?
+
+**Current state.** `createEvalDomain` starts the BullMQ worker when `RUN_WORKERS` is true, so the API replica also
+drains `{eval-runs}`. Tier‑2 jobs can hold a browser context for tens of seconds.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Same process** | Status quo | Zero deployment change | CPU/memory contention with HTTP; a crashed browser can affect API latency |
+| **B. Separate entrypoint** | `eval-worker.ts` boots only the eval domain (no HTTP), same image, `RUN_WORKERS=false` on API | Isolation of process, not of image; cheap; follows the existing `worker.ts` pattern | Still shares node_modules/image; ops must run one more process |
+| **C. Separate image + deployment** | Dedicated image/deployment with browser sidecar, own resources/HPA | Full isolation and scaling; matches the RFC's blast-radius reason | Build/release pipeline for a second image; more manifests |
+
+**Example (B).** `pnpm --filter @noname/server eval-worker` runs the worker with no port bound; Kubernetes gets a
+second Deployment with different resources; a browser crash kills a worker pod, not the API.
+
+**OSS precedent.** The repository already separates `worker.ts` from `index.ts` for exactly this reason
+([`worker.ts`](../../packages/server/src/worker.ts)); the eval worker is a second tenant of that pattern.
+
+**Recommendation: B now, C when tier‑2 volume justifies its own image.** It is a small change with most of the
+isolation benefit.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D11 — NetworkPolicy and staging
+
+**Question.** Where do we prove that the eval browser cannot reach internal services?
+
+**Current state.** Local k3s uses Flannel, which **accepts NetworkPolicy objects and enforces nothing**. No
+NetworkPolicy manifests exist. S1 proves the local fact (browser can reach the API) but cannot prove the policy.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Local k3s + Calico** | Replace Flannel with Calico, author policies, run S1 locally | Proves the policy on the dev machine | Cluster networking rebuild; risk to local data; heavy for a laptop |
+| **B. kind + Calico** | A second disposable cluster for policy tests | Clean and reproducible; no risk to local k3s | Another cluster to maintain; not the real deployment |
+| **C. Staging cluster** | Policies authored and enforced where they matter; local stays Flannel and S1 stays `warn` | Honest; no laptop heroics; policy tested in the environment that needs it | Staging does not exist yet (D11 depends on it) |
+
+**Example (C).** Staging runs Calico; S1 passes because the browser pod cannot reach `api:3000` or the metadata
+address; local S1 stays a warning that says “the local browser shares the host network”.
+
+**Recommendation: C**, with the caveat that it requires the staging environment. A is only justified if local
+enforcement is itself a requirement.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## D12 — Evidence retention for eval decisions
+
+**Question.** How long do we keep eval decisions, and in what shape?
+
+**Current state.** One `platform.eval.run` Evidence row per gate decision, append-only; no retention registration.
+The critical review warned that per-check Evidence would flood the audit kernel; that is already avoided.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Bounded samples, current shape** | One row per decision; failures capped; add a retention entry | Small volume; audit-friendly | Cannot answer “how did check X trend over 90 days” from Evidence alone |
+| **B. `eval_runs` table** | Operational table with per-check summaries + TTL; Evidence only for decisions | Queryable history; keeps audit kernel clean | New table + cleanup job |
+| **C. Metrics only** | No decision rows | Cheapest | Loses the audit of who allowed what |
+
+**Recommendation: A now, B when someone asks for trend/history.** The decision record is the audit; per-check
+history belongs in metrics.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+
+---
+
+## Suggested order if you accept the recommendations
+
+1. **D1** (pointer) — everything release-related depends on it.
+2. **D2** (definition pinning) — the live correctness hazard.
+3. **D4** (roles) + **D9** (unverified policy) — finish the gate semantics.
+4. **D7/D8** (determinism, cost) — make the gate truthful and affordable.
+5. **D10** (worker split) — operational isolation.
+6. **D3/D5/D6/D11/D12** — when their preconditions are real (fleet, sandbox, staging).
+
+Nothing above requires choosing all twelve today. D1 and D2 are the two that change what the system *is*; the
+rest are policy and operations.
