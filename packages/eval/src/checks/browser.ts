@@ -1,4 +1,4 @@
-import type { Check, CheckResult, EgressProbe } from "../types";
+import type { CartFlow, Check, CheckResult, EgressProbe } from "../types";
 
 /**
  * Tier 2 — browser checks. These are the reason a browser fleet exists, and the reason tier 1 is not enough.
@@ -365,6 +365,92 @@ const content: Check = {
   },
 };
 
+/**
+ * B5.behaviour — the storefront’s actions actually work.
+ *
+ * Scope today: add-to-cart. The browser clicks the first add-to-cart control and the check asserts the cart
+ * text moved to a non-zero item count. Checkout (provider redirect + callback → paid) is not automated yet and
+ * is recorded as the open half of B5 — a cart that updates but a checkout that never reaches `paid` would pass
+ * this check today, which is why the limitation is stated rather than implied.
+ */
+const behaviour: Check = {
+  meta: {
+    id: "B5.behaviour",
+    tier: 2,
+    defaultLevel: "error",
+    needs: ["browser"],
+    emits: ["B5.behaviour"],
+    description: "adding a product updates the cart",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [skip("B5.behaviour", "error", "no browser endpoint supplied — tier 2 not evaluated")];
+    }
+    if (!ctx.browser.addFirstProductToCart) {
+      return [skip("B5.behaviour", "error", "observer cannot drive the cart — not a pass")];
+    }
+
+    let flow: CartFlow;
+    try {
+      flow = await ctx.browser.addFirstProductToCart();
+    } catch (cause) {
+      return [
+        skip(
+          "B5.behaviour",
+          "error",
+          `cart flow failed (${cause instanceof Error ? cause.message : String(cause)}) — not a pass`,
+        ),
+      ];
+    }
+
+    if (!flow.clicked) {
+      return [
+        {
+          id: "B5.behaviour",
+          status: "fail",
+          level: "error",
+          subject: "/",
+          detail: "no add-to-cart control was found on the storefront",
+        },
+      ];
+    }
+    if (flow.after === flow.before) {
+      return [
+        {
+          id: "B5.behaviour",
+          status: "fail",
+          level: "error",
+          subject: "/",
+          detail: "clicking add-to-cart did not change the page",
+        },
+      ];
+    }
+
+    const count =
+      /(\d+)\s+item/i.exec(flow.after)?.[1] ?? /Open cart\s+(\d+)/i.exec(flow.after)?.[1];
+
+    return count && Number(count) >= 1
+      ? [
+          {
+            id: "B5.behaviour",
+            status: "pass",
+            level: "error",
+            subject: "/",
+            detail: `cart shows ${count} item(s) after add-to-cart`,
+          },
+        ]
+      : [
+          {
+            id: "B5.behaviour",
+            status: "fail",
+            level: "error",
+            subject: "/",
+            detail: "the page changed after add-to-cart but no cart item count was found",
+          },
+        ];
+  },
+};
+
 const EGRESS_TARGETS = ["http://127.0.0.1:3000/health", "http://169.254.169.254/latest/meta-data/"];
 
 /**
@@ -476,6 +562,7 @@ export const browserChecks: Check[] = [
   overflowCheck,
   a11y,
   content,
+  behaviour,
   egress,
   consoleClean,
 ];

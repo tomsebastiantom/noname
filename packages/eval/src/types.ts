@@ -153,6 +153,13 @@ export type EgressProbe = {
   reachable: boolean;
 };
 
+export type CartFlow = {
+  /** Whether an add-to-cart control was found and clicked. */
+  clicked: boolean;
+  before: string;
+  after: string;
+};
+
 export type BrowserObserver = {
   visit(
     path: string,
@@ -160,5 +167,7 @@ export type BrowserObserver = {
   ): Promise<PageVisit>;
   /** Attempt internal targets from inside the browser context; absent observers cannot run S1. */
   probeEgress?(targets: string[]): Promise<EgressProbe[]>;
+  /** Add the first product on the home page to the cart; absent observers cannot run B5. */
+  addFirstProductToCart?(): Promise<CartFlow>;
   close(): Promise<void>;
 };

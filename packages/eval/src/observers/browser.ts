@@ -1,6 +1,6 @@
 import axe from "axe-core";
 import { type Browser, type BrowserContext, chromium } from "playwright-core";
-import type { BrowserObserver, EgressProbe, PageVisit } from "../types";
+import type { BrowserObserver, CartFlow, EgressProbe, PageVisit } from "../types";
 
 /**
  * The browser observer — tier 2's only I/O surface.
@@ -141,6 +141,39 @@ export function createBrowserObserver(options: {
         consoleErrors,
       };
       return visit;
+    },
+
+    /**
+     * Add the first product on the home page to the cart and report the body text before/after.
+     *
+     * The check does not need a selector contract beyond “the add-to-cart control”: it clicks the first
+     * accessible button whose name matches, waits for the storefront to settle, and compares the cart text.
+     */
+    async addFirstProductToCart() {
+      const pageContext = await ensureContext();
+      const page = await pageContext.newPage();
+      try {
+        await page.goto(`${options.origin.replace(/\/$/, "")}/`, {
+          waitUntil: "networkidle",
+          timeout: timeoutMs,
+        });
+        await page
+          .locator("html[data-eval-ready='true']")
+          .waitFor({ timeout: 10_000 })
+          .catch(() => {});
+
+        const before = (await page.locator("body").innerText()).replace(/\s+/g, " ").trim();
+        const add = page.getByRole("button", { name: /add to cart/i }).first();
+        const clicked = (await add.count()) > 0;
+        if (clicked) {
+          await add.click();
+          await page.waitForTimeout(2_000);
+        }
+        const after = (await page.locator("body").innerText()).replace(/\s+/g, " ").trim();
+        return { clicked, before, after } satisfies CartFlow;
+      } finally {
+        await page.close().catch(() => {});
+      }
     },
 
     async close() {
