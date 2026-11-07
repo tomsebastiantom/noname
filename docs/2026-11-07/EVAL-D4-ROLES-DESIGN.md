@@ -1,16 +1,16 @@
 # D4 — Who runs eval, and whose roles are checked
 
-> **Status:** adopted — **Phase 2 first** · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** **implemented and verified** — one phase (identity + roles + audiences together) · **Date:** 2026-11-07 (America/Toronto)
 > **Question this answers:** should eval authenticate as an admin, a service token, or something else — and
 > which roles should the permission check evaluate?
 > **Related:** [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md) D4 · [`EVAL-SERVICE-IMPLEMENTATION-PLAN.md`](./EVAL-SERVICE-IMPLEMENTATION-PLAN.md) E8 · [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md)
 
 ---
 
-**Decision (2026-11-07): Phase 2 first.** The role check ships as an **error gated by an explicit `audience`** on
-every capability-backed action. The warn-only advisory (Phase 1) is **not built**: a detector that cannot block
-would let actions without an audience pass silently, which is a gate with a hole. The shared data layer —
-service identity, per-role permission map, cache — is still required and is built first.
+**Decision (2026-11-07): one phase, not two.** The identity change, the role→permission map, the mandatory
+`audience`, and the error check ship **together in one block**. There is no advisory stage and no “Phase 1 first”
+split: an advisory-only check would let actions without an audience pass silently, and a later second phase would
+have to rewrite the contracts anyway. The whole check is built and verified once.
 
 ## 1. The confusion in one sentence
 
@@ -70,9 +70,9 @@ Rules:
 What the service token is **not** for: it is not a ZITADEL admin credential and it is not a way to bypass the
 permission check. It authorises *reading eval context*; the role check compares against tenant roles.
 
-## 4. What `M2` evaluates — Phase 2, not advisory
+## 4. What `M2` evaluates
 
-Two things had to be decided; both are now settled.
+Three things ship together; none of them is an advisory.
 
 ### 4.1 Audience is mandatory
 
@@ -142,30 +142,45 @@ and counts as `unverified`, not as success.
 | `packages/cli/src/commands/eval.ts`, `domains/eval/job.ts` | `x-user-id = admin@…` | `x-user-id = eval-worker`, `x-role = service` |
 | `packages/server/src/domains/eval/index.ts` | composition | pass a role reader into the eval domain |
 
-**No migration.** This is read-only with a short in-memory cache. A projection table (`org_role_assignments`)
-would be D4 option B and a separate decision.
+**No migration.** This is read-only. There is **no cache yet**: each `/api/eval/context` call lists ZITADEL
+authorizations (now paginated). A projection table (`org_role_assignments`) or a short cache is a follow-up, not
+part of this block.
 
-## 6. Verification plan
+## 6. Verification (observed)
 
-| Check | Expected |
+| Check | Result |
 |---|---|
-| Token scope | `nsv.` with `machines:read`; `/api/eval/context` succeeds; a write route returns 403 |
-| No admin identity | Request headers show `x-user-id: eval-worker`, `x-role: service`; logs/Evidence name the service |
-| Contract validation | an action without `audience`, or with an unknown role, fails at import |
-| Role map | context contains `roles.editor` permissions, not just a union |
-| `M2` pass | at least one audience role holds the permission |
-| `M2` fail | tenant has an audience role, none holds the permission |
-| `M2` skip — unavailable | roles unavailable → skip, never pass |
-| `M2` skip — not applicable | tenant has none of the audience roles → skip, counted unverified |
-| Live fixture | editor (no `orders_manage`) + `cancelOrder` → fail; admin in audience → pass |
-| No mutation | eval makes no ZITADEL write call (token permissions + grep) |
+| Types | catalog, eval, server, CLI — clean |
+| Eval suite | **99/99**, 17 files |
+| Contract validation | 4/4 — shipped contracts pass; missing/unknown/duplicate audience throws |
+| `M2.roles` unit | 4/4 — pass (admin holds), fail (editor audience role grants nothing), skip on unavailable roles, skip when no audience role is present |
+| Context live | `GET /api/eval/context` returns **8 role keys**: admin, access_manager, publisher, editor, analyst, replay_viewer, trace_viewer, flags_manager |
+| Identity live | request with `x-user-id: eval-worker`, `x-role: service` and the service token → **200** |
+| `M2.roles` live | **pass**: “5 action audience(s) hold their permission” |
+| Full eval live | **65 pass / 0 fail / 9 skip / 6 unverified** (no browser), `passed: true` |
+| Registry | full-catalogue test updated: `M2.roles` skips without a role map (10 skips) |
+| No mutation | eval only calls `GET /api/eval/context`; token carries `machines:read` |
 
-## 7. What remains, and what this document is not
+## 7. Limits recorded
 
-**Remaining implementation:** the 7 audiences, the role map, the check, the service headers, and the live
-fixture above. Until those exist, this is an adopted design, not a solved issue.
+- **No cache.** The context read hits ZITADEL per call. Latency/rate-limit pressure is the reason option B (a
+  projection) exists; it is not built.
+- **Fail path is proven by unit test, not live.** The demo org has `admin`, so every audience is covered. A live
+  failure needs a tenant whose only audience role lacks the permission; that fixture is not seeded.
+- **Customer-facing actions are not role-gated.** `checkout` declares `audience: ["customer"]`; `customer` is not a
+  staff authorization, so the action is “not applicable” in the staff role map. Customer permission is enforced by
+  the public/publishable-key lane, not by `M2.roles`. This is a real boundary, not a pass.
+- **Pagination ceiling.** 10 pages × 1000 rows; beyond that the list is truncated and the check would under-count
+  roles rather than lie about a pass (a missing audience role is a skip, not a pass).
+- **No Evidence row for the role decision.** `M2.roles` is part of the eval result/verdict; the gate decision
+  Evidence remains one row per run.
 
 **This is not a new/duplicate decision document.** D4 already exists in
 [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md); this note is its design rationale and **supersedes the earlier
-Phase 1-first ordering**. The release docs (`RELEASE-D1…D16`) are untouched — they solve the pointer and
+advisory-first ordering**. The release docs (`RELEASE-D1…D16`) are untouched — they solve the pointer and
+promotion, not role coverage.
+
+**This is not a new/duplicate decision document.** D4 already exists in
+[`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md); this note is its design rationale and **supersedes the earlier
+advisory-first ordering**. The release docs (`RELEASE-D1…D16`) are untouched — they solve the pointer and
 promotion, not role coverage.

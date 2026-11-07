@@ -660,9 +660,48 @@ browser server, then verified. Recorded because `EADDRINUSE … ::1:9222` reads 
 **Limit.** No N-run median/pessimistic aggregation: the checks are boolean, and tripling tier‑2 cost to average
 booleans would buy nothing. If a numeric check is added, aggregate that check, not the suite.
 
+## 2026-11-07 — E8: tenant-role coverage in one phase
+
+**Scope.** Finish the permission story: the runner is a service identity, the evaluation context carries the
+tenant’s **role→permissions map**, every capability-backed action declares a mandatory **audience**, and
+`M2.roles` fails when none of the audience roles can invoke it. No advisory stage.
+
+**Code.** `catalog/src/action-contracts.ts` (audience on 6 contracts), `eval/src/contracts.ts` (import-time
+validation), `eval/src/checks/actions.ts` (`M2.roles`), `eval/src/index.ts` (validation wired),
+`server/domains/eval/{api,index}.ts` + `bootstrap.ts` (role map), `auth/adapters/zitadel/authorizations.ts`
+(pagination), CLI/worker identity headers, `roles.test.ts`, `contracts.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | catalog, eval, server, CLI | clean |
+| Eval suite | `pnpm vitest run packages/eval/src` | **99/99** (17 files) |
+| Contract validation | `pnpm vitest run … contracts.test.ts` | 4/4 — shipped contracts pass; missing/unknown/duplicate audience throws |
+| Role unit | `pnpm vitest run … roles.test.ts` | 4/4 — pass (admin holds), fail (editor grants nothing), skip on unavailable roles, skip when no audience role is present |
+| Server eval | `pnpm vitest run packages/server/src/domains/eval` | 4/4 |
+| Context live | `GET /api/eval/context` with a service token | **200**, `roles` map with 8 keys (admin, access_manager, publisher, editor, analyst, replay_viewer, trace_viewer, flags_manager) |
+| Identity live | `x-user-id: eval-worker`, `x-role: service`, HMAC + `nsv.` token | **200** — no admin email in the request |
+| `M2.roles` live | `noname eval --tenant yogastore --token …` | **pass**: “5 action audience(s) hold their permission” |
+| Full eval live | same command, no browser | **65 pass / 0 fail / 9 skip / 6 unverified**, `passed: true` |
+| Registry | `pnpm vitest run … registry.test.ts` | full-catalogue skip count is 10 (`M2.roles` skips without a role map) |
+
+**Limits recorded.**
+
+- **No cache.** `/api/eval/context` lists ZITADEL authorizations per call (now paginated). A cache/projection is
+  a follow-up; the decision doc records it.
+- **Fail path is unit-proven, not live-proven.** The demo org has `admin`, so every audience is covered. A live
+  failure needs a tenant whose only audience role lacks the permission; that fixture is not seeded.
+- **`customer` is not a staff role.** `checkout` declares `audience: ["customer"]`; the staff role map has no
+  customer, so the action is “not applicable” and the check skips it rather than passing. Customer access is
+  enforced by the public/publishable-key lane.
+- **Pagination ceiling** is 10 × 1000 rows; beyond that the list truncates, and a missing audience role is a skip,
+  never a pass.
+- **No separate Evidence row** for the role result; it is part of the eval verdict. Gate Evidence remains one
+  decision row per run.
+
 ## Next steps
 
-1. **E8 remainder** — tenant-role projection (roles live in ZITADEL; design before code).
-2. **E27** — cost policy: `specHash@releaseId@checksVersion` reuse + sampling.
-3. **B7** — visual rubric (warn only, needs a vision model).
-4. **E20 checkout** — blocked on a provider sandbox.
+1. **E27** — cost policy: `specHash@releaseId@checksVersion` reuse + sampling (D1 unblocked it).
+2. **B7** — visual rubric (warn only, needs a vision model).
+3. **E20 checkout** — blocked on a provider sandbox.

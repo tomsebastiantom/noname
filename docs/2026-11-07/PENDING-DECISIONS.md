@@ -20,7 +20,7 @@
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
-| **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
+| **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **A — implemented (role map + mandatory audience; no cache yet)** | E8 closed |
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
 | **D6** | Visual rubric (`B7`) | vision model / visual regression service / drop | **Drop for now** | Low |
@@ -239,12 +239,15 @@ decision is “M2 stays vocabulary-only”.
 
 **Design note — who runs eval, and whose roles are checked.** [`EVAL-D4-ROLES-DESIGN.md`](./EVAL-D4-ROLES-DESIGN.md)
 proposes: the runner is a **service token** (`x-user-id: eval-worker`, `x-role: service`, never the admin email);
-the server reads roles from ZITADEL with its own credentials; the check is **Phase 2-first** — `audience` is
-mandatory on every action contract, the context returns a **role→permissions map**, and `M2.roles` fails when no
-audience role holds the permission. The advisory-only Phase 1 is **not built** (it would let actions without an
-audience pass). Data source remains A (live + cache); implementation is pending.
+the server reads roles from ZITADEL with its own credentials; and **one block** ships identity + the
+**role→permissions map** + mandatory `audience` + the error check. There is no advisory stage: `M2.roles` fails
+when no audience role holds the permission, skips when role data is unavailable, and never passes on a missing
+audience. Data source remains A (live + paginated read; **no cache yet**); implemented 2026-11-07 — the context
+returns 8 roles live and `M2.roles` passes the 5 applicable audiences.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+**Decision:** ☑ **A** — implemented 2026-11-07 in one block. Live ZITADEL role map (paginated, no cache yet),
+mandatory `audience`, `M2.roles` error/skip semantics; runner identity is `eval-worker`/`service`. See
+[`EVAL-D4-ROLES-DESIGN.md`](./EVAL-D4-ROLES-DESIGN.md).
 
 ---
 
