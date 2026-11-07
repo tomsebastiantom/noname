@@ -35,7 +35,10 @@ const storedCart = {
 const client: EvalClient = {
   async getJson<T>(path: string) {
     if (path === "/api/documents/routing/pages") {
-      return { ok: true as const, data: { data: [{ key: "p1", status: "published" }] } as T };
+      return {
+        ok: true as const,
+        data: { data: [{ key: "p1", layoutRef: "home", status: "published" }] } as T,
+      };
     }
     if (path === "/api/documents/content-types") {
       return {

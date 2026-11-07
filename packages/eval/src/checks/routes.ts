@@ -24,8 +24,12 @@ type PageTreeResponse = {
 type EdgeSchemaResponse = {
   data?: {
     templateName?: string;
-    layout?: { root?: string; elements?: Record<string, unknown> };
+    layout?: { root?: string; elements?: Record<string, { type?: unknown }> };
   };
+};
+
+type RoutingPagesResponse = {
+  data?: Array<{ key?: string; layoutRef?: string; status?: string }>;
 };
 
 /** Identity of a resolved page: the template plus the shape of its element tree. */
@@ -82,6 +86,20 @@ const routes: Check["run"] = async (ctx) => {
     ];
   }
 
+  // The page's declared template is what R2 compares the resolved spec against. If this read fails, R2
+  // must skip the comparison rather than silently pass it.
+  const routing = await ctx.client.getJson<RoutingPagesResponse>("/api/documents/routing/pages");
+  const layoutByPageKey = routing.ok
+    ? new Map(
+        (routing.data?.data ?? [])
+          .filter(
+            (page): page is { key: string; layoutRef: string } =>
+              typeof page.key === "string" && typeof page.layoutRef === "string",
+          )
+          .map((page) => [page.key, page.layoutRef]),
+      )
+    : null;
+
   // Measure the fallback rather than assuming it: a route that cannot exist tells us what the edge
   // serves for a miss.
   const probeRoute = `/_eval_probe_${Date.now().toString(36)}`;
@@ -118,7 +136,6 @@ const routes: Check["run"] = async (ctx) => {
 
     const signature = signatureOf(response.data);
     const template = response.data?.data?.templateName ?? "(none)";
-    const blockCount = Object.keys(response.data?.data?.layout?.elements ?? {}).length;
 
     if (fallbackSignature !== null && signature === fallbackSignature && route !== "/") {
       results.push({
@@ -139,23 +156,63 @@ const routes: Check["run"] = async (ctx) => {
       detail: `resolves to "${template}"`,
     });
 
-    results.push(
-      blockCount > 0
-        ? {
-            id: "R2.blocks",
-            status: "pass",
-            level: "error",
-            subject: route,
-            detail: `${blockCount} block(s)`,
-          }
-        : {
-            id: "R2.blocks",
-            status: "fail",
-            level: "error",
-            subject: route,
-            detail: "route resolves but renders 0 blocks — the page resolves to nothing",
-          },
-    );
+    const elements = response.data?.data?.layout?.elements ?? {};
+    const elementKeys = Object.keys(elements);
+    const untyped = elementKeys.filter((key) => {
+      const type = elements[key]?.type;
+      return typeof type !== "string" || type.trim() === "";
+    });
+    const expectedLayout = layoutByPageKey?.get(pageId ?? "");
+
+    if (elementKeys.length === 0) {
+      results.push({
+        id: "R2.blocks",
+        status: "fail",
+        level: "error",
+        subject: route,
+        detail: "route resolves but renders 0 blocks — the page resolves to nothing",
+      });
+    } else if (untyped.length > 0) {
+      results.push({
+        id: "R2.blocks",
+        status: "fail",
+        level: "error",
+        subject: route,
+        detail: `${untyped.length} element(s) have no block type (${untyped.slice(0, 3).join(", ")})`,
+      });
+    } else if (layoutByPageKey === null) {
+      results.push({
+        id: "R2.blocks",
+        status: "skip",
+        level: "error",
+        subject: route,
+        detail: `${elementKeys.length} block(s); template cross-check skipped — routing pages were unavailable`,
+      });
+    } else if (!expectedLayout) {
+      results.push({
+        id: "R2.blocks",
+        status: "fail",
+        level: "error",
+        subject: route,
+        detail: `page "${pageId ?? "?"}" has no routing record declaring a layoutRef — the resolved template cannot be checked`,
+      });
+    } else if (template !== expectedLayout) {
+      results.push({
+        id: "R2.blocks",
+        status: "fail",
+        level: "error",
+        subject: route,
+        detail: `resolved to template "${template}" but page "${pageId}" declares "${expectedLayout}"`,
+      });
+    } else {
+      results.push({
+        id: "R2.blocks",
+        status: "pass",
+        level: "error",
+        subject: route,
+        detail: `${elementKeys.length} block(s), template "${template}"`,
+      });
+    }
   }
 
   return results;
