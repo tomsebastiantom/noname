@@ -461,9 +461,37 @@ body text), `checks/browser.ts` (`B5`), `checks/b5.test.ts`.
 sandbox product, a provider sandbox/callback, and cleanup keyed by `correlationId`. A cart that updates but a
 checkout that never completes would still pass `B5` today; the plan keeps E20 **partial** for that reason.
 
+## 2026-11-07 — E3/E23: run envelope + assertion config
+
+**Scope.** Give every run an identity and a version, count required skips as `unverified`, and let a caller
+turn checks off or re-level them without a code change — including per-route assertions.
+
+**Code.** `packages/eval/src/types.ts` (`AssertionConfig`, `EvalResult.runId/checksVersion`,
+`counts.unverified`), `config.ts` (ordered resolver), `index.ts` (apply config, compute version),
+`config.test.ts`, `packages/cli` (`--config <file>`, unverified in human output).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{eval,cli} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **80/80 passed** (8 new config/envelope tests) |
+| Unit — off | `drops off-level results and re-levels the rest` | result removed; verdict unchanged |
+| Unit — unverified | `counts required skips as unverified` | `counts.unverified === 1` |
+| Unit — matrix | `applies the last matching matrix entry` | `/legal/terms` → off, `/checkout` → error |
+| Unit — malformed pattern | ignored, default kept | no crash |
+| Unit — version | same config stable, changed config differs | yes |
+| Live — off | `--config` disabling `B3.a11y` and `S1.no_internal_egress` | both absent; **72 pass / 0 fail / 0 skip**; `runId` + `checksVersion` present |
+| Live — matrix | `assertMatrix: [{ matchingRoute: "^/375$", assertions: { "B2.overflow": "off" } }]` | `B2.overflow` results drop from 3 to 2 (`/768`, `/1440`); `checksVersion` changes |
+
+**Semantics recorded.** `off` removes a result entirely (it was not run); a required check that **could not
+run** is `skip` at `error` level and increments `unverified`. The two are deliberately different: one is a
+decision, the other is missing evidence.
+
 ## Next steps
 
-1. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
-2. **E8 remainder** — tenant-role projection.
-3. **E3/E4/E23/E25/E26** — assertion config, modes, sinks, queue/worker.
-4. **E21** — `B6` advisories and `B7` rubric (warn only).
+1. **E4** — modes (`dev | gate | agent`) and sinks (stdout/JSON/metrics/Evidence).
+2. **E25/E26** — queue + worker + Evidence/metrics sinks.
+3. **E20 remainder** — sandbox checkout to `paid` + cleanup.
+4. **E8 remainder** — tenant-role projection.
+5. **E21** — `B6` advisories and `B7` rubric (warn only).

@@ -6,11 +6,11 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, tier 2 (E16–E19 + E24), S1 (E22) and the
-> **cart half of E20** are **done and verified** on 2026-11-07. `noname eval` runs the catalogue end-to-end:
-> **73 pass / 1 warn failure / 0 skip** locally (S1 correctly proves the local browser reaches the API; B5
-> proves add-to-cart updates the cart). **Still open:** E20 checkout→`paid`, E8 tenant-role projection, and the
-> modes/sinks/queue block. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, tier 2 (E16–E19 + E24), S1 (E22), the cart half
+> of E20, and the run envelope/config (E3 + E23) are **done and verified** on 2026-11-07. `noname eval` runs the
+> catalogue end-to-end, with `--config` turning checks off or re-levelling them per route. **Still open:** E20
+> checkout→`paid`, E8 tenant-role projection, and modes/sinks/queue (E4/E25/E26). See
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -205,7 +205,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 |---|---|---|---|---|---|
 | **E1** | `Check` type mismatch | `Check` is `(ctx) => …`; manifest exports `{ id, run }`; browser exports `{ id, level, run }`; `evaluate` mixes them ([`index.ts:24`](../../packages/eval/src/index.ts#L24)) | **DONE 2026-11-07.** `Check = { meta, run }`; registry array; compile-time + test uniqueness | `pnpm typecheck` clean; duplicate id fails a test | S |
 | **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O. **Manifest path done 2026-11-07**; HTTP/browser I/O still lives in checks. | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
-| **E3** | No assertion config | levels are hardcoded per result | `EvalConfig` (zod), presets, `assertMatrix`, ordered resolution | A route pattern with `B2.overflow: off` skips only that route | M |
+| **E3** | No assertion config | levels are hardcoded per result | **DONE 2026-11-07.** `AssertionConfig` (`assertions`, `assertMatrix`) resolved per result: catalogue default → id override → matching route patterns (last wins); `off` removes the result; `--config <file>` loads it. Presets remain a convenience, not a mechanism | A route pattern with `B2.overflow: off` removes only that result | M |
 | **E4** | No modes/sinks | `evaluate()` returns a value only | `Mode` policy + sink ports; CLI prints, gate writes Evidence/metrics | Same check run in `dev` writes nothing to Evidence; `gate` writes one decision | M |
 | **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07.** `machine` actor + `nsv.` service token; `MACHINES_READ` split from `MACHINES_DEFINE`; token org-scoped with `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
 | **E6** | No determinism | no readiness marker; fixed 2.5 s wait in browser observer; no retries/runs | `data-eval-ready` contract, reduced motion, fixed fonts, `runs`/aggregation, recorded retries | A slow-hydrating page is waited for deterministically; flake count is reported | M |
@@ -245,7 +245,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 
 | # | Gap | Current evidence | Design | Acceptance | Size |
 |---|---|---|---|---|---|
-| **E23** | Result contract incomplete | no `runId`/`releaseId`/`checksVersion`/`unverified`; `CheckResult` lacks `runs`/`fix` | Extend types; `unverified` derived from skipped *required* checks | A run with an unreachable edge reports `unverified`, not `pass` | S |
+| **E23** | Result contract incomplete | no `runId`/`releaseId`/`checksVersion`/`unverified`; `CheckResult` lacks `runs`/`fix` | **DONE 2026-11-07.** `EvalResult` carries `runId` + `checksVersion`; `counts.unverified` counts required skips; `CheckResult` already had `runs`/`fix` hooks | A run with an unmeasured required check reports `unverified` > 0, not passed-silently | S |
 | **E24** | CLI cannot reach the browser or choose a mode | no browser/site/mode flags; `evalCommand` re-parses `process.argv` | **DONE 2026-11-07.** `--browser-endpoint` / `--site` (default `EVAL_CDP_ENDPOINT`, origin `http://<tenant>.localhost:5173`); observer is created, passed to `evaluate()`, and closed in `finally` | `noname eval --browser-endpoint ws://…` runs tier 2 (verified: 72 pass / 0 fail / 0 skip) | S |
 | **E25** | No queue/worker | no eval queue; browser idle | `EVAL` queue, `domains/eval` worker, separate entrypoint later | A queued run executes tier 2 and records metrics | M |
 | **E26** | No Evidence/metrics sinks | none | Gate-decision Evidence (per release-gate §8); check metrics in `shared/metrics.ts` | One decision row per gate run; `noname_eval_checks_total` visible | M |
@@ -382,4 +382,4 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
 | **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart half done, checkout open | 72 tests; live B5 pass (“1 item”), S1 warn-fail names the API |
-| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E24 done; E3/E4/E23/E25/E26 pending | CLI tier 2 wiring verified end-to-end |
+| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E3, E23, E24 done; E4/E25/E26 pending | 80 tests; live config runs (off + matrix) verified |
