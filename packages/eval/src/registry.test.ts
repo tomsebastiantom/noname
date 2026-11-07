@@ -34,6 +34,20 @@ const storedCart = {
 /** Minimal API double: every check goes through this, so no network is involved. */
 const client: EvalClient = {
   async getJson<T>(path: string) {
+    if (path === "/api/documents/layout") {
+      return {
+        ok: true as const,
+        data: {
+          data: [
+            {
+              key: "home",
+              status: "published",
+              data: { spec: { elements: { a: { type: "TextBase", props: { content: "Hi" } } } } },
+            },
+          ],
+        } as T,
+      };
+    }
     if (path === "/api/documents/routing/pages") {
       return {
         ok: true as const,
@@ -141,6 +155,11 @@ describe("check registry", () => {
     expect(result.checks.some((c) => c.id === "M4.machines" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "M1.references" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "M3.reachability" && c.status === "pass")).toBe(true);
+    expect(
+      result.checks.some(
+        (c) => c.id === "M5.vocabulary" && c.subject === "home" && c.status === "pass",
+      ),
+    ).toBe(true);
     expect(result.checks.some((c) => c.id === "R2.blocks" && c.status === "pass")).toBe(true);
   });
 });
@@ -202,7 +221,9 @@ describe("manifest checks are pure", () => {
       manifest: { files: [definition], stored: {}, canReadDefinitions: false },
     });
 
-    expect(result.checks.every((check) => check.status === "skip")).toBe(true);
+    const registrations = result.checks.filter((check) => check.detail.includes("MACHINES_DEFINE"));
+    expect(registrations.length).toBeGreaterThan(0);
+    expect(registrations.every((check) => check.status === "skip")).toBe(true);
     expect(result.passed).toBe(true);
   });
 });

@@ -64,6 +64,7 @@ export default {
           join(dir, "../auth/src"),
           join(dir, "../shared/src"),
           join(dir, "../documents/src"),
+          join(dir, "../catalog/src"),
         ],
         use: {
           loader: "builtin:swc-loader",

@@ -68,6 +68,19 @@ importers:
         specifier: ^8.0.0
         version: 8.1.4(@types/node@26.1.1)(esbuild@0.25.12)(jiti@2.7.0)(tsx@4.22.3)(yaml@2.9.0)
 
+  packages/catalog:
+    dependencies:
+      '@noname/shared':
+        specifier: workspace:*
+        version: link:../shared
+      zod:
+        specifier: ^4.4.3
+        version: 4.4.3
+    devDependencies:
+      typescript:
+        specifier: ^7.0.0
+        version: 7.0.2
+
   packages/cli:
     dependencies:
       '@noname/eval':
@@ -128,6 +141,9 @@ importers:
       '@noname/browser-sdk':
         specifier: workspace:*
         version: link:../browser-sdk
+      '@noname/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       '@noname/documents':
         specifier: workspace:*
         version: link:../documents
@@ -274,6 +290,9 @@ importers:
 
   packages/eval:
     dependencies:
+      '@noname/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       playwright-core:
         specifier: ^1.63.0
         version: 1.64.1
@@ -290,6 +309,9 @@ importers:
       '@json-render/react':
         specifier: ^0.20.0
         version: 0.20.0(react@19.2.7)(zod@4.4.3)
+      '@noname/catalog':
+        specifier: workspace:*
+        version: link:../catalog
       '@noname/documents':
         specifier: workspace:*
         version: link:../documents

@@ -12,6 +12,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@noname/catalog": "workspace:*",
     "playwright-core": "^1.63.0"
   },
   "devDependencies": {

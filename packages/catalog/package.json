@@ -1,0 +1,29 @@
+{
+  "name": "@noname/catalog",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./core": "./src/core.ts",
+    "./commerce": "./src/commerce.ts",
+    "./login-form-labels": "./src/login-form-labels.ts",
+    "./shared": "./src/shared.ts",
+    "./admin-components": "./src/admin-components.ts",
+    "./admin-actions": "./src/admin-actions.ts",
+    "./admin-shared": "./src/admin-shared.ts",
+    "./editor-components": "./src/editor-components.ts",
+    "./editor-actions": "./src/editor-actions.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint"
+  },
+  "dependencies": {
+    "@noname/shared": "workspace:*",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.0"
+  }
+}

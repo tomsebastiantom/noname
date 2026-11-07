@@ -1,3 +1,4 @@
+import { catalogHasType, validateCatalogElement } from "@noname/catalog";
 import type { Check, CheckResult } from "../types";
 
 /**
@@ -37,35 +38,115 @@ function unavailable(id: string, ctx: Parameters<Check["run"]>[0]): CheckResult 
   return null;
 }
 
-/** M5.vocabulary — every definition file is registered, i.e. the runtime can actually load it. */
-const vocabulary: Check["run"] = async (ctx) => {
-  const blocked = unavailable("M5.vocabulary", ctx);
-  if (blocked) return [blocked];
+type LayoutElement = { type?: unknown; props?: unknown };
 
-  const obs = ctx.manifest!;
+type LayoutsResponse = {
+  data?: Array<{
+    key?: string;
+    status?: string;
+    data?: { spec?: { elements?: Record<string, LayoutElement> }; renderAs?: string };
+  }>;
+};
+
+/** M5.vocabulary — every definition file is registered, and every block in a published layout is in the catalog. */
+const vocabulary: Check["run"] = async (ctx) => {
   const results: CheckResult[] = [];
 
-  for (const file of obs.files) {
-    const stored = obs.stored[file.name];
+  const blocked = unavailable("M5.vocabulary", ctx);
+  if (blocked) {
+    results.push(blocked);
+  } else {
+    const obs = ctx.manifest!;
+    for (const file of obs.files) {
+      const stored = obs.stored[file.name];
 
-    if (!stored) {
+      if (!stored) {
+        results.push({
+          id: "M5.vocabulary",
+          status: "fail",
+          level: "error",
+          subject: file.name,
+          detail: `definition "${file.name}" is not registered — a fresh environment would have no ${file.name} machine, so any capability that drives it fails there while passing locally`,
+        });
+        continue;
+      }
+
       results.push({
         id: "M5.vocabulary",
-        status: "fail",
+        status: "pass",
         level: "error",
         subject: file.name,
-        detail: `definition "${file.name}" is not registered — a fresh environment would have no ${file.name} machine, so any capability that drives it fails there while passing locally`,
+        detail: `definition "${file.name}" is registered`,
       });
-      continue;
     }
+  }
 
+  // Block vocabulary is a different question from definition registration, and it does not need a credential:
+  // the layout list is readable over the tenant-scoped documents API.
+  const layouts = await ctx.client.getJson<LayoutsResponse>("/api/documents/layout");
+  if (!layouts.ok) {
+    results.push({
+      id: "M5.vocabulary",
+      status: "skip",
+      level: "error",
+      detail: `could not list layouts (${layouts.error}) — block vocabulary was not checked`,
+    });
+    return results;
+  }
+
+  const published = (layouts.data?.data ?? []).filter((layout) => layout.status === "published");
+  if (published.length === 0) {
     results.push({
       id: "M5.vocabulary",
       status: "pass",
       level: "error",
-      subject: file.name,
-      detail: `definition "${file.name}" is registered`,
+      detail: "no published layouts to check",
     });
+    return results;
+  }
+
+  for (const layout of published) {
+    const elements = layout.data?.spec?.elements ?? {};
+    // Shell/panel/editor layouts receive their props from the platform at render time; only standalone
+    // (customer-facing) layouts are expected to carry complete static props.
+    const standalone = (layout.data?.renderAs ?? "standalone") === "standalone";
+    const problems: string[] = [];
+
+    for (const [key, element] of Object.entries(elements)) {
+      const type = typeof element.type === "string" ? element.type.trim() : "";
+      if (!type) {
+        problems.push(`${key}: element has no block type`);
+        continue;
+      }
+      if (!catalogHasType(type)) {
+        problems.push(`${key}: unknown block type "${type}"`);
+        continue;
+      }
+      if (!standalone) continue;
+
+      const validation = validateCatalogElement(element);
+      if (!validation.ok) problems.push(`${key}: ${validation.reason}`);
+    }
+
+    results.push(
+      problems.length === 0
+        ? {
+            id: "M5.vocabulary",
+            status: "pass",
+            level: "error",
+            subject: layout.key ?? "(unnamed layout)",
+            detail: `${Object.keys(elements).length} block(s) in the catalog`,
+          }
+        : {
+            id: "M5.vocabulary",
+            status: "fail",
+            level: "error",
+            subject: layout.key ?? "(unnamed layout)",
+            detail:
+              problems.slice(0, 3).join("; ") +
+              (problems.length > 3 ? ` (+${problems.length - 3} more)` : ""),
+          },
+    );
   }
 
   return results;
