@@ -58,14 +58,15 @@ function parseArgs(argv: string[]): Options {
 function hmacHeaders(): Record<string, string> {
   const orgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
   const secret = process.env.WORKER_SERVER_SECRET?.trim() ?? "";
-  const userId = process.env.ZITADEL_DEMO_ADMIN_EMAIL?.trim() ?? "admin@zitadel.localhost";
+  // The edge HMAC is transport attestation, not a human login: identify the eval worker, never an admin person.
+  const userId = "eval-worker";
   const headers: Record<string, string> = { "x-org-id": orgId };
   if (!orgId) {
     throw new Error("ZITADEL_DEMO_ORG_ID is missing — run `pnpm init:zitadel` or set it in .env");
   }
   if (!secret) return headers;
-  const hmac = createHmac("sha256", secret).update(`${orgId}:${userId}:admin`).digest("base64");
-  return { ...headers, "x-user-id": userId, "x-role": "admin", "x-auth-hmac": hmac };
+  const hmac = createHmac("sha256", secret).update(`${orgId}:${userId}:service`).digest("base64");
+  return { ...headers, "x-user-id": userId, "x-role": "service", "x-auth-hmac": hmac };
 }
 
 /**

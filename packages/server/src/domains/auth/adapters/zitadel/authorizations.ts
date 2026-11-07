@@ -23,17 +23,23 @@ export async function listProjectAuthorizations(
   orgId: string,
   projectId: string,
 ): Promise<AuthorizationRow[]> {
-  const body = await connectRequest<ListAuthorizationsResponse>(
-    orgId,
-    `${AUTH_SERVICE}/ListAuthorizations`,
-    {
-      pagination: { limit: 1000, offset: 0 },
-    },
-  );
+  // Paginate rather than trusting the first 1000 rows: a truncated list would make a role look absent and
+  // silently weaken every downstream permission decision. 10 pages is a defensive ceiling, not a limit.
+  const rows: AuthorizationRow[] = [];
+  for (let offset = 0; offset < 10_000; offset += 1000) {
+    const body = await connectRequest<ListAuthorizationsResponse>(
+      orgId,
+      `${AUTH_SERVICE}/ListAuthorizations`,
+      {
+        pagination: { limit: 1000, offset },
+      },
+    );
+    const page = body.authorizations ?? [];
+    rows.push(...page);
+    if (page.length < 1000) break;
+  }
 
-  return (body.authorizations ?? []).filter(
-    (row) => row.project?.id === projectId && row.organization?.id === orgId,
-  );
+  return rows.filter((row) => row.project?.id === projectId && row.organization?.id === orgId);
 }
 
 /** userId → primary staff role from ZITADEL project authorizations. */

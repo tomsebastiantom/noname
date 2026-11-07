@@ -51,10 +51,17 @@ const runRequestSchema = z.object({
   config: z.unknown().optional(),
 });
 
+export type EvalRoleContext = {
+  /** role key → permissions that role grants. A map, not a union: audience coverage must be per role. */
+  roles: Record<string, string[]>;
+};
+
 export function createEvalRoutes(deps: {
   capabilities: CapabilityRegistry;
   tenants: Pick<TenantCatalogService, "getManifest">;
   evidence: EvidenceService;
+  /** Reads the org's roles from the identity provider. Null means unavailable, never “no roles”. */
+  listRoles?: (orgId: string) => Promise<EvalRoleContext | null>;
 }) {
   const routes = new Hono();
 
@@ -74,9 +81,19 @@ export function createEvalRoutes(deps: {
       };
     });
 
+    let roleContext: EvalRoleContext | null = null;
+    if (deps.listRoles) {
+      try {
+        roleContext = await deps.listRoles(orgId);
+      } catch {
+        roleContext = null;
+      }
+    }
+
     return ok(c, {
       capabilities,
       extensions: manifest.extensions ?? [],
+      roles: roleContext?.roles ?? null,
     });
   });
 

@@ -1,4 +1,5 @@
 import { createHash, randomUUID } from "node:crypto";
+import "./contracts";
 import { resolveLevel } from "./config";
 import { loadManifestObservation } from "./observers/manifest";
 import { CHECK_REGISTRY } from "./registry";

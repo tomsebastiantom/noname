@@ -12,6 +12,7 @@
     "format": "biome format --write"
   },
   "dependencies": {
+    "@noname/auth": "workspace:*",
     "@noname/catalog": "workspace:*",
     "axe-core": "^4.14.0",
     "playwright-core": "^1.63.0"

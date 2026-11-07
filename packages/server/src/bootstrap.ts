@@ -1,4 +1,4 @@
-import { PERMISSIONS } from "@noname/auth";
+import { expandPermissionsFromKeys, isPlatformRole, PERMISSIONS } from "@noname/auth";
 import {
   createCommerceActivityProjector,
   createCommerceContribution,
@@ -19,6 +19,8 @@ import { createAnalyticsDomain } from "./domains/analytics";
 import { getClickHouseReadiness } from "./domains/analytics/adapters/clickhouse";
 import { createAudienceDomain } from "./domains/audiences";
 import { createAuthDomain, createAuthorization } from "./domains/auth";
+import { listProjectAuthorizations } from "./domains/auth/adapters/zitadel/authorizations";
+import { zitadelProjectIdOrNull } from "./domains/auth/adapters/zitadel/project-id";
 import {
   createCapabilityIdempotencyStore,
   createCapabilityRegistry,
@@ -461,10 +463,32 @@ export async function createApp(): Promise<Hono> {
 
   // Machine-only context for the eval service: capability descriptors + installed extensions. It is a
   // read-only projection of the registry, not a second source of truth.
+  //
+  // Roles come from ZITADEL through the server's own credentials. Eval never receives a ZITADEL admin
+  // credential; it only sees the role→permissions projection, and only for its own org.
+  const listEvalRoles = async (orgId: string) => {
+    const projectId = zitadelProjectIdOrNull();
+    if (!projectId) return null;
+
+    const rows = await listProjectAuthorizations(orgId, projectId);
+    const roleKeys = new Set<string>();
+    for (const row of rows) {
+      for (const role of row.roles ?? []) {
+        const key = role.key?.trim();
+        if (key && isPlatformRole(key)) roleKeys.add(key);
+      }
+    }
+
+    const roles: Record<string, string[]> = {};
+    for (const key of roleKeys) roles[key] = expandPermissionsFromKeys([key]);
+    return { roles };
+  };
+
   const evalDomain = createEvalDomain({
     capabilities,
     tenants: tenant.service,
     evidence: evidence.service,
+    listRoles: listEvalRoles,
   });
   app.route("/api/eval", evalDomain.routes);
 

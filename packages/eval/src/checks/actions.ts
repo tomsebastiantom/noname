@@ -30,7 +30,11 @@ type CapabilityDescriptor = {
   publicAccess?: string | null;
 };
 type EvalContextResponse = {
-  data?: { capabilities?: CapabilityDescriptor[]; extensions?: string[] };
+  data?: {
+    capabilities?: CapabilityDescriptor[];
+    extensions?: string[];
+    roles?: Record<string, string[]> | null;
+  };
 };
 
 function actionOf(element: LayoutElement): string {
@@ -218,6 +222,84 @@ const actions: Check["run"] = async (ctx) => {
   return results;
 };
 
+/**
+ * M2.roles — the audience declared on each contract must actually be able to invoke it.
+ *
+ * The context returns a role→permissions map, not a union: “editor lacks orders_manage” must remain visible even
+ * though admin holds it. A tenant that has none of an action's audience roles is not failing the action; it is
+ * skipping it, and the skip counts as unverified rather than as a pass.
+ */
+const roleCoverage: Check["run"] = async (ctx) => {
+  const response = await ctx.client.getJson<EvalContextResponse>("/api/eval/context");
+  if (!response.ok) {
+    return [
+      {
+        id: "M2.roles",
+        status: "skip",
+        level: "error",
+        detail: `could not read eval context (${response.error}) — role coverage was not checked`,
+      },
+    ];
+  }
+
+  const roleMap = response.data?.data?.roles;
+  if (!roleMap) {
+    return [
+      {
+        id: "M2.roles",
+        status: "skip",
+        level: "error",
+        detail: "role assignments unavailable — role coverage was not checked",
+      },
+    ];
+  }
+
+  const problems: string[] = [];
+  let applicable = 0;
+
+  for (const [action, contract] of Object.entries(actionContracts)) {
+    const present = contract.audience.filter((role) => Array.isArray(roleMap[role]));
+    if (present.length === 0) continue;
+    applicable += 1;
+
+    const covered = present.some((role) => roleMap[role]?.includes(contract.permission));
+    if (!covered) {
+      problems.push(`${action}: none of [${present.join(", ")}] holds ${contract.permission}`);
+    }
+  }
+
+  if (applicable === 0) {
+    return [
+      {
+        id: "M2.roles",
+        status: "skip",
+        level: "error",
+        detail: "tenant has none of the declared audience roles — role coverage not applicable",
+      },
+    ];
+  }
+
+  return [
+    problems.length === 0
+      ? {
+          id: "M2.roles",
+          status: "pass",
+          level: "error",
+          subject: "audiences",
+          detail: `${applicable} action audience(s) hold their permission`,
+        }
+      : {
+          id: "M2.roles",
+          status: "fail",
+          level: "error",
+          subject: "audiences",
+          detail:
+            problems.slice(0, 3).join("; ") +
+            (problems.length > 3 ? ` (+${problems.length - 3} more)` : ""),
+        },
+  ];
+};
+
 export const actionChecks: Check[] = [
   {
     meta: {
@@ -230,5 +312,17 @@ export const actionChecks: Check[] = [
         "every action referenced by a published layout is declared, and capability-backed actions are wired",
     },
     run: actions,
+  },
+  {
+    meta: {
+      id: "M2.roles",
+      tier: 1,
+      defaultLevel: "error",
+      needs: ["api"],
+      emits: ["M2.roles"],
+      description:
+        "at least one declared audience role holds each capability-backed action's permission",
+    },
+    run: roleCoverage,
   },
 ];

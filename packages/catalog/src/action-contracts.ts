@@ -14,6 +14,11 @@ export type ActionContract = {
   extension: string;
   /** Permission the capability is expected to declare (drift between this and the registry is a failure). */
   permission: string;
+  /**
+   * Roles for whom this action exists. Mandatory: eval checks that at least one of these roles holds the
+   * permission. Validated against the platform role list at import (see @noname/eval).
+   */
+  audience: readonly string[];
 };
 
 export const actionContracts: Record<string, ActionContract> = {
@@ -21,31 +26,37 @@ export const actionContracts: Record<string, ActionContract> = {
     capability: "commerce.checkout",
     extension: "commerce",
     permission: "storefront:view",
+    audience: ["customer"],
   },
   loadOrdersAdmin: {
     capability: "commerce.orders.search",
     extension: "commerce",
     permission: "commerce:orders_view",
+    audience: ["admin", "editor", "analyst"],
   },
   loadOrderDetail: {
     capability: "commerce.orders.get",
     extension: "commerce",
     permission: "commerce:orders_view",
+    audience: ["admin", "editor", "analyst"],
   },
   cancelOrder: {
     capability: "commerce.orders.cancel",
     extension: "commerce",
     permission: "commerce:orders_manage",
+    audience: ["admin"],
   },
   fulfillOrder: {
     capability: "commerce.orders.fulfill",
     extension: "commerce",
     permission: "commerce:orders_manage",
+    audience: ["admin"],
   },
   refundOrder: {
     capability: "commerce.orders.refund",
     extension: "commerce",
     permission: "commerce:orders_manage",
+    audience: ["admin"],
   },
 };
 

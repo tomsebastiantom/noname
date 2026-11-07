@@ -290,6 +290,9 @@ importers:
 
   packages/eval:
     dependencies:
+      '@noname/auth':
+        specifier: workspace:*
+        version: link:../auth
       '@noname/catalog':
         specifier: workspace:*
         version: link:../catalog

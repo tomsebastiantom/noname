@@ -50,8 +50,8 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
   const secret = process.env.WORKER_SERVER_SECRET ?? "";
   if (!secret) throw new Error("WORKER_SERVER_SECRET is required to run eval jobs");
 
-  const user = process.env.ZITADEL_DEMO_ADMIN_EMAIL ?? "admin@zitadel.localhost";
-  const hmac = createHmac("sha256", secret).update(`${job.orgId}:${user}:admin`).digest("base64");
+  const user = "eval-worker";
+  const hmac = createHmac("sha256", secret).update(`${job.orgId}:${user}:service`).digest("base64");
   const token = signServiceToken({
     serviceId: "eval-worker",
     orgId: job.orgId,
@@ -64,7 +64,7 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
     headers: {
       "x-org-id": job.orgId,
       "x-user-id": user,
-      "x-role": "admin",
+      "x-role": "service",
       "x-auth-hmac": hmac,
       Authorization: `Bearer ${token}`,
     },
