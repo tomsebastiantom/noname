@@ -488,10 +488,37 @@ turn checks off or re-level them without a code change — including per-route a
 run** is `skip` at `error` level and increments `unverified`. The two are deliberately different: one is a
 decision, the other is missing evidence.
 
+## 2026-11-07 — E4/E26: gate sink, modes, Evidence + metrics
+
+**Scope.** Give the same catalogue two reporting modes: `dev` (terminal only) and `gate` (one Evidence decision
+plus metrics). The CLI posts a completed run to a machine-only endpoint; the server remains the only writer to
+the audit kernel.
+
+**Code.** `packages/eval` unchanged; `packages/cli` (`--mode dev|gate|agent`, gate POST, unverified output),
+`packages/server/src/domains/eval/{gate,api,index}.ts`, `bootstrap.ts` (evidence dep),
+`packages/server/src/shared/metrics.ts` (`noname_eval_*`), `gate.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{server,cli,eval} typecheck` | clean |
+| Tests | `pnpm vitest run packages/server/src/domains/eval packages/eval/src` | **82/82 passed** (2 gate tests) |
+| Unit — pass | `writes one pass decision with the run identity` | Evidence input: `platform.eval.run`, `tenant.storefront`, `eval:<runId>:<checksVersion>` |
+| Unit — blocked | `records only error-level failures` | `failingCheckIds: ["B1.structure"]`, warn failure excluded |
+| Live — gate run | `noname eval … --browser-endpoint … --mode gate --json` | `decision=pass`, `evidenceId=9364788e…`, `runId=411cabb8…` |
+| Live — Evidence row | `psql … where type='platform.eval.run'` | `platform.eval.run \| yogastore \| pass \| 44d480f6eb85 \| 411cabb8…` |
+| Live — metrics | `GET /metrics` | `noname_eval_runs_total{decision="pass"} 1`; per-check counters; `noname_eval_unverified_total 0` |
+| Dev mode | default | no POST, no Evidence row, terminal/JSON only |
+
+**Mode semantics recorded.** `gate` writes exactly one decision; `dev` and `agent` write none. Target and
+blocking policy per mode (drafts in dev, published in gate) is still open — the CLI target is the tenant, not a
+mode-specific route set. The queue/worker (E25) remains the async path for large sweeps.
+
 ## Next steps
 
-1. **E4** — modes (`dev | gate | agent`) and sinks (stdout/JSON/metrics/Evidence).
-2. **E25/E26** — queue + worker + Evidence/metrics sinks.
-3. **E20 remainder** — sandbox checkout to `paid` + cleanup.
-4. **E8 remainder** — tenant-role projection.
+1. **E25** — eval queue + worker (async sweeps, concurrency, per-job timeout).
+2. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
+3. **E8 remainder** — tenant-role projection.
+4. **E4 remainder** — mode-specific target/blocking policy.
 5. **E21** — `B6` advisories and `B7` rubric (warn only).
