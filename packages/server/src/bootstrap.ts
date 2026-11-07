@@ -456,7 +456,11 @@ export async function createApp(): Promise<Hono> {
 
   // Machine-only context for the eval service: capability descriptors + installed extensions. It is a
   // read-only projection of the registry, not a second source of truth.
-  const evalDomain = createEvalDomain({ capabilities, tenants: tenant.service });
+  const evalDomain = createEvalDomain({
+    capabilities,
+    tenants: tenant.service,
+    evidence: evidence.service,
+  });
   app.route("/api/eval", evalDomain.routes);
   app.route("/api/auth", auth.routes);
   app.route("/api/integrations", integrations.routes);

@@ -81,6 +81,7 @@ program
   .option("--browser-endpoint <ws>", "Playwright server endpoint for tier 2 checks")
   .option("--site <url>", "storefront origin for browser checks")
   .option("--config <file>", "assertion config JSON (levels, assertMatrix)")
+  .option("--mode <mode>", "dev | gate | agent", "dev")
   .option("--json", "machine-readable output")
   .action(async () => {
     // Checks live in @noname/eval; this command only parses arguments and prints.

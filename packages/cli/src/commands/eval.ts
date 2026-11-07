@@ -26,6 +26,7 @@ type Options = {
   browserEndpoint?: string;
   siteBase?: string;
   configPath?: string;
+  mode: "dev" | "gate" | "agent";
 };
 
 function parseArgs(argv: string[]): Options {
@@ -46,6 +47,7 @@ function parseArgs(argv: string[]): Options {
     browserEndpoint: get("browser-endpoint", process.env.EVAL_CDP_ENDPOINT ?? "") || undefined,
     siteBase: get("site", "") || undefined,
     configPath: get("config", "") || undefined,
+    mode: get("mode", "dev") as Options["mode"],
     json: argv.includes("--json"),
   };
 }
@@ -101,6 +103,10 @@ function format(results: CheckResult[]): string {
 
 export async function evalCommand(argv: string[]): Promise<number> {
   const options = parseArgs(argv);
+  if (!["dev", "gate", "agent"].includes(options.mode)) {
+    console.error(`unknown --mode "${options.mode}" (expected dev, gate or agent)`);
+    return 2;
+  }
   const token = readToken(argv);
 
   let config: AssertionConfig | undefined;
@@ -144,8 +150,39 @@ export async function evalCommand(argv: string[]): Promise<number> {
   } finally {
     await browser?.close();
   }
+
+  let evidenceId: string | undefined;
+  let decision: string | undefined;
+  if (options.mode === "gate") {
+    try {
+      const response = await fetch(`${options.apiBase.replace(/\/$/, "")}/api/eval/record`, {
+        method: "POST",
+        headers: {
+          ...hmacHeaders(),
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ tenantSlug: options.tenant, result }),
+      });
+      if (!response.ok) {
+        console.error(`gate record failed: HTTP ${response.status}`);
+        return 1;
+      }
+      const body = (await response.json()) as {
+        data?: { evidenceId?: string; decision?: string };
+      };
+      evidenceId = body.data?.evidenceId;
+      decision = body.data?.decision;
+    } catch (cause) {
+      console.error(
+        `gate record failed: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
+      return 1;
+    }
+  }
+
   if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(JSON.stringify({ ...result, evidenceId, decision }, null, 2));
   } else {
     console.log(`\n  eval — tenant "${options.tenant}" against ${options.apiBase}\n`);
     console.log(format(result.checks));
@@ -156,6 +193,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
     console.log(
       `\n  ${passed} passed, ${failed} failed, ${skipped} skipped${unverified > 0 ? ` (${unverified} unverified)` : ""}`,
     );
+    if (evidenceId) console.log(`  evidence: ${evidenceId} (${decision ?? "recorded"})`);
   }
 
   return result.passed ? 0 : 1;

@@ -216,6 +216,43 @@ new client.Gauge({
   },
 });
 
+// ---------------------------------------------------------------- eval
+//
+// One run produces one decision; per-check detail is counted here rather than written to the audit kernel.
+// The audit row is the decision (see docs/2026-11-07/RFC-RELEASE-GATE.md §8), not every check.
+
+export const evalRunsTotal = new client.Counter({
+  name: "noname_eval_runs_total",
+  help: "Eval gate decisions by outcome.",
+  labelNames: ["decision"] as const,
+  registers: [registry],
+});
+
+export const evalChecksTotal = new client.Counter({
+  name: "noname_eval_checks_total",
+  help: "Eval check results by check id, status and level.",
+  labelNames: ["check", "status", "level"] as const,
+  registers: [registry],
+});
+
+export const evalUnverifiedTotal = new client.Counter({
+  name: "noname_eval_unverified_total",
+  help: "Eval runs that completed with required checks unverified.",
+  registers: [registry],
+});
+
+export function recordEvalResult(result: {
+  passed: boolean;
+  counts: { unverified: number };
+  checks: Array<{ id: string; status: string; level: string }>;
+}): void {
+  evalRunsTotal.inc({ decision: result.passed ? "pass" : "blocked" });
+  for (const check of result.checks) {
+    evalChecksTotal.inc({ check: check.id, status: check.status, level: check.level });
+  }
+  if (result.counts.unverified > 0) evalUnverifiedTotal.inc();
+}
+
 // ---------------------------------------------------------------- render
 
 export async function renderMetrics(): Promise<string> {
