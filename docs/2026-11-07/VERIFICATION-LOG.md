@@ -193,7 +193,39 @@ fixture gains `layoutRef`).
 twice to make them separate *functions* would double tier‑1 cost for no assertion gain. The ids and
 verdicts are separate, which is what the gate consumes.
 
+## 2026-11-07 — E10/E11: node-safe catalog + `M5.vocabulary`
+
+**Scope.** Extract every catalog schema (core, commerce, admin, editor, shared labels) into a React-free
+`@noname/catalog`, make the old client/extension paths re-export shims, and make `M5.vocabulary` validate the
+block types (and static props) of every published layout.
+
+**Code.** `packages/catalog/**` (new; schemas moved with `git mv`), re-export shims under
+`packages/client/src/{core,admin,editor,schemas}` and `packages/extensions/src/commerce/catalog-schemas.ts`,
+`packages/client/rspack.config.mjs` (catalog added to the SWC TypeScript include),
+`packages/eval/src/checks/manifest.ts`, `checks/vocabulary.test.ts` (new), workspace dependency updates.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{catalog,client,extensions,eval} typecheck` | all clean |
+| Tests | `pnpm vitest run packages/eval/src packages/extensions/src/commerce/catalog-schemas.test.ts` | **40/40 passed** (6 new vocabulary tests + 8 existing commerce schema tests through the shim) |
+| Live — first run | `noname eval --tenant yogastore --token <service-token>` | **22 failures**: 20 unknown admin/editor block types + 2 dynamic-prop mismatches (`ProductCard`, `ProductInfo`) |
+| Fix 1 | moved admin/editor schemas into the catalog | failures 22 → **2** (`AdminShell` props, `TracesAdmin` missing schema) |
+| Fix 2 | `TracesAdmin` schema added; shell/panel/editor layouts validate **types only** (their props are injected at render time); dynamic `$`-bindings defer prop validation | failures → **0** |
+| Live — final | same command | **47 pass / 0 fail / 2 skip**; `home` reports “7 block(s) in the catalog” |
+| Client build | rspack dev restart + browser smoke | first attempt failed to parse `catalog/src/*.ts` (not in the TS loader); adding the package to `rspack.config.mjs` fixed it — storefront 200 (358 chars), `/login` 200, **0 console errors** |
+
+**Findings exposed by the check.**
+
+1. `TracesAdmin` was renderable but had **no catalog schema** — a real vocabulary hole, now closed.
+2. `AdminShell` declares required `description`/`activeNav` props, but shell layouts receive them at render
+   time. Prop validation is therefore scoped to `renderAs: "standalone"` layouts; types are checked everywhere.
+3. Storefront layouts bind product data through json-render `$state` expressions. Validating those raw values
+   as strings/numbers is a false positive, so prop validation is deferred when a `$`-binding is present. The
+   resolved values are already covered by `R2`/`B4`.
+
 ## Next block (planned)
 
-`E10`/`E11` — make `M5.vocabulary` validate spec element types and props against the catalog schema. This
-needs the node-safe `@noname/catalog` extraction; until that exists, M5 can only assert “registered”.
+`E14` — `R3.content`: the content a route references resolves non-empty (no published-but-empty collection).
+Verification: publishing an empty collection makes `R3` fail with the collection id.
