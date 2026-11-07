@@ -1,6 +1,7 @@
 # Pending decisions — release mechanism and eval gaps
 
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
+> **Implementation status:** **D14 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md) and [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D15, D16 and D1 remain open.**
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
 > repository actually does today and to how established projects solved the same problem.
 > **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
@@ -14,7 +15,7 @@
 | # | Decision | Options | Recommendation | Urgency |
 |---|---|---|---|---|
 | **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context**, DB truth through a port | **High** — the client half; needs D14/D15 first |
-| **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** | **Highest** — defines the unit everything else moves |
+| **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
@@ -149,7 +150,7 @@ rules it started with”.
 **Recommendation: A.** It is the durable, queryable answer, and it composes with D1 (both are “pin the immutable
 thing, move the pointer”). Option B is a valid emergency stop-gap if the schema migration is unwelcome now.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+**Decision:** ☑ A — chosen and implemented 2026-11-07. See [`RELEASE-D2-DESIGN.md`](./RELEASE-D2-DESIGN.md).
 
 ---
 
@@ -486,6 +487,8 @@ history belongs in metrics.
 ---
 
 ## D14 — What counts as a release?
+
+**Status:** **chosen (B) and implemented 2026-11-07** — [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md). The text below is the original decision record.
 
 **Question.** Is a release the client bundle, or the whole deployable artifact set? This decides whether “canary
 a release” means anything for server changes.
