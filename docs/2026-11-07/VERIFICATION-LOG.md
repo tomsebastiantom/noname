@@ -139,7 +139,34 @@ the API, so the dangling-target case was falsified at unit level rather than by 
 temporary content type and deleting it via SQL was rejected on purpose: verification must not write around the
 domain boundary it is checking.
 
+## 2026-11-07 — E9: `M3.reachability`
+
+**Scope.** A tier‑0 check over the routing graph: every `page_tree` entry must point at an existing page and
+have a route; every **published** page must be reachable from the tree. Draft pages are deliberately exempt.
+
+**Code.** `packages/eval/src/checks/reachability.ts` (new), `checks/reachability.test.ts` (new), `registry.ts`,
+`index.ts`, `registry.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Unit tests | `pnpm vitest run packages/eval/src` | **20/20 passed** (6 new M3 tests) |
+| Live — first run | `noname eval --tenant yogastore --token <service-token>` | **M3 failed with 3 findings**: `collection-all`, `product-demo`, `product-search` published but absent from `page_tree`; overall `12 pass / 3 fail / 2 skip` |
+| Live — after restoring routing | `pnpm seed:demo:commerce` then the same eval | **M3 pass**: “4 page_tree entries, 4 pages — all reachable”; overall **19 pass / 0 fail / 2 skip** |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200 with the commerce layout (358 chars, 0 console errors), `/login` 200 |
+
+**Real finding, not a synthetic one.** Running the platform seed alone overwrites `page_tree/main` with the
+home entry; the commerce routes are then published pages that no route reaches. `M3` caught exactly that, and
+re-running the commerce seed restored the entries. The seed-ordering hazard is recorded here because it is a
+defect the check exposed on its first live run — the platform seed should preserve existing tree entries (or
+the two profiles should be ordered explicitly).
+
+`pnpm seed:demo:commerce` itself exited 1 **after** printing the restored routing, while inserting the demo
+order Evidence row; that failure is unrelated to M3 and is recorded so it is not mistaken for a check failure.
+
 ## Next block (planned)
 
-`E9` — `M3.reachability`: every `page_tree` entry points at an existing page, and every published page is
-reachable from the tree. Verification: a dangling entry fails `M3` with both ids.
+`E13`/`E15` — split `R1.resolve` from `R2.blocks` and compare block **types**, not just “count > 0”.
+Verification: a route rendering the wrong template passes R1 but fails R2.

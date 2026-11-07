@@ -6,9 +6,9 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3 and E7 are **done and verified** on 2026-11-07 (typed registry;
-> manifest observer; machine actor; `M1.references`). See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
-> Next block: E9.
+> **Implementation status:** Blocks 1–3 and E7/E9 are **done and verified** on 2026-11-07 (typed registry;
+> manifest observer; machine actor; `M1.references`; `M3.reachability`). See
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next block: E13/E15.
 
 ---
 
@@ -214,7 +214,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 |---|---|---|---|---|---|
 | **E7** | `M1.references` missing | `reference` fields exist with `references?: string` ([`documents/schema.ts:11-23`](../../packages/documents/src/schema.ts#L11-L23)); no check | **DONE 2026-11-07.** Reads `/api/documents/content-types`; every reference field must name an existing type (or fail with the field path) | A dangling reference fails `M1` with the field path; restoring passes | S |
 | **E8** | `M2.permissions` missing — **and not implementable as written** | Actions are client handlers (`commerceActions.addToCart`), not capability names ([`extensions/commerce/actions.ts`](../../packages/extensions/src/commerce/actions.ts)); no action→permission metadata | Introduce an **action contract registry**: every action declares `requires: PermissionKey[]` and the capabilities it invokes. The server exposes a machine-only `GET /api/eval/context` returning the tenant’s effective permissions, capability descriptors and action contracts; a `TenantContextObserver` consumes it. M2 checks spec actions against that context | An action guarded by `commerce:orders_manage` fails for a tenant whose roles lack it; an unknown action fails vocabulary | L |
-| **E9** | `M3.reachability` missing | `pages.getMainTree` / `listRoutingPages` exist ([`pages.ts`](../../packages/server/src/domains/documents/routes/pages.ts)); no check | Spec observer reads `page_tree` + routing pages + published status; check verifies every entry → existing page and every published page → reachable entry | A dangling `page_tree` entry fails `M3` with both ids | S |
+| **E9** | `M3.reachability` missing | `pages.getMainTree` / `listRoutingPages` exist ([`pages.ts`](../../packages/server/src/domains/documents/routes/pages.ts)); no check | **DONE 2026-11-07.** Reads `page_tree/main` + `routing/pages`; every entry must exist and have a route; every published page must be in the tree | A dangling `page_tree` entry fails `M3` with both ids | S |
 | **E10** | `M5.vocabulary` is only “is it registered” | `vocabulary` checks API presence, not block/prop names ([`manifest.ts:35-86`](../../packages/eval/src/checks/manifest.ts#L35-L86)) | Validate spec element types and prop keys against the **catalog schema**; requires E11 | An unknown block type or prop fails `M5` with the element key | M |
 | **E11** | Catalog schema is duplicated and React-coupled | `client/src/component-schemas.ts`, `client/src/core/catalog-schemas.ts`, `extensions/src/commerce/catalog-schemas.ts` | Extract a node-safe `@noname/catalog` (zod only) consumed by client, bundler validation and eval; client re-exports for compatibility | Client build unchanged; eval imports the same schema; one definition per component | L |
 | **E12** | `M4` reads the filesystem inside the check | [`manifest.ts:26-32`](../../packages/eval/src/checks/manifest.ts#L26-L32) | **DONE 2026-11-07.** `ManifestObserver` produces `{ files, stored, canReadDefinitions }`; `M4` compares two values | Check unit test with two objects, no fs | S |
@@ -377,7 +377,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
-| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **In progress** — E7 done 2026-11-07 | 5/5 reference tests, live CLI `M1 pass` on 5 content types |
+| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **In progress** — E7, E9 done 2026-11-07 | M1 5/5 tests; M3 6/6 tests + live fail→fix (3 pages unreachable → restored) |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | Not started | — |
 | **B6** | E20, E22 — behaviour + `S1` | Not started | — |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | Not started | — |
