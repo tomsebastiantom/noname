@@ -42,7 +42,20 @@ export type EvalResult = {
   checks: CheckResult[];
   /** Derived: no `error`-level failure. Never passed in. */
   passed: boolean;
-  counts: { pass: number; fail: number; skip: number };
+  counts: { pass: number; fail: number; skip: number; unverified: number };
+  /** Stable id for this run (caller-supplied or generated). */
+  runId: string;
+  /** Hash of the catalogue + configured levels; changes when expectations change. */
+  checksVersion: string;
+};
+
+/**
+ * Assertion overrides, Lighthouse-style: `off` disables a check without a code change, `warn` reports without
+ * blocking, and `assertMatrix` lets a route pattern carry different expectations (checkout vs marketing).
+ */
+export type AssertionConfig = {
+  assertions?: Record<string, Level>;
+  assertMatrix?: Array<{ matchingRoute: string; assertions: Record<string, Level> }>;
 };
 
 /** The only I/O surface checks are allowed to use. */
@@ -102,6 +115,10 @@ export type CheckContext = {
    * definition checks must report `skip` rather than guess.
    */
   canReadDefinitions: boolean;
+  /** Assertion overrides (levels, per-route matrix). Absent means the catalogue defaults. */
+  config?: AssertionConfig;
+  /** Caller-supplied run id; generated when absent. */
+  runId?: string;
   /** Built by the runner when a selected check needs the manifest; never by a check. */
   manifest?: ManifestObservation;
   /**

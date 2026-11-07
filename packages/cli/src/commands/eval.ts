@@ -1,10 +1,11 @@
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 // The repository root `.env` is the single source of truth for identity (written by `pnpm init:zitadel`).
 // Load it before anything reads process.env; dotenv never overrides values already in the environment.
 import "dotenv/config";
-import type { CheckResult } from "@noname/eval";
+import type { AssertionConfig, CheckResult, EvalResult } from "@noname/eval";
 import { createBrowserObserver, createHttpClient, evaluate } from "@noname/eval";
 
 /**
@@ -24,6 +25,7 @@ type Options = {
   json: boolean;
   browserEndpoint?: string;
   siteBase?: string;
+  configPath?: string;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -43,6 +45,7 @@ function parseArgs(argv: string[]): Options {
     maxRoutes: Number(get("max-routes", "20")),
     browserEndpoint: get("browser-endpoint", process.env.EVAL_CDP_ENDPOINT ?? "") || undefined,
     siteBase: get("site", "") || undefined,
+    configPath: get("config", "") || undefined,
     json: argv.includes("--json"),
   };
 }
@@ -99,6 +102,19 @@ function format(results: CheckResult[]): string {
 export async function evalCommand(argv: string[]): Promise<number> {
   const options = parseArgs(argv);
   const token = readToken(argv);
+
+  let config: AssertionConfig | undefined;
+  if (options.configPath) {
+    try {
+      config = JSON.parse(readFileSync(options.configPath, "utf8")) as AssertionConfig;
+    } catch (cause) {
+      console.error(
+        `could not read --config ${options.configPath}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      );
+      return 2;
+    }
+  }
+
   const client = createHttpClient({
     apiBase: options.apiBase,
     headers: token ? { ...hmacHeaders(), Authorization: `Bearer ${token}` } : hmacHeaders(),
@@ -111,7 +127,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
       })
     : undefined;
 
-  let result;
+  let result: EvalResult;
   try {
     result = await evaluate({
       client,
@@ -120,7 +136,10 @@ export async function evalCommand(argv: string[]): Promise<number> {
       maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
       canReadDefinitions: Boolean(token),
       browser,
-      siteBase: browser ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`) : undefined,
+      siteBase: browser
+        ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`)
+        : undefined,
+      config,
     });
   } finally {
     await browser?.close();
@@ -133,7 +152,10 @@ export async function evalCommand(argv: string[]): Promise<number> {
     const failed = result.checks.filter((c) => c.status === "fail").length;
     const passed = result.checks.filter((c) => c.status === "pass").length;
     const skipped = result.checks.filter((c) => c.status === "skip").length;
-    console.log(`\n  ${passed} passed, ${failed} failed, ${skipped} skipped`);
+    const unverified = result.counts.unverified;
+    console.log(
+      `\n  ${passed} passed, ${failed} failed, ${skipped} skipped${unverified > 0 ? ` (${unverified} unverified)` : ""}`,
+    );
   }
 
   return result.passed ? 0 : 1;

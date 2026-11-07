@@ -1,6 +1,8 @@
+import { createHash, randomUUID } from "node:crypto";
+import { resolveLevel } from "./config";
 import { loadManifestObservation } from "./observers/manifest";
 import { CHECK_REGISTRY } from "./registry";
-import type { Check, CheckContext, EvalResult } from "./types";
+import type { AssertionConfig, Check, CheckContext, CheckResult, EvalResult } from "./types";
 
 export { actionChecks } from "./checks/actions";
 export { browserChecks } from "./checks/browser";
@@ -8,11 +10,25 @@ export { manifestChecks } from "./checks/manifest";
 export { reachabilityChecks } from "./checks/reachability";
 export { referenceChecks } from "./checks/references";
 export { routeChecks } from "./checks/routes";
+export { resolveLevel } from "./config";
 export { createBrowserObserver } from "./observers/browser";
 export { createHttpClient } from "./observers/http";
 export { loadManifestObservation } from "./observers/manifest";
 export { CHECK_REGISTRY } from "./registry";
 export * from "./types";
+
+/** Hash of the catalogue and configured levels — changes exactly when “what verified means” changes. */
+function checksVersionOf(checks: readonly Check[], config?: AssertionConfig): string {
+  const descriptor = checks.map((check) => ({
+    id: check.meta.id,
+    level: check.meta.defaultLevel,
+    emits: check.meta.emits,
+  }));
+  return createHash("sha256")
+    .update(JSON.stringify({ descriptor, config: config ?? null }))
+    .digest("hex")
+    .slice(0, 12);
+}
 
 /**
  * Run a set of checks and derive the verdict.
@@ -62,15 +78,30 @@ export async function evaluateChecks(
     }
   }
 
-  const counts = { pass: 0, fail: 0, skip: 0 };
-  for (const result of results) counts[result.status] += 1;
+  const adjusted: CheckResult[] = [];
+  for (const result of results) {
+    const level = resolveLevel(result.id, result.subject, ctx.config, result.level);
+    if (level === "off") continue;
+    adjusted.push({ ...result, level });
+  }
 
-  const passed = !results.some((check) => check.status === "fail" && check.level === "error");
-  return { checks: results, passed, counts };
+  const counts = { pass: 0, fail: 0, skip: 0, unverified: 0 };
+  for (const result of adjusted) {
+    counts[result.status] += 1;
+    if (result.status === "skip" && result.level === "error") counts.unverified += 1;
+  }
+
+  const passed = !adjusted.some((check) => check.status === "fail" && check.level === "error");
+  return {
+    checks: adjusted,
+    passed,
+    counts,
+    runId: ctx.runId ?? randomUUID(),
+    checksVersion: checksVersionOf(checks, ctx.config),
+  };
 }
 
 /** Run the full catalogue. */
 export async function evaluate(ctx: CheckContext): Promise<EvalResult> {
-  const { checks, passed, counts } = await evaluateChecks(CHECK_REGISTRY, ctx);
-  return { checks, passed, counts };
+  return evaluateChecks(CHECK_REGISTRY, ctx);
 }
