@@ -2,6 +2,8 @@ export interface MachineDefinition {
   name: string;
   initial: string;
   states: Record<string, MachineState>;
+  /** Current or pinned version; metadata, not part of the stored JSON. */
+  version?: number;
 }
 
 export interface MachineState {
@@ -30,6 +32,8 @@ export interface MachineInstanceDTO {
   context: Record<string, unknown>;
   /** Monotonic optimistic-concurrency revision; absent only in legacy test adapters. */
   revision?: number;
+  /** Definition version this instance started on; absent only in legacy test adapters. */
+  definitionVersion?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -71,7 +75,8 @@ export interface GuardResult {
 }
 
 export interface MachineStorage {
-  findDefinition(orgId: string, name: string): Promise<MachineDefinition | null>;
+  /** Current definition when `version` is omitted; the pinned version otherwise. */
+  findDefinition(orgId: string, name: string, version?: number): Promise<MachineDefinition | null>;
   saveDefinition(orgId: string, definition: MachineDefinition): Promise<MachineDefinition>;
   listDefinitions(orgId: string): Promise<MachineDefinition[]>;
 
@@ -80,6 +85,7 @@ export interface MachineStorage {
     machineName: string,
     initialState: string,
     context: Record<string, unknown>,
+    definitionVersion: number,
   ): Promise<MachineInstanceDTO>;
   findInstance(orgId: string, id: string): Promise<MachineInstanceDTO | null>;
   /** Atomically compare-and-swap the state and append its successful transition record. */

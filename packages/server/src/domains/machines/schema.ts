@@ -36,11 +36,38 @@ export const machineDefinitions = pgTable(
     orgId: text("org_id").notNull(),
     name: text("name").notNull(),
     definition: jsonb("definition").notNull(),
+    /** Current version — the row a new instance pins to. */
+    version: integer("version").notNull().default(1),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => ({
     uniqueName: uniqueIndex("machine_definitions_tenant_name").on(t.orgId, t.name),
+  }),
+);
+
+/**
+ * Append-only definition history.
+ *
+ * `machine_definitions` stays the current pointer (one row per name); this table keeps every version so an
+ * instance can keep the rules it started with. Never update a row here — only insert.
+ */
+export const machineDefinitionVersions = pgTable(
+  "machine_definition_versions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    version: integer("version").notNull(),
+    definition: jsonb("definition").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    uniqueVersion: uniqueIndex("machine_definition_versions_org_name_version").on(
+      t.orgId,
+      t.name,
+      t.version,
+    ),
   }),
 );
 
@@ -53,6 +80,8 @@ export const machineInstances = pgTable(
     currentState: text("current_state").notNull(),
     context: jsonb("context").notNull().default({}),
     revision: integer("revision").notNull().default(1),
+    /** Definition version this instance started on; transitions load this version, not “latest”. */
+    definitionVersion: integer("definition_version").notNull().default(1),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
   },

@@ -15,6 +15,13 @@
       "when": 1794081867603,
       "tag": "0001_low_alex_wilder",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794082218025,
+      "tag": "0002_freezing_invaders",
+      "breakpoints": true
     }
   ]
 }

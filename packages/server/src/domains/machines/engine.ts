@@ -85,8 +85,12 @@ export function createMachineEngine(
   storage: MachineStorage,
   hooks: MachineEngineHooks = {},
 ): MachineEngine {
-  const ensureDefinition = async (orgId: string, name: string): Promise<MachineDefinition> => {
-    const definition = await storage.findDefinition(orgId, name);
+  const ensureDefinition = async (
+    orgId: string,
+    name: string,
+    version?: number,
+  ): Promise<MachineDefinition> => {
+    const definition = await storage.findDefinition(orgId, name, version);
     if (!definition) throw new NotFoundError("MachineDefinition", `${orgId}/${name}`);
     normalizeMachineDefinition(definition);
     return definition;
@@ -123,6 +127,7 @@ export function createMachineEngine(
           machineName,
           execution.state,
           execution.context,
+          definition.version ?? 1,
         );
         eventBus.publish(MachineEvents.STARTED, { orgId, instanceId: instance.id, machineName });
         return instance;
@@ -140,7 +145,11 @@ export function createMachineEngine(
           currentRevision,
         });
       }
-      const definition = await ensureDefinition(orgId, instance.machineName);
+      const definition = await ensureDefinition(
+        orgId,
+        instance.machineName,
+        instance.definitionVersion,
+      );
       const execution = startActor(definition, instance.context, instance.currentState);
       const fromState = execution.state;
 

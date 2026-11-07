@@ -7,7 +7,7 @@ import type {
   MachineStorage,
   TransitionRecord,
 } from "../ports";
-import { machineDefinitions, machineInstances, machineTransitions } from "../schema";
+import { machineDefinitionVersions, machineDefinitions, machineInstances, machineTransitions } from "../schema";
 
 const MAX_SEARCH_LIMIT = 200;
 const CURSOR_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -15,7 +15,23 @@ const CONTEXT_KEY = /^[A-Za-z][A-Za-z0-9_]{0,62}$/;
 
 export function createPostgresMachineStorage(db: Database): MachineStorage {
   return {
-    async findDefinition(orgId, name) {
+    async findDefinition(orgId, name, version) {
+      if (version !== undefined) {
+        const [row] = await db
+          .select()
+          .from(machineDefinitionVersions)
+          .where(
+            and(
+              eq(machineDefinitionVersions.orgId, orgId),
+              eq(machineDefinitionVersions.name, name),
+              eq(machineDefinitionVersions.version, version),
+            ),
+          );
+        if (row) return mapDefinitionVersion(row);
+        // Legacy instance pinned before version rows existed: fall back to the current definition rather
+        // than refusing to transition. The pin starts holding as soon as the definition is next saved.
+      }
+
       const [row] = await db
         .select()
         .from(machineDefinitions)
@@ -23,17 +39,37 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
       return row ? mapDefinition(row) : null;
     },
     async saveDefinition(orgId, definition) {
+      const stored = {
+        name: definition.name,
+        initial: definition.initial,
+        states: definition.states,
+      } as unknown as Record<string, unknown>;
+
+      const [current] = await db
+        .select()
+        .from(machineDefinitions)
+        .where(and(eq(machineDefinitions.orgId, orgId), eq(machineDefinitions.name, definition.name)));
+
+      // Identical writes (seed re-runs) must not create a version per run.
+      if (current && JSON.stringify(current.definition) === JSON.stringify(stored)) {
+        return mapDefinition(current);
+      }
+
+      const nextVersion = (current?.version ?? 0) + 1;
+
+      await db
+        .insert(machineDefinitionVersions)
+        .values({ orgId, name: definition.name, version: nextVersion, definition: stored })
+        .onConflictDoNothing();
+
       const [row] = await db
         .insert(machineDefinitions)
-        .values({
-          orgId,
-          name: definition.name,
-          definition: definition as unknown as Record<string, unknown>,
-        })
+        .values({ orgId, name: definition.name, definition: stored, version: nextVersion })
         .onConflictDoUpdate({
           target: [machineDefinitions.orgId, machineDefinitions.name],
           set: {
-            definition: definition as unknown as Record<string, unknown>,
+            definition: stored,
+            version: nextVersion,
             updated_at: new Date(),
           },
         })
@@ -50,10 +86,17 @@ export function createPostgresMachineStorage(db: Database): MachineStorage {
       return rows.map(mapDefinition);
     },
 
-    async createInstance(orgId, machineName, initialState, context) {
+    async createInstance(orgId, machineName, initialState, context, definitionVersion) {
       const [row] = await db
         .insert(machineInstances)
-        .values({ orgId, machineName, currentState: initialState, context, revision: 1 })
+        .values({
+          orgId,
+          machineName,
+          currentState: initialState,
+          context,
+          revision: 1,
+          definitionVersion,
+        })
         .returning();
       if (!row) throw new StorageError("Failed to create machine instance");
       return mapInstance(row);
@@ -325,7 +368,14 @@ function decodeCursor(value: string): { id: string } {
 
 function mapDefinition(row: typeof machineDefinitions.$inferSelect): MachineDefinition {
   const def = row.definition as MachineDefinition;
-  return { name: row.name, initial: def.initial, states: def.states };
+  return { name: row.name, initial: def.initial, states: def.states, version: row.version };
+}
+
+function mapDefinitionVersion(
+  row: typeof machineDefinitionVersions.$inferSelect,
+): MachineDefinition {
+  const def = row.definition as MachineDefinition;
+  return { name: row.name, initial: def.initial, states: def.states, version: row.version };
 }
 
 function mapInstance(row: typeof machineInstances.$inferSelect): MachineInstanceDTO {
@@ -336,6 +386,7 @@ function mapInstance(row: typeof machineInstances.$inferSelect): MachineInstance
     currentState: row.currentState,
     context: (row.context || {}) as Record<string, unknown>,
     revision: row.revision,
+    definitionVersion: row.definitionVersion,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
