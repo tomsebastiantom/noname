@@ -6,9 +6,10 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3 and the tier‑0/1 catalogue (E7, E9, E10/E11, E13–E15) are **done and
-> verified** on 2026-11-07. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next block: E16 (renderer
-> markers + tier 2).
+> **Implementation status:** Blocks 1–3 and the tier‑0/1 catalogue are **done and verified** on 2026-11-07,
+> with one exception: **E8 is partial** — `M2.actions` checks the action vocabulary, while capability/permission
+> enforcement needs the capability registry and tenant roles. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> Next: finish E8, then E16 (renderer markers + tier 2).
 
 ---
 
@@ -213,7 +214,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | # | Gap | Current evidence | Design | Acceptance | Size |
 |---|---|---|---|---|---|
 | **E7** | `M1.references` missing | `reference` fields exist with `references?: string` ([`documents/schema.ts:11-23`](../../packages/documents/src/schema.ts#L11-L23)); no check | **DONE 2026-11-07.** Reads `/api/documents/content-types`; every reference field must name an existing type (or fail with the field path) | A dangling reference fails `M1` with the field path; restoring passes | S |
-| **E8** | `M2.permissions` missing — **and not implementable as written** | Actions are client handlers (`commerceActions.addToCart`), not capability names ([`extensions/commerce/actions.ts`](../../packages/extensions/src/commerce/actions.ts)); no action→permission metadata | Introduce an **action contract registry**: every action declares `requires: PermissionKey[]` and the capabilities it invokes. The server exposes a machine-only `GET /api/eval/context` returning the tenant’s effective permissions, capability descriptors and action contracts; a `TenantContextObserver` consumes it. M2 checks spec actions against that context | An action guarded by `commerce:orders_manage` fails for a tenant whose roles lack it; an unknown action fails vocabulary | L |
+| **E8** | `M2.permissions` missing — **and not implementable as written** | Actions are client handlers (`commerceActions.addToCart`), not capability names ([`extensions/commerce/actions.ts`](../../packages/extensions/src/commerce/actions.ts)); no action→permission metadata | **PARTIAL 2026-11-07.** `M2.actions` validates that every action referenced by a published layout is a declared platform action. **Still open:** action→capability/permission mapping and tenant-role checks; that needs the capability registry and a machine-only `GET /api/eval/context` | An action guarded by `commerce:orders_manage` fails for a tenant whose roles lack it; an unknown action fails vocabulary | L |
 | **E9** | `M3.reachability` missing | `pages.getMainTree` / `listRoutingPages` exist ([`pages.ts`](../../packages/server/src/domains/documents/routes/pages.ts)); no check | **DONE 2026-11-07.** Reads `page_tree/main` + `routing/pages`; every entry must exist and have a route; every published page must be in the tree | A dangling `page_tree` entry fails `M3` with both ids | S |
 | **E10** | `M5.vocabulary` is only “is it registered” | `vocabulary` checks API presence, not block/prop names ([`manifest.ts:35-86`](../../packages/eval/src/checks/manifest.ts#L35-L86)) | **DONE 2026-11-07.** For every published layout: type must exist in `@noname/catalog`; standalone layouts also validate props (dynamic json-render bindings deferred to the rendered check). Shell/panel/editor layouts validate types only | An unknown block type or invalid static prop fails `M5` with the element key | M |
 | **E11** | Catalog schema is duplicated and React-coupled | `client/src/component-schemas.ts`, `client/src/core/catalog-schemas.ts`, `extensions/src/commerce/catalog-schemas.ts` | **DONE 2026-11-07.** `@noname/catalog` owns core, commerce, admin, editor and shared schemas (zod only); client/extension paths are re-export shims; rspack includes the package in its TS loader | Client build unchanged; eval imports the same schema; one definition per component | L |
@@ -377,7 +378,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
-| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done 2026-11-07** — E7, E9, E10/E11, E13, E14, E15 | 34 tests; live **49 pass / 0 fail / 2 skip** |
+| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s permission half** — E7, E9, E10/E11, E13–E15 complete; `M2.actions` vocabulary shipped | 38 tests; live **63 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | Not started | — |
 | **B6** | E20, E22 — behaviour + `S1` | Not started | — |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | Not started | — |

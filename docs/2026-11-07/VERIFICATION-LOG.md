@@ -252,8 +252,35 @@ content is missing; an optional/nullable prop that is empty (no product image) i
 the schema instead of a hard-coded list is what makes the check safe across tenancy — and it is the same schema
 M5 already validates against, so the two checks cannot disagree.
 
-## Next block (planned)
+## 2026-11-07 — E8 (partial): `M2.actions`
 
-`E16` — the renderer contract: `data-block-type` / `data-block-id` emitted for every block, which makes
-`B1.structure` (spec count vs DOM count) implementable. Verification: removing one node fails `B1` with the
-type and key.
+**Scope.** The vocabulary half of M2: every action referenced by a published layout must be a declared platform
+action. The permission half — mapping an action to a capability and checking the tenant’s roles — remains open
+and is recorded as such, not guessed.
+
+**Code.** `packages/catalog/src/actions.ts` (new; core + admin + editor + commerce action schemas),
+`packages/eval/src/checks/actions.ts` (new), `checks/actions.test.ts` (new), registry/index exports.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{catalog,eval} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **38/38 passed** (4 new M2 tests) |
+| Live — first run | `noname eval --tenant yogastore --token <service-token>` | 2 failures: `loadScopeAdmin` (`admin_scope`), `loadAgentsAdmin` (`admin_agents`) referenced but not declared |
+| Diagnosis | handlers exist in `client/src/core/actions/{scope,agents}.ts`, schemas did not | a real action-vocabulary hole |
+| Fix | both actions added to `catalog/src/admin-actions.ts` | — |
+| Live — final | same command | **63 pass / 0 fail / 2 skip** |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, `/login` 200, 0 console errors |
+
+**What is still missing (E8 permission half).** Knowing that `cancelOrder` maps to capability
+`commerce.orders.cancel` and that capability requires `commerce:orders_manage` — then deciding whether the
+tenant’s roles hold it. That needs the capability registry exposed to eval (a machine-only context endpoint)
+and an action→capability table; without those, the check deliberately stops at vocabulary.
+
+## Next steps
+
+1. **E8 permission half** — machine-only `GET /api/eval/context` (capability descriptors + installed
+   extensions) and an action→capability table; M2 extends to permission checks.
+2. **E16–E19** — renderer markers (`data-block-type`/`data-block-id`), `B1.structure`, viewport-aware
+   `B2.overflow`, `B3.a11y` with axe-core, `B4.content`.
