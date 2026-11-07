@@ -239,8 +239,10 @@ decision is “M2 stays vocabulary-only”.
 
 **Design note — who runs eval, and whose roles are checked.** [`EVAL-D4-ROLES-DESIGN.md`](./EVAL-D4-ROLES-DESIGN.md)
 proposes: the runner is a **service token** (`x-user-id: eval-worker`, `x-role: service`, never the admin email);
-the server reads roles from ZITADEL with its own credentials; `M2.roles` is advisory (warn) first, and becomes an
-error only when an action contract declares an explicit `audience`. The admin union is never evaluated.
+the server reads roles from ZITADEL with its own credentials; the check is **Phase 2-first** — `audience` is
+mandatory on every action contract, the context returns a **role→permissions map**, and `M2.roles` fails when no
+audience role holds the permission. The advisory-only Phase 1 is **not built** (it would let actions without an
+audience pass). Data source remains A (live + cache); implementation is pending.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
 
@@ -401,6 +403,9 @@ storefronts. Lighthouse budgets bound what a gate may spend.
 
 **Recommendation: A.** It is the only option that is both correct and bounded, and it depends on D1 — another
 reason D1 is first.
+
+**Dependency note (2026-11-07):** D1 is implemented (tenant pointer + catalog projection, verified). The
+`releaseId` part of the key is now available; the remaining work is the result store and the sampling policy.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
 
