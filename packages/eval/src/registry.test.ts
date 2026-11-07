@@ -34,6 +34,9 @@ const storedCart = {
 /** Minimal API double: every check goes through this, so no network is involved. */
 const client: EvalClient = {
   async getJson<T>(path: string) {
+    if (path === "/api/documents/routing/pages") {
+      return { ok: true as const, data: { data: [{ key: "p1", status: "published" }] } as T };
+    }
     if (path === "/api/documents/content-types") {
       return {
         ok: true as const,
@@ -134,6 +137,7 @@ describe("check registry", () => {
     ).toBe(true);
     expect(result.checks.some((c) => c.id === "M4.machines" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "M1.references" && c.status === "pass")).toBe(true);
+    expect(result.checks.some((c) => c.id === "M3.reachability" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "R2.blocks" && c.status === "pass")).toBe(true);
   });
 });
