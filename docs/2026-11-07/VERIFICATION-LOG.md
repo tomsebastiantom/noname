@@ -83,8 +83,37 @@ unit test can run them with an exploding HTTP client.
 exists (`E5`). `M4`/`M5` therefore pass in unit tests and skip against the live stack — which is the correct
 behaviour until the service actor lands, and is recorded here rather than hidden.
 
+## 2026-11-07 — Block 3: machine actor + read/write permission split (E5)
+
+**Scope.** A service principal that is neither a human nor an agent, an `nsv.` HMAC token, `MACHINES_READ`
+split from `MACHINES_DEFINE`, and a CLI that can use the token. The eval service can now read definitions
+without borrowing a person's JWT — and cannot write them.
+
+**Code.** `packages/auth/src/{permissions,actors,write-audit,index}.ts`,
+`packages/server/src/shared/service-token.ts` (new), `domains/auth/guards.ts`,
+`domains/machines/routes/definitions.ts`, `domains/collab/routes.ts`,
+`scripts/mint-service-token.ts` (new), `packages/cli/src/index.ts` (`--token` registered),
+`shared/service-token.test.ts` (new).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{auth,server,cli} typecheck` | all clean |
+| Token + guard tests | `pnpm vitest run packages/server/src/shared/service-token.test.ts` | **8/8 passed**: round-trip, tampered payload, expiry, unknown permission, no secret, allowed read, denied write, wrong org |
+| Read integration | `pnpm exec tsx scripts/mint-service-token.ts --org <org>` then `noname eval --tenant yogastore --token <token>` | **7 pass / 0 fail / 2 skip** — `M4.machines` and `M5.vocabulary` now pass for both seeded definitions (`cart`, `inventory_reservation`) |
+| Write denial | `POST /api/machines/definitions` with the same token + HMAC headers | **403 `Forbidden`** — a read token cannot define |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, `/login` 200, 0 console errors |
+
+**Secret handling.** `SERVICE_TOKEN_SECRET` is used when present; it falls back to `WORKER_SERVER_SECRET`
+so local setups need no new env var. The token is org-scoped and short-lived (default 1 h); the mint script
+defaults to `machines:read` and rejects unknown permission names.
+
+**Still open.** `M4`/`M5` now pass against the live API only when the caller passes a token; without one they
+still skip, which is the intended “silence is not success” behaviour. The catalogue itself is still 5 ids of
+the RFC’s ~16.
+
 ## Next block (planned)
 
-`E5` — machine actor + `MACHINES_READ` split, so the CLI can run `M4`/`M5` against the live API without a
-human JWT. Verification: the same CLI command reports `M4`/`M5` as `pass`, and the same token is rejected on
-`POST /api/machines/definitions`.
+`E7` — `M1.references`: every `reference` field in a content type points at an existing type. Verification:
+deleting the referenced type makes `M1` fail with the field path, and restoring it passes.
