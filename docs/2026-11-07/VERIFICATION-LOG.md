@@ -404,9 +404,40 @@ B2.console     pass   no console errors
 bootstrap entry), so the run used a locally launched Playwright server with Chrome. The CLI only knows the
 WebSocket endpoint, so the same command works against the fleet unchanged.
 
+## 2026-11-07 — E22: `S1.no_internal_egress`
+
+**Scope.** Turn the SSRF assumption into a check: from inside the browser, try to reach the platform’s own
+network. Passing requires every probe to fail.
+
+**Code.** `packages/eval/src/types.ts` (`EgressProbe`, optional `probeEgress` on the observer),
+`observers/browser.ts` (`no-cors` fetch probe with per-target timeout), `checks/browser.ts` (`S1`),
+`checks/s1.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **66/66 passed** (5 S1 tests) |
+| Unit — clean | no target reachable | pass |
+| Unit — leak | API reachable | fail at `warn`, names `127.0.0.1:3000` |
+| Unit — probe failure | probe throws | skip, never pass |
+| Unit — no capability | observer without `probeEgress` | skip |
+| Live | `noname eval … --browser-endpoint ws://…` | **S1 fail (warn)**: “internal endpoint(s) reachable from the browser: http://127.0.0.1:3000/health” |
+| Overall run | same | **72 pass / 1 warn failure / 0 skip**, `passed: true` |
+
+**This is the expected local result.** The local browser runs on the host network, where `127.0.0.1:3000` is
+the API; there is no egress policy to enforce. In staging/production the browser pod is the untrusted workload
+and the same check becomes the proof that the policy works. That is why S1 is `warn` by default: a local failure
+is information, not a release blocker.
+
+**Recorded limit.** `fetch` can probe HTTP(S) targets only; a raw Redis port cannot be tested from page
+JavaScript. The check lists what it proved rather than implying full network coverage.
+
 ## Next steps
 
-1. **E20/E22** — behaviour (`B5`: cart/checkout with sandbox data) and `S1.no_internal_egress`.
+1. **E20** — `B5.behaviour`: cart and checkout against a reserved sandbox product, tagged and cleaned by
+   `correlationId`.
 2. **E8 remainder** — tenant-role projection.
 3. **E3/E4/E23/E25/E26** — assertion config, modes, sinks, queue/worker.
-4. **E21** — `B6` design advisories and `B7` visual rubric (warn only).
+4. **E21** — `B6` design advisories and `B7` rubric (warn only).
