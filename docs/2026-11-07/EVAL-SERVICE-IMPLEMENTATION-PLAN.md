@@ -6,9 +6,9 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3 and E7/E9/E10/E11/E13/E15 are **done and verified** on 2026-11-07
-> (typed registry; manifest observer; machine actor; M1, M3, M5 with a node-safe catalog; R2 template/type
-> comparison). See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next block: E14.
+> **Implementation status:** Blocks 1–3 and the tier‑0/1 catalogue (E7, E9, E10/E11, E13–E15) are **done and
+> verified** on 2026-11-07. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next block: E16 (renderer
+> markers + tier 2).
 
 ---
 
@@ -224,7 +224,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | # | Gap | Current evidence | Design | Acceptance | Size |
 |---|---|---|---|---|---|
 | **E13** | `R1` is implemented as fallback detection, not resolution | [`routes.ts`](../../packages/eval/src/checks/routes.ts) — good behaviour, but folded into one check with `R2` | **DONE 2026-11-07.** `R1.resolve`, `R1.fallback` and `R2.blocks` are emitted as separate result ids; R2 is no longer “count > 0” | A renamed slug fails `R1`; a page with 0 blocks fails `R2` | S |
-| **E14** | `R3.content` missing | none | For each route, resolve the content the spec references and assert non-empty required fields | Publishing an empty collection fails `R3` with the collection id | M |
+| **E14** | `R3.content` missing | none | **DONE 2026-11-07.** Compares raw layout bindings with the edge-resolved spec: a **required** bound prop that resolves empty fails; nullable props (e.g. an absent image) are ignored via `catalogPropRequirement` | Publishing an empty collection fails `R3` with the prop path | M |
 | **E15** | `R2` compares only “count > 0” | [`routes.ts:142-158`](../../packages/eval/src/checks/routes.ts#L142-L158) | **DONE 2026-11-07.** Compares the resolved template to the page’s declared `layoutRef`, rejects untyped elements, and still fails on zero blocks | A route rendering the wrong template passes R1 but fails R2 | S |
 
 ### 5.4 Catalogue — tier 2 and security
@@ -377,7 +377,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
-| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **In progress** — E7, E9, E10/E11, E13, E15 done; E14 pending | 40 tests; live 47 pass / 0 fail / 2 skip |
+| **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done 2026-11-07** — E7, E9, E10/E11, E13, E14, E15 | 34 tests; live **49 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | Not started | — |
 | **B6** | E20, E22 — behaviour + `S1` | Not started | — |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | Not started | — |

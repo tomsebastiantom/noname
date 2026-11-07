@@ -225,7 +225,35 @@ block types (and static props) of every published layout.
    as strings/numbers is a false positive, so prop validation is deferred when a `$`-binding is present. The
    resolved values are already covered by `R2`/`B4`.
 
+## 2026-11-07 — E14: `R3.content`
+
+**Scope.** For each route, compare the **raw** layout’s content bindings (`$state`/`$item`/…) with the spec the
+edge actually resolved. A required bound prop that resolved to empty means the page is published but its
+content is missing; an optional/nullable prop that is empty (no product image) is legitimate.
+
+**Code.** `packages/eval/src/checks/routes.ts`, `checks/routes.test.ts` (2 new tests),
+`packages/catalog/src/index.ts` (`catalogPropRequirement`).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{catalog,eval} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **34/34 passed** |
+| Unit — resolves | `passes R3 when content-bound props resolve` | pass |
+| Unit — empty | `fails R3 when a content-bound prop resolves empty` | fail names `card.title` |
+| Live — first run | `noname eval --tenant yogastore --token <service-token>` | 2 failures: `product1.image` / `productInfo.image` “resolved empty” |
+| Diagnosis | the product has no image; `image` is nullable in `ProductCard`/`ProductInfo` | false positive — emptiness alone is not a content failure |
+| Fix | `catalogPropRequirement(type, prop)` reads the zod field’s optional/nullable status; R3 only fails **required** props | — |
+| Live — final | same command | **49 pass / 0 fail / 2 skip**; `/` and `/products/demo-sneakers` each report “6 content-bound prop(s) resolved” |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200 (358 chars), `/login` 200, 0 console errors |
+
+**Design lesson recorded.** “Resolved empty” is only a defect when the catalog says the prop is required. Using
+the schema instead of a hard-coded list is what makes the check safe across tenancy — and it is the same schema
+M5 already validates against, so the two checks cannot disagree.
+
 ## Next block (planned)
 
-`E14` — `R3.content`: the content a route references resolves non-empty (no published-but-empty collection).
-Verification: publishing an empty collection makes `R3` fail with the collection id.
+`E16` — the renderer contract: `data-block-type` / `data-block-id` emitted for every block, which makes
+`B1.structure` (spec count vs DOM count) implementable. Verification: removing one node fails `B1` with the
+type and key.
