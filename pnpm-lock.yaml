@@ -413,6 +413,9 @@ importers:
       '@noname/documents':
         specifier: workspace:*
         version: link:../documents
+      '@noname/eval':
+        specifier: workspace:*
+        version: link:../eval
       '@noname/shared':
         specifier: workspace:*
         version: link:../shared

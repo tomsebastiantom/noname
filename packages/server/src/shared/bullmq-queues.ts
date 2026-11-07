@@ -7,4 +7,5 @@ export const BULLMQ_QUEUES = {
   WEBHOOK_OUTBOUND: "{webhook-outbound}",
   EXTENSION_DELIVERY: "{extension-delivery}",
   PROVIDER_EVENTS: "{provider-events}",
+  EVAL: "{eval-runs}",
 } as const;

@@ -36,6 +36,7 @@
     "@nangohq/node": "^0.71.3",
     "@noname/auth": "workspace:*",
     "@noname/documents": "workspace:*",
+    "@noname/eval": "workspace:*",
     "@noname/shared": "workspace:*",
     "@noname/verticals": "workspace:*",
     "@opentelemetry/api": "^1.9.1",

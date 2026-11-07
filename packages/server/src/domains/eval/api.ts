@@ -1,6 +1,9 @@
 import { PERMISSIONS } from "@noname/auth";
+import type { AssertionConfig } from "@noname/eval";
 import { Hono } from "hono";
 import { z } from "zod";
+import { getBullmqQueue } from "../../shared/bullmq-queue";
+import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { getOrgId } from "../../shared/org";
 import { ok } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
@@ -8,6 +11,7 @@ import type { CapabilityRegistry } from "../capabilities/registry";
 import type { EvidenceService } from "../evidence/ports";
 import type { TenantCatalogService } from "../tenant/ports";
 import { recordGateDecision } from "./gate";
+import type { EvalJobData } from "./job";
 
 /**
  * Machine-only eval endpoints.
@@ -39,6 +43,11 @@ const gateResultSchema = z.object({
       )
       .max(1000),
   }),
+});
+
+const runRequestSchema = z.object({
+  tenantSlug: z.string().min(1),
+  config: z.unknown().optional(),
 });
 
 export function createEvalRoutes(deps: {
@@ -87,6 +96,26 @@ export function createEvalRoutes(deps: {
     });
 
     return ok(c, decision);
+  });
+
+  routes.post("/runs", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
+    if (denied) return denied;
+
+    const body = await c.req.json().catch(() => null);
+    const parsed = runRequestSchema.safeParse(body);
+    if (!parsed.success) {
+      return c.json({ error: "Invalid eval job" }, 400);
+    }
+
+    const queue = getBullmqQueue<EvalJobData>(BULLMQ_QUEUES.EVAL);
+    const job = await queue.add("eval.run", {
+      orgId: getOrgId(c),
+      tenantSlug: parsed.data.tenantSlug,
+      config: parsed.data.config as AssertionConfig | undefined,
+    });
+
+    return ok(c, { jobId: job.id });
   });
 
   return routes;
