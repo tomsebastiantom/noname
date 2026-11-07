@@ -19,7 +19,7 @@
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
-| **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later — and only UI-deep without D15 |
+| **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
@@ -117,7 +117,9 @@ no renamed endpoints in the same release). That constraint is D15/D16, not optio
 
 These seven checks are the acceptance for C1; they are also the regression suite for the later C2 extraction.
 
-**Decision:** ☐ A  ☐ B  ☐ **C1**  ☐ C2  ☐ other: ______________________
+**Decision:** ☑ **C1** — chosen 2026-11-07. The pointer lives in the release bounded context
+(`domains/release`), exposed as a port; the tenant catalog consumes the port and never reads the pointer table
+directly. Implementation follows the D1 validation table above (next release block after D2).
 
 ---
 
@@ -165,21 +167,38 @@ it is for “a fleet and a deploy pipeline that do not exist”.
 
 | Option | How it works | Pros | Cons |
 |---|---|---|---|
-| **A. Defer** | Build D1 + D2 first; canary is decided by moving pointers for a named list of tenants | No unused machinery; the pointer already enables a manual canary | No automated cohort logic; promotion is a script |
-| **B. Tenant channel column** | `tenants.channel` + a rules table (`channel → release_id`); pointer resolves channel→release | Small; enough for internal/canary/stable | Still manual selection of who is in a channel |
-| **C. Rules engine** | Reuse feature-flag targeting (Unleash-style constraints) to pick a release per request | Flexible targeting (tenant, region, plan) | Request-level version skew; much larger surface |
+| **A. Defer** | Build D1 first; canary is decided by moving pointers for a named list of tenants | No unused machinery; the pointer already enables a manual canary | No automated cohort logic; promotion is a script |
+| **B. Channel table in the release domain** | `release_channels(org_id, channel, release_id)` + the tenant pointer stores a channel (or resolves through it); promotion moves a whole ring by updating one row | Matches D1 C1 (assignment owned by the release context); rings can be moved and rolled back in one write; auditable | One more table + a resolve step on catalog read |
+| **C. Tenant channel column** | `tenant_settings.channel` + a channel→release map owned by tenant | Simple for one tenant at a time | Splits assignment across two domains; there is no `tenants` table (a tenant is a `tenant_settings` document), so it still needs a side table; cannot answer “who is in canary?” from the release context |
+| **D. Rules engine** | Reuse feature-flag targeting (Unleash-style constraints) to pick a release per request | Flexible targeting (tenant, region, plan) | Request-level version skew; much larger surface |
 
 **Example (A).** Canary today is: create release `r_17`, move 5 named tenants, watch the eval gate and error
 rate, then move the rest. No new table needed — D1’s pointer is the mechanism.
 
+**Example (B).**
+
+```
+release_channels:        canary → r_17,  stable → r_16
+tenant_release_pointers: org 3966… → channel=canary
+promote ring:  UPDATE release_channels SET release_id='r_17' WHERE channel='canary'
+rollback ring: UPDATE release_channels SET release_id='r_16' WHERE channel='canary'
+```
+
+**Why not a tenant column (C).** D1 chose the release bounded context precisely so assignment has one owner. A
+tenant-side channel would reintroduce the two-owners problem: the release domain could not answer “which tenants
+are on r_17?” without a cross-domain query, and the catalog would resolve a channel through a table it does not
+own. Channels, when they are needed, are a release-domain table.
+
 **OSS precedent.** Unleash separates **activation strategies** (who sees a flag) from the flag itself and offers
 gradual rollout by percentage and constraints ([activation strategies](https://docs.getunleash.io/concepts/activation-strategies)).
-That is the right shape for C, but it is a product of its own.
+That is the right shape for D (rules engine), but it is a product of its own; B is the narrow version that fits a
+tenant-level release.
 
-**Recommendation: A now, B when D1+D2 are proven.** Choosing C before a release pipeline exists repeats the
-mistake the critical review identified.
+**Recommendation: A now, B when channels are actually needed.** Choosing D before a release pipeline exists
+repeats the mistake the critical review identified; choosing C conflicts with D1.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+**Decision:** ☑ **A** — deferred 2026-11-07. Placement settled in advance: when channels are built, they are a
+release-domain table (option B), not a tenant column. Build only after D1 + D2 are in use.
 
 ---
 
