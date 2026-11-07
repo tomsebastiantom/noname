@@ -166,7 +166,34 @@ the two profiles should be ordered explicitly).
 `pnpm seed:demo:commerce` itself exited 1 **after** printing the restored routing, while inserting the demo
 order Evidence row; that failure is unrelated to M3 and is recorded so it is not mistaken for a check failure.
 
+## 2026-11-07 — E13/E15: R2 template and element-type comparison
+
+**Scope.** `R2.blocks` no longer passes on “at least one block”. It now compares the template the edge
+resolved against the template the page declares in `routing/pages`, rejects elements with no block type, and
+still fails a zero-block page. `R1.resolve`, `R1.fallback` and `R2.blocks` remain separate result ids.
+
+**Code.** `packages/eval/src/checks/routes.ts`, `checks/routes.test.ts` (new), `registry.test.ts` (routing
+fixture gains `layoutRef`).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Unit tests | `pnpm vitest run packages/eval/src` | **26/26 passed** (6 new route tests) |
+| Falsification | test `fails R2 when the route renders a different template than the page declares` | R1 pass, **R2 fail**, detail names declared vs resolved |
+| Zero blocks | test `fails R2 when the page renders zero blocks` | fail |
+| Untyped element | test `fails R2 when an element has no block type` | fail |
+| Missing routing record | test `fails R2 when the page has no routing record` | fail |
+| Routing unavailable | test `skips the template comparison — never passes it` | R1 pass, **R2 skip** at `error` level |
+| Live | `noname eval --tenant yogastore --token <service-token>` | 4 routes: `/` 7 blocks `home`, `/collections/all` 5 `collection`, `/products/demo-sneakers` 3 `product_detail`, `/search` 4 `search` — **all pass**; overall **19 pass / 0 fail / 2 skip** |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, commerce layout, 0 console errors; `/login` 200 |
+
+**Note on the split.** `R1` and `R2` still share one HTTP pass over the route list — fetching the edge schema
+twice to make them separate *functions* would double tier‑1 cost for no assertion gain. The ids and
+verdicts are separate, which is what the gate consumes.
+
 ## Next block (planned)
 
-`E13`/`E15` — split `R1.resolve` from `R2.blocks` and compare block **types**, not just “count > 0”.
-Verification: a route rendering the wrong template passes R1 but fails R2.
+`E10`/`E11` — make `M5.vocabulary` validate spec element types and props against the catalog schema. This
+needs the node-safe `@noname/catalog` extraction; until that exists, M5 can only assert “registered”.
