@@ -278,9 +278,42 @@ and is recorded as such, not guessed.
 tenant’s roles hold it. That needs the capability registry exposed to eval (a machine-only context endpoint)
 and an action→capability table; without those, the check deliberately stops at vocabulary.
 
+## 2026-11-07 — E8 (wiring): `M2.permissions` + `/api/eval/context`
+
+**Scope.** Expose the capability registry and installed extensions to the eval service through a machine-only
+endpoint, add explicit action→capability contracts, and check every contract (not only actions a layout
+happens to reference — components invoke actions internally).
+
+**Code.** `packages/server/src/domains/eval/{api,index}.ts` (new), `bootstrap.ts` route wiring,
+`packages/catalog/src/action-contracts.ts` (new), `packages/eval/src/checks/actions.ts`, `checks/actions.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{catalog,server,eval} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **43/43 passed** (9 M2 tests, incl. missing capability, missing extension, permission drift, no context) |
+| Endpoint | `GET /api/eval/context` with the service token | 200 with capability descriptors + `extensions: ["commerce"]` |
+| Live | `noname eval --tenant yogastore --token <service-token>` | `M2.permissions` pass: “6 capability contract(s) wired”; overall **64 pass / 0 fail / 2 skip** |
+| Negative — capability | unit test removes `commerce.orders.cancel` | fail “not registered” |
+| Negative — extension | unit test empties `extensions` | fail “not installed” |
+| Negative — drift | unit test changes the declared permission | fail “contract expects” |
+| No credential | unit test returns 401 from context | `M2.permissions` **skip**, vocabulary still runs |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, `/login` 200, 0 console errors |
+
+**Why every contract is checked, not only referenced actions.** The layout scan sees `props.action`; components
+such as the orders admin call `loadOrdersAdmin` internally, so “not referenced in a layout” does not mean
+“unused”. The global contract pass covers all six.
+
+**What remains for E8.** Evaluating the tenant’s actual staff roles against the capability permission. The
+endpoint exposes what a capability declares, not which roles the tenant has; that projection does not exist
+yet, and inventing it would turn a wiring check into a guess.
+
 ## Next steps
 
-1. **E8 permission half** — machine-only `GET /api/eval/context` (capability descriptors + installed
-   extensions) and an action→capability table; M2 extends to permission checks.
+1. **E8 remainder** — a tenant-role projection and permission evaluation (design first: roles live in ZITADEL,
+   not in the documents DB).
 2. **E16–E19** — renderer markers (`data-block-type`/`data-block-id`), `B1.structure`, viewport-aware
    `B2.overflow`, `B3.a11y` with axe-core, `B4.content`.
+3. **E20/E22** — behaviour (`B5`) and `S1.no_internal_egress`.
+4. **E3/E4/E23–E26** — modes, sinks, queue/worker.
