@@ -1,3 +1,4 @@
+import { actionChecks } from "./checks/actions";
 import { browserChecks } from "./checks/browser";
 import { manifestChecks } from "./checks/manifest";
 import { reachabilityChecks } from "./checks/reachability";
@@ -14,6 +15,7 @@ import type { Check } from "./types";
  * silently averages.
  */
 export const CHECK_REGISTRY: readonly Check[] = [
+  ...actionChecks,
   ...manifestChecks,
   ...reachabilityChecks,
   ...referenceChecks,

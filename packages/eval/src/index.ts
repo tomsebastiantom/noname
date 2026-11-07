@@ -2,6 +2,7 @@ import { loadManifestObservation } from "./observers/manifest";
 import { CHECK_REGISTRY } from "./registry";
 import type { Check, CheckContext, EvalResult } from "./types";
 
+export { actionChecks } from "./checks/actions";
 export { browserChecks } from "./checks/browser";
 export { manifestChecks } from "./checks/manifest";
 export { reachabilityChecks } from "./checks/reachability";

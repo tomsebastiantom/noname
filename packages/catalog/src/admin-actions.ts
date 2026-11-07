@@ -356,4 +356,10 @@ export const adminActionSchemas = {
     }),
     description: "Start OAuth connect flow for an external integration",
   },
+  loadScopeAdmin: {
+    description: "Load teams, tags and access bindings for this org",
+  },
+  loadAgentsAdmin: {
+    description: "Load registered agents and their access grants",
+  },
 };
