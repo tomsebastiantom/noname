@@ -29,6 +29,7 @@ import { createDocumentsDomain } from "./domains/documents";
 import { createPostgresDocumentStorage } from "./domains/documents/adapters/postgres";
 import { createStorefrontContentRoutes } from "./domains/documents/routes/storefront-content";
 import { createEdgeDomain } from "./domains/edge";
+import { createEvalDomain } from "./domains/eval";
 import { createEvidenceDomain } from "./domains/evidence";
 import { createFlagDomain } from "./domains/flags";
 import {
@@ -452,6 +453,11 @@ export async function createApp(): Promise<Hono> {
   );
 
   app.route("/api/capabilities", capabilityRoutes);
+
+  // Machine-only context for the eval service: capability descriptors + installed extensions. It is a
+  // read-only projection of the registry, not a second source of truth.
+  const evalDomain = createEvalDomain({ capabilities, tenants: tenant.service });
+  app.route("/api/eval", evalDomain.routes);
   app.route("/api/auth", auth.routes);
   app.route("/api/integrations", integrations.routes);
   app.route("/api/notifications", notifications.routes);

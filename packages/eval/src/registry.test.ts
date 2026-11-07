@@ -34,6 +34,44 @@ const storedCart = {
 /** Minimal API double: every check goes through this, so no network is involved. */
 const client: EvalClient = {
   async getJson<T>(path: string) {
+    if (path === "/api/eval/context") {
+      return {
+        ok: true as const,
+        data: {
+          data: {
+            capabilities: [
+              { name: "commerce.checkout", permission: "storefront:view", extension: "commerce" },
+              {
+                name: "commerce.orders.search",
+                permission: "commerce:orders_view",
+                extension: "commerce",
+              },
+              {
+                name: "commerce.orders.get",
+                permission: "commerce:orders_view",
+                extension: "commerce",
+              },
+              {
+                name: "commerce.orders.cancel",
+                permission: "commerce:orders_manage",
+                extension: "commerce",
+              },
+              {
+                name: "commerce.orders.fulfill",
+                permission: "commerce:orders_manage",
+                extension: "commerce",
+              },
+              {
+                name: "commerce.orders.refund",
+                permission: "commerce:orders_manage",
+                extension: "commerce",
+              },
+            ],
+            extensions: ["commerce"],
+          },
+        } as T,
+      };
+    }
     if (path === "/api/documents/layout") {
       return {
         ok: true as const,

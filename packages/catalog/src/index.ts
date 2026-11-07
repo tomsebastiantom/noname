@@ -15,6 +15,7 @@ import { editorComponentSchemas } from "./editor-components";
  * runtime into a Node process.
  */
 
+export * from "./action-contracts";
 export * from "./actions";
 export * from "./admin-actions";
 export * from "./admin-components";
