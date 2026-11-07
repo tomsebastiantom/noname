@@ -29,6 +29,13 @@
       "when": 1794082763488,
       "tag": "0003_premium_green_goblin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794083241483,
+      "tag": "0004_high_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

@@ -3,17 +3,20 @@ import type { Database } from "../../../drizzle";
 import { StorageError } from "../../../shared/domain-error";
 import type {
   EnvironmentStore,
+  PointerStore,
   ReleaseArtifact,
   ReleaseDTO,
   ReleaseEnvironmentDTO,
   ReleaseState,
   ReleaseStore,
+  TenantReleasePointerDTO,
 } from "../ports";
-import { releaseArtifacts, releaseEnvironments, releases } from "../schema";
+import { releaseArtifacts, releaseEnvironments, releases, tenantReleasePointers } from "../schema";
 
 type ReleaseRow = typeof releases.$inferSelect;
 type ArtifactRow = typeof releaseArtifacts.$inferSelect;
 type EnvironmentRow = typeof releaseEnvironments.$inferSelect;
+type PointerRow = typeof tenantReleasePointers.$inferSelect;
 
 function mapArtifact(row: ArtifactRow): ReleaseArtifact {
   return {
@@ -46,6 +49,16 @@ function mapEnvironment(row: EnvironmentRow): ReleaseEnvironmentDTO {
     orgId: row.orgId,
     name: row.name,
     activeReleaseId: row.activeReleaseId,
+    previousReleaseId: row.previousReleaseId,
+    updatedBy: row.updatedBy,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapPointer(row: PointerRow): TenantReleasePointerDTO {
+  return {
+    orgId: row.orgId,
+    releaseId: row.releaseId,
     previousReleaseId: row.previousReleaseId,
     updatedBy: row.updatedBy,
     updatedAt: row.updated_at,
@@ -170,6 +183,31 @@ export function createPostgresEnvironmentStore(db: Database): EnvironmentStore {
         .returning();
       if (!row) throw new StorageError(`Failed to set active release for ${name}`);
       return mapEnvironment(row);
+    },
+  };
+}
+
+export function createPostgresPointerStore(db: Database): PointerStore {
+  return {
+    async get(orgId) {
+      const [row] = await db
+        .select()
+        .from(tenantReleasePointers)
+        .where(eq(tenantReleasePointers.orgId, orgId));
+      return row ? mapPointer(row) : null;
+    },
+
+    async set(orgId, releaseId, previousReleaseId, updatedBy) {
+      const [row] = await db
+        .insert(tenantReleasePointers)
+        .values({ orgId, releaseId, previousReleaseId, updatedBy })
+        .onConflictDoUpdate({
+          target: tenantReleasePointers.orgId,
+          set: { releaseId, previousReleaseId, updatedBy, updated_at: new Date() },
+        })
+        .returning();
+      if (!row) throw new StorageError(`Failed to set release pointer for ${orgId}`);
+      return mapPointer(row);
     },
   };
 }

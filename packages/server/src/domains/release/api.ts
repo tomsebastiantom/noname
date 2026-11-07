@@ -4,7 +4,12 @@ import { z } from "zod";
 import { getOrgId, getUserId } from "../../shared/org";
 import { created, ok } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
-import type { EnvironmentService, ReleaseArtifactKind, ReleaseService } from "./ports";
+import type {
+  EnvironmentService,
+  ReleaseArtifactKind,
+  ReleasePointerService,
+  ReleaseService,
+} from "./ports";
 
 const ARTIFACT_KINDS = [
   "client_bundle",
@@ -34,7 +39,11 @@ const activateSchema = z.object({
  * Release endpoints are thin on purpose: validation lives in the service, the record is immutable, and the
  * only mutations are `building → ready` and the environment selector (D15).
  */
-export function createReleaseRoutes(service: ReleaseService, environments: EnvironmentService) {
+export function createReleaseRoutes(
+  service: ReleaseService,
+  environments: EnvironmentService,
+  pointer: ReleasePointerService,
+) {
   const routes = new Hono();
 
   routes.post("/", async (c) => {
@@ -58,6 +67,18 @@ export function createReleaseRoutes(service: ReleaseService, environments: Envir
     const denied = await denyUnless(c, PERMISSIONS.RELEASES_READ);
     if (denied) return denied;
     return ok(c, await service.list(getOrgId(c)));
+  });
+
+  routes.get("/pointer", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_READ);
+    if (denied) return denied;
+    return ok(c, await pointer.get(getOrgId(c)));
+  });
+
+  routes.post("/pointer/rollback", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    return ok(c, await pointer.rollback(getOrgId(c), getUserId(c)?.trim() || "system"));
   });
 
   routes.get("/environments", async (c) => {
@@ -103,6 +124,15 @@ export function createReleaseRoutes(service: ReleaseService, environments: Envir
         parsed.data.environment,
         getUserId(c)?.trim() || "system",
       ),
+    );
+  });
+
+  routes.post("/:id/promote", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    return ok(
+      c,
+      await pointer.promote(getOrgId(c), c.req.param("id"), getUserId(c)?.trim() || "system"),
     );
   });
 

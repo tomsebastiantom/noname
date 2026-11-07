@@ -1,24 +1,39 @@
 import type { Database } from "../../drizzle";
 import type { EvidenceService } from "../evidence/ports";
-import { createPostgresEnvironmentStore, createPostgresReleaseStore } from "./adapters/postgres";
+import {
+  createPostgresEnvironmentStore,
+  createPostgresPointerStore,
+  createPostgresReleaseStore,
+} from "./adapters/postgres";
 import { createReleaseRoutes } from "./api";
 import { createEnvironmentService } from "./environment-service";
-import type { EnvironmentService, ReleaseService, ReleaseStore } from "./ports";
+import { createReleasePointerService } from "./pointer-service";
+import type {
+  EnvironmentService,
+  ReleasePointerService,
+  ReleaseService,
+  ReleaseStore,
+} from "./ports";
 import { createReleaseService } from "./service";
 
 export { createEnvironmentService } from "./environment-service";
+export { createReleasePointerService } from "./pointer-service";
 export type {
+  ClientBundleRef,
   CreateReleaseInput,
   EnvironmentService,
   EnvironmentStore,
+  PointerStore,
   ReleaseArtifact,
   ReleaseArtifactInput,
   ReleaseArtifactKind,
   ReleaseDTO,
   ReleaseEnvironmentDTO,
+  ReleasePointerService,
   ReleaseService,
   ReleaseState,
   ReleaseStore,
+  TenantReleasePointerDTO,
 } from "./ports";
 export { createReleaseService } from "./service";
 
@@ -34,10 +49,16 @@ export function createReleaseDomain(deps: {
     service,
     deps.evidence,
   );
+  const pointer: ReleasePointerService = createReleasePointerService(
+    createPostgresPointerStore(deps.db),
+    service,
+    deps.evidence,
+  );
   return {
     storage,
     service,
     environments,
-    routes: createReleaseRoutes(service, environments),
+    pointer,
+    routes: createReleaseRoutes(service, environments, pointer),
   };
 }

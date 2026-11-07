@@ -425,7 +425,11 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/edge", edge.routes);
 
-  const tenant = createTenantDomain({ tenantSettings: docs.service.tenantSettings });
+  const releaseDomain = createReleaseDomain({ db, evidence: evidence.service });
+  const tenant = createTenantDomain({
+    tenantSettings: docs.service.tenantSettings,
+    clientBundle: (orgId) => releaseDomain.pointer.clientBundle(orgId),
+  });
   app.route("/api/tenants", tenant.routes);
 
   const isExtensionInstalled = async (orgId: string, extension: string): Promise<boolean> => {
@@ -464,7 +468,6 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/eval", evalDomain.routes);
 
-  const releaseDomain = createReleaseDomain({ db, evidence: evidence.service });
   app.route("/api/releases", releaseDomain.routes);
 
   app.route("/api/auth", auth.routes);

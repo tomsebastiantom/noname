@@ -13,10 +13,26 @@ export function registerTenantCatalogRoutes(routes: Hono, deps: TenantRouteDeps)
     const orgId = await resolveRouteOrgId(tenantSettings, c.req.param("id"));
     if (!orgId) return notFound(c);
     const manifest = await service.getManifest(orgId);
+
+    // D1 C1 projection: when a release pointer exists, the client bundle URL comes from that release's
+    // `client_bundle` artifact. No pointer (or no artifact) keeps the stored manifest unchanged.
+    const bundle = deps.clientBundle ? await deps.clientBundle(orgId) : null;
+    const projected = bundle
+      ? {
+          ...manifest,
+          private: {
+            name: manifest.private?.name ?? "release",
+            url: bundle.url,
+            hash: bundle.hash,
+            version: bundle.version,
+          },
+        }
+      : manifest;
+
     // Publishable key rides the already-public per-store manifest (same
     // distribution model as Stripe pk_ / Ghost content key).
     const publishableKey = tenantSettings ? (await tenantSettings.get(orgId)).publishableKey : null;
-    return ok(c, { ...manifest, publishableKey: publishableKey ?? undefined });
+    return ok(c, { ...projected, publishableKey: publishableKey ?? undefined });
   });
 
   routes.put("/:id/catalog", async (c) => {

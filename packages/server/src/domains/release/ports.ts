@@ -84,3 +84,36 @@ export interface EnvironmentService {
   rollback(orgId: string, environment: string, actor: string): Promise<ReleaseEnvironmentDTO>;
   list(orgId: string): Promise<ReleaseEnvironmentDTO[]>;
 }
+
+export type TenantReleasePointerDTO = {
+  orgId: string;
+  releaseId: string;
+  previousReleaseId: string | null;
+  updatedBy: string;
+  updatedAt: Date;
+};
+
+export type ClientBundleRef = {
+  releaseId: string;
+  url: string;
+  hash: string;
+  version: string;
+};
+
+export interface PointerStore {
+  get(orgId: string): Promise<TenantReleasePointerDTO | null>;
+  set(
+    orgId: string,
+    releaseId: string,
+    previousReleaseId: string | null,
+    updatedBy: string,
+  ): Promise<TenantReleasePointerDTO>;
+}
+
+export interface ReleasePointerService {
+  get(orgId: string): Promise<TenantReleasePointerDTO | null>;
+  promote(orgId: string, releaseId: string, actor: string): Promise<TenantReleasePointerDTO>;
+  rollback(orgId: string, actor: string): Promise<TenantReleasePointerDTO>;
+  /** Null means “no pointer or no client bundle” — the catalog then keeps its stored manifest. */
+  clientBundle(orgId: string): Promise<ClientBundleRef | null>;
+}

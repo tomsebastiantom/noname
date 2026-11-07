@@ -74,3 +74,19 @@ export const releaseEnvironments = pgTable(
     orgName: uniqueIndex("release_environments_org_name").on(t.orgId, t.name),
   }),
 );
+
+/**
+ * D1 - which client bundle an org loads.
+ *
+ * `previousReleaseId` makes rollback a single write. The row is a pointer, not a copy: the bundle itself lives at
+ * the release artifact's URL.
+ */
+export const tenantReleasePointers = pgTable("tenant_release_pointers", {
+  orgId: text("org_id").primaryKey(),
+  releaseId: uuid("release_id")
+    .notNull()
+    .references(() => releases.id),
+  previousReleaseId: uuid("previous_release_id").references(() => releases.id),
+  updatedBy: text("updated_by").notNull(),
+  updated_at: timestamp("updated_at").notNull().defaultNow(),
+});
