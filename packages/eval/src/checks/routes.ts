@@ -1,3 +1,4 @@
+import { catalogPropRequirement } from "@noname/catalog";
 import type { Check, CheckResult } from "../types";
 
 /**
@@ -24,19 +25,57 @@ type PageTreeResponse = {
 type EdgeSchemaResponse = {
   data?: {
     templateName?: string;
-    layout?: { root?: string; elements?: Record<string, { type?: unknown }> };
+    layout?: {
+      root?: string;
+      elements?: Record<string, { type?: unknown; props?: Record<string, unknown> }>;
+    };
   };
 };
 
 type RoutingPagesResponse = {
-  data?: Array<{ key?: string; layoutRef?: string; status?: string }>;
+  data?: Array<{ key?: string; layoutRef?: string; contentRef?: string; status?: string }>;
 };
+
+type LayoutElement = { type?: unknown; props?: Record<string, unknown> };
+type LayoutRecord = {
+  key?: string;
+  status?: string;
+  data?: { spec?: { elements?: Record<string, LayoutElement> } };
+};
+type LayoutsResponse = { data?: LayoutRecord[] };
 
 /** Identity of a resolved page: the template plus the shape of its element tree. */
 function signatureOf(response: EdgeSchemaResponse): string {
   const template = response.data?.templateName ?? "(none)";
   const elementKeys = Object.keys(response.data?.layout?.elements ?? {}).sort();
   return `${template}|${elementKeys.join(",")}`;
+}
+
+/** A json-render expression (`$state`, `$item`, `$computed`, …) anywhere in a prop value. */
+function hasBinding(value: unknown): boolean {
+  if (Array.isArray(value)) return value.some(hasBinding);
+  if (value && typeof value === "object") {
+    const record = value as Record<string, unknown>;
+    if (Object.keys(record).some((key) => key.startsWith("$"))) return true;
+    return Object.values(record).some(hasBinding);
+  }
+  return false;
+}
+
+function dynamicPropKeys(props: Record<string, unknown> | undefined): string[] {
+  if (!props) return [];
+  return Object.entries(props)
+    .filter(([, value]) => hasBinding(value))
+    .map(([key]) => key);
+}
+
+function isEmptyValue(value: unknown): boolean {
+  return (
+    value === undefined ||
+    value === null ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
 function routesFromTree(
@@ -93,10 +132,23 @@ const routes: Check["run"] = async (ctx) => {
     ? new Map(
         (routing.data?.data ?? [])
           .filter(
-            (page): page is { key: string; layoutRef: string } =>
+            (page): page is { key: string; layoutRef: string; contentRef?: string } =>
               typeof page.key === "string" && typeof page.layoutRef === "string",
           )
-          .map((page) => [page.key, page.layoutRef]),
+          .map((page) => [page.key, page]),
+      )
+    : null;
+
+  // Raw layouts are needed for R3: the resolved spec alone cannot tell a static prop from one that was
+  // supposed to come from content and resolved to nothing.
+  const layouts = await ctx.client.getJson<LayoutsResponse>("/api/documents/layout");
+  const rawLayoutByTemplate = layouts.ok
+    ? new Map(
+        (layouts.data?.data ?? [])
+          .filter(
+            (layout): layout is LayoutRecord & { key: string } => typeof layout.key === "string",
+          )
+          .map((layout) => [layout.key, layout.data?.spec?.elements ?? {}]),
       )
     : null;
 
@@ -117,6 +169,16 @@ const routes: Check["run"] = async (ctx) => {
       ? `unknown routes are served by fallback "${probe.data?.data?.templateName ?? "?"}" — real routes must not share it`
       : `unknown routes are rejected (${probe.error}), so no fallback masking is possible`,
   });
+
+  let r3Checked = false;
+  if (!layouts.ok) {
+    results.push({
+      id: "R3.content",
+      status: "skip",
+      level: "error",
+      detail: `could not list layouts (${layouts.error}) — content resolution was not checked`,
+    });
+  }
 
   for (const { route, pageId } of routeList) {
     const response = await ctx.client.getJson<EdgeSchemaResponse>(
@@ -162,7 +224,9 @@ const routes: Check["run"] = async (ctx) => {
       const type = elements[key]?.type;
       return typeof type !== "string" || type.trim() === "";
     });
-    const expectedLayout = layoutByPageKey?.get(pageId ?? "");
+    const pageRouting = layoutByPageKey?.get(pageId ?? "");
+    const expectedLayout = pageRouting?.layoutRef;
+    const contentRef = pageRouting?.contentRef ?? null;
 
     if (elementKeys.length === 0) {
       results.push({
@@ -213,6 +277,57 @@ const routes: Check["run"] = async (ctx) => {
         detail: `${elementKeys.length} block(s), template "${template}"`,
       });
     }
+
+    // R3 — every prop that the raw layout binds to state must have resolved to a non-empty value in the
+    // edge response. A published page whose content was deleted (or never filled) leaves the placeholder
+    // empty here, while the template itself still renders.
+    if (rawLayoutByTemplate && expectedLayout) {
+      const rawElements = rawLayoutByTemplate.get(expectedLayout) ?? {};
+      const problems: string[] = [];
+      let bound = 0;
+
+      for (const [key, rawElement] of Object.entries(rawElements)) {
+        const rawType = typeof rawElement.type === "string" ? rawElement.type : "";
+        for (const prop of dynamicPropKeys(rawElement.props)) {
+          bound += 1;
+          const resolved = elements[key]?.props?.[prop];
+          if (isEmptyValue(resolved) && catalogPropRequirement(rawType, prop) === "required") {
+            problems.push(`${key}.${prop}`);
+          }
+        }
+      }
+
+      if (problems.length > 0) {
+        r3Checked = true;
+        results.push({
+          id: "R3.content",
+          status: "fail",
+          level: "error",
+          subject: route,
+          detail: `${problems.length} content-bound prop(s) resolved empty (${problems.slice(0, 3).join(", ")})${contentRef ? ` — contentRef "${contentRef}"` : ""}`,
+        });
+      } else if (bound > 0) {
+        r3Checked = true;
+        results.push({
+          id: "R3.content",
+          status: "pass",
+          level: "error",
+          subject: route,
+          detail: `${bound} content-bound prop(s) resolved${contentRef ? ` for "${contentRef}"` : ""}`,
+        });
+      }
+    }
+  }
+
+  if (layouts.ok && !r3Checked) {
+    results.push({
+      id: "R3.content",
+      status: routing.ok ? "pass" : "skip",
+      level: "error",
+      detail: routing.ok
+        ? "no route renders content-bound props"
+        : "routing pages were unavailable — content bindings could not be located",
+    });
   }
 
   return results;
@@ -225,7 +340,7 @@ export const routeChecks: Check[] = [
       tier: 1,
       defaultLevel: "error",
       needs: ["api"],
-      emits: ["R1.resolve", "R1.fallback", "R2.blocks"],
+      emits: ["R1.resolve", "R1.fallback", "R2.blocks", "R3.content"],
       description: "every published route resolves to its own page, not to the fallback template",
     },
     run: routes,

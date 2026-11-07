@@ -43,6 +43,23 @@ export function catalogHasType(type: string): boolean {
   return Boolean((catalogComponentSchemas as Record<string, unknown>)[type]);
 }
 
+/**
+ * Whether a prop must be present for the block to render sensibly. R3 uses this to distinguish “content was
+ * deleted” (a required prop resolved empty) from “this block legitimately has no image” (a nullable prop).
+ */
+export function catalogPropRequirement(type: string, prop: string): "required" | "optional" {
+  const definition = (catalogComponentSchemas as Record<string, { props: z.ZodTypeAny }>)[type];
+  if (!definition) return "optional";
+
+  const shape = (definition.props as unknown as { shape?: Record<string, z.ZodTypeAny> }).shape;
+  const field = shape?.[prop];
+  if (!field) return "optional";
+
+  const optional = typeof field.isOptional === "function" && field.isOptional();
+  const nullable = typeof field.isNullable === "function" && field.isNullable();
+  return optional || nullable ? "optional" : "required";
+}
+
 type ElementLike = {
   type?: unknown;
   props?: unknown;

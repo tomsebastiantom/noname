@@ -3,7 +3,7 @@ import { evaluateChecks } from "../index";
 import type { CheckContext, EvalClient } from "../types";
 import { routeChecks } from "./routes";
 
-type Element = { type?: string };
+type Element = { type?: string; props?: Record<string, unknown> };
 
 function context(client: EvalClient): CheckContext {
   return {
@@ -16,9 +16,10 @@ function context(client: EvalClient): CheckContext {
 }
 
 function clientWith(options: {
-  routing?: Array<{ key: string; layoutRef?: string }> | null;
+  routing?: Array<{ key: string; layoutRef?: string; contentRef?: string }> | null;
   template?: string;
   elements?: Record<string, Element>;
+  layouts?: Array<{ key: string; elements: Record<string, Element> }>;
 }): EvalClient {
   const routing =
     options.routing === undefined ? [{ key: "home", layoutRef: "home" }] : options.routing;
@@ -36,6 +37,18 @@ function clientWith(options: {
       if (path === "/api/documents/routing/pages") {
         if (routing === null) return { ok: false as const, status: 500, error: "HTTP 500" };
         return { ok: true as const, data: { data: routing } as T };
+      }
+      if (path === "/api/documents/layout") {
+        return {
+          ok: true as const,
+          data: {
+            data: (options.layouts ?? []).map((layout) => ({
+              key: layout.key,
+              status: "published",
+              data: { spec: { elements: layout.elements } },
+            })),
+          } as T,
+        };
       }
       if (path.includes("_eval_probe_")) {
         return { ok: false as const, status: 404, error: "HTTP 404" };
@@ -111,5 +124,59 @@ describe("R1.resolve / R2.blocks", () => {
       status: "skip",
       level: "error",
     });
+  });
+
+  it("passes R3 when content-bound props resolve", async () => {
+    const result = await run(
+      clientWith({
+        routing: [{ key: "home", layoutRef: "home", contentRef: "product:1" }],
+        elements: { card: { type: "ProductCard", props: { title: "Sneakers", price: 99 } } },
+        layouts: [
+          {
+            key: "home",
+            elements: {
+              card: {
+                type: "ProductCard",
+                props: { title: { $state: "/title" }, price: { $state: "/price" } },
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(result.checks.find((check) => check.id === "R3.content")).toMatchObject({
+      status: "pass",
+      subject: "/home",
+    });
+  });
+
+  it("fails R3 when a content-bound prop resolves empty", async () => {
+    const result = await run(
+      clientWith({
+        routing: [{ key: "home", layoutRef: "home", contentRef: "product:1" }],
+        elements: { card: { type: "ProductCard", props: { title: "", price: 99 } } },
+        layouts: [
+          {
+            key: "home",
+            elements: {
+              card: {
+                type: "ProductCard",
+                props: { title: { $state: "/title" }, price: { $state: "/price" } },
+              },
+            },
+          },
+        ],
+      }),
+    );
+
+    expect(result.passed).toBe(false);
+    expect(result.checks.find((check) => check.id === "R3.content")).toMatchObject({
+      status: "fail",
+      subject: "/home",
+    });
+    expect(result.checks.find((check) => check.id === "R3.content")?.detail).toContain(
+      "card.title",
+    );
   });
 });
