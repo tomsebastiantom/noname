@@ -1,7 +1,7 @@
 # Pending decisions — release mechanism and eval gaps
 
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
-> **Implementation status:** **D14 and D16 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D15 and D1 remain open.**
+> **Implementation status:** **D14, D15 and D16 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D15-DESIGN.md`](./RELEASE-D15-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D1 remains open.**
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
 > repository actually does today and to how established projects solved the same problem.
 > **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context**, DB truth through a port | **High** — the client half; needs D14/D15 first |
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
-| **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
+| **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** — **implemented 2026-11-07** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
@@ -538,6 +538,8 @@ we accidentally have today; C is a staging/production convenience, not a release
 ---
 
 ## D15 — How does a server change reach a subset of tenants?
+
+**Status:** **chosen (B + D) and implemented 2026-11-07** — [`RELEASE-D15-DESIGN.md`](./RELEASE-D15-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md). The text below is the original decision record.
 
 **Question.** The pointer can move a tenant between bundles. How does a **server** change reach five tenants
 first?

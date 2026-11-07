@@ -97,9 +97,37 @@ No migrations are written or applied by this block.
 exit code until the gate consumes it (D15); a contract release needs an explicit marker in the gate, which is a
 later refinement.
 
+## 2026-11-07 — D15: environment selector (preview + blue/green control plane)
+
+**Scope.** Own which release each environment serves: active/previous per environment, preview activation,
+blue/green switch, one-row rollback, one Evidence record per real move. No pods or ingress are touched.
+
+**Code.** `release_environments` table, `environment-service.ts`, Postgres environment store, four routes,
+8 tests, migration `0003_premium_green_goblin.sql`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **30/30** (8 environment + 7 release + 15 classifier) |
+| Migration | `db:migrate` | `release_environments` exists |
+| Activate A | `POST /api/releases/:id/activate {production}` | **200**, active A |
+| Activate B | same | **200**, active B, previous A |
+| List | `GET /api/releases/environments` | `production: B/A` |
+| Rollback | `POST /api/releases/environments/production/rollback` | **200**, active A, previous B |
+| Preview | `POST /api/releases/:id/preview` | **200**, preview B; production unchanged |
+| Not ready | activate a `building` release | **409**, no Evidence |
+| Evidence | `platform.release.switched` | 3 production moves + 1 preview, each with from/to/rollback |
+| DB | `release_environments` | `preview: B`, `production: A/B` |
+
+**Limits recorded.** Control plane only: deployment must read `active_release_id`; no ingress switch, no metrics
+auto-halt, no percentage canary, no per-tenant server versions. Activation does not yet refuse a destructive
+migration set — the D16 classifier is ready to become a precondition.
+
 ## Next blocks
 
-1. **D15** — preview + blue/green selector.
-2. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection.
-3. Gate wiring: classify the `migration_set` artifact and refuse a destructive set.
+1. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection (client ladder).
+2. Gate wiring: classify the `migration_set` artifact and refuse a destructive set.
+3. UI pointer promotion waves + rollback (D1 continuation).
 

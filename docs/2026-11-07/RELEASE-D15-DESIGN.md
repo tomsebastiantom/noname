@@ -1,6 +1,6 @@
 # Release block D15 — environment selector (preview + blue/green control plane)
 
-> **Status:** proposed design, implemented in this change set · **Date:** 2026-11-07
+> **Status:** **implemented and verified 2026-11-07** · **Date:** 2026-11-07
 > **Decision:** D15 option **B + D** — preview verification, then a blue/green whole-stack switch; behaviour changes
 > stay behind flags. Per-tenant server versions (option C) are out of scope.
 > **Scope guard:** this block owns **which release each environment serves**. It does not create Kubernetes
@@ -112,3 +112,42 @@ The old stack is still running; rollback only changes which one is selected.
 | Someone activates a release whose server image is not deployed | activation is a state change, not a deploy; the deployment step must precede it and is recorded in the release artifact |
 | Environment names proliferate | free-form today; the UI/API constrains to preview/staging/production until a need appears |
 | Rollback after a destructive migration | D16 forbids destructive migrations in a release that shares a window; the classifier is ready to be wired here |
+
+## 9. Implementation evidence (2026-11-07)
+
+**Code**
+
+| Path | Role |
+|---|---|
+| `domains/release/schema.ts` | `release_environments` (org+name unique, active/previous FK) |
+| `domains/release/environment-service.ts` | preview / activate / rollback, ready precondition, idempotent no-op |
+| `domains/release/adapters/postgres.ts` | `createPostgresEnvironmentStore` (upsert selector) |
+| `domains/release/api.ts` | `GET /environments`, `POST /environments/:name/rollback`, `POST /:id/preview`, `POST /:id/activate` |
+| `domains/release/environment-service.test.ts` | 8 tests |
+| `drizzle/0003_premium_green_goblin.sql` | migration |
+
+**Verification**
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **30/30** (8 environment + 7 service + 15 classifier) |
+| Migration | `db:migrate` | `release_environments` exists |
+| Activate A | `POST /:id/activate {production}` | **200**, active = A |
+| Activate B | same | **200**, active = B, previous = A |
+| List | `GET /environments` | `production: B/A` |
+| Rollback | `POST /environments/production/rollback` | **200**, active = A, previous = B |
+| Preview | `POST /:id/preview` | **200**, preview = B, production unchanged |
+| Not ready | activate a `building` release | **409**, no Evidence row |
+| Evidence | `platform.release.switched` rows | 3 production (A, B, rollback) + 1 preview, with from/to/rollback |
+| DB | `release_environments` | `preview: B`, `production: A/B` |
+
+The runnable record is in [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md).
+
+**Limits recorded.**
+
+- This is the **control plane**: deployment must read `release_environments.active_release_id`; no ingress or
+  pod switching is done here.
+- No auto-halt on metrics, no percentage canary, no per-tenant server versions (option C remains out of scope).
+- Activation does not yet refuse a destructive migration set; the D16 classifier is ready to be wired as a
+  precondition.
