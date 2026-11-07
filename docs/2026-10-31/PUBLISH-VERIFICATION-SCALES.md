@@ -2,6 +2,7 @@
 
 > **Date:** 2026-10-31 (America/New_York)
 > **Status:** decision note. Amends [`RFC-EVAL-SERVICE.md`](../2026-10-24/RFC-EVAL-SERVICE.md) §11 and scopes [`RFC-PROGRESSIVE-DELIVERY.md`](../2026-10-24/RFC-PROGRESSIVE-DELIVERY.md) to platform changes only.
+> **Canonical now (2026-11-07):** the two-scales split and the fail-open rule are normative in [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §1 and §5. This note is retained as rationale.
 > **Corrects:** an earlier framing in discussion that bundled "sink + queue + synchronous gating" as one design. They are three mechanisms, and only some publishes need each.
 
 ---

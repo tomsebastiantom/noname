@@ -1,9 +1,24 @@
 # RFC — Eval service: fidelity, structure and behaviour verification
 
-> **Status:** **Proposed** — awaiting review. No code written yet.
+> **Status:** **Partly superseded** (2026-11-07) — the check catalogue, observation seam, determinism rules and browser runtime stay here; release gating, skip keys, Evidence policy and promotion moved to [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md). Originally proposed 2026-10-24.
 > **Date:** 2026-10-24 (America/New_York)
-> **Split from:** [`RFC-PROGRESSIVE-DELIVERY.md`](./RFC-PROGRESSIVE-DELIVERY.md) §6 — that RFC keeps the *rollout* decision and delegates the *gate* here.
-> **Related:** [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`ADR-0013`](../../apps/docs/docs/decisions/ADR-0013-progressive-delivery.md)
+> **Split from:** [`RFC-PROGRESSIVE-DELIVERY.md`](./RFC-PROGRESSIVE-DELIVERY.md) §6 — that RFC keeps the *rollout* decision and delegates the *gate* to the release-gate RFC.
+> **Related:** [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) · [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`ADR-0013`](../../apps/docs/docs/decisions/ADR-0013-progressive-delivery.md)
+
+> **Supersession map.** Kept for rationale and for the parts it still owns. Where this document
+> conflicts with [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md), the release-gate RFC is normative.
+>
+> | Here | Now owned by |
+> |---|---|
+> | §1 consumer table | RFC-RELEASE-GATE §6 |
+> | §6 change detection / skip keys | RFC-RELEASE-GATE §3 |
+> | §7 `passed` + `evidenceId` | RFC-RELEASE-GATE §5 |
+> | §8 Evidence policy | RFC-RELEASE-GATE §8 |
+> | §11 consumers and calls | RFC-RELEASE-GATE §6 |
+> | §13 release phasing | RFC-RELEASE-GATE §11 |
+> | §14 Q1, Q2, Q4 | RFC-RELEASE-GATE §13 |
+>
+> Check ids, tiers, `Observation`, determinism and the browser runtime contract remain normative here.
 
 ---
 
@@ -405,6 +420,9 @@ Recommended order:
 
 ## 6. Cost control — three levers
 
+> **Superseded (2026-11-07):** skip keys and change detection are owned by
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §3. Kept for rationale; do not implement from here.
+
 1. **Tiers** — most checks never touch a browser.
 2. **Change detection** — hash the composed spec (content + layout + `page_tree` + machine definitions). Skip any `(route, width)` whose `specHash` already passed. This is the difference between "verify every publish" being affordable or not, and it is what makes AI iteration cheap: only what changed is re-checked.
 3. **Sampling** — tier 2 nightly for changed tenants, full sweep weekly; tier 1 always.
@@ -448,6 +466,9 @@ type EvalResult = {
 
 ## 8. Where results are stored
 
+> **Superseded (2026-11-07):** Evidence policy (one record per gate decision, failures only, bounded)
+> is owned by [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §8. The metric names below stay.
+
 - **Per run → Evidence**: `type: "platform.eval.run"`, `subjectType: "tenant.storefront"`, `subjectId: tenantSlug`, `correlationId: runId`, idempotency key `eval:<runId>:<specHash>`. Data carries `specHash`, platform version, git sha, failing check ids and human details.
 - **Aggregates → metrics** (existing registry):
   `eval_checks_total{result,check}`, `tenant_eval_failures{tenant,check}`,
@@ -474,6 +495,10 @@ Tier 2 creates real artifacts (cart, order, evidence rows). Rules:
 
 ## 11. Consumers and how they call it
 
+> **Superseded (2026-11-07):** the promotion consumers (publish, cohort, sweep) and their gate behaviour
+> are owned by [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §6. The `agent` and `draft` rows
+> remain a description of check usage.
+
 | Consumer | Call | Behaviour on failure |
 |---|---|---|
 | Agent tool (`read_rendered_page`) | `evaluate({reason:"agent", tiers:[0,1,2], routes:[current]})` | returns failures to the model so it self-corrects |
@@ -493,6 +518,10 @@ The agent's self-check and the platform's guarantee are **the same implementatio
 - Not evaluating *content quality* — only whether the app works.
 
 ## 13. Phasing and falsification
+
+> **Superseded (2026-11-07):** release phasing (gate, cohorts, sweep) is owned by
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §11. The check-implementation order
+> (tier 0 → tier 1 → tier 2) remains here.
 
 | Phase | Ship | Acceptance (observed) |
 |---|---|---|

@@ -2,6 +2,7 @@
 
 > **Date:** 2026-10-31 (America/New_York)
 > **Reviews:** [`RFC-PROGRESSIVE-DELIVERY.md`](../2026-10-24/RFC-PROGRESSIVE-DELIVERY.md) · [`RFC-EVAL-SERVICE.md`](../2026-10-24/RFC-EVAL-SERVICE.md) · [`RFC-DEPLOYMENT-TOPOLOGY.md`](../2026-10-24/RFC-DEPLOYMENT-TOPOLOGY.md)
+> **Historical (kept as the falsification record).** The decisions this review triggered are reflected in [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) and the trimmed RFCs (2026-11-07). Open items — retention, outcome metrics, the domain-port boundary — are owned by the release-gate RFC §8 and the eval RFC.
 > **Purpose:** adversarial review before implementation. Written by the author of the RFCs, which is exactly why it is structured as *falsification attempts* rather than a defence.
 
 ---

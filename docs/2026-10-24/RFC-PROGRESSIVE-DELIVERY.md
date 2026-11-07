@@ -1,9 +1,24 @@
 # RFC — Progressive delivery for platform artifacts (versioning, canary, eval-gated promotion, rollback)
 
-> **Status:** **Proposed** — awaiting review. No code written yet.
+> **Status:** **Partly superseded** (2026-11-07) — V1 (definition versions + pinning), V2 channels, V4 pointer/keys and definition rollback stay here; the gate, promotion ladder, Evidence and outcome metrics moved to [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md). Originally proposed 2026-10-24.
 > **Date:** 2026-10-24 (America/New_York)
 > **Author:** platform workstream (2026-10-15 → 2026-10-24 remediation)
-> **Related:** [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) (the gate this RFC depends on) · [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`../2026-07-25/TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md) · [`../2026-07-04/ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md)
+> **Related:** [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) (the gate this RFC depends on) · [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md) (check implementation) · [`DATABASE-MIGRATIONS.md`](./DATABASE-MIGRATIONS.md) · [`../2026-10-23/CODE-VERIFIED-STATUS.md`](../2026-10-23/CODE-VERIFIED-STATUS.md) · [`../2026-07-25/TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md) · [`../2026-07-04/ARCHITECTURE_DECISIONS.md`](../2026-07-04/ARCHITECTURE_DECISIONS.md)
+
+> **Supersession map.** Kept for rationale and for the mechanisms it still owns. Where this document
+> conflicts with [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md), the release-gate RFC is normative.
+>
+> | Here | Now owned by |
+> |---|---|
+> | §2 “safety net is the gate + rollback” | RFC-RELEASE-GATE §1, §7 |
+> | §3 “deterministic where Argo is statistical” | RFC-RELEASE-GATE §4 |
+> | §6 V3 eval gate | RFC-RELEASE-GATE §5 |
+> | §8 promotion state machine | RFC-RELEASE-GATE §6 |
+> | §9 Q3, Q6 | RFC-RELEASE-GATE §13 |
+> | §11 P1 “gate available” | RFC-RELEASE-GATE §11 |
+> | §12 flakiness / cost / rubber-stamp risks | RFC-RELEASE-GATE §8, §13 |
+>
+> V1 pinning, V2 channels, V4 pointer/keys and definition rollback remain normative here.
 
 ---
 
@@ -183,6 +198,9 @@ alter table tenants add column channel text not null default 'stable'
 
 ## 6. V3 — The eval gate (delegated)
 
+> **Superseded (2026-11-07):** the gate contract, verdicts and Evidence are owned by
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §5. Kept for rationale; do not implement from here.
+
 Promotion is decided by something that can say *"this tenant's app actually works"* — not by the absence of complaints.
 
 **The service design is a separate document:** [`RFC-EVAL-SERVICE.md`](./RFC-EVAL-SERVICE.md). It owns the check catalogue, tiers, result contract, isolation rules, determinism strategy and cost model. This RFC only fixes the *interface* the rollout depends on:
@@ -206,6 +224,9 @@ Nothing else about eval belongs here; if it cannot be expressed as a gate input,
 - Definition rollback = set `machine_definition_active` back to a previous version (V1 already gives us the rows).
 
 ## 8. Promotion workflow (state machine)
+
+> **Superseded (2026-11-07):** the promotion ladder (preview → internal → canary → waves) is owned by
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §6. The state machine below is historical.
 
 ```
 build(platformVersion)              → artifact + hash
@@ -253,6 +274,9 @@ Three reasons:
 - Not per-tenant *code* deployment — that is the tenant extension path ([`TENANT-MF-SECURITY.md`](../2026-07-25/TENANT-MF-SECURITY.md)), a separate concern with its own P0 list.
 
 ## 11. Phasing and acceptance criteria
+
+> **Superseded (2026-11-07):** the release-gate phase P1 is owned by
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §11. P0 (V1) and P2 (channels + pointer) remain here.
 
 Each phase is accepted only with a **falsification**: a deliberate break that the mechanism must catch.
 
