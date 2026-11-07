@@ -366,7 +366,9 @@ Playwright retries failing tests with `retries` and records them
 assertions; median of booleans is not meaningful. Recording attempts and counting flakes gives the honest signal
 without tripling browser cost.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+**Decision:** ☑ **B** — implemented 2026-11-07. Retry-once for deterministic tier‑2 checks; `attempts` recorded;
+pass-on-retry counted as `flaky`; `B5` excluded (side effects). No N-run median (boolean checks). See
+[`EVAL-E6-DETERMINISM.md`](./EVAL-E6-DETERMINISM.md).
 
 ---
 
