@@ -113,7 +113,33 @@ defaults to `machines:read` and rejects unknown permission names.
 still skip, which is the intended “silence is not success” behaviour. The catalogue itself is still 5 ids of
 the RFC’s ~16.
 
+## 2026-11-07 — E7: `M1.references`
+
+**Scope.** A tier‑0 check that reads the content-type registry and fails when a `reference` field points at a
+type that does not exist, or declares no target at all. The write path already rejects the second case; the
+first only surfaced when an editor tried to use the field.
+
+**Code.** `packages/eval/src/checks/references.ts` (new), `checks/references.test.ts` (new), `registry.ts`,
+`index.ts`, `registry.test.ts` (fake API extended).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Unit tests | `pnpm vitest run packages/eval/src` | **14/14 passed** (5 new M1 tests + registry suite) |
+| Falsification (unit) | test `fails when a reference target does not exist` | `passed: false`, subject `product`, detail names the missing type |
+| Missing target | test `fails when a reference field declares no target` | `passed: false`, detail “declares no target” |
+| Unreadable registry | test `skips — never passes — when the registry cannot be read` | `skip` at `error` level, `passed` unaffected |
+| Live integration | `noname eval --tenant yogastore --token <service-token>` | `M1.references` **pass** on all 5 seeded content types (`page`, `editor_prefs`, `notification_email`, `auth_provider`, `product`); overall **12 pass / 0 fail / 2 skip** |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, `/login` 200, 0 console errors |
+
+**Falsification caveat.** The live tenant has no reference fields, and content types cannot be deleted through
+the API, so the dangling-target case was falsified at unit level rather than by mutating demo data. Creating a
+temporary content type and deleting it via SQL was rejected on purpose: verification must not write around the
+domain boundary it is checking.
+
 ## Next block (planned)
 
-`E7` — `M1.references`: every `reference` field in a content type points at an existing type. Verification:
-deleting the referenced type makes `M1` fail with the field path, and restoring it passes.
+`E9` — `M3.reachability`: every `page_tree` entry points at an existing page, and every published page is
+reachable from the tree. Verification: a dangling entry fails `M3` with both ids.
