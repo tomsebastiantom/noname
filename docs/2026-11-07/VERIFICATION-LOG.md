@@ -309,11 +309,43 @@ such as the orders admin call `loadOrdersAdmin` internally, so “not referenced
 endpoint exposes what a capability declares, not which roles the tenant has; that projection does not exist
 yet, and inventing it would turn a wiring check into a guess.
 
+## 2026-11-07 — E16: renderer contract + `B1.structure`
+
+**Scope.** Make the DOM say which block is which, then compare the spec’s element counts with the rendered
+counts. This is the check the critical review called impossible before the renderer contract existed.
+
+**Code.** `packages/client/src/platform/block-markers.tsx` (new), `catalog-ui-shell.tsx` (wrap + readiness),
+`block-markers.test.ts` (new), `packages/eval/src/types.ts` (`nodesByType`), `observers/browser.ts`,
+`checks/browser.ts` (`B1.structure`), `checks/structure.test.ts` (new), `registry.test.ts` (skip count).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{client,eval} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src packages/client/src/platform/block-markers.test.ts` | **49/49 passed** (5 B1 tests + 1 marker test) |
+| Unit — missing block | `fails when a block is missing from the DOM` | fail names `GridBase: spec 1, DOM 0` |
+| Unit — extra block | `fails when the DOM renders an extra block type` | fail names `Mystery: spec 0, DOM 1` |
+| Unit — no browser | `skips — never passes — without a browser` | skip at `error` level |
+| Browser — markers | `.tools/verify-storefront.mjs` (real Chrome) | spec counts = DOM counts exactly: `StackBase, Hero, TextBase, ProductGrid, ProductCard, CartSummary, CartDrawer` ×1; `match: true` |
+| Browser — readiness | same run | `document.documentElement.dataset.evalReady === "true"` |
+| Browser — regressions | same run | storefront 200, `/login` 200, 0 console errors |
+
+**Deliberate limitation: type, not id.** `@json-render/core`’s `UIElement` exposes `type`, `props`, `children`,
+`on`, `visible`, `repeat` — but not the map key, so the renderer cannot hand a component a stable block id
+without an upstream API change. `B1.structure` therefore compares **counts by type**, which is what catches a
+dropped or duplicated block. A per-element id is recorded as a future renderer-contract extension.
+
+**Not yet run through the CLI.** `B1.structure` needs a browser endpoint, and `noname eval` does not have the
+`--browser-endpoint` flag yet (E24). The check is unit-tested and the markers are verified in a real browser;
+wiring the CLI is the next plumbing step after tier 2.
+
 ## Next steps
 
-1. **E8 remainder** — a tenant-role projection and permission evaluation (design first: roles live in ZITADEL,
-   not in the documents DB).
-2. **E16–E19** — renderer markers (`data-block-type`/`data-block-id`), `B1.structure`, viewport-aware
-   `B2.overflow`, `B3.a11y` with axe-core, `B4.content`.
-3. **E20/E22** — behaviour (`B5`) and `S1.no_internal_egress`.
-4. **E3/E4/E23–E26** — modes, sinks, queue/worker.
+1. **E17–E19** — `B2.overflow` at 375/768/1440 (viewport-aware observer), `B3.a11y` with axe-core,
+   `B4.content`.
+2. **E24** — CLI `--browser-endpoint` / `--site`, so tier 2 runs from `noname eval` against the local
+   Playwright server.
+3. **E8 remainder** — tenant-role projection.
+4. **E20/E22** — behaviour (`B5`) and `S1`.
+5. **E3/E4/E23–E26** — modes, sinks, queue/worker.
