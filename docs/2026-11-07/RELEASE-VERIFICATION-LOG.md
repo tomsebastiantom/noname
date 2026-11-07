@@ -45,9 +45,37 @@ read the crash as a domain bug.
   a D14 invariant.
 - No Evidence row on creation yet; promotion/rollback records are part of the next block.
 
+## 2026-11-07 — D2: definition versions and instance pinning
+
+**Scope.** An instance must keep the definition version it started on. Chosen option A (append-only versions +
+pinned instance). Design: [`RELEASE-D2-DESIGN.md`](./RELEASE-D2-DESIGN.md).
+
+**Code.** `domains/machines/schema.ts` (`version`, `definition_version`, `machine_definition_versions`),
+`ports.ts`, `engine.ts`, `adapters/postgres.ts`, `drizzle/0002_freezing_invaders.sql`,
+`engine-versioning.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/machines` | **25/25** (including 1 new pinning test) |
+| Migration | `pnpm --filter @noname/server db:migrate` | applied; columns/table present |
+| Backfill | `psql … from machine_definition_versions` | `cart\|1`, `inventory_reservation\|1` |
+| E2E — pin | define v1, start, define v2 | old instance `definitionVersion=1`; new `2` |
+| E2E — reject | old instance + `v2only` (v2-only event) | **400** |
+| E2E — accept | new instance + `v2only` | **200**, state `done` |
+| E2E — old rules | old instance + `advance` | **200**, state `done` |
+| Eval M4 | `noname eval --tenant yogastore --token …` | `M4.machines` **pass** (cart 9 states, inventory 5) |
+| Cleanup | SQL delete by machine name | 0 leftovers |
+
+**Limits.** No version-listing UI yet; legacy instances fall back to the current definition until the next save;
+no definition-rollback endpoint (the correct action is a new version); simultaneous saves can race on
+`nextVersion` (unique index makes one insert lose; definitions are low-frequency).
+
 ## Next blocks
 
 1. **D16** — expand/contract migration policy and migration-set semantics.
 2. **D15** — preview + blue/green selector.
 3. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection.
-4. **D2** — definition versions and instance pinning.
+

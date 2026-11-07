@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-07/RELEASE-D2-DESIGN.md](2026-11-07/RELEASE-D2-DESIGN.md)** — **Implemented.** Definition versions + instance pinning (D2): append-only `machine_definition_versions`, `definition_version` on instances, transitions load the pinned version. Includes migration/backfill, what breaks, rollback and E2E evidence.
 - **[2026-11-07/RELEASE-D14-DESIGN.md](2026-11-07/RELEASE-D14-DESIGN.md)** — **Implemented.** Release record + artifact binding (D14): one release id binds client bundle, server image, worker, migrations and config; immutable, digest-bound.
 - **[2026-11-07/RELEASE-VERIFICATION-LOG.md](2026-11-07/RELEASE-VERIFICATION-LOG.md)** — Evidence for the release mechanism blocks (D14 done; D16/D15/D1/D2 next).
 - **[2026-11-07/RELEASE-UNIT-FINDING.md](2026-11-07/RELEASE-UNIT-FINDING.md)** — **Finding.** A release here is client bundle + server image + migrations + config; the four RFCs each assume another one owns the server half. Records the gap and the three-layer model (preview → blue/green → per-tenant UI pointer).
