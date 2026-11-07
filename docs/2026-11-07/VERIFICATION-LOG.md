@@ -566,10 +566,44 @@ something for exit codes: agents report, gates block, and a human `dev` run fail
 are not automatable without a model. `B7.visual-rubric` remains open (warn only, never a gate). `--mode` target
 policy is still tenant-wide: “dev may inspect drafts” is not implemented.
 
+## 2026-11-07 — E25 tier‑2 worker verification + E20 checkout blocker
+
+**Scope.** Prove the async worker can carry tier 2 (not just tier 0/1), and establish exactly what blocks the
+checkout half of E20.
+
+### Async tier‑2 run
+
+The API was restarted with `EVAL_CDP_ENDPOINT=ws://[::1]:9222/…` and `EVAL_SITE_BASE=http://yogastore.localhost:5173`,
+then a job was enqueued:
+
+| Check | Observed |
+|---|---|
+| Enqueue | `POST /api/eval/runs` → `200 {"data":{"jobId":"2"}}` |
+| Queue | `{eval-runs}` `completed 2`, `failed 0` |
+| Evidence | new row `18:17:13`, decision `pass`, counts `{ pass: 70, fail: 1, skip: 2, unverified: 2 }` |
+| Tier‑2 metrics | `B1.render`, `B1.structure`, `B2.overflow`, `B3.a11y`, `B4.content`, `B5.behaviour`, `B6.design` all `pass`; `S1.no_internal_egress` `fail` at `warn` |
+| Unverified | 2 — the two checks that still skip in the worker (definitions path); tier 2 is no longer among them |
+
+The one `fail` is S1, which is expected locally: the worker’s browser can reach `127.0.0.1:3000`. The decision
+remains `pass` because S1 is `warn` — the gate does not treat a local-network fact as a release blocker.
+
+### E20 checkout — blocked, with evidence
+
+`PAYMENT_SUCCEEDED` / `PAYMENT_FAILED` are **rejected on the public cart routes by design**
+(`packages/server/src/domains/machines/routes/instances.ts:121`: “Sensitive transitions require JWT / provider
+lane”). The only legitimate path to `paid` is the provider event pipeline (Stripe → Nango → integration
+webhook), and this environment has no provider sandbox connected. Therefore:
+
+- a browser click on Checkout can start the capability, but it cannot complete a payment locally;
+- forcing `paid` through the API would mean weakening a security boundary to make a test pass — rejected;
+- `B5` remains the **cart** behaviour check, and E20 stays partial until a provider sandbox exists.
+
+**What would unblock it:** a Stripe test-mode account + Nango connection (or a dedicated test provider adapter),
+a reserved sandbox product, and cleanup keyed by `correlationId`.
+
 ## Next steps
 
-1. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
-2. **E8 remainder** — tenant-role projection.
-3. **E4 remainder** — target policy (drafts in dev).
-4. **B7** — visual rubric (warn only).
-5. Worker browser endpoint (`EVAL_CDP_ENDPOINT`) for async tier 2.
+1. **E8 remainder** — tenant-role projection (design first; roles live in ZITADEL).
+2. **E4 remainder** — target policy (drafts in dev).
+3. **B7** — visual rubric (warn only).
+4. **E20 checkout** — blocked on the provider sandbox above.

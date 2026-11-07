@@ -7,10 +7,10 @@
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink, the async worker and **B6 contrast (E21 partial)** are **done and verified** on 2026-11-07. `--mode`
-> now also sets blocking policy (`agent` never fails the process; `dev`/`gate` do). **Still open:** E20
-> checkout→`paid`, E8 tenant-role projection, E4 target policy, B7 visual rubric. See
-> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> sink, the async worker (including tier 2 via `EVAL_CDP_ENDPOINT`) and B6 are **done and verified** on
+> 2026-11-07. **E20 checkout→`paid` is blocked by an external dependency**, not by code: cart routes reject
+> provider payment events by design and no provider sandbox is configured. See §5 E20 and
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Open: E8 tenant-role projection, E4 target policy, B7 rubric.
 
 ---
 
@@ -237,7 +237,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E17** | `B2` is console errors, not overflow | uncommitted `B2.console`; viewport fixed 1280×800 ([`observers/browser.ts:30`](../../packages/eval/src/observers/browser.ts#L30)) | **DONE 2026-11-07.** Real `B2.overflow` at 375/768/1440; observer takes a width per visit and records `scrollWidth`/`clientWidth`; `B2.console` kept separately | A forced 400 px element fails at 375 only | S |
 | **E18** | `B3.a11y` missing | no `axe-core` | **DONE 2026-11-07.** axe-core injected in the browser observer; `B3.a11y` asserts the RFC subset (`image-alt`, `label`, `button-name`, `link-name`) and fails with rule ids + node counts | Removing an `alt` fails `B3` with the rule | M |
 | **E19** | `B4.content` missing | `B1.render` only checks text length | **DONE 2026-11-07.** Title, text and price values are collected from the edge-resolved spec and looked up in the rendered body; a missing value fails with its text | Removing the price from a product page fails `B4` | S |
-| **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | **PARTIAL 2026-11-07.** `B5.behaviour` clicks the first add-to-cart control, waits for the storefront to settle, and asserts the cart text moves to a non-zero item count. **Still open:** checkout reaching `paid` with a provider callback, a reserved sandbox product, and order cleanup by `correlationId` | Breaking add-to-cart fails `B5` (observed: 1 item); checkout → `paid` remains uncovered | L |
+| **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | **PARTIAL 2026-11-07 — checkout blocked externally.** `B5.behaviour` clicks add-to-cart and asserts a non-zero cart count. **Blocked:** `PAYMENT_SUCCEEDED`/`PAYMENT_FAILED` are rejected on cart routes by design ([`instances.ts:121`](../../packages/server/src/domains/machines/routes/instances.ts#L121)), so `paid` can only arrive through the provider pipeline; no provider sandbox (Stripe test + Nango) is configured locally. Needs that, plus a reserved product and `correlationId` cleanup | Add-to-cart fails `B5` (observed); checkout needs a provider sandbox before it can be asserted | L |
 | **E21** | `B6`/`B7` missing | none | **PARTIAL 2026-11-07.** `B6.design` runs axe `color-contrast` and reports `warn`; **still open:** spacing advisories and `B7.visual-rubric` (vision model, warn only) | A contrast failure is reported but does not block | M |
 | **E22** | `S1.no_internal_egress` missing | RFC §5.5; no implementation | **DONE 2026-11-07.** The browser observer probes internal HTTP targets (`127.0.0.1:3000`, metadata address) with `no-cors` fetches; S1 passes only if all are unreachable, and is `warn` by default because a local browser legitimately shares the host network | A reachable internal endpoint fails `S1` (observed locally) | M |
 
@@ -380,6 +380,6 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
-| **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
-| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 and B6 done; E20 cart done, checkout open | 84 tests; live B6 pass, agent/dev exit policy verified |
-| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E3/E23/E24/E25/E26 done; E4 partial | 4 new queue/job tests; async job wrote Evidence + metrics |
+| **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done except B7** — E16–E19; E21's B6 done | 84 tests; live tier 2 pass, 0 contrast advisories |
+| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart done, checkout blocked externally | S1 warn-fail names the API; B5 pass “1 item” |
+| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **Done except E4 target policy** — E25 verified with tier 2 via the worker | 84 tests; async job evidence `70 pass / 1 warn fail / 2 skip` |
