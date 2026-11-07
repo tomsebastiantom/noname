@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 // Load it before anything reads process.env; dotenv never overrides values already in the environment.
 import "dotenv/config";
 import type { CheckResult } from "@noname/eval";
-import { createHttpClient, evaluate } from "@noname/eval";
+import { createBrowserObserver, createHttpClient, evaluate } from "@noname/eval";
 
 /**
  * `noname eval` — the thin CLI adapter (mode "dev" in the RFC's terms).
@@ -22,6 +22,8 @@ type Options = {
   machinesDir: string;
   maxRoutes: number;
   json: boolean;
+  browserEndpoint?: string;
+  siteBase?: string;
 };
 
 function parseArgs(argv: string[]): Options {
@@ -39,6 +41,8 @@ function parseArgs(argv: string[]): Options {
     apiBase: get("api-base", process.env.API_BASE ?? "http://localhost:3000"),
     machinesDir: get("machines-dir", join(ROOT, "packages/extensions/src/commerce/machines")),
     maxRoutes: Number(get("max-routes", "20")),
+    browserEndpoint: get("browser-endpoint", process.env.EVAL_CDP_ENDPOINT ?? "") || undefined,
+    siteBase: get("site", "") || undefined,
     json: argv.includes("--json"),
   };
 }
@@ -100,14 +104,27 @@ export async function evalCommand(argv: string[]): Promise<number> {
     headers: token ? { ...hmacHeaders(), Authorization: `Bearer ${token}` } : hmacHeaders(),
   });
 
-  const result = await evaluate({
-    client,
-    tenantSlug: options.tenant,
-    machinesDir: options.machinesDir,
-    maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
-    canReadDefinitions: Boolean(token),
-  });
+  const browser = options.browserEndpoint
+    ? createBrowserObserver({
+        wsEndpoint: options.browserEndpoint,
+        origin: options.siteBase ?? `http://${options.tenant}.localhost:5173`,
+      })
+    : undefined;
 
+  let result;
+  try {
+    result = await evaluate({
+      client,
+      tenantSlug: options.tenant,
+      machinesDir: options.machinesDir,
+      maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
+      canReadDefinitions: Boolean(token),
+      browser,
+      siteBase: browser ? (options.siteBase ?? `http://${options.tenant}.localhost:5173`) : undefined,
+    });
+  } finally {
+    await browser?.close();
+  }
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
   } else {

@@ -22,6 +22,7 @@ function browserWith(
         title: "Noname",
         width,
         textLength: 200,
+        text: "rendered",
         sample: "rendered",
         nodesByType: {},
         overflow: overflowByWidth[width],

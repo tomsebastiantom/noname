@@ -129,6 +129,8 @@ export type PageVisit = {
   overflow?: { scrollWidth: number; clientWidth: number };
   /** Length of the rendered body text — a blank SPA shell is a few characters, a rendered page is hundreds. */
   textLength: number;
+  /** Full normalised body text (whitespace collapsed), for content-presence assertions. */
+  text: string;
   /** First 300 characters of the rendered text, for the check's human sentence. */
   sample: string;
   /** Count of rendered blocks by `data-block-type` (the renderer contract B1.structure relies on). */

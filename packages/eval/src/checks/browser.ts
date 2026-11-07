@@ -81,7 +81,9 @@ const render: Check = {
 
 type SpecResponse = {
   data?: {
-    layout?: { elements?: Record<string, { type?: string }> };
+    layout?: {
+      elements?: Record<string, { type?: string; props?: Record<string, unknown> }>;
+    };
   };
 };
 
@@ -274,6 +276,95 @@ const a11y: Check = {
   },
 };
 
+/**
+ * B4.content — the content the page is supposed to show is actually visible.
+ *
+ * R2/R3 prove the spec resolved; this proves the resolved values reached the screen. Titles, text blocks and
+ * prices are collected from the edge-resolved spec, normalised, and looked up in the rendered body text.
+ */
+const content: Check = {
+  meta: {
+    id: "B4.content",
+    tier: 2,
+    defaultLevel: "error",
+    needs: ["api", "browser"],
+    emits: ["B4.content"],
+    description:
+      "page title, product name and price from the resolved spec are visible in the browser",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [skip("B4.content", "error", "no browser endpoint supplied — tier 2 not evaluated")];
+    }
+
+    const spec = await ctx.client.getJson<SpecResponse>(
+      `/api/edge/schema/${encodeURIComponent(ctx.tenantSlug)}?url=${encodeURIComponent("/")}`,
+    );
+    if (!spec.ok) {
+      return [
+        skip(
+          "B4.content",
+          "error",
+          `could not read the spec (${spec.error}) — content was not checked`,
+        ),
+      ];
+    }
+
+    const visit = await ctx.browser.visit("/");
+    const normalise = (value: string) => value.replace(/\s+/g, " ").trim();
+
+    if (!normalise(visit.title)) {
+      return [
+        {
+          id: "B4.content",
+          status: "fail",
+          level: "error",
+          subject: "/",
+          detail: "the page has no document title",
+        },
+      ];
+    }
+
+    const expected = new Set<string>();
+    for (const element of Object.values(spec.data?.data?.layout?.elements ?? {})) {
+      const props = (element.props ?? {}) as Record<string, unknown>;
+      if (typeof props.title === "string" && props.title.trim())
+        expected.add(normalise(props.title));
+      if (typeof props.content === "string" && props.content.trim())
+        expected.add(normalise(props.content));
+      if (typeof props.price === "number" && Number.isFinite(props.price)) {
+        expected.add(props.price.toFixed(2));
+      }
+    }
+
+    const body = normalise(visit.text);
+    const missing = [...expected].filter((value) => !body.includes(value));
+
+    return missing.length > 0
+      ? [
+          {
+            id: "B4.content",
+            status: "fail",
+            level: "error",
+            subject: "/",
+            detail: `missing visible content: ${missing
+              .slice(0, 3)
+              .map((value) => `"${value.slice(0, 60)}"`)
+              .join(", ")}${missing.length > 3 ? ` (+${missing.length - 3} more)` : ""}`,
+          },
+        ]
+      : [
+          {
+            id: "B4.content",
+            status: "pass",
+            level: "error",
+            subject: "/",
+            detail: `${expected.size} content value(s) visible`,
+          },
+        ];
+  },
+};
+
 const consoleClean: Check = {
   meta: {
     id: "B2.console",
@@ -311,4 +402,11 @@ const consoleClean: Check = {
   },
 };
 
-export const browserChecks: Check[] = [render, structure, overflowCheck, a11y, consoleClean];
+export const browserChecks: Check[] = [
+  render,
+  structure,
+  overflowCheck,
+  a11y,
+  content,
+  consoleClean,
+];

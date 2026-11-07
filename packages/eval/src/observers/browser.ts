@@ -134,6 +134,7 @@ export function createBrowserObserver(options: {
         width,
         overflow,
         textLength: bodyText.length,
+        text: bodyText,
         sample: bodyText.slice(0, 300),
         nodesByType,
         a11y,

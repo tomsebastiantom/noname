@@ -78,6 +78,8 @@ program
   .option("--machines-dir <dir>", "directory holding machine definition JSON files")
   .option("--max-routes <n>", "cap the number of routes checked", "20")
   .option("--token <token>", "service or user token allowed to read machine definitions")
+  .option("--browser-endpoint <ws>", "Playwright server endpoint for tier 2 checks")
+  .option("--site <url>", "storefront origin for browser checks")
   .option("--json", "machine-readable output")
   .action(async () => {
     // Checks live in @noname/eval; this command only parses arguments and prints.

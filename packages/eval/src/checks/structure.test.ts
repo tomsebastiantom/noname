@@ -25,6 +25,7 @@ function browserWith(nodesByType: Record<string, number>): BrowserObserver {
         title: "Noname",
         width: 1280,
         textLength: 200,
+        text: "rendered",
         sample: "rendered",
         nodesByType,
         consoleErrors: [],
