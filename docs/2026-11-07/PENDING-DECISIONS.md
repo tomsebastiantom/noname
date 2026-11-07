@@ -237,6 +237,11 @@ local version of that.
 of truth and is a small addition to the context endpoint. C is not a real check; D should only be chosen if the
 decision is “M2 stays vocabulary-only”.
 
+**Design note — who runs eval, and whose roles are checked.** [`EVAL-D4-ROLES-DESIGN.md`](./EVAL-D4-ROLES-DESIGN.md)
+proposes: the runner is a **service token** (`x-user-id: eval-worker`, `x-role: service`, never the admin email);
+the server reads roles from ZITADEL with its own credentials; `M2.roles` is advisory (warn) first, and becomes an
+error only when an action contract declares an explicit `audience`. The admin union is never evaluated.
+
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
 
 ---
