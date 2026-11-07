@@ -515,10 +515,38 @@ the audit kernel.
 blocking policy per mode (drafts in dev, published in gate) is still open — the CLI target is the tenant, not a
 mode-specific route set. The queue/worker (E25) remains the async path for large sweeps.
 
+## 2026-11-07 — E25: eval queue + worker
+
+**Scope.** Run a tenant sweep off the request path: enqueue a job, let a worker drain it, and have the worker
+mint its own org-scoped service credential, talk to the API over HTTP, and record one decision.
+
+**Code.** `shared/bullmq-queues.ts` (`{eval-runs}`), `domains/eval/job.ts` (executeEvalJob + injected run seam),
+`worker.ts` (BullMQ worker, concurrency 1, 120 s lock), `api.ts` (`POST /api/eval/runs`), `index.ts`
+(worker start), `@noname/eval` added to the server package, `job.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Tests | `pnpm vitest run packages/server/src/domains/eval` | **4/4 passed** (2 gate + 2 job) |
+| Enqueue | `POST /api/eval/runs` with a service token | `200 {"data":{"jobId":"1"}}` |
+| Worker | BullMQ `{eval-runs}` | `completed 1`, `failed 0` |
+| Evidence | `psql … where type='platform.eval.run'` | new row `bc34f24f-2ddf-4784-89f2-84f250f43ad9`, decision `pass`, recorded 18:11:12 |
+| Metrics | `GET /metrics` | `noname_eval_runs_total{decision="pass"} 1`; per-check counters; `noname_eval_unverified_total 1` |
+
+**Reading the unverified counter.** The async run had no browser endpoint configured, so tier‑2 checks skipped
+(`B1`, `B2`, `B3`, `B4`, `B5`, `S1`) and counted as unverified — exactly the semantics added in E23. The
+decision is still `pass`, which is why unverified is a separate number rather than a silent success.
+
+**Operational note.** During the first enqueue the API had crashed because `@noname/eval` was linked into the
+server only after `pnpm install`; the restart fixed it. That is recorded so the next person does not read the
+crash as a queue bug.
+
 ## Next steps
 
-1. **E25** — eval queue + worker (async sweeps, concurrency, per-job timeout).
-2. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
-3. **E8 remainder** — tenant-role projection.
-4. **E4 remainder** — mode-specific target/blocking policy.
-5. **E21** — `B6` advisories and `B7` rubric (warn only).
+1. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
+2. **E8 remainder** — tenant-role projection.
+3. **E4 remainder** — mode-specific target/blocking policy.
+4. **E21** — `B6` advisories and `B7` rubric (warn only).
+5. Browser endpoint for the worker (`EVAL_CDP_ENDPOINT`) so async sweeps include tier 2.

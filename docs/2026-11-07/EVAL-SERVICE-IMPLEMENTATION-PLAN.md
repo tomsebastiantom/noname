@@ -6,12 +6,11 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, tier 2, S1, the cart half of E20, run
-> envelope/config, and **the gate sink (E26) with `--mode` (E4, partial)** are **done and verified** on
-> 2026-11-07. `noname eval --mode gate` writes exactly one `platform.eval.run` Evidence record and
-> `noname_eval_*` metrics; `dev`/`agent` write nothing. **Still open:** E20 checkout→`paid`, E8 tenant-role
-> projection, E25 queue/worker, and mode-specific target/blocking policy. See
-> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
+> sink and **the async queue/worker (E25)** are **done and verified** on 2026-11-07. `POST /api/eval/runs`
+> enqueues a tenant sweep; the worker runs the catalogue off the request path and records one Evidence
+> decision. **Still open:** E20 checkout→`paid`, E8 tenant-role projection, E4 target/blocking policy, E21
+> advisories. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -248,7 +247,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 |---|---|---|---|---|---|
 | **E23** | Result contract incomplete | no `runId`/`releaseId`/`checksVersion`/`unverified`; `CheckResult` lacks `runs`/`fix` | **DONE 2026-11-07.** `EvalResult` carries `runId` + `checksVersion`; `counts.unverified` counts required skips; `CheckResult` already had `runs`/`fix` hooks | A run with an unmeasured required check reports `unverified` > 0, not passed-silently | S |
 | **E24** | CLI cannot reach the browser or choose a mode | no browser/site/mode flags; `evalCommand` re-parses `process.argv` | **DONE 2026-11-07.** `--browser-endpoint` / `--site` (default `EVAL_CDP_ENDPOINT`, origin `http://<tenant>.localhost:5173`); observer is created, passed to `evaluate()`, and closed in `finally` | `noname eval --browser-endpoint ws://…` runs tier 2 (verified: 72 pass / 0 fail / 0 skip) | S |
-| **E25** | No queue/worker | no eval queue; browser idle | `EVAL` queue, `domains/eval` worker, separate entrypoint later | A queued run executes tier 2 and records metrics | M |
+| **E25** | No queue/worker | no eval queue; browser idle | **DONE 2026-11-07.** `{eval-runs}` queue; `POST /api/eval/runs` enqueues; worker drains with concurrency 1 and a 120 s lock, mints an org-scoped service token, runs the catalogue over HTTP and records one decision | A queued run completes and writes `platform.eval.run`; queue depth `completed` increments | M |
 | **E26** | No Evidence/metrics sinks | none | **DONE 2026-11-07.** `POST /api/eval/record` (machine-only) writes one `platform.eval.run` Evidence row with decision/run/checksVersion and records `noname_eval_runs_total`, `noname_eval_checks_total`, `noname_eval_unverified_total` | One decision row per gate run; eval counters visible at `/metrics` | M |
 | **E27** | No cost policy | none | Sampling + `specHash@releaseId@checksVersion` skip, enforced in the runner | Unchanged release re-run produces skips, reported as `unverified` unless the policy says otherwise | S |
 
@@ -383,4 +382,4 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
 | **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart half done, checkout open | 72 tests; live B5 pass (“1 item”), S1 warn-fail names the API |
-| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E3/E23/E24/E26 done; E4 partial, E25 pending | 82 tests; live Evidence row + metrics verified |
+| **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E3/E23/E24/E25/E26 done; E4 partial | 4 new queue/job tests; async job wrote Evidence + metrics |
