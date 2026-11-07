@@ -7,9 +7,10 @@
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink, the async worker with tier 2, B6, E4, E6 (retry-once) and **E8 (tenant-role coverage)** are **done and
-> verified** on 2026-11-07. **E20 checkout→`paid` is blocked by an external dependency** (provider sandbox).
-> Open: E27 cost/sampling, B7 rubric. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> sink, the async worker with tier 2, B6, E4, E6 (retry-once), **E8 (tenant-role coverage)** and **E27 v1
+> (content-addressed reuse)** are **done and verified** on 2026-11-07. **E20 checkout→`paid` is blocked by an
+> external dependency** (provider sandbox). Open: B7 rubric; E27 per-route reuse, sampling and reuse metrics.
+> See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -248,7 +249,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E24** | CLI cannot reach the browser or choose a mode | no browser/site/mode flags; `evalCommand` re-parses `process.argv` | **DONE 2026-11-07.** `--browser-endpoint` / `--site` (default `EVAL_CDP_ENDPOINT`, origin `http://<tenant>.localhost:5173`); observer is created, passed to `evaluate()`, and closed in `finally` | `noname eval --browser-endpoint ws://…` runs tier 2 (verified: 72 pass / 0 fail / 0 skip) | S |
 | **E25** | No queue/worker | no eval queue; browser idle | **DONE 2026-11-07.** `{eval-runs}` queue; `POST /api/eval/runs` enqueues; worker drains with concurrency 1 and a 120 s lock, mints an org-scoped service token, runs the catalogue over HTTP and records one decision | A queued run completes and writes `platform.eval.run`; queue depth `completed` increments | M |
 | **E26** | No Evidence/metrics sinks | none | **DONE 2026-11-07.** `POST /api/eval/record` (machine-only) writes one `platform.eval.run` Evidence row with decision/run/checksVersion and records `noname_eval_runs_total`, `noname_eval_checks_total`, `noname_eval_unverified_total` | One decision row per gate run; eval counters visible at `/metrics` | M |
-| **E27** | No cost policy | none | Sampling + `specHash@releaseId@checksVersion` skip, enforced in the runner | Unchanged release re-run produces skips, reported as `unverified` unless the policy says otherwise | S |
+| **E27** | No cost policy | none | **DONE v1 2026-11-07.** Canonical run key from a route→hash map + `releaseId` + `platformVersion` + browser-fleet + `checksVersion`; Redis result store (7-day TTL, clean passes only); `--no-cache`; gate never reuses. **Not yet:** per-route recompute, sampling, reuse metrics, worker cache | Two identical runs reuse; a release/platform change invalidates; `--no-cache` bypasses; failure/unverified never stored | S |
 
 ## 6. Phases
 

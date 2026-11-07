@@ -1,9 +1,12 @@
 # E27 / D8 — Cost policy: change detection, reuse and sampling
 
-> **Status:** design (implementation not started) · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** **implemented v1** — whole-run reuse keyed by a route→hash map · **Date:** 2026-11-07 (America/Toronto)
 > **Question:** when may eval reuse a previous result, and how much may it sample?
-> **Decision (proposed):** content-addressed keys + tiered sampling; **the gate never reuses**; cache
-> **passes only**, **read-only checks only**, **per route**; `--no-cache` is explicit.
+> **Decision:** content-addressed keys + tiered sampling; **the gate never reuses**; cache **passes only**,
+> **read-only checks only**; `--no-cache` is explicit.
+> **v1 scope:** a run is reused only when **every** route hash, release, platform, browser-fleet and checks
+> version match. One route edit invalidates the whole run (route-aware key, coarse reuse). Per-route reuse —
+> recompute one route and reuse the others — is the next optimisation, not part of v1.
 > **Dependency:** D1 is implemented (tenant pointer + catalog projection), so a tenant has a real `releaseId`.
 > **Related:** [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md) D8 · [`EVAL-SERVICE-IMPLEMENTATION-PLAN.md`](./EVAL-SERVICE-IMPLEMENTATION-PLAN.md) E27 · [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md)
 
@@ -50,9 +53,9 @@ not the rendered DOM. Two equal specs must produce equal hashes; a timestamp mus
 | Run | Reuse? | Why |
 |---|---|---|
 | **Gate** (promotion) | **Never** — `--no-cache` is explicit | the claim is “this release, this tenant, verified now” |
-| **Nightly / agent sweep** | **Yes**, when the key is unchanged | the only way a sweep stays affordable |
+| **Nightly / agent sweep** | **Yes**, when the run key is unchanged | the only way a sweep stays affordable |
 | **Platform release** | **No** — `releaseId`/`platformVersion` changes every key | nothing is reusable after a renderer/server change |
-| **Tenant edit** | Only the changed route re-runs; other routes may be reused | route-level key |
+| **Tenant edit** | **v1: the whole run re-runs** (route-aware key, coarse reuse) | per-route reuse is the next optimisation |
 
 Additional rules, not negotiable:
 
@@ -114,6 +117,27 @@ Deterministic is mandatory: a failure must be reproducible. Rotation avoids perm
    - change `releaseId` (promote another release) → **nothing** is reused;
    - `gate --no-cache` → everything runs, cache untouched;
    - verify no failure/skip was stored.
+
+## 7. Verification (observed v1)
+
+| Check | Result |
+|---|---|
+| Types | eval, CLI, server — clean |
+| Tests | **122/122** eval, 19 files (23 cache/route-hash assertions included) |
+| Key — stability | equal inputs and route order → same key |
+| Key — invalidation | each of release, platform, browser fleet, checks version, and a single route hash changes the key |
+| Policy — pass only | `isCacheableRun` refuses a failure and an unverified run; `B5` is not cacheable |
+| Live — run 1 | clean pass, stored under `cc1839…` |
+| Live — run 2 (identical) | `reused: true`, same key, counts unchanged |
+| Live — release `r_2` | **new key** (`845641…`), recomputed, not reused |
+| Live — platform `v2` | **new key** (`8dd5a1…`), recomputed, not reused |
+| Live — `--no-cache` | no key, no read, no write; Redis still has **3** keys (the three computed runs) |
+| Store | Redis `eval:result:*`, 7-day TTL, clean passes only (server also rejects anything else) |
+| Identity | store calls use the `eval-worker` service headers; `machines:read` |
+
+**Not in v1:** per-route recompute (one route changing invalidates the whole run); sampling; reuse counters
+(`reused`/`computed` metrics); worker-side cache. The key already carries per-route hashes, so per-route reuse is
+an extension of the runner, not a redesign.
 
 ## 8. Risks and limits
 

@@ -411,12 +411,14 @@ reason D1 is first.
 `releaseId` part of the key is now available; the remaining work is the result store and the sampling policy.
 
 **Design note — cost policy and amendments.** [`EVAL-E27-COST.md`](./EVAL-E27-COST.md) specifies option A:
-content-addressed **route-level** keys including `releaseId`, `platformVersion`/server image and browser-fleet
-version; cache **passes only**; **read-only checks only** (`B5` excluded); the gate **always** runs with
-`--no-cache`; reused results carry provenance (`reused`, `key`, `computedAt`); sampling is deterministic and
-rotating. Implementation has not started.
+content-addressed keys including `releaseId`, `platformVersion`/server image and browser-fleet version; cache
+**passes only**; **read-only checks only** (`B5` excluded); the gate **always** runs with `--no-cache`; reused
+results carry provenance (`reused`, `cacheKey`); the store is Redis with a 7-day TTL. **Implemented v1
+2026-11-07**: whole-run reuse keyed by a route→hash map. **Not yet:** per-route recompute, sampling, reuse metrics,
+worker-side cache.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+**Decision:** ☑ **A — v1 implemented 2026-11-07.** Two identical runs reuse; a release or platform change
+invalidates; `--no-cache` bypasses. Per-route reuse remains the next optimisation.
 
 ---
 

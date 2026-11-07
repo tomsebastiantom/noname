@@ -700,8 +700,45 @@ validation), `eval/src/checks/actions.ts` (`M2.roles`), `eval/src/index.ts` (val
 - **No separate Evidence row** for the role result; it is part of the eval verdict. Gate Evidence remains one
   decision row per run.
 
+## 2026-11-07 — E27 v1: content-addressed reuse and no-reuse gate
+
+**Scope.** Stop re-running everything on every sweep: build a key from the inputs that can change the answer,
+store clean passes, and reuse only when every input matches. The gate never reuses.
+
+**Code.** `eval/src/cache.ts` (canonical JSON, per-route key, run key, pass-only policy),
+`eval/src/route-hashes.ts` (routing + layouts → route hashes), `eval/src/index.ts` (exports, checks-version),
+`server/domains/eval/results.ts` + `api.ts` (Redis store, machine-only GET/PUT), `cli/src/commands/eval.ts`
+(cache flow, `--release`, `--platform-version`, `--browser-fleet`, `--no-cache`), CLI flags, tests.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | eval, CLI, server | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **122/122**, 19 files (23 cache/route-hash assertions) |
+| Key stability | equal inputs, reversed route order | same key |
+| Key invalidation | release / platform / browser fleet / checks / one route hash | each changes the key |
+| Pass-only policy | `isCacheableRun` | refuses failures and unverified runs; `B5` not cacheable |
+| Store policy | `PUT /api/eval/results/:key` with a failure | **400** (server refuses independently of the CLI) |
+| Live — run 1 | `noname eval … --release r_cache_1 --platform-version v1 --browser-fleet chrome-140 --config …` | computed, key `0cc1839d…` |
+| Live — run 2 (identical) | same command | **`reused: true`**, same key, counts unchanged |
+| Live — release change | `--release r_cache_2` | **new key `84564191…`**, recomputed (not reused) |
+| Live — platform change | `--platform-version v2` | **new key `8dd5a143…`**, recomputed (not reused) |
+| Live — `--no-cache` | same release/platform | no key, no read, no write |
+| Redis | `scan eval:result:*` | exactly **3** keys — the three computed runs; `--no-cache` added none |
+
+**Limits recorded.**
+
+- **Coarse reuse.** The key is route-aware, but the cache stores a **whole run**: one route edit invalidates the
+  whole run. Per-route recompute is the next optimisation, not a v1 claim.
+- **No sampling yet.** Gate = all routes; sweeps currently run all routes and reuse only when nothing changed.
+- **No reuse metrics.** `reused` is in the JSON result; the `reused/computed` counters are not built.
+- **Worker not wired.** The CLI uses the cache; the async worker does not yet.
+- **E2E config.** Tier 2 was disabled via a local `.tools/eval-config-cache.json` so the live runs finish quickly
+  and produce a clean pass; the cache logic itself is independent of which checks run.
+
 ## Next steps
 
-1. **E27** — cost policy: `specHash@releaseId@checksVersion` reuse + sampling (D1 unblocked it).
+1. **E27 remaining** — per-route recompute, deterministic sampling, reuse/computed metrics, worker cache.
 2. **B7** — visual rubric (warn only, needs a vision model).
 3. **E20 checkout** — blocked on a provider sandbox.
