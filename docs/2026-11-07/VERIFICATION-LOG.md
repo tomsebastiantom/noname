@@ -591,15 +591,20 @@ remains `pass` because S1 is `warn` — the gate does not treat a local-network 
 
 `PAYMENT_SUCCEEDED` / `PAYMENT_FAILED` are **rejected on the public cart routes by design**
 (`packages/server/src/domains/machines/routes/instances.ts:121`: “Sensitive transitions require JWT / provider
-lane”). The only legitimate path to `paid` is the provider event pipeline (Stripe → Nango → integration
-webhook), and this environment has no provider sandbox connected. Therefore:
+lane”). The only legitimate path to `paid` is the provider event pipeline (configured provider → Nango →
+integration webhook), and this environment has no payment-provider integration connected. Therefore:
 
 - a browser click on Checkout can start the capability, but it cannot complete a payment locally;
 - forcing `paid` through the API would mean weakening a security boundary to make a test pass — rejected;
-- `B5` remains the **cart** behaviour check, and E20 stays partial until a provider sandbox exists.
+- `B5` remains the **cart** behaviour check, and E20 stays partial.
 
-**What would unblock it:** a Stripe test-mode account + Nango connection (or a dedicated test provider adapter),
-a reserved sandbox product, and cleanup keyed by `correlationId`.
+**Provider validation is not an eval concern.** Our half of checkout (cart transitions, amount/currency guard,
+event mapping, duplicate-callback suppression) belongs in contract tests with a fake provider; real delivery is a
+staging smoke with the tenant’s configured provider. See [`PENDING-DECISIONS` D5](./PENDING-DECISIONS.md).
+
+**What would complete the eval-side E20 work:** a reserved sandbox product and cleanup keyed by
+`correlationId`, so the cart flow can be exercised without leaving state behind. Checkout-to-`paid` itself stays
+outside the catalogue.
 
 ## 2026-11-07 — E4 target policy: drafts in dev only
 

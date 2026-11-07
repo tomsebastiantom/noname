@@ -17,7 +17,8 @@
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
-| **D5** | Checkout verification (`B5`) | Stripe sandbox / in-repo fake provider / contract test / drop | **Contract test now, sandbox in staging** | Medium — blocked externally |
+| **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
+| **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
 | **D6** | Visual rubric (`B7`) | vision model / visual regression service / drop | **Drop for now** | Low |
 | **D7** | Determinism and aggregation (E6) | N runs + median / retry-on-fail / none | **Retry-once + attempts recorded** | Medium |
 | **D8** | Cost policy and change detection (E27) | `specHash@release@checks` + sampling / TTL / always full | **Key + tiered sampling** | Medium |
@@ -175,34 +176,71 @@ decision is “M2 stays vocabulary-only”.
 
 ## D5 — How to verify checkout reaches `paid`
 
-**Question.** `B5` proves add-to-cart. Completing checkout to `paid` needs a payment provider. What do we build?
+**Question.** `B5` proves add-to-cart. Completing checkout to `paid` crosses into a **payment provider**. What do
+we verify, and where — given that the eval service verifies the tenant’s app, not third-party services?
 
 **Current state.** `PAYMENT_SUCCEEDED`/`PAYMENT_FAILED` are rejected on the public cart routes by design
 ([`instances.ts:121`](../../packages/server/src/domains/machines/routes/instances.ts#L121)); only the provider
-event pipeline may transition a cart to `paid`. No provider sandbox is connected locally.
+event pipeline may transition a cart to `paid`. No provider integration is configured locally. The commerce
+contribution registers exactly one adapter today; the interface is `CheckoutProviderAdapter`, so the platform is
+provider-neutral by design even though one provider is wired.
+
+**First, the boundary.** The eval service is a black-box verifier of the tenant’s storefront. It must **never**
+call a payment provider: that would test the provider’s sandbox, require external credentials, and make the gate
+flaky. The provider half is covered by **contract tests in CI** and, separately, by a **staging smoke test** with
+whatever provider the tenant configured.
 
 **Options.**
 
 | Option | How it works | Pros | Cons |
 |---|---|---|---|
-| **A. Stripe test mode + CLI forwarding** | Stripe test keys, `stripe listen --forward-to` the provider webhook, Nango test connection; eval drives a test card | Real end-to-end path; same code as production | External accounts, webhook signing, cleanup; only works where network/credentials exist |
-| **B. In-repo fake provider adapter** | A `test` provider implementing `CheckoutProviderAdapter`, enabled by env, emits a signed callback | Fully local and deterministic | Adds a test-only branch to a payment path — the exact place where test paths become production incidents |
-| **C. Contract test, no E2E** | Test the checkout capability + provider adapter + callback handler against a fake provider **in the test suite**, not in eval | No production surface; catches contract breaks | Does not prove the deployed path; `B5` stays cart-only |
-| **D. Drop checkout from eval** | Keep add-to-cart; document checkout as out of scope | Honest; zero cost | The most business-critical flow is unverified |
+| **A. Contract test with a fake provider** | CI test drives capability → adapter → event mapping → guard → `paid` against a fake provider; asserts transitions, amount/currency guard, duplicate-callback suppression, Evidence | Deterministic, no secrets, no external account; tests **our** code | Does not prove the deployed provider delivery |
+| **B. Staging smoke with the configured provider** | One run in staging using the tenant’s configured provider integration (the commerce contribution registers one adapter today — Stripe — behind the interface); real checkout, real webhook | Proves the real delivery path once | Needs an external account and credentials; not suitable for every release |
+| **C. Provider check inside eval** | Eval drives a real test checkout through the provider | “Real” end to end | Tests the provider’s sandbox, needs credentials, becomes flaky, and puts an external dependency in the release gate |
+| **D. Drop checkout coverage entirely** | Keep add-to-cart only; document checkout as untested | Honest, zero cost | The most business-critical flow stays uncovered |
 
-**Example (A).** `stripe listen --forward-to http://localhost:3000/api/integrations/provider-events` receives
-`checkout.session.completed`; the provider event maps to `PAYMENT_SUCCEEDED`; the cart reaches `paid`; the eval
-job’s `correlationId` is written to the order and the job cancels the order afterwards.
+**Example (A).** A fake provider returns `{ externalCheckoutId, redirectUrl }`; the test emits the provider’s
+`checkout.session.completed` through the same mapping and guard; the cart must reach `paid`, and a replayed
+callback must not transition twice. No network, no account.
 
-**OSS precedent.** Stripe’s test mode and CLI webhook forwarding are the standard way to run a real checkout
-locally ([Stripe CLI](https://docs.stripe.com/stripe-cli)); the event-driven transition is exactly the machine’s
-guard design.
+**OSS precedent.** Contract testing (Pact-style) is the standard way to verify a provider boundary without the
+provider; provider sandbox tooling (for example a CLI webhook forwarder) is a **staging** tool, not a unit of a
+release gate.
 
-**Recommendation: C now, A for staging/production E2E.** B should be avoided: a test-only payment adapter is a
-security-sensitive branch. C gives contract coverage today without weakening the boundary; A is the honest
-completion when a sandbox exists.
+**Recommendation: A now; B in staging when a provider account exists; C never.** The checkout code we own is
+small and testable; the provider is someone else’s system.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+
+---
+
+## D13 — Who chooses the checkout provider?
+
+**Question.** The storefront currently sends `integrationId: "stripe"` as a literal
+([`cart.ts:163-166`](../../packages/extensions/src/commerce/cart.ts#L163-L166)). Is that the right place to name a
+provider?
+
+**Current state.** The capability resolves `checkoutProviders[integrationId]`; the registry is built by the commerce
+contribution with one entry. The client hardcodes the id; the provider adapter is the only provider-specific code.
+
+**Options.**
+
+| Option | How it works | Pros | Cons |
+|---|---|---|---|
+| **A. Keep the literal** | Client always sends `"stripe"` | Smallest; works today | Locks the storefront to one provider; a second provider needs a client change |
+| **B. Tenant setting** | `tenant_settings.checkoutProvider` (default `"stripe"`); client reads it and sends the id | Multiple providers per tenant possible; no client deploy to switch | Another setting to validate and display in admin |
+| **C. Server resolves the provider** | Client omits the id; the capability asks the tenant’s integration config which checkout provider is active and picks the adapter | Client stays provider-agnostic; one source of truth; simplest UI contract | Requires an integration lookup in the capability path; one active provider per tenant |
+
+**Example (C).** The browser posts `{ instanceId }`; the capability reads the tenant’s configured checkout
+integration, resolves `stripe` (or another), and returns a redirect. The storefront never names a provider.
+
+**OSS precedent.** Payment abstraction layers (and Shopify’s multi-provider payments) keep the provider behind a
+server-side selection, because providers differ in capabilities and the client should not encode them.
+
+**Recommendation: C.** It matches the existing port (`CheckoutProviderAdapter`) and removes the last
+provider-specific string from the storefront. Choose B only if one tenant must run two providers at once.
+
+**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
 
 ---
 
@@ -408,8 +446,9 @@ history belongs in metrics.
 2. **D2** (definition pinning) — the live correctness hazard.
 3. **D4** (roles) + **D9** (unverified policy) — finish the gate semantics.
 4. **D7/D8** (determinism, cost) — make the gate truthful and affordable.
-5. **D10** (worker split) — operational isolation.
-6. **D3/D5/D6/D11/D12** — when their preconditions are real (fleet, sandbox, staging).
+5. **D13** (provider resolution) — remove the last provider literal from the storefront.
+6. **D10** (worker split) — operational isolation.
+7. **D3/D5/D6/D11/D12** — when their preconditions are real (fleet, provider account, staging).
 
-Nothing above requires choosing all twelve today. D1 and D2 are the two that change what the system *is*; the
+Nothing above requires choosing all thirteen today. D1 and D2 are the two that change what the system *is*; the
 rest are policy and operations.
