@@ -39,6 +39,7 @@ import {
 } from "./domains/integrations";
 import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
+import { createReleaseDomain } from "./domains/release";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
@@ -462,6 +463,10 @@ export async function createApp(): Promise<Hono> {
     evidence: evidence.service,
   });
   app.route("/api/eval", evalDomain.routes);
+
+  const releaseDomain = createReleaseDomain({ db });
+  app.route("/api/releases", releaseDomain.routes);
+
   app.route("/api/auth", auth.routes);
   app.route("/api/integrations", integrations.routes);
   app.route("/api/notifications", notifications.routes);

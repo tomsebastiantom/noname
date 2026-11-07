@@ -6,6 +6,7 @@ export default defineConfig({
     "./src/domains/evidence/schema.ts",
     "./src/domains/collab/schema.ts",
     "./src/domains/machines/schema.ts",
+    "./src/domains/release/schema.ts",
     "./src/domains/context/schema.ts",
     "./src/domains/flags/schema.ts",
     "./src/domains/agent/schema.ts",
