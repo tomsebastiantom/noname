@@ -57,7 +57,34 @@ existing check is unchanged.
 (`E12`), the browser checks still use a fixed viewport (`E17`), tier 2 is not wired to the fleet (`E24`),
 and the catalogue is still 5 ids of the RFC's ~16 (`E7–E11`, `E13–E22`). Those remain as listed in the plan.
 
+## 2026-11-07 — Block 2: manifest observer (E12)
+
+**Scope.** Move filesystem reads and stored-definition reads out of `M4`/`M5` into a manifest observer. The
+runner builds the observation; checks compare two plain values. No check imports `node:fs` any more, and a
+unit test can run them with an exploding HTTP client.
+
+**Code.** `packages/eval/src/observers/manifest.ts` (new), `checks/manifest.ts`, `types.ts`
+(`ManifestObservation`), `index.ts` (runner builds the observation when a selected check needs it),
+`registry.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | no diagnostics |
+| Unit tests | `pnpm vitest run packages/eval/src/registry.test.ts` | **9/9 passed** |
+| Purity | test `runs M4/M5 from an observation without touching the filesystem or the API` | passes with `machinesDir = Z:\does-not-exist` and a client that throws on any call |
+| Falsification | test `fails M4 on transition drift inside the observation` | `passed: false`, `M4` fail |
+| Credential silence | test `skips — never passes — when the caller has no credential` | both checks `skip` |
+| Integration | `pnpm exec tsx packages/cli/src/index.ts eval --tenant yogastore --json` | `passed: true`, 3 pass / 0 fail / 4 skip (M4/M5 skip: no service token; B1/B2 skip: no endpoint) |
+| Browser smoke | `.tools/verify-storefront.mjs` | storefront 200, `/login` 200, 0 console errors (unchanged) |
+
+**Still open.** The checks run pure, but the *integration* still skips them because no service credential
+exists (`E5`). `M4`/`M5` therefore pass in unit tests and skip against the live stack — which is the correct
+behaviour until the service actor lands, and is recorded here rather than hidden.
+
 ## Next block (planned)
 
-`E12` — move manifests and stored definitions into an observer, so `M4`/`M5` become pure functions over an
-observation. Verification: the same two checks pass with plain objects, no filesystem and no network.
+`E5` — machine actor + `MACHINES_READ` split, so the CLI can run `M4`/`M5` against the live API without a
+human JWT. Verification: the same CLI command reports `M4`/`M5` as `pass`, and the same token is rejected on
+`POST /api/machines/definitions`.

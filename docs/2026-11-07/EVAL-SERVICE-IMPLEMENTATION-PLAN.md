@@ -6,8 +6,8 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Block 1 (E1 — typed check registry) is **done and verified** on 2026-11-07.
-> See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md) for the commands and evidence. Next block: E12.
+> **Implementation status:** Blocks 1–2 are **done and verified** on 2026-11-07 (typed registry; manifest
+> observer). See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md) for commands and evidence. Next block: E5.
 
 ---
 
@@ -201,7 +201,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | # | Gap | Current evidence | Design | Acceptance | Size |
 |---|---|---|---|---|---|
 | **E1** | `Check` type mismatch | `Check` is `(ctx) => …`; manifest exports `{ id, run }`; browser exports `{ id, level, run }`; `evaluate` mixes them ([`index.ts:24`](../../packages/eval/src/index.ts#L24)) | **DONE 2026-11-07.** `Check = { meta, run }`; registry array; compile-time + test uniqueness | `pnpm typecheck` clean; duplicate id fails a test | S |
-| **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
+| **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O. **Manifest path done 2026-11-07**; HTTP/browser I/O still lives in checks. | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
 | **E3** | No assertion config | levels are hardcoded per result | `EvalConfig` (zod), presets, `assertMatrix`, ordered resolution | A route pattern with `B2.overflow: off` skips only that route | M |
 | **E4** | No modes/sinks | `evaluate()` returns a value only | `Mode` policy + sink ports; CLI prints, gate writes Evidence/metrics | Same check run in `dev` writes nothing to Evidence; `gate` writes one decision | M |
 | **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | Add `machine` actor + `verifyServiceToken`; split `MACHINES_READ` from `MACHINES_DEFINE`; service token scoped to one org, `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
@@ -216,7 +216,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E9** | `M3.reachability` missing | `pages.getMainTree` / `listRoutingPages` exist ([`pages.ts`](../../packages/server/src/domains/documents/routes/pages.ts)); no check | Spec observer reads `page_tree` + routing pages + published status; check verifies every entry → existing page and every published page → reachable entry | A dangling `page_tree` entry fails `M3` with both ids | S |
 | **E10** | `M5.vocabulary` is only “is it registered” | `vocabulary` checks API presence, not block/prop names ([`manifest.ts:35-86`](../../packages/eval/src/checks/manifest.ts#L35-L86)) | Validate spec element types and prop keys against the **catalog schema**; requires E11 | An unknown block type or prop fails `M5` with the element key | M |
 | **E11** | Catalog schema is duplicated and React-coupled | `client/src/component-schemas.ts`, `client/src/core/catalog-schemas.ts`, `extensions/src/commerce/catalog-schemas.ts` | Extract a node-safe `@noname/catalog` (zod only) consumed by client, bundler validation and eval; client re-exports for compatibility | Client build unchanged; eval imports the same schema; one definition per component | L |
-| **E12** | `M4` reads the filesystem inside the check | [`manifest.ts:26-32`](../../packages/eval/src/checks/manifest.ts#L26-L32) | `ManifestObserver` produces `{ files, stored }`; `M4` compares two values | Check unit test with two objects, no fs | S |
+| **E12** | `M4` reads the filesystem inside the check | [`manifest.ts:26-32`](../../packages/eval/src/checks/manifest.ts#L26-L32) | **DONE 2026-11-07.** `ManifestObserver` produces `{ files, stored, canReadDefinitions }`; `M4` compares two values | Check unit test with two objects, no fs | S |
 
 ### 5.3 Catalogue — tier 1
 
@@ -252,7 +252,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 
 Each phase is shippable and ends with a falsification. No phase starts before the previous phase’s falsification is observed.
 
-### P0 — Foundations (E1 ✅, E2, E12, E6 partially)
+### P0 — Foundations (E1 ✅, E12 ✅, E2 manifest path ✅ / HTTP+browser pending, E6 partially)
 
 - Rebuild `types.ts` around `CheckMeta`/`Check`; add `registry.ts`; convert existing checks; make checks pure (manifest observer).
 - Fix the browser observer’s nullable-context typing; one context per visit; close in `finally`.
@@ -374,7 +374,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | Block | Scope | Status | Evidence |
 |---|---|---|---|
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
-| **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | Not started | — |
+| **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
 | **B3** | E7–E11, E13–E15 — tier 0/1 catalogue | Not started | — |
 | **B4** | E16–E19, E21 — renderer markers + tier 2 | Not started | — |
 | **B5** | E20, E22 — behaviour + `S1` | Not started | — |
