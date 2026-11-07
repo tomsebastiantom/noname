@@ -1,6 +1,8 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-07/RELEASE-D14-DESIGN.md](2026-11-07/RELEASE-D14-DESIGN.md)** — **Implemented.** Release record + artifact binding (D14): one release id binds client bundle, server image, worker, migrations and config; immutable, digest-bound.
+- **[2026-11-07/RELEASE-VERIFICATION-LOG.md](2026-11-07/RELEASE-VERIFICATION-LOG.md)** — Evidence for the release mechanism blocks (D14 done; D16/D15/D1/D2 next).
 - **[2026-11-07/RELEASE-UNIT-FINDING.md](2026-11-07/RELEASE-UNIT-FINDING.md)** — **Finding.** A release here is client bundle + server image + migrations + config; the four RFCs each assume another one owns the server half. Records the gap and the three-layer model (preview → blue/green → per-tenant UI pointer).
 - **[2026-11-07/PENDING-DECISIONS.md](2026-11-07/PENDING-DECISIONS.md)** — **Decision document.** Sixteen pending choices with options, examples, OSS precedent and a recommendation: release unit and server rollout, tenant→release pointer, definition pinning, channels, tenant roles, checkout verification, provider selection, determinism, cost, gate policy, worker placement, NetworkPolicy, retention.
 - **[2026-11-07/RFC-RELEASE-GATE.md](2026-11-07/RFC-RELEASE-GATE.md)** — **Proposed — normative for release gating.** When a release may move: release unit and tenant pointer, change-impact map, candidate-vs-control diff, gate verdict (`pass`/`block`/`unverified`), promotion ladder, rollback, Evidence and metrics. Supersedes the gate sections of the eval and progressive-delivery RFCs.
