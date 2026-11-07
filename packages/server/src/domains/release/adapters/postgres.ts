@@ -1,11 +1,19 @@
 import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { StorageError } from "../../../shared/domain-error";
-import type { ReleaseArtifact, ReleaseDTO, ReleaseState, ReleaseStore } from "../ports";
-import { releaseArtifacts, releases } from "../schema";
+import type {
+  EnvironmentStore,
+  ReleaseArtifact,
+  ReleaseDTO,
+  ReleaseEnvironmentDTO,
+  ReleaseState,
+  ReleaseStore,
+} from "../ports";
+import { releaseArtifacts, releaseEnvironments, releases } from "../schema";
 
 type ReleaseRow = typeof releases.$inferSelect;
 type ArtifactRow = typeof releaseArtifacts.$inferSelect;
+type EnvironmentRow = typeof releaseEnvironments.$inferSelect;
 
 function mapArtifact(row: ArtifactRow): ReleaseArtifact {
   return {
@@ -29,6 +37,18 @@ function mapRelease(row: ReleaseRow, artifacts: ArtifactRow[]): ReleaseDTO {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     artifacts: artifacts.map(mapArtifact),
+  };
+}
+
+function mapEnvironment(row: EnvironmentRow): ReleaseEnvironmentDTO {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    name: row.name,
+    activeReleaseId: row.activeReleaseId,
+    previousReleaseId: row.previousReleaseId,
+    updatedBy: row.updatedBy,
+    updatedAt: row.updated_at,
   };
 }
 
@@ -111,6 +131,45 @@ export function createPostgresReleaseStore(db: Database): ReleaseStore {
       const updated = await findById(orgId, id);
       if (!updated) throw new StorageError(`Failed to reload release ${id}`);
       return updated;
+    },
+  };
+}
+
+export function createPostgresEnvironmentStore(db: Database): EnvironmentStore {
+  return {
+    async get(orgId, name) {
+      const [row] = await db
+        .select()
+        .from(releaseEnvironments)
+        .where(and(eq(releaseEnvironments.orgId, orgId), eq(releaseEnvironments.name, name)));
+      return row ? mapEnvironment(row) : null;
+    },
+
+    async list(orgId) {
+      const rows = await db
+        .select()
+        .from(releaseEnvironments)
+        .where(eq(releaseEnvironments.orgId, orgId))
+        .orderBy(releaseEnvironments.name);
+      return rows.map(mapEnvironment);
+    },
+
+    async setActive(orgId, name, activeReleaseId, previousReleaseId, updatedBy) {
+      const [row] = await db
+        .insert(releaseEnvironments)
+        .values({ orgId, name, activeReleaseId, previousReleaseId, updatedBy })
+        .onConflictDoUpdate({
+          target: [releaseEnvironments.orgId, releaseEnvironments.name],
+          set: {
+            activeReleaseId,
+            previousReleaseId,
+            updatedBy,
+            updated_at: new Date(),
+          },
+        })
+        .returning();
+      if (!row) throw new StorageError(`Failed to set active release for ${name}`);
+      return mapEnvironment(row);
     },
   };
 }

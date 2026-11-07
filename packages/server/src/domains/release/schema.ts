@@ -52,3 +52,25 @@ export const releaseArtifacts = pgTable(
     releaseKind: uniqueIndex("release_artifacts_release_kind").on(t.releaseId, t.kind),
   }),
 );
+
+/**
+ * D15 — which release each environment serves.
+ *
+ * `activeReleaseId` is the blue/green selector; `previousReleaseId` is what rollback returns to. The row is the
+ * only state a deployment needs to read; the release domain never touches pods or ingress.
+ */
+export const releaseEnvironments = pgTable(
+  "release_environments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    name: text("name").notNull(),
+    activeReleaseId: uuid("active_release_id").references(() => releases.id),
+    previousReleaseId: uuid("previous_release_id").references(() => releases.id),
+    updatedBy: text("updated_by").notNull(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    orgName: uniqueIndex("release_environments_org_name").on(t.orgId, t.name),
+  }),
+);

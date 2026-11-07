@@ -50,3 +50,37 @@ export interface ReleaseService {
   list(orgId: string): Promise<ReleaseDTO[]>;
   markReady(orgId: string, id: string): Promise<ReleaseDTO>;
 }
+
+export type ReleaseEnvironmentDTO = {
+  id: string;
+  orgId: string;
+  name: string;
+  activeReleaseId: string | null;
+  previousReleaseId: string | null;
+  updatedBy: string;
+  updatedAt: Date;
+};
+
+export interface EnvironmentStore {
+  get(orgId: string, name: string): Promise<ReleaseEnvironmentDTO | null>;
+  list(orgId: string): Promise<ReleaseEnvironmentDTO[]>;
+  setActive(
+    orgId: string,
+    name: string,
+    activeReleaseId: string,
+    previousReleaseId: string | null,
+    updatedBy: string,
+  ): Promise<ReleaseEnvironmentDTO>;
+}
+
+export interface EnvironmentService {
+  preview(orgId: string, releaseId: string, actor: string): Promise<ReleaseEnvironmentDTO>;
+  activate(
+    orgId: string,
+    releaseId: string,
+    environment: string,
+    actor: string,
+  ): Promise<ReleaseEnvironmentDTO>;
+  rollback(orgId: string, environment: string, actor: string): Promise<ReleaseEnvironmentDTO>;
+  list(orgId: string): Promise<ReleaseEnvironmentDTO[]>;
+}

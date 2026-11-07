@@ -464,7 +464,7 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/eval", evalDomain.routes);
 
-  const releaseDomain = createReleaseDomain({ db });
+  const releaseDomain = createReleaseDomain({ db, evidence: evidence.service });
   app.route("/api/releases", releaseDomain.routes);
 
   app.route("/api/auth", auth.routes);
