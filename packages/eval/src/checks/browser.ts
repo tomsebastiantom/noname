@@ -163,6 +163,117 @@ const structure: Check = {
   },
 };
 
+const OVERFLOW_WIDTHS = [375, 768, 1440];
+
+/**
+ * B2.overflow — no horizontal overflow at the widths customers actually use.
+ *
+ * `scrollWidth > clientWidth` means a block pushes the page sideways: on a phone that is a broken layout, and
+ * it is invisible to HTTP checks. The widths are fixed on purpose so “verified” always means the same thing.
+ */
+const overflowCheck: Check = {
+  meta: {
+    id: "B2.overflow",
+    tier: 2,
+    defaultLevel: "error",
+    needs: ["browser"],
+    emits: ["B2.overflow"],
+    description: "the page has no horizontal overflow at 375, 768 and 1440 pixels",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [skip("B2.overflow", "error", "no browser endpoint supplied — tier 2 not evaluated")];
+    }
+
+    const results: CheckResult[] = [];
+
+    for (const width of OVERFLOW_WIDTHS) {
+      const visit = await ctx.browser.visit("/", { width });
+      if (!visit.overflow) {
+        results.push({
+          id: "B2.overflow",
+          status: "skip",
+          level: "error",
+          subject: `/${width}`,
+          detail: `${width}px: overflow could not be measured — not a pass`,
+        });
+        continue;
+      }
+
+      const excess = visit.overflow.scrollWidth - visit.overflow.clientWidth;
+      results.push(
+        excess > 1
+          ? {
+              id: "B2.overflow",
+              status: "fail",
+              level: "error",
+              subject: `/${width}`,
+              detail: `horizontal overflow ${excess}px (scroll ${visit.overflow.scrollWidth}, client ${visit.overflow.clientWidth})`,
+            }
+          : {
+              id: "B2.overflow",
+              status: "pass",
+              level: "error",
+              subject: `/${width}`,
+              detail: `no overflow (scroll ${visit.overflow.scrollWidth} <= client ${visit.overflow.clientWidth})`,
+            },
+      );
+    }
+
+    return results;
+  },
+};
+
+/**
+ * B3.a11y — accessible names for the elements the RFC names: images, form fields, buttons and links.
+ *
+ * axe-core runs the rule subset; a violation is a failure. If the audit could not run, the check skips —
+ * “we could not look” is never “we looked and it was fine”.
+ */
+const a11y: Check = {
+  meta: {
+    id: "B3.a11y",
+    tier: 2,
+    defaultLevel: "error",
+    needs: ["browser"],
+    emits: ["B3.a11y"],
+    description: "images, form fields, buttons and links have accessible names",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [skip("B3.a11y", "error", "no browser endpoint supplied — tier 2 not evaluated")];
+    }
+
+    const visit = await ctx.browser.visit("/", { a11y: true });
+    if (!visit.a11y) {
+      return [skip("B3.a11y", "error", "accessibility results unavailable — not a pass")];
+    }
+
+    return visit.a11y.length === 0
+      ? [
+          {
+            id: "B3.a11y",
+            status: "pass",
+            level: "error",
+            subject: "/",
+            detail: "no violations in the checked rule set",
+          },
+        ]
+      : [
+          {
+            id: "B3.a11y",
+            status: "fail",
+            level: "error",
+            subject: "/",
+            detail: visit.a11y
+              .slice(0, 3)
+              .map((violation) => `${violation.id} (${violation.nodes} node(s))`)
+              .join("; "),
+          },
+        ];
+  },
+};
+
 const consoleClean: Check = {
   meta: {
     id: "B2.console",
@@ -200,4 +311,4 @@ const consoleClean: Check = {
   },
 };
 
-export const browserChecks: Check[] = [render, structure, consoleClean];
+export const browserChecks: Check[] = [render, structure, overflowCheck, a11y, consoleClean];

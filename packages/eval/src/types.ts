@@ -123,12 +123,18 @@ export type PageVisit = {
   url: string;
   status: number;
   title: string;
+  /** Viewport width used for this visit. */
+  width: number;
+  /** Document scroll vs client width — horizontal overflow at this viewport. */
+  overflow?: { scrollWidth: number; clientWidth: number };
   /** Length of the rendered body text — a blank SPA shell is a few characters, a rendered page is hundreds. */
   textLength: number;
   /** First 300 characters of the rendered text, for the check's human sentence. */
   sample: string;
   /** Count of rendered blocks by `data-block-type` (the renderer contract B1.structure relies on). */
   nodesByType: Record<string, number>;
+  /** axe-core violations for the RFC's rule subset, when requested. */
+  a11y?: Array<{ id: string; impact: string; nodes: number }>;
   /** Console errors raised during the visit. */
   consoleErrors: string[];
 };
@@ -140,6 +146,9 @@ export type PageVisit = {
  * to one; a fake implementation in tests needs no browser at all. See `observers/browser.ts`.
  */
 export type BrowserObserver = {
-  visit(path: string, options?: { timeoutMs?: number }): Promise<PageVisit>;
+  visit(
+    path: string,
+    options?: { timeoutMs?: number; width?: number; a11y?: boolean },
+  ): Promise<PageVisit>;
   close(): Promise<void>;
 };

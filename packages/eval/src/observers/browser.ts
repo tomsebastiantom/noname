@@ -1,3 +1,4 @@
+import axe from "axe-core";
 import { type Browser, type BrowserContext, chromium } from "playwright-core";
 import type { BrowserObserver, PageVisit } from "../types";
 
@@ -35,6 +36,8 @@ export function createBrowserObserver(options: {
     async visit(path, visitOptions) {
       const pageContext = await ensureContext();
       const page = await pageContext.newPage();
+      const width = visitOptions?.width ?? 1280;
+      await page.setViewportSize({ width, height: 800 });
       const consoleErrors: string[] = [];
       page.on("console", (message) => {
         if (message.type() === "error") consoleErrors.push(message.text().slice(0, 200));
@@ -45,6 +48,8 @@ export function createBrowserObserver(options: {
       let title = "";
       let bodyText = "";
       let nodesByType: Record<string, number> = {};
+      let overflow: { scrollWidth: number; clientWidth: number } | undefined;
+      let a11y: PageVisit["a11y"];
 
       try {
         const response = await page.goto(url, {
@@ -74,6 +79,48 @@ export function createBrowserObserver(options: {
             return counts;
           })
           .catch(() => ({}));
+        overflow = await page
+          .evaluate(() => ({
+            scrollWidth: document.documentElement.scrollWidth,
+            clientWidth: document.documentElement.clientWidth,
+          }))
+          .catch(() => undefined);
+
+        if (visitOptions?.a11y) {
+          await page.addScriptTag({ content: axe.source }).catch(() => {});
+          a11y = await page
+            .evaluate(async () => {
+              const runner = (
+                window as unknown as {
+                  axe?: {
+                    run: (
+                      context: Document,
+                      options: unknown,
+                    ) => Promise<{
+                      violations: Array<{
+                        id: string;
+                        impact?: string | null;
+                        nodes: unknown[];
+                      }>;
+                    }>;
+                  };
+                }
+              ).axe;
+              if (!runner) return undefined;
+              const result = await runner.run(document, {
+                runOnly: {
+                  type: "rule",
+                  values: ["image-alt", "label", "button-name", "link-name"],
+                },
+              });
+              return result.violations.map((violation) => ({
+                id: violation.id,
+                impact: violation.impact ?? "unknown",
+                nodes: violation.nodes.length,
+              }));
+            })
+            .catch(() => undefined);
+        }
       } catch (cause) {
         bodyText = `navigation failed: ${cause instanceof Error ? cause.message : String(cause)}`;
       } finally {
@@ -84,9 +131,12 @@ export function createBrowserObserver(options: {
         url,
         status,
         title,
+        width,
+        overflow,
         textLength: bodyText.length,
         sample: bodyText.slice(0, 300),
         nodesByType,
+        a11y,
         consoleErrors,
       };
       return visit;

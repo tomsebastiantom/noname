@@ -23,6 +23,7 @@ function browserWith(nodesByType: Record<string, number>): BrowserObserver {
         url: "http://yogastore.test/",
         status: 200,
         title: "Noname",
+        width: 1280,
         textLength: 200,
         sample: "rendered",
         nodesByType,
