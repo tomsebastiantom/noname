@@ -1,6 +1,6 @@
 import axe from "axe-core";
 import { type Browser, type BrowserContext, chromium } from "playwright-core";
-import type { BrowserObserver, PageVisit } from "../types";
+import type { BrowserObserver, EgressProbe, PageVisit } from "../types";
 
 /**
  * The browser observer — tier 2's only I/O surface.
@@ -148,6 +148,40 @@ export function createBrowserObserver(options: {
       await browser?.close().catch(() => {});
       context = null;
       browser = null;
+    },
+
+    /**
+     * Try to reach internal targets from a blank page. `no-cors` makes the request opaque but still tells us
+     * whether the network path exists — the SSRF question S1 asks. Non-HTTP targets (Redis) cannot be probed
+     * with fetch; the check documents that limit rather than pretending to cover it.
+     */
+    async probeEgress(targets) {
+      const pageContext = await ensureContext();
+      const page = await pageContext.newPage();
+      try {
+        return (await page.evaluate(async (urls: string[]) => {
+          const results: Array<{ target: string; reachable: boolean }> = [];
+          for (const target of urls) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2_000);
+            try {
+              await fetch(target, {
+                mode: "no-cors",
+                signal: controller.signal,
+                cache: "no-store",
+              });
+              results.push({ target, reachable: true });
+            } catch {
+              results.push({ target, reachable: false });
+            } finally {
+              clearTimeout(timer);
+            }
+          }
+          return results;
+        }, targets)) as EgressProbe[];
+      } finally {
+        await page.close().catch(() => {});
+      }
     },
   };
 }

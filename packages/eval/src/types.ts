@@ -147,10 +147,18 @@ export type PageVisit = {
  * Checks never launch Chromium. Production provides browsers (the Kubernetes fleet), so the observer connects
  * to one; a fake implementation in tests needs no browser at all. See `observers/browser.ts`.
  */
+export type EgressProbe = {
+  target: string;
+  /** True when the page could reach the target at all (an opaque no-cors response counts). */
+  reachable: boolean;
+};
+
 export type BrowserObserver = {
   visit(
     path: string,
     options?: { timeoutMs?: number; width?: number; a11y?: boolean },
   ): Promise<PageVisit>;
+  /** Attempt internal targets from inside the browser context; absent observers cannot run S1. */
+  probeEgress?(targets: string[]): Promise<EgressProbe[]>;
   close(): Promise<void>;
 };

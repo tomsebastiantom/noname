@@ -1,4 +1,4 @@
-import type { Check, CheckResult } from "../types";
+import type { Check, CheckResult, EgressProbe } from "../types";
 
 /**
  * Tier 2 — browser checks. These are the reason a browser fleet exists, and the reason tier 1 is not enough.
@@ -365,6 +365,74 @@ const content: Check = {
   },
 };
 
+const EGRESS_TARGETS = ["http://127.0.0.1:3000/health", "http://169.254.169.254/latest/meta-data/"];
+
+/**
+ * S1.no_internal_egress — the browser must not be able to reach the platform’s own network.
+ *
+ * This is the security boundary expressed as a check rather than a claim: a page that can fetch the API or the
+ * metadata address is an SSRF path. It is `warn` by default because local development browsers run on the host
+ * network — a local failure is the expected, honest result until egress policy is enforced (staging/prod).
+ *
+ * Limit recorded on purpose: `fetch` can probe HTTP(S) only; a raw Redis port cannot be tested this way.
+ */
+const egress: Check = {
+  meta: {
+    id: "S1.no_internal_egress",
+    tier: 2,
+    defaultLevel: "warn",
+    needs: ["browser"],
+    emits: ["S1.no_internal_egress"],
+    description: "the eval browser cannot reach internal platform endpoints",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [
+        skip("S1.no_internal_egress", "warn", "no browser endpoint supplied — egress not probed"),
+      ];
+    }
+    if (!ctx.browser.probeEgress) {
+      return [skip("S1.no_internal_egress", "warn", "observer cannot probe egress — not a pass")];
+    }
+
+    let probes: EgressProbe[];
+    try {
+      probes = await ctx.browser.probeEgress(EGRESS_TARGETS);
+    } catch (cause) {
+      return [
+        skip(
+          "S1.no_internal_egress",
+          "warn",
+          `egress probe failed (${cause instanceof Error ? cause.message : String(cause)}) — not a pass`,
+        ),
+      ];
+    }
+
+    const reachable = probes.filter((probe) => probe.reachable);
+    return reachable.length > 0
+      ? [
+          {
+            id: "S1.no_internal_egress",
+            status: "fail",
+            level: "warn",
+            subject: "/",
+            detail: `internal endpoint(s) reachable from the browser: ${reachable
+              .map((probe) => probe.target)
+              .join(", ")}`,
+          },
+        ]
+      : [
+          {
+            id: "S1.no_internal_egress",
+            status: "pass",
+            level: "warn",
+            subject: "/",
+            detail: `${probes.length} internal target(s) unreachable from the browser`,
+          },
+        ];
+  },
+};
+
 const consoleClean: Check = {
   meta: {
     id: "B2.console",
@@ -408,5 +476,6 @@ export const browserChecks: Check[] = [
   overflowCheck,
   a11y,
   content,
+  egress,
   consoleClean,
 ];
