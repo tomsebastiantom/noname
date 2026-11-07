@@ -53,20 +53,27 @@ The unit of progressive delivery is the **tenant**, not the request. A tenant is
 
 | Concept | Definition | Where implemented |
 |---|---|---|
-| **Release id** | Immutable identifier for one build (artifact hash + checks version) | PD RFC §7 (V4) |
-| **Artifact** | Client bundle and server image, immutable, retained | PD RFC §7 |
-| **Tenant pointer** | `release_id` per tenant, read at request/edge time | PD RFC §7 — **precondition** for this RFC |
-| **Release record** | `{ id, platformVersion, artifactHash, checksVersion, createdAt, state }` | PD RFC §8 |
+| **Release id** | Immutable identifier for one build (artifact hashes + checks version) | PD RFC §7 (V4) |
+| **Release artifact set** | Client bundle **and** server image, worker image, migration set, config — immutable, retained | PD RFC §7 + deployment topology |
+| **Client pointer** | `release_id` per tenant, read at request/edge time; selects the **client bundle** only | PD RFC §7 — **precondition** for this RFC |
+| **Server selector** | Which server stack serves the environment (blue/green); selects the **server image** for everyone | D15 (pending) |
+| **Release record** | `{ id, platformVersion, artifactHashes, checksVersion, createdAt, state }` | PD RFC §8 |
 
-The three switches, and why only one is missing:
+The three switches, and how they actually differ:
 
 | Switch | Controls | Can undo | Owner |
 |---|---|---|---|
 | Feature flag | behaviour inside one build | a feature | existing flags |
-| **Tenant → release pointer** | which build a tenant loads | a bad build | PD RFC §7 |
-| Deployment | API/worker code for everyone | server code | deployment topology |
+| **Tenant → release pointer** | which **client bundle** a tenant loads | a bad UI build | PD RFC §7 |
+| **Environment selector** | which **server stack** serves everyone | a bad server release | deployment topology / D15 |
+| Deployment | rolling out a stack | — | deployment topology |
 
 A flag cannot rescue code that fails before the flag is read (bad import, broken CSS, crashing renderer). That is why the pointer is a gate precondition, not a nice-to-have.
+
+**A tenant pointer does not move the server.** Tenants share one API database; per-tenant server versions are a
+different architecture (D15 option C) and are out of scope unless a hard requirement appears. A release that
+changes the server is promoted by the **selector**; a release that changes the UI is promoted by the **pointer**.
+The release id binds both artifacts, so a verdict always names the whole release even when only one switch moves.
 
 **Pointer requirements** (owned by PD, relied on here): atomic move; audited (who moved which tenant, when, why); reversible in one operation; readable by the edge per tenant; no rebuild required to move.
 
@@ -170,20 +177,44 @@ Rules:
 
 ## 6. Promotion ladder
 
+Two ladders, because there are two switches. A release needs the server ladder if its artifact set contains a
+server change; it needs the client ladder if it contains a bundle change. Both may be needed.
+
+### 6.1 Server ladder — the environment selector
+
+| Stage | What moves | Dwell | Gate input | Rollback |
+|---|---|---|---|---|
+| **Preview** | candidate stack, no tenants | one run | checks + diff + data/env checks | discard |
+| **Switch** | selector → candidate stack | observe 1–24 h | checks + metrics | selector back |
+| **Stabilise** | — | 24 h | metrics | selector back |
+
+The server is **not** canaried per tenant: one database, one selector. Behaviour changes inside the new server are
+rolled out with flags, one tenant at a time.
+
+### 6.2 Client ladder — the tenant pointer
+
 | Stage | Tenants | Dwell | Gate input | Rollback |
 |---|---|---|---|---|
-| **Preview** | 0 (snapshot) | one run | checks + diff | discard candidate |
 | **Internal** | 1 (ours) | 24 h | checks + diff + metrics | pointer |
 | **Canary** | 5 | 24 h | checks + sampled diff + metrics | pointer |
 | **Wave 1** | 25% | 24 h | metrics + sampled checks | pointer |
 | **Wave 2** | 50% | 24 h | metrics | pointer |
 | **Global** | remainder | — | metrics | pointer |
+| **Preview** | 0 (snapshot) | one run | checks + diff | discard candidate |
 
-- Promotion is an **audited action** by a named role, recorded as Evidence. An agent may propose; it may not promote (same boundary as definition migration).
-- **Auto-halt** on `block`; auto-rollback is off by default in phase 1 — a human decides, and the decision is recorded.
-- Dwell times are policy constants; shortening them requires an explicit decision, not a per-release judgement.
-- A stage may be skipped only for a release that the change-impact map classifies as **docs only**.
-- Preconditions: pointer exists (§2), rollback drill completed (§7), environment conformance green (§10).
+### Ordering rules
+
+1. **Server before client** when the bundle depends on a new endpoint or response shape. Otherwise a tenant can
+   load a bundle that calls something not yet live.
+2. **Overlap is allowed only for additive, backward-compatible server changes** (expand/contract, §9/D16).
+3. **A pointer rollback never rolls back the server;** a server rollback does not have to move the pointer if the
+   old bundle is compatible.
+4. Promotion is an **audited action** by a named role, recorded as Evidence. An agent may propose; it may not
+   promote (same boundary as definition migration).
+5. **Auto-halt** on `block`; auto-rollback is off by default in phase 1 — a human decides, and the decision is recorded.
+6. Dwell times are policy constants; shortening them requires an explicit decision, not a per-release judgement.
+7. A stage may be skipped only for a release that the change-impact map classifies as **docs only**.
+8. Preconditions: pointer and selector exist (§2), rollback drill completed (§7), environment conformance green (§10).
 
 ## 7. Rollback and recovery
 
@@ -191,7 +222,8 @@ Three kinds of rollback, and “redeploy the previous image” is only the first
 
 | Rollback | Mechanism | Time | Owner |
 |---|---|---|---|
-| **Artifact** | move tenant pointers back to the previous release | seconds | PD RFC §7 |
+| **Client artifact** | move tenant pointers back to the previous bundle | seconds | PD RFC §7 |
+| **Server artifact** | switch the environment selector back to the previous stack (blue/green) | seconds | deployment topology / D15 |
 | **Definition** | reactivate the previous `machine_definition` version; in-flight instances keep their pin | seconds | PD RFC §4 |
 | **Data** | forward-fix by default; destructive migrations require expand/contract and a backup | minutes–hours | [`DATABASE-MIGRATIONS.md`](../2026-10-24/DATABASE-MIGRATIONS.md) + this RFC |
 
@@ -199,8 +231,10 @@ Rules:
 
 1. **Never “roll back” a destructive migration by reverting it.** Restore or forward-fix.
 2. Destructive migrations run **expand → migrate → contract**, so no release boundary is incompatible with the data.
-3. A rollback drill is a gate precondition for the first release of a new artifact class, and after any migration change.
-4. Every rollback produces an incident record and a gate review: what was missed, and which layer (check, contract, data, environment, metric) should have caught it.
+3. **Two switches, two failures.** A client pointer rollback fixes a bad bundle; it does not fix a bad server. A
+   selector rollback fixes the server; it does not re-point tenants unless their bundle is incompatible.
+4. A rollback drill is a gate precondition for the first release of a new artifact class, and after any migration change.
+5. Every rollback produces an incident record and a gate review: what was missed, and which layer (check, contract, data, environment, metric) should have caught it.
 
 ## 8. Evidence and metrics
 
@@ -259,7 +293,7 @@ Each phase ships only with a demonstrated failure. A gate that has never been se
 |---|---|---|
 | **P1** | Gate contract (`pass/block/unverified`), platform-version skip key | A release with unchanged specs reports `unverified`, not `passed`; a forced overflow blocks |
 | **P2** | Preview environment + differential protocol | A dropped price appears as a regression and blocks; an approved change becomes the new baseline |
-| **P3** | Pointer-driven promotion ladder | Move one tenant to the candidate and back; a failing canary halts before wave 1 |
+| **P3** | Pointer + selector promotion (client waves; blue/green server switch) | Move one tenant to the candidate and back; switch the server selector and roll it back; a failing canary halts before wave 1 |
 | **P4** | Contracts, migration rehearsal, env conformance | A renamed event without dual-emit fails; a row-dropping migration fails rehearsal; a missing secret key blocks |
 | **P5** | Metrics, cross-testing, outcome reporting | A loosened check fails cross-testing; missed-incident and coverage numbers are published |
 

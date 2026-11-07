@@ -181,6 +181,10 @@ machine_definition_versions{tenant,machine}                 gauge (sprawl signal
 
 ## 5. V2 — Channels and canary targeting
 
+> **Scope (2026-11-07):** channels target the **client bundle** and **behaviour flags**. They do **not** select a
+> server version — one database, one API stack. Per-tenant server versions are a different architecture (see
+> [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §2/§6 and D15 in [`PENDING-DECISIONS.md`](../2026-11-07/PENDING-DECISIONS.md)).
+
 ### Data model (same migration)
 
 ```sql
@@ -216,6 +220,10 @@ evaluate(scope) → { passed, checks[], evidenceId }
 
 Nothing else about eval belongs here; if it cannot be expressed as a gate input, it goes in the eval RFC.
 ## 7. V4 — Versioned bundles and rollback
+
+> **Scope (2026-11-07):** this versions the **client bundle only**. Server images are promoted with the
+> environment selector (blue/green; [`RFC-RELEASE-GATE.md`](../2026-11-07/RFC-RELEASE-GATE.md) §6.1), not per
+> tenant. A pointer rollback is not a server rollback.
 
 - R2 keys become `tenant/<id>/<bundleVersion>/…`; the tenant row holds a pointer.
 - Rollback = repoint the pointer (Kubernetes `rollout undo` shape), not a rebuild.

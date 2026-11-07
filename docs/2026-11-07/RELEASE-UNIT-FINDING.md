@@ -101,10 +101,14 @@ Full options are in [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md) D14–D16.
 | Document | Change |
 |---|---|
 | `PENDING-DECISIONS.md` D1 | Renamed to **“UI release pointer”**, with the client-only rollback caveat and the pointer table corrected |
-| `RFC-RELEASE-GATE.md` §2 | The artifact row is right; add that a tenant pointer selects the **client bundle**, while the server is promoted by the deployment model (D15) |
-| `RFC-RELEASE-GATE.md` §6 | The ladder must state which layer moves: bundle pointer, service selector, or flag |
-| `RFC-PROGRESSIVE-DELIVERY.md` V4 | Scope note: bundle versions only; server images are not per-tenant |
-| `RFC-DEPLOYMENT-TOPOLOGY.md` | Add the blue/green contract: two deployments, one selector, rollback by switching |
+| `RFC-RELEASE-GATE.md` §2 | **Applied.** Release artifact set, client pointer vs server selector, and an explicit “a tenant pointer does not move the server” |
+| `RFC-RELEASE-GATE.md` §6 | **Applied.** Two ladders — server selector (preview → switch → stabilise) and client pointer (internal → canary → waves) — plus ordering rules |
+| `RFC-RELEASE-GATE.md` §7 | **Applied.** Rollback split into client artifact vs server artifact; two switches, two failure modes |
+| `RFC-RELEASE-GATE.md` §11 | **Applied.** P3 now covers pointer + selector promotion |
+| `RFC-PROGRESSIVE-DELIVERY.md` V2/V4 | **Applied.** Scope notes: channels and bundle versions are UI/behaviour, not server versions |
+| `RFC-DEPLOYMENT-TOPOLOGY.md` | **Applied.** New §5b blue/green contract: two stacks, one selector, rollback by switching, expand/contract migrations |
+
+These edits were made on 2026-11-07, in the same change set as this document.
 
 ## 7. What “solved” looks like
 
