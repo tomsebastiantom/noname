@@ -1,6 +1,6 @@
 # Release block D16 — migration policy (expand / contract)
 
-> **Status:** proposed design, implemented in this change set · **Date:** 2026-11-07
+> **Status:** **implemented and verified 2026-11-07** · **Date:** 2026-11-07
 > **Decision:** D16 option **A** — expand/contract is mandatory. Destructive schema changes are forbidden in a
 > release that still needs to be rolled back.
 > **Scope guard:** this block is a **policy + classifier**, not a migration engine. It does not write migrations,
@@ -135,3 +135,36 @@ ALTER TABLE "flags" DROP COLUMN "description";
 | A real backfill is blocked as destructive | `UPDATE`/`INSERT` are backfill; only `DELETE` is destructive, and it can be split |
 | People bypass the CLI | it is a gate input later; policy states the rule |
 | Contract releases become permanent | each contract names the expand release it retires; review can check it |
+
+## 9. Implementation evidence (2026-11-07)
+
+**Code**
+
+| Path | Role |
+|---|---|
+| `packages/server/src/domains/release/migrations/classify.ts` | pure classifier: split, strip comments, classify, report |
+| `packages/server/src/domains/release/migrations/classify.test.ts` | 15 tests (expand, backfill, destructive forms, mixed, unknown) |
+| `scripts/classify-migrations.ts` | CLI: report, `--block-destructive`, `--json` |
+| `package.json` | `migrations:classify` script |
+
+**Verification**
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **22/22** (15 classifier + 7 service) |
+| Real migrations | `pnpm migrations:classify` | **137 statements, 0 destructive → PROMOTABLE** (exit 0) |
+| Destructive fixture | `--block-destructive` on `ALTER TABLE … DROP COLUMN` | **BLOCKED**, exit **1** |
+| JSON | `--json` on `0001` | `{"promotable":true,"destructive":0}` |
+| Backfill | real `0002` | `INSERT … SELECT` classified `backfill` |
+| Unknown | `COMMENT ON …` | `unknown`, not treated as pass |
+
+The runnable record is in [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md).
+
+**Limits recorded.**
+
+- The classifier reads SQL text; a dynamic `EXECUTE` inside a function is `unknown`, not destructive — review
+  still owns those.
+- `--block-destructive` is a report/exit code today; wiring it into the release gate happens with D15.
+- A contract release is not specially allowed yet: the rule is “destructive is blocked by default”; an explicit
+  contract marker is the next gate refinement.

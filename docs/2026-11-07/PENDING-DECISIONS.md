@@ -1,7 +1,7 @@
 # Pending decisions — release mechanism and eval gaps
 
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
-> **Implementation status:** **D14 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md) and [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D15, D16 and D1 remain open.**
+> **Implementation status:** **D14 and D16 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D15 and D1 remain open.**
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
 > repository actually does today and to how established projects solved the same problem.
 > **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
@@ -17,7 +17,7 @@
 | **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context**, DB truth through a port | **High** — the client half; needs D14/D15 first |
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
-| **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** | High — shared database |
+| **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / tenant channel column / rules engine | **Defer until D1+D2, then column** | Later — and only UI-deep without D15 |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **Live API + cache** | Medium — unblocks E8 |
@@ -549,6 +549,8 @@ tenants, contractual isolation). The pointer (D1) is not a substitute for this d
 ---
 
 ## D16 — How do migrations work across a release?
+
+**Status:** **chosen (A) and implemented 2026-11-07** — [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md). The text below is the original decision record.
 
 **Question.** A release changes the schema. Old server and new server may both run during blue/green; the client
 pointer may move back. What is the rule?

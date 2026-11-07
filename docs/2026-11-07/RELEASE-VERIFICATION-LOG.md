@@ -73,9 +73,33 @@ pinned instance). Design: [`RELEASE-D2-DESIGN.md`](./RELEASE-D2-DESIGN.md).
 no definition-rollback endpoint (the correct action is a new version); simultaneous saves can race on
 `nextVersion` (unique index makes one insert lose; definitions are low-frequency).
 
+## 2026-11-07 — D16: migration policy (expand / contract)
+
+**Scope.** Make a release’s migration set classifiable, and make a destructive change fail the check by default.
+No migrations are written or applied by this block.
+
+**Code.** `domains/release/migrations/classify.ts` (pure classifier), its 15 tests,
+`scripts/classify-migrations.ts` (CLI), `migrations:classify` script.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **22/22** (15 classifier + 7 service) |
+| Real migrations | `pnpm migrations:classify` | **137 statements, 0 destructive → PROMOTABLE**, exit 0 |
+| Backfill recognition | real `0002_freezing_invaders.sql` | `INSERT … SELECT` → `backfill` |
+| Destructive block | temp fixture `ALTER TABLE … DROP COLUMN` + `--block-destructive` | **BLOCKED**, exit **1** |
+| JSON | `--json` on `0001_low_alex_wilder.sql` | `{"promotable":true,"destructive":0}` |
+| Unknown is not a pass | `COMMENT ON …` | `unknown` |
+
+**Limits recorded.** Dynamic SQL inside functions is `unknown`, not destructive; `--block-destructive` is a CLI
+exit code until the gate consumes it (D15); a contract release needs an explicit marker in the gate, which is a
+later refinement.
+
 ## Next blocks
 
-1. **D16** — expand/contract migration policy and migration-set semantics.
-2. **D15** — preview + blue/green selector.
-3. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection.
+1. **D15** — preview + blue/green selector.
+2. **D1** — `tenant_release_pointers` + `ReleasePointerPort` + catalog projection.
+3. Gate wiring: classify the `migration_set` artifact and refuse a destructive set.
 
