@@ -13,7 +13,7 @@
 
 | # | Decision | Options | Recommendation | Urgency |
 |---|---|---|---|---|
-| **D1** | **UI** release pointer (client bundle) | manifest pointer / DB pointer / separate service | **DB truth, manifest projection** | **High** — the client half; needs D14/D15 first |
+| **D1** | **UI** release pointer (client bundle) | manifest pointer / DB column / **release bounded context** / separate deployable | **C1: release bounded context**, DB truth through a port | **High** — the client half; needs D14/D15 first |
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** | High — shared database |
@@ -56,9 +56,23 @@ Redis is a cache, not a durable record.
 |---|---|---|---|
 | **A. Pointer inside the manifest** | `release: { id }` added to the Redis manifest; bundle keys become `tenants/<org>/releases/<id>/…`; the catalog endpoint reads the pointer from Redis | Smallest change; no new table; the client already consumes the manifest | Redis loss = lost pointer; no audit trail; “who moved which tenant” is unanswerable |
 | **B. DB is truth, manifest is projection** | New `releases` table + `tenant_release_pointers(org_id, release_id)`; the catalog endpoint resolves the pointer and returns the release’s bundle URL; Redis caches the result | Durable, auditable, queryable; rollback is one row; matches how Kubernetes keeps revision history and Cloudflare keeps versions | One migration + endpoint change; cache invalidation on promote |
-| **C. Separate release service** | A dedicated service owns releases and serves pointers over HTTP | Independent scaling and lifecycle | A new deployable for a pointer that is one row; premature |
+| **C1. Release bounded context (same monolith)** | New `domains/release` owning `releases`, `release_artifacts`, `tenant_release_pointers`; exposes a **port** (`ReleasePointerPort`) and API endpoints; tenant catalog reads the pointer through the port, the gate writes verdicts keyed by `releaseId` | Explicit domain boundary; no cycles; one transaction; extractable later without rewriting callers | New domain + tables + endpoints; must enforce the dependency direction |
+| **C2. Separate release deployable** | A standalone service owns releases and serves pointers over HTTP | Independent scaling/lifecycle | Network hop for one row; distributed writes with the catalog cache; auth, retries, another failure mode; premature |
 
-**Example (B).**
+**Why C1 and not C2 (yet).** Your instinct — release deserves its own bounded context — is right. The boundary is
+the valuable part; the network boundary is the expensive part. C1 gives the boundary now and can be extracted to
+C2 later without changing callers, because they already depend on a port. Start with C1.
+
+**Dependency direction (enforced, not aspirational).**
+
+```
+domains/release      → imports nothing from tenant, eval or gate
+domains/tenant       → imports release/ports (read pointer)
+domains/eval/gate    → imports release/ports (write verdict with releaseId)
+domains/eval         → receives releaseId as input; imports no release code
+```
+
+Example (C1).
 
 ```
 releases:                id=r_17, org=yogastore, artifact=sha256:3f…, checks=9f2a1c, state=canary
@@ -80,15 +94,29 @@ Cloudflare Workers upload immutable **versions** and then create a **deployment*
 traffic ([gradual deployments](https://developers.cloudflare.com/workers/versions-and-deployments/gradual-deployments/)).
 Both separate *artifact* from *pointer*. That is exactly the missing piece here.
 
-**Recommendation: B.** The manifest already behaves like a projection of tenant state; making the DB the truth
-and the manifest the cache fixes durability and auditability without changing how the client loads a catalog.
-Option A is tempting for speed but loses the pointer on a Redis flush — unacceptable for rollback.
+**Recommendation: C1.** The release boundary is the fix for the coupling you identified: tenant and gate depend
+on a port, release depends on nobody. B is acceptable only as a stop-gap if the domain split must wait; C2 is a
+later extraction, not a first step.
 
 **Caveat — this rolls back the client, not the server.** The API stays on whatever version is deployed. A
 pointer rollback is safe only while server changes remain compatible with the previous bundle (additive fields,
 no renamed endpoints in the same release). That constraint is D15/D16, not optional.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
+**Validation — how we know it works (run together, not as separate stories).**
+
+| # | Check | Method | Expected |
+|---|---|---|---|
+| 1 | Dependency direction | `grep` imports in `domains/release` | zero imports from tenant/eval/gate |
+| 2 | Promotion is audited | call promote, then read Evidence | one row: actor, from, to, releaseId |
+| 3 | Catalog follows the pointer | promote tenant, fetch `/api/tenants/:slug/catalog` | `private.url` contains the new release id |
+| 4 | Rollback is symmetric | roll back, fetch catalog | previous release URL restored |
+| 5 | Cache cannot lie | promote then read twice | second read already new; key includes releaseId |
+| 6 | Gate binds the release | run gate, read verdict | `releaseId` present; eval received it as input |
+| 7 | Release domain is inert | boot with release domain disabled | tenant catalog falls back to the default manifest, no crash |
+
+These seven checks are the acceptance for C1; they are also the regression suite for the later C2 extraction.
+
+**Decision:** ☐ A  ☐ B  ☐ **C1**  ☐ C2  ☐ other: ______________________
 
 ---
 

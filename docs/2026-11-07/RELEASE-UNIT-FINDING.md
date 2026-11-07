@@ -96,6 +96,10 @@ architecture.
 
 Full options are in [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md) D14–D16.
 
+**D1 (UI pointer) is recommended as C1 — a release bounded context**, not a column on tenant and not a separate
+deployable. Tenant catalog and the gate depend on `release/ports`; release imports nothing from them. The network
+boundary (C2) is a later extraction, not a first step.
+
 ## 6. What this changes in the existing documents
 
 | Document | Change |
