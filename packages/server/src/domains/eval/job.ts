@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
 import { PERMISSIONS } from "@noname/auth";
 import {
@@ -54,9 +54,6 @@ const MACHINES_DIR = fileURLToPath(
 
 export async function executeEvalJob(job: EvalJobData, deps: EvalJobDeps) {
   const result = deps.run ? await deps.run() : await evaluateForJob(job, deps);
-  console.log(
-    `[eval-worker] result reused=${result.reused ?? false} countsReused=${result.counts.reused ?? 0}`,
-  );
   return recordGateDecision(deps.evidence, {
     orgId: job.orgId,
     tenantSlug: job.tenantSlug,
@@ -143,14 +140,13 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
       ? createBrowserObserver({ wsEndpoint: ws, origin: siteBase })
       : undefined;
 
-  console.log(
-    `[eval-worker] cache store=${Boolean(store)} hashes=${routeHashes ? Object.keys(routeHashes).length : "null"} key=${cacheKey ? cacheKey.slice(0, 10) : "-"} hit=${Boolean(cached)}`,
-  );
-
   let result: EvalResult;
   if (cached) {
     result = {
       ...cached,
+      // A reused result is a new run: keeping the cached runId would collide with the original Evidence
+      // idempotency key and make the second decision look like the first one.
+      runId: randomUUID(),
       reused: true,
       cacheKey,
       counts: { ...cached.counts, reused: cached.checks.length },

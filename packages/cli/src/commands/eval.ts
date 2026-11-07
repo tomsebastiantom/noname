@@ -1,4 +1,4 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -236,6 +236,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
   if (cached) {
     result = {
       ...cached,
+      runId: randomUUID(),
       reused: true,
       cacheKey,
       counts: { ...cached.counts, reused: cached.checks.length },
