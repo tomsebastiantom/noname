@@ -186,7 +186,7 @@ describe("check registry", () => {
 
     expect(result.passed).toBe(true);
     expect(result.counts.fail).toBe(0);
-    expect(result.counts.skip).toBe(2); // B1.render + B2.console
+    expect(result.counts.skip).toBe(3); // B1.render + B1.structure + B2.console
     expect(
       result.checks.filter((c) => c.id.startsWith("B")).every((c) => c.status === "skip"),
     ).toBe(true);

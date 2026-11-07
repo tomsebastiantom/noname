@@ -127,6 +127,8 @@ export type PageVisit = {
   textLength: number;
   /** First 300 characters of the rendered text, for the check's human sentence. */
   sample: string;
+  /** Count of rendered blocks by `data-block-type` (the renderer contract B1.structure relies on). */
+  nodesByType: Record<string, number>;
   /** Console errors raised during the visit. */
   consoleErrors: string[];
 };

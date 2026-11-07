@@ -9,6 +9,7 @@ import {
 import type { ExtensionActionHandlerFactory } from "@noname/extensions";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 import { navigateApp } from "./app-navigation";
+import { withBlockMarkers } from "./block-markers";
 import { getFlagsSnapshot, subscribeFlags } from "./browser-observability";
 import { handlers as createHandlers } from "./registry";
 
@@ -38,6 +39,16 @@ export function CatalogUiShell({
 }>) {
   const flags = useSyncExternalStore(subscribeFlags, getFlagsSnapshot, getFlagsSnapshot);
   const store = useMemo(() => createStateStore({}), []);
+  // Every block rendered from the spec carries data-block-type / data-block-id (B1.structure's input).
+  const markedRegistry = useMemo(() => withBlockMarkers(registry), [registry]);
+
+  useEffect(() => {
+    // Explicit readiness signal for the eval browser — no arbitrary sleeps.
+    document.documentElement.dataset.evalReady = "true";
+    return () => {
+      delete document.documentElement.dataset.evalReady;
+    };
+  }, []);
 
   const actionHandlers = useMemo(() => {
     const getState = () => store.getSnapshot();
@@ -76,8 +87,13 @@ export function CatalogUiShell({
   }, [flags, store]);
 
   return (
-    <JSONUIProvider registry={registry} store={store} handlers={actionHandlers} navigate={navigate}>
-      <Renderer spec={spec} registry={registry} />
+    <JSONUIProvider
+      registry={markedRegistry}
+      store={store}
+      handlers={actionHandlers}
+      navigate={navigate}
+    >
+      <Renderer spec={spec} registry={markedRegistry} />
     </JSONUIProvider>
   );
 }

@@ -44,6 +44,7 @@ export function createBrowserObserver(options: {
       let status = 0;
       let title = "";
       let bodyText = "";
+      let nodesByType: Record<string, number> = {};
 
       try {
         const response = await page.goto(url, {
@@ -63,6 +64,16 @@ export function createBrowserObserver(options: {
         )
           .replace(/\s+/g, " ")
           .trim();
+        nodesByType = await page
+          .evaluate(() => {
+            const counts: Record<string, number> = {};
+            for (const element of document.querySelectorAll("[data-block-type]")) {
+              const type = element.getAttribute("data-block-type") ?? "";
+              if (type) counts[type] = (counts[type] ?? 0) + 1;
+            }
+            return counts;
+          })
+          .catch(() => ({}));
       } catch (cause) {
         bodyText = `navigation failed: ${cause instanceof Error ? cause.message : String(cause)}`;
       } finally {
@@ -75,6 +86,7 @@ export function createBrowserObserver(options: {
         title,
         textLength: bodyText.length,
         sample: bodyText.slice(0, 300),
+        nodesByType,
         consoleErrors,
       };
       return visit;

@@ -79,6 +79,90 @@ const render: Check = {
   },
 };
 
+type SpecResponse = {
+  data?: {
+    layout?: { elements?: Record<string, { type?: string }> };
+  };
+};
+
+/**
+ * B1.structure — every spec block is rendered, once, as the same type.
+ *
+ * This is the check the renderer contract exists for: the spec says "three blocks of these types", the DOM
+ * says what actually rendered, and a dropped/duplicated/unknown block is a visible failure rather than a
+ * screenshot someone has to eyeball.
+ */
+const structure: Check = {
+  meta: {
+    id: "B1.structure",
+    tier: 2,
+    defaultLevel: "error",
+    needs: ["api", "browser"],
+    emits: ["B1.structure"],
+    description: "the rendered DOM contains exactly the blocks the spec declares, by type",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [skip("B1.structure", "error", "no browser endpoint supplied — tier 2 not evaluated")];
+    }
+
+    const spec = await ctx.client.getJson<SpecResponse>(
+      `/api/edge/schema/${encodeURIComponent(ctx.tenantSlug)}?url=${encodeURIComponent("/")}`,
+    );
+    if (!spec.ok) {
+      return [
+        skip(
+          "B1.structure",
+          "error",
+          `could not read the spec (${spec.error}) — structure was not compared`,
+        ),
+      ];
+    }
+
+    const expected: Record<string, number> = {};
+    for (const element of Object.values(spec.data?.data?.layout?.elements ?? {})) {
+      const type =
+        typeof element.type === "string" && element.type.trim() ? element.type : "(untyped)";
+      expected[type] = (expected[type] ?? 0) + 1;
+    }
+
+    const visit = await ctx.browser.visit("/");
+    const actual = visit.nodesByType;
+    const types = new Set([...Object.keys(expected), ...Object.keys(actual)]);
+    const problems: string[] = [];
+
+    for (const type of types) {
+      const want = expected[type] ?? 0;
+      const got = actual[type] ?? 0;
+      if (want !== got) problems.push(`${type}: spec ${want}, DOM ${got}`);
+    }
+
+    const total = Object.values(expected).reduce((sum, count) => sum + count, 0);
+
+    return problems.length > 0
+      ? [
+          {
+            id: "B1.structure",
+            status: "fail",
+            level: "error",
+            subject: "/",
+            detail:
+              `${problems.slice(0, 3).join("; ")}` +
+              (problems.length > 3 ? ` (+${problems.length - 3} more)` : ""),
+          },
+        ]
+      : [
+          {
+            id: "B1.structure",
+            status: "pass",
+            level: "error",
+            subject: "/",
+            detail: `${total} block(s) across ${types.size} type(s) match the DOM`,
+          },
+        ];
+  },
+};
+
 const consoleClean: Check = {
   meta: {
     id: "B2.console",
@@ -116,4 +200,4 @@ const consoleClean: Check = {
   },
 };
 
-export const browserChecks: Check[] = [render, consoleClean];
+export const browserChecks: Check[] = [render, structure, consoleClean];
