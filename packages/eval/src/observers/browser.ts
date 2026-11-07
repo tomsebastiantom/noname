@@ -1,0 +1,90 @@
+import { type Browser, type BrowserContext, chromium } from "playwright-core";
+import type { BrowserObserver, PageVisit } from "../types";
+
+/**
+ * The browser observer — tier 2's only I/O surface.
+ *
+ * Same rule as the HTTP observer: checks never launch or drive a browser themselves. They ask this port for a
+ * page visit, and the port is the single place that knows about Chromium. That keeps checks testable with a
+ * fake observer and keeps the concrete runtime swappable.
+ *
+ * Transport: it connects to a **running** Playwright server (`playwright run-server`, which is what the
+ * Kubernetes browser fleet serves). It deliberately does not launch a browser: the point of the fleet is that
+ * browsers are provided, pooled and resource-limited by the platform, and an eval that spawns its own Chromium
+ * would bypass exactly the thing worth testing.
+ */
+export function createBrowserObserver(options: {
+  /** `ws://browser:3000/` in-cluster, `ws://127.0.0.1:9222/` through a port-forward. */
+  wsEndpoint: string;
+  /** Base URL for relative paths, e.g. `http://yogastore.localhost:5173`. */
+  origin: string;
+  /** Per-visit navigation timeout. */
+  timeoutMs?: number;
+}): BrowserObserver {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  let browser: Browser | null = null;
+  let context: BrowserContext | null = null;
+
+  async function ensureContext(): Promise<BrowserContext> {
+    if (!browser) browser = await chromium.connect(options.wsEndpoint, { timeout: timeoutMs });
+    if (!context) context = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+    return context;
+  }
+
+  return {
+    async visit(path, visitOptions) {
+      const pageContext = await ensureContext();
+      const page = await pageContext.newPage();
+      const consoleErrors: string[] = [];
+      page.on("console", (message) => {
+        if (message.type() === "error") consoleErrors.push(message.text().slice(0, 200));
+      });
+
+      const url = /^https?:\/\//.test(path) ? path : `${options.origin.replace(/\/$/, "")}${path}`;
+      let status = 0;
+      let title = "";
+      let bodyText = "";
+
+      try {
+        const response = await page.goto(url, {
+          waitUntil: "domcontentloaded",
+          timeout: visitOptions?.timeoutMs ?? timeoutMs,
+        });
+        status = response?.status() ?? 0;
+        // The SPA hydrates after DOMContentLoaded; without this the text is an empty shell and the check would
+        // "pass" on a blank page — the exact false positive this tier exists to catch.
+        await page.waitForTimeout(2500);
+        title = await page.title();
+        bodyText = (
+          await page
+            .locator("body")
+            .innerText()
+            .catch(() => "")
+        )
+          .replace(/\s+/g, " ")
+          .trim();
+      } catch (cause) {
+        bodyText = `navigation failed: ${cause instanceof Error ? cause.message : String(cause)}`;
+      } finally {
+        await page.close().catch(() => {});
+      }
+
+      const visit: PageVisit = {
+        url,
+        status,
+        title,
+        textLength: bodyText.length,
+        sample: bodyText.slice(0, 300),
+        consoleErrors,
+      };
+      return visit;
+    },
+
+    async close() {
+      await context?.close().catch(() => {});
+      await browser?.close().catch(() => {});
+      context = null;
+      browser = null;
+    },
+  };
+}

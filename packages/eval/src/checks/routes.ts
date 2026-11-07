@@ -53,7 +53,7 @@ function routesFromTree(
   return [...routes.values()].sort((a, b) => a.route.localeCompare(b.route)).slice(0, maxRoutes);
 }
 
-const routes: Check = async (ctx) => {
+const routes: Check["run"] = async (ctx) => {
   const results: CheckResult[] = [];
 
   const tree = await ctx.client.getJson<PageTreeResponse>("/api/documents/page_tree/main");
@@ -161,4 +161,16 @@ const routes: Check = async (ctx) => {
   return results;
 };
 
-export const routeChecks: { id: string; run: Check }[] = [{ id: "R1.resolve", run: routes }];
+export const routeChecks: Check[] = [
+  {
+    meta: {
+      id: "R1.resolve",
+      tier: 1,
+      defaultLevel: "error",
+      needs: ["api"],
+      emits: ["R1.resolve", "R1.fallback", "R2.blocks"],
+      description: "every published route resolves to its own page, not to the fallback template",
+    },
+    run: routes,
+  },
+];

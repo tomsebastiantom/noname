@@ -32,7 +32,7 @@ function readMachineFiles(machinesDir: string): MachineFile[] {
 }
 
 /** M5.vocabulary — every definition file is registered, i.e. the runtime can actually load it. */
-const vocabulary: Check = async (ctx) => {
+const vocabulary: Check["run"] = async (ctx) => {
   const files = readMachineFiles(ctx.machinesDir);
   if (!ctx.canReadDefinitions) {
     return [
@@ -86,7 +86,7 @@ const vocabulary: Check = async (ctx) => {
 };
 
 /** M4.machines — the stored definition agrees with the file, state for state and transition for transition. */
-const machines: Check = async (ctx) => {
+const machines: Check["run"] = async (ctx) => {
   const files = readMachineFiles(ctx.machinesDir);
   if (!ctx.canReadDefinitions) {
     return [
@@ -158,9 +158,31 @@ const machines: Check = async (ctx) => {
   return results;
 };
 
-export const manifestChecks: { id: string; run: Check }[] = [
-  { id: "M5.vocabulary", run: vocabulary },
-  { id: "M4.machines", run: machines },
+export const manifestChecks: Check[] = [
+  {
+    meta: {
+      id: "M5.vocabulary",
+      tier: 0,
+      defaultLevel: "error",
+      needs: ["api", "manifest"],
+      emits: ["M5.vocabulary"],
+      description:
+        "every machine definition file is registered, so a fresh environment can load it",
+    },
+    run: vocabulary,
+  },
+  {
+    meta: {
+      id: "M4.machines",
+      tier: 0,
+      defaultLevel: "error",
+      needs: ["api", "manifest"],
+      emits: ["M4.machines"],
+      description:
+        "the stored machine definition agrees with the file, state for state and transition for transition",
+    },
+    run: machines,
+  },
 ];
 
 export type { CheckContext };

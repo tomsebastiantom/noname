@@ -11,6 +11,9 @@
     "lint": "biome lint",
     "format": "biome format --write"
   },
+  "dependencies": {
+    "playwright-core": "^1.63.0"
+  },
   "devDependencies": {
     "typescript": "^7.0.0"
   }
