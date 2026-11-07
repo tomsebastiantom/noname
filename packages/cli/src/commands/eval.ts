@@ -196,5 +196,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
     if (evidenceId) console.log(`  evidence: ${evidenceId} (${decision ?? "recorded"})`);
   }
 
+  // Mode policy: `agent` reports to its caller and never sets a failing exit code; `dev` and `gate` block.
+  if (options.mode === "agent") return 0;
   return result.passed ? 0 : 1;
 }

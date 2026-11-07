@@ -519,6 +519,59 @@ const egress: Check = {
   },
 };
 
+/**
+ * B6.design — contrast advisories, never a gate.
+ *
+ * The RFC puts design review at `warn`: it is useful triage (“look at this page”) but not a deterministic
+ * release criterion. axe’s `color-contrast` is the only design rule with a measurable answer, so it is what
+ * ships here; spacing/visual judgement stays with `B7`/humans.
+ */
+const design: Check = {
+  meta: {
+    id: "B6.design",
+    tier: 2,
+    defaultLevel: "warn",
+    needs: ["browser"],
+    emits: ["B6.design"],
+    description: "contrast advisories from axe-core (warning only)",
+  },
+  async run(ctx) {
+    if (!ctx.browser || !ctx.siteBase) {
+      return [
+        skip("B6.design", "warn", "no browser endpoint supplied — design advisories not evaluated"),
+      ];
+    }
+
+    const visit = await ctx.browser.visit("/", { contrast: true });
+    if (!visit.contrast) {
+      return [skip("B6.design", "warn", "contrast results unavailable — not a pass")];
+    }
+
+    return visit.contrast.length === 0
+      ? [
+          {
+            id: "B6.design",
+            status: "pass",
+            level: "warn",
+            subject: "/",
+            detail: "no contrast advisories",
+          },
+        ]
+      : [
+          {
+            id: "B6.design",
+            status: "fail",
+            level: "warn",
+            subject: "/",
+            detail: visit.contrast
+              .slice(0, 3)
+              .map((violation) => `${violation.id} (${violation.nodes} node(s))`)
+              .join("; "),
+          },
+        ];
+  },
+};
+
 const consoleClean: Check = {
   meta: {
     id: "B2.console",
@@ -564,5 +617,6 @@ export const browserChecks: Check[] = [
   content,
   behaviour,
   egress,
+  design,
   consoleClean,
 ];

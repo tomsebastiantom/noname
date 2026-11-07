@@ -154,6 +154,8 @@ export type PageVisit = {
   nodesByType: Record<string, number>;
   /** axe-core violations for the RFC's rule subset, when requested. */
   a11y?: Array<{ id: string; impact: string; nodes: number }>;
+  /** Design advisories (contrast), when requested — never a gate. */
+  contrast?: Array<{ id: string; impact: string; nodes: number }>;
   /** Console errors raised during the visit. */
   consoleErrors: string[];
 };
@@ -180,7 +182,7 @@ export type CartFlow = {
 export type BrowserObserver = {
   visit(
     path: string,
-    options?: { timeoutMs?: number; width?: number; a11y?: boolean },
+    options?: { timeoutMs?: number; width?: number; a11y?: boolean; contrast?: boolean },
   ): Promise<PageVisit>;
   /** Attempt internal targets from inside the browser context; absent observers cannot run S1. */
   probeEgress?(targets: string[]): Promise<EgressProbe[]>;

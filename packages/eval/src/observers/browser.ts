@@ -50,6 +50,7 @@ export function createBrowserObserver(options: {
       let nodesByType: Record<string, number> = {};
       let overflow: { scrollWidth: number; clientWidth: number } | undefined;
       let a11y: PageVisit["a11y"];
+      let contrast: PageVisit["contrast"];
 
       try {
         const response = await page.goto(url, {
@@ -86,8 +87,11 @@ export function createBrowserObserver(options: {
           }))
           .catch(() => undefined);
 
-        if (visitOptions?.a11y) {
+        if (visitOptions?.a11y || visitOptions?.contrast) {
           await page.addScriptTag({ content: axe.source }).catch(() => {});
+        }
+
+        if (visitOptions?.a11y) {
           a11y = await page
             .evaluate(async () => {
               const runner = (
@@ -121,6 +125,38 @@ export function createBrowserObserver(options: {
             })
             .catch(() => undefined);
         }
+
+        if (visitOptions?.contrast) {
+          contrast = await page
+            .evaluate(async () => {
+              const runner = (
+                window as unknown as {
+                  axe?: {
+                    run: (
+                      context: Document,
+                      options: unknown,
+                    ) => Promise<{
+                      violations: Array<{
+                        id: string;
+                        impact?: string | null;
+                        nodes: unknown[];
+                      }>;
+                    }>;
+                  };
+                }
+              ).axe;
+              if (!runner) return undefined;
+              const result = await runner.run(document, {
+                runOnly: { type: "rule", values: ["color-contrast"] },
+              });
+              return result.violations.map((violation) => ({
+                id: violation.id,
+                impact: violation.impact ?? "unknown",
+                nodes: violation.nodes.length,
+              }));
+            })
+            .catch(() => undefined);
+        }
       } catch (cause) {
         bodyText = `navigation failed: ${cause instanceof Error ? cause.message : String(cause)}`;
       } finally {
@@ -138,6 +174,7 @@ export function createBrowserObserver(options: {
         sample: bodyText.slice(0, 300),
         nodesByType,
         a11y,
+        contrast,
         consoleErrors,
       };
       return visit;
