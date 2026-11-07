@@ -6,6 +6,7 @@ export {
   actorHasPermission,
   type HumanActor,
   intersectAgentPermissions,
+  type MachineActor,
 } from "./actors";
 export { EDIT_MODE_FORBIDDEN_ERROR, isEditModeUrl } from "./edit-mode";
 export {

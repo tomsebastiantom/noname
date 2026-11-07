@@ -17,7 +17,21 @@ export interface AgentActor {
   permissions: PermissionKey[];
 }
 
-export type AuthActor = HumanActor | AgentActor;
+/**
+ * A service principal — not a person and not an agent acting on someone's behalf.
+ *
+ * It exists so background work (the eval service first) can hold an explicit, revocable permission set
+ * without borrowing a human's JWT. `orgId` scopes it to one tenant; permissions are checked exactly like a
+ * human's, so a service token with `machines:read` cannot write definitions.
+ */
+export interface MachineActor {
+  type: "machine";
+  serviceId: string;
+  orgId: string;
+  permissions: PermissionKey[];
+}
+
+export type AuthActor = HumanActor | AgentActor | MachineActor;
 
 /** Platform permissions an agent may ever receive (no publish, admin, or scope). */
 export const AGENT_ALLOWED_PERMISSIONS: readonly PermissionKey[] = [

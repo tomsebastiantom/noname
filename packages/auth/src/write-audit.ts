@@ -17,6 +17,13 @@ export function writeAuditFromActor(actor: AuthActor, taskId?: string): WriteAud
       taskId,
     };
   }
+  if (actor.type === "machine") {
+    return {
+      actorType: "machine",
+      actorId: actor.serviceId,
+      taskId,
+    };
+  }
   return {
     actorType: "human",
     actorId: actor.userId,

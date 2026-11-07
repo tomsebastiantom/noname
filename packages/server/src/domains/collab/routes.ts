@@ -39,6 +39,7 @@ const peerMetaBySocket = new WeakMap<object, PeerMeta>();
 
 function actorUserId(actor: AuthActor): string {
   if (actor.type === "human") return actor.userId;
+  if (actor.type === "machine") return actor.serviceId;
   return actor.onBehalfOf;
 }
 

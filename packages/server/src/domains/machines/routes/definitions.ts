@@ -11,7 +11,7 @@ export function registerMachineDefinitionRoutes(routes: Hono, deps: MachineRoute
   const { engine } = deps;
 
   routes.get("/definitions", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.MACHINES_DEFINE);
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const { limit = 50, offset = 0 } = parseLimitOffset(c, { defaultLimit: 50, maxLimit: 200 });
@@ -29,7 +29,7 @@ export function registerMachineDefinitionRoutes(routes: Hono, deps: MachineRoute
   });
 
   routes.get("/definitions/:name", async (c) => {
-    const denied = await denyUnless(c, PERMISSIONS.MACHINES_DEFINE);
+    const denied = await denyUnless(c, PERMISSIONS.MACHINES_READ);
     if (denied) return denied;
     const orgId = getOrgId(c);
     const definition = await engine.load(orgId, c.req.param("name"));

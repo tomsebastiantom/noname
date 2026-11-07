@@ -41,6 +41,8 @@ export const PERMISSIONS = {
   INTEGRATIONS_MANAGE: "integrations:manage",
   AGENT_MANAGE: "agent:manage",
   MACHINES_DEFINE: "machines:define",
+  /** Read machine definitions without being able to change them. Granted to the eval service. */
+  MACHINES_READ: "machines:read",
 } as const;
 
 export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

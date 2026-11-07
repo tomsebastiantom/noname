@@ -10,6 +10,7 @@ import {
 import type { Context } from "hono";
 import { verifyAgentToken } from "../../shared/agent-token";
 import { getOrgId, getUserId } from "../../shared/org";
+import { verifyServiceToken } from "../../shared/service-token";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";
@@ -21,6 +22,11 @@ export { bearerToken, resolveAccessToken } from "./token-source";
 export function authSubjectFromActor(actor: AuthActor): AuthSubject {
   if (actor.type === "agent") {
     return { type: "Agent", id: actor.agentSlug };
+  }
+  if (actor.type === "machine") {
+    // Keto has no Service namespace. Mapping a service principal to Agent keeps relation tuples valid
+    // until a service namespace exists; machines never reach document/collab authorization today.
+    return { type: "Agent", id: actor.serviceId };
   }
   return { type: "User", id: actor.userId };
 }
@@ -78,6 +84,21 @@ export async function requireAuthenticatedActor(
     };
   }
 
+  const serviceClaims = verifyServiceToken(token);
+  if (serviceClaims) {
+    const orgId = getOrgId(c);
+    if (!orgId || serviceClaims.orgId !== orgId) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    return {
+      type: "machine",
+      serviceId: serviceClaims.serviceId,
+      orgId: serviceClaims.orgId,
+      permissions: serviceClaims.permissions,
+      userToken: token,
+    };
+  }
+
   const auth = await requireAuthenticatedUser(c);
   if (auth instanceof Response) return auth;
 
@@ -119,7 +140,7 @@ export async function requirePermission(
 ): Promise<{ userId: string; userToken: string; permissions: PermissionKey[] } | Response> {
   const actor = await requireActorPermission(c, permission);
   if (actor instanceof Response) return actor;
-  if (actor.type === "agent") {
+  if (actor.type !== "human") {
     return c.json({ error: "Forbidden" }, 403);
   }
   return { userId: actor.userId, userToken: actor.userToken, permissions: actor.permissions };

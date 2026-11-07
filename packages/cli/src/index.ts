@@ -77,6 +77,7 @@ program
   .option("--api-base <url>", "API base URL", process.env.API_BASE ?? "http://localhost:3000")
   .option("--machines-dir <dir>", "directory holding machine definition JSON files")
   .option("--max-routes <n>", "cap the number of routes checked", "20")
+  .option("--token <token>", "service or user token allowed to read machine definitions")
   .option("--json", "machine-readable output")
   .action(async () => {
     // Checks live in @noname/eval; this command only parses arguments and prints.
