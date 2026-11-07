@@ -4,6 +4,7 @@ import type { Check, CheckContext, EvalResult } from "./types";
 
 export { browserChecks } from "./checks/browser";
 export { manifestChecks } from "./checks/manifest";
+export { referenceChecks } from "./checks/references";
 export { routeChecks } from "./checks/routes";
 export { createBrowserObserver } from "./observers/browser";
 export { createHttpClient } from "./observers/http";

@@ -34,6 +34,22 @@ const storedCart = {
 /** Minimal API double: every check goes through this, so no network is involved. */
 const client: EvalClient = {
   async getJson<T>(path: string) {
+    if (path === "/api/documents/content-types") {
+      return {
+        ok: true as const,
+        data: {
+          data: [
+            {
+              name: "product",
+              schema: {
+                fields: [{ key: "category", type: "reference", references: "category" }],
+              },
+            },
+            { name: "category", schema: { fields: [] } },
+          ],
+        } as T,
+      };
+    }
     if (path.includes("_eval_probe_")) {
       return { ok: false as const, status: 404, error: "HTTP 404" };
     }
@@ -117,6 +133,7 @@ describe("check registry", () => {
       result.checks.filter((c) => c.id.startsWith("B")).every((c) => c.status === "skip"),
     ).toBe(true);
     expect(result.checks.some((c) => c.id === "M4.machines" && c.status === "pass")).toBe(true);
+    expect(result.checks.some((c) => c.id === "M1.references" && c.status === "pass")).toBe(true);
     expect(result.checks.some((c) => c.id === "R2.blocks" && c.status === "pass")).toBe(true);
   });
 });
