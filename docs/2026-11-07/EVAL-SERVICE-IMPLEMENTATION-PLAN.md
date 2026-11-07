@@ -6,11 +6,11 @@
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
-> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, tier 2 (E16–E19 + E24) and **S1 (E22)** are
-> **done and verified** on 2026-11-07. `noname eval` runs the full catalogue end-to-end: **72 pass / 1 warn
-> failure / 0 skip** locally — the warn is S1 correctly proving the local browser can reach the API (no egress
-> policy on a host network). **E8 remains partial by design** (tenant-role evaluation open). See
-> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md). Next: E20 (`B5.behaviour`), then modes/sinks/queue.
+> **Implementation status:** Blocks 1–3, the tier‑0/1 catalogue, tier 2 (E16–E19 + E24), S1 (E22) and the
+> **cart half of E20** are **done and verified** on 2026-11-07. `noname eval` runs the catalogue end-to-end:
+> **73 pass / 1 warn failure / 0 skip** locally (S1 correctly proves the local browser reaches the API; B5
+> proves add-to-cart updates the cart). **Still open:** E20 checkout→`paid`, E8 tenant-role projection, and the
+> modes/sinks/queue block. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -237,7 +237,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E17** | `B2` is console errors, not overflow | uncommitted `B2.console`; viewport fixed 1280×800 ([`observers/browser.ts:30`](../../packages/eval/src/observers/browser.ts#L30)) | **DONE 2026-11-07.** Real `B2.overflow` at 375/768/1440; observer takes a width per visit and records `scrollWidth`/`clientWidth`; `B2.console` kept separately | A forced 400 px element fails at 375 only | S |
 | **E18** | `B3.a11y` missing | no `axe-core` | **DONE 2026-11-07.** axe-core injected in the browser observer; `B3.a11y` asserts the RFC subset (`image-alt`, `label`, `button-name`, `link-name`) and fails with rule ids + node counts | Removing an `alt` fails `B3` with the rule | M |
 | **E19** | `B4.content` missing | `B1.render` only checks text length | **DONE 2026-11-07.** Title, text and price values are collected from the edge-resolved spec and looked up in the rendered body; a missing value fails with its text | Removing the price from a product page fails `B4` | S |
-| **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | Fixture tenant + reserved test product + sandbox checkout; run tagged with `correlationId`; cleanup by that id | Breaking add-to-cart fails `B5`; checkout reaches `paid`; cleanup removes the order | L |
+| **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | **PARTIAL 2026-11-07.** `B5.behaviour` clicks the first add-to-cart control, waits for the storefront to settle, and asserts the cart text moves to a non-zero item count. **Still open:** checkout reaching `paid` with a provider callback, a reserved sandbox product, and order cleanup by `correlationId` | Breaking add-to-cart fails `B5` (observed: 1 item); checkout → `paid` remains uncovered | L |
 | **E21** | `B6`/`B7` missing | none | `B6` contrast/spacing advisories (`warn`); `B7` vision review — `warn` only, never a gate | `B6` reports a known contrast failure; `B7` never changes `passed` | M |
 | **E22** | `S1.no_internal_egress` missing | RFC §5.5; no implementation | **DONE 2026-11-07.** The browser observer probes internal HTTP targets (`127.0.0.1:3000`, metadata address) with `no-cors` fetches; S1 passes only if all are unreachable, and is `warn` by default because a local browser legitimately shares the host network | A reachable internal endpoint fails `S1` (observed locally) | M |
 
@@ -381,5 +381,5 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
-| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 pending | 66 tests; live S1 warn-fail names the reachable API |
+| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart half done, checkout open | 72 tests; live B5 pass (“1 item”), S1 warn-fail names the API |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E24 done; E3/E4/E23/E25/E26 pending | CLI tier 2 wiring verified end-to-end |

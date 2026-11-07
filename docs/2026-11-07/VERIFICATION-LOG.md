@@ -434,10 +434,36 @@ is information, not a release blocker.
 **Recorded limit.** `fetch` can probe HTTP(S) targets only; a raw Redis port cannot be tested from page
 JavaScript. The check lists what it proved rather than implying full network coverage.
 
+## 2026-11-07 — E20 (cart half): `B5.behaviour`
+
+**Scope.** Make the browser click add-to-cart and prove the cart changed — the first behavioural assertion that
+does not trust the spec or the DOM shape, only what happens.
+
+**Code.** `packages/eval/src/types.ts` (`CartFlow`, optional `addFirstProductToCart`),
+`observers/browser.ts` (navigate, wait for `data-eval-ready`, click the accessible add-to-cart control, compare
+body text), `checks/browser.ts` (`B5`), `checks/b5.test.ts`.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/eval typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **72/72 passed** (6 B5 tests) |
+| Unit — success | cart `1 item` after click | pass |
+| Unit — no control | `clicked: false` | fail “no add-to-cart control” |
+| Unit — no change | before === after | fail “did not change” |
+| Unit — no count | text changed, no `N item` | fail “no cart item count” |
+| Unit — no capability | observer without the method | skip |
+| Live | `noname eval … --browser-endpoint ws://…` | **B5 pass**: “cart shows 1 item(s) after add-to-cart” |
+| Overall | same run | **73 pass / 1 warn failure / 0 skip** |
+
+**What this does not cover (recorded, not implied).** Checkout → `paid` is not automated. It needs a reserved
+sandbox product, a provider sandbox/callback, and cleanup keyed by `correlationId`. A cart that updates but a
+checkout that never completes would still pass `B5` today; the plan keeps E20 **partial** for that reason.
+
 ## Next steps
 
-1. **E20** — `B5.behaviour`: cart and checkout against a reserved sandbox product, tagged and cleaned by
-   `correlationId`.
+1. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
 2. **E8 remainder** — tenant-role projection.
 3. **E3/E4/E23/E25/E26** — assertion config, modes, sinks, queue/worker.
-4. **E21** — `B6` design advisories and `B7` rubric (warn only).
+4. **E21** — `B6` advisories and `B7` rubric (warn only).
