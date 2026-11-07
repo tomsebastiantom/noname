@@ -543,10 +543,33 @@ decision is still `pass`, which is why unverified is a separate number rather th
 server only after `pnpm install`; the restart fixed it. That is recorded so the next person does not read the
 crash as a queue bug.
 
+## 2026-11-07 — E21 (B6) + E4 blocking policy
+
+**Scope.** Add the measurable half of design review (`color-contrast`, warning only) and make `--mode` mean
+something for exit codes: agents report, gates block, and a human `dev` run fails the shell.
+
+**Code.** `packages/eval/src/types.ts` (`contrast`), `observers/browser.ts` (contrast audit), `checks/browser.ts`
+(`B6.design`), `checks/b6.test.ts`, `packages/cli/src/commands/eval.ts` (agent exits 0).
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/{eval,cli} typecheck` | clean |
+| Tests | `pnpm vitest run packages/eval/src` | **84/84 passed** (4 B6 tests) |
+| Unit — advisories | contrast violation `color-contrast (3 node(s))` | fail at `warn`, `passed` still true |
+| Unit — unavailable | audit could not run | skip, never pass |
+| Live — B6 | `noname eval … --browser-endpoint …` | **B6.design pass**: “no contrast advisories”; overall **74 pass / 1 warn failure / 0 skip** |
+| Live — policy | same failing site (`--site http://127.0.0.1:9`), two modes | **agent exit 0**, **dev exit 1** |
+
+**Deliberate limits.** `B6` covers contrast because it has a deterministic answer; spacing and “looks right”
+are not automatable without a model. `B7.visual-rubric` remains open (warn only, never a gate). `--mode` target
+policy is still tenant-wide: “dev may inspect drafts” is not implemented.
+
 ## Next steps
 
 1. **E20 remainder** — sandbox checkout to `paid` + `correlationId` cleanup.
 2. **E8 remainder** — tenant-role projection.
-3. **E4 remainder** — mode-specific target/blocking policy.
-4. **E21** — `B6` advisories and `B7` rubric (warn only).
-5. Browser endpoint for the worker (`EVAL_CDP_ENDPOINT`) so async sweeps include tier 2.
+3. **E4 remainder** — target policy (drafts in dev).
+4. **B7** — visual rubric (warn only).
+5. Worker browser endpoint (`EVAL_CDP_ENDPOINT`) for async tier 2.

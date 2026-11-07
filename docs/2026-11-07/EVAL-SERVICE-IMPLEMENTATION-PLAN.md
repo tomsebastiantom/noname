@@ -7,10 +7,10 @@
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink and **the async queue/worker (E25)** are **done and verified** on 2026-11-07. `POST /api/eval/runs`
-> enqueues a tenant sweep; the worker runs the catalogue off the request path and records one Evidence
-> decision. **Still open:** E20 checkout→`paid`, E8 tenant-role projection, E4 target/blocking policy, E21
-> advisories. See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> sink, the async worker and **B6 contrast (E21 partial)** are **done and verified** on 2026-11-07. `--mode`
+> now also sets blocking policy (`agent` never fails the process; `dev`/`gate` do). **Still open:** E20
+> checkout→`paid`, E8 tenant-role projection, E4 target policy, B7 visual rubric. See
+> [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
@@ -206,7 +206,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E1** | `Check` type mismatch | `Check` is `(ctx) => …`; manifest exports `{ id, run }`; browser exports `{ id, level, run }`; `evaluate` mixes them ([`index.ts:24`](../../packages/eval/src/index.ts#L24)) | **DONE 2026-11-07.** `Check = { meta, run }`; registry array; compile-time + test uniqueness | `pnpm typecheck` clean; duplicate id fails a test | S |
 | **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O. **Manifest path done 2026-11-07**; HTTP/browser I/O still lives in checks. | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
 | **E3** | No assertion config | levels are hardcoded per result | **DONE 2026-11-07.** `AssertionConfig` (`assertions`, `assertMatrix`) resolved per result: catalogue default → id override → matching route patterns (last wins); `off` removes the result; `--config <file>` loads it. Presets remain a convenience, not a mechanism | A route pattern with `B2.overflow: off` removes only that result | M |
-| **E4** | No modes/sinks | `evaluate()` returns a value only | **PARTIAL 2026-11-07.** `--mode dev|gate|agent`; `gate` posts one Evidence decision + metrics, `dev`/`agent` write nothing. **Still open:** mode-specific target and blocking policy (drafts vs published) | A `dev` run writes no Evidence; a `gate` run writes exactly one decision | M |
+| **E4** | No modes/sinks | `evaluate()` returns a value only | **PARTIAL 2026-11-07.** `--mode dev|gate|agent`; gate writes one Evidence decision + metrics, dev/agent write nothing; blocking policy: `agent` exits 0, `dev`/`gate` exit non-zero on failure. **Still open:** target policy (drafts in dev) | A failing run exits 1 in dev and 0 in agent; gate writes one decision | M |
 | **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07.** `machine` actor + `nsv.` service token; `MACHINES_READ` split from `MACHINES_DEFINE`; token org-scoped with `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
 | **E6** | No determinism | no readiness marker; fixed 2.5 s wait in browser observer; no retries/runs | `data-eval-ready` contract, reduced motion, fixed fonts, `runs`/aggregation, recorded retries | A slow-hydrating page is waited for deterministically; flake count is reported | M |
 
@@ -238,7 +238,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E18** | `B3.a11y` missing | no `axe-core` | **DONE 2026-11-07.** axe-core injected in the browser observer; `B3.a11y` asserts the RFC subset (`image-alt`, `label`, `button-name`, `link-name`) and fails with rule ids + node counts | Removing an `alt` fails `B3` with the rule | M |
 | **E19** | `B4.content` missing | `B1.render` only checks text length | **DONE 2026-11-07.** Title, text and price values are collected from the edge-resolved spec and looked up in the rendered body; a missing value fails with its text | Removing the price from a product page fails `B4` | S |
 | **E20** | `B5.behaviour` missing | checkout capability exists; no sandbox product; no correlation cleanup | **PARTIAL 2026-11-07.** `B5.behaviour` clicks the first add-to-cart control, waits for the storefront to settle, and asserts the cart text moves to a non-zero item count. **Still open:** checkout reaching `paid` with a provider callback, a reserved sandbox product, and order cleanup by `correlationId` | Breaking add-to-cart fails `B5` (observed: 1 item); checkout → `paid` remains uncovered | L |
-| **E21** | `B6`/`B7` missing | none | `B6` contrast/spacing advisories (`warn`); `B7` vision review — `warn` only, never a gate | `B6` reports a known contrast failure; `B7` never changes `passed` | M |
+| **E21** | `B6`/`B7` missing | none | **PARTIAL 2026-11-07.** `B6.design` runs axe `color-contrast` and reports `warn`; **still open:** spacing advisories and `B7.visual-rubric` (vision model, warn only) | A contrast failure is reported but does not block | M |
 | **E22** | `S1.no_internal_egress` missing | RFC §5.5; no implementation | **DONE 2026-11-07.** The browser observer probes internal HTTP targets (`127.0.0.1:3000`, metadata address) with `no-cors` fetches; S1 passes only if all are unreachable, and is `warn` by default because a local browser legitimately shares the host network | A reachable internal endpoint fails `S1` (observed locally) | M |
 
 ### 5.5 Runner, CLI and plumbing
@@ -381,5 +381,5 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 | **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done except E8’s tenant-role half** — vocabulary, capability wiring, M1/M3/M5/R1–R3 complete | 43 tests; live **64 pass / 0 fail / 2 skip** |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done 2026-11-07** — E16–E19 (E21 B6/B7 still open) | 61 tests; live **72 pass / 0 fail / 0 skip** incl. tier 2 |
-| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart half done, checkout open | 72 tests; live B5 pass (“1 item”), S1 warn-fail names the API |
+| **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 and B6 done; E20 cart done, checkout open | 84 tests; live B6 pass, agent/dev exit policy verified |
 | **B7** | E3, E4, E23–E26 — config, modes, sinks, queue | **In progress** — E3/E23/E24/E25/E26 done; E4 partial | 4 new queue/job tests; async job wrote Evidence + metrics |
