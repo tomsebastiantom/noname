@@ -70,6 +70,8 @@ The guard cannot read roles from the token payload. It must resolve them **serve
 This mirrors the existing D4 role-map read for humans (`/api/eval/context`) and keeps authorization server-side.
 The token proves **who**; ZITADEL proves **what role**.
 
+**Implemented:** the guard and dry-run rollout are in [`OPERATOR-GUARD-DRY-RUN.md`](./OPERATOR-GUARD-DRY-RUN.md).
+
 ## 5. Migration and safety
 
 - Tenant project/roles: untouched.

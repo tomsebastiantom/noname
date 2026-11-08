@@ -282,6 +282,30 @@ AsyncLocalStorage, release audit rows carry it, and `/api/evidence/audit` requir
 the platform project) and cache briefly; it cannot trust a role claim. See
 [`PLATFORM-ACCOUNTS-PROVISIONING.md`](./PLATFORM-ACCOUNTS-PROVISIONING.md) §4.
 
+## 2026-11-07 — operator guard + dry-run rollout
+
+**Scope.** Enforce the platform-operator boundary and expose a dry-run rollout over an explicit org list. No write
+path.
+
+**Code.** `domains/release/platform-guard.ts`, platform-only permissions + exclusion in `@noname/auth`,
+`servicePermissionsForRoles`, `ReleaseService.getAnyOrg`, `POST /:id/rollout`, platform-project audience in
+`verified-token.ts`.
+
+### Verification
+
+| Check | Observed |
+|---|---|
+| Guard unit | **4/4**: platform role accepted; tenant org 403; missing role 403; unset env 503 |
+| Permission exclusion | `admin` has no platform-only permission; service-role map correct |
+| Release/auth targeted | **67/67** |
+| Full server suite | **660/660**, 147 files |
+| Live dry-run | **200**, demo org `eligible`, platform org `skipped: platform_org`, duplicate deduped |
+| No token | **401** |
+| Write path | `dryRun:false` rejected (400) |
+
+**Limits.** No tenant-catalog existence check; role lookup is uncached; only platform-owned releases are eligible;
+write path disabled.
+
 ## Next blocks
 
 1. **Request-id + `AUDIT_READ`** — middleware, `requestId`/`traceId` in audit metadata, tenant audit route.
