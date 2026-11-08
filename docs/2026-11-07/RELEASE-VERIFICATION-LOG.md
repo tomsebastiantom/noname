@@ -318,15 +318,17 @@ write path disabled.
 
 | Check | Observed |
 |---|---|
-| Tenant account | `eval_reader` role, `eval-runner-<org>` account, key, grant created |
+| Tenant account | `eval_reader` role, `eval-runner-<org>` account, key in Vault, grant created |
 | Context read | `GET /api/eval/context` with the tenant token → **200** |
 | CLI | `noname eval --tenant yogastore --mode dev` → **60 pass, 0 fail, 9 skip** |
+| Vault | key read from `secret/noname/orgs/<org>/eval/service-account`; no file path |
 | Typecheck | server, CLI, eval clean |
 | Server tests | **652/652**, 147 files |
 | Removed | `nsv.` signer/verifier/mint script gone; no code references |
 
-**Limit recorded.** Per-tenant keys live under `zitadel_keys/tenants/<org>/` (gitignored); production secret
-storage (Vault) is the follow-up. Browser checks skipped because no CDP endpoint was supplied.
+**Limit recorded.** Tenant keys are Vault-only; local runs use the Vault dev root token, so per-tenant Vault policy
+scoping and AppRole/Kubernetes auth remain deployment work. Browser checks skipped because no CDP endpoint was
+supplied.
 
 ## Next blocks
 

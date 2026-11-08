@@ -49,7 +49,7 @@ tenant org (yogastore)
 
 CLI / worker
   org  = resolve(tenant slug)
-  key  = zitadel_keys/tenants/<org>/eval-runner-sa.json
+  key  = Vault: secret/noname/orgs/<org>/eval/service-account
   GET  /api/eval/context            (x-org-id = tenant)
   POST /api/eval/record             (x-org-id = tenant)
 ```
@@ -63,7 +63,7 @@ CLI / worker
 | Step | Change |
 |---|---|
 | 1 | tenant role `eval_reader`; one `eval-runner-<org>` account per tenant with a key and grant (`pnpm init:tenant-eval`) |
-| 2 | key stored under `zitadel_keys/tenants/<org>` (production: Vault) |
+| 2 | key stored in Vault at `secret/noname/orgs/<org>/eval/service-account` (no file fallback) |
 | 3 | CLI resolves the org from the slug, loads the tenant key, exchanges it for an access token |
 | 4 | worker uses the job org to load the same tenant key |
 | 5 | server resolves `eval_reader` grants when the token has no role claim (ZITADEL behavior) |

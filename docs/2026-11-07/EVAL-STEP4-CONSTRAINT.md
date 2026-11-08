@@ -66,7 +66,7 @@ surface. It also matches the “one read-only identity per tenant” model that 
 
 It needs a tenant-provisioning decision and a secret-storage decision:
 
-- where per-tenant keys live (Vault vs env map vs KMS);
+- where per-tenant keys live: **decided — Vault only**; see [`TENANT-EVAL-KEYS.md`](./TENANT-EVAL-KEYS.md);
 - whether the key is created at tenant onboarding or lazily on first eval;
 - how the worker authenticates to the secret store.
 
@@ -86,7 +86,7 @@ worse than `nsv.`.
 
 **Per-tenant accounts implemented (provisioning, CLI and worker):**
 
-- `scripts/init/tenant-eval-account.ts` (`pnpm init:tenant-eval --org <org> --project <project>`): creates project role `eval_reader`, service account `eval-runner-<org>`, key under `zitadel_keys/tenants/<org>/eval-runner-sa.json`, and the grant.
+- `scripts/init/tenant-eval-account.ts` (`pnpm init:tenant-eval --org <org> --project <project>`): creates project role `eval_reader`, service account `eval-runner-<org>`, writes the key to Vault, and grants the role.
 - `SERVICE_ROLE_PERMISSIONS.eval_reader` maps to `machines:read`; `requireAuthenticatedActor` resolves grants server-side when a token has no role-derived permissions (service accounts).
 - `packages/eval/src/service-account.ts` exchanges the key for a short-lived access token; CLI and worker both use it.
 - CLI: `--tenant` resolves the org, loads that tenant key, and signs in; `--token` is gone.
