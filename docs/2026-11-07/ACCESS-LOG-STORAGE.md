@@ -18,7 +18,32 @@
 
 They are different planes. Mixing them makes the audit kernel unusable and the log store unauditable.
 
-## 2. Options in this stack
+## 1a. Priority — access logs do **not** answer “who edited an admin”
+
+The reason to build access logs is **not** “we are adding platform roles”. That question is answered by the
+**audit** stream, which is a different control plane.
+
+| Question | Record | Store | Owner |
+|---|---|---|---|
+| who changed a role / token / tenant pointer, and why? | **audit** (control plane) | Postgres `evidence_audit_events` | privileged commands |
+| what requests hit the API, with status and latency? | **access log** (data plane) | ClickHouse | middleware |
+| what is true about an order/release? | **Evidence** | Postgres | domains |
+| where did time go in one request? | **trace** | Jaeger | OTel |
+
+This is exactly how the large providers split it:
+
+- **AWS CloudTrail** records **management events** — IAM/role/policy changes (“control plane operations”) —
+  separately from high-volume data-plane activity ([CloudTrail concepts](https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-concepts.html)).
+- **Cloudflare Audit Logs** record account/zone configuration changes and logins, while **HTTP request logs** go
+  through Logpush to storage/SIEM ([Audit Logs](https://developers.cloudflare.com/fundamentals/account/account-security/review-audit-logs/), [Logpush](https://developers.cloudflare.com/logs/logpush/)).
+- **Kubernetes** audit records *who did what to the API*, not container stdout; they use different backends.
+- **GitHub** keeps an enterprise/org **audit log** for member/role/repo actions ([audit log](https://docs.github.com/en/enterprise-cloud@latest/admin/concepts/security-and-compliance/audit-log-for-an-enterprise)).
+
+**Therefore:** implement the **audit** phases A–C (see [`AUDIT-LOGGING-DESIGN.md`](./AUDIT-LOGGING-DESIGN.md))
+before access-log infrastructure. Access logs are for SOC 2 **CC7.2 monitoring / incident forensics**, and they
+become useful only after request IDs and structured principals exist.
+
+
 
 | Option | How it works | Pros | Cons |
 |---|---|---|---|
@@ -101,6 +126,9 @@ Raw access logs stay **operator-only**. Tenants see:
 Never expose raw access logs to tenants: they contain other users’ IP hashes, paths, and traffic patterns.
 
 ## 7. Implementation plan
+
+**Ordering rule:** this plan starts **after** audit phases A–C. Access logs are not a prerequisite for the
+platform-operator identity; the audit stream is.
 
 | Phase | Change | Acceptance |
 |---|---|---|

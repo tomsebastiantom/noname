@@ -208,5 +208,10 @@ Phases A–C are required before D17 waves; D–E are the SOC evidence pack.
 3. **Phase C** before enabling writes for more than one org.
 4. **D–E** as the evidence pack before any external audit.
 
+**Ordering:** this audit stream is the **prerequisite** for D17; access logs are not. Request/access logging
+(ClickHouse, requestId, dashboards) is a separate later block for CC7.2 monitoring — see
+[`ACCESS-LOG-STORAGE.md`](./ACCESS-LOG-STORAGE.md). Do not build access-log infrastructure to answer “who edited
+an admin”; that is what this design answers.
+
 Without A–C, D17 would create a privileged identity whose actions are not attributable in a tenant-visible way —
 which is precisely the finding an auditor would write.
