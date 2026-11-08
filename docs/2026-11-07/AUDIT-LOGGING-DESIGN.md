@@ -41,6 +41,41 @@ Two audiences, not one:
 **Net:** the storage primitives are good; the gaps are **structure (actor), audience (tenant vs platform), coverage
 (role/token changes), integrity, and export**.
 
+## 2a. Where audit is stored — and why not ClickHouse
+
+The name “Evidence” makes this confusing. The kernel has **three** tables with different jobs:
+
+| Table | Job | Business fact? |
+|---|---|---|
+| `evidence_records` | what happened (order, payment, gate decision) | **yes** |
+| `evidence_activities` | who/what caused that fact (provider, service, user) | provenance of a fact |
+| `evidence_audit_events` | who exercised **authority** (role, token, release move) | **no — access/control plane** |
+
+`evidence_audit_events` was designed as the **audit primitive** (see `AUDITABLE-RECORDS-GENERIC-PATTERNS.md`),
+not as a business-fact table: it has no commerce/release columns, only actor/action/subject/metadata. The name of
+the domain is “Evidence”; the table is the audit member of that kernel.
+
+If your architectural rule is **“Evidence = business facts only”**, the clean move is a **separate Postgres audit
+table/domain**, not ClickHouse:
+
+| Option | Store | Verdict |
+|---|---|---|
+| **A. keep `evidence_audit_events`** | Postgres, same kernel | valid; lowest risk; naming is the only wart |
+| **B. extract `audit_events` into a new `audit` domain** | Postgres, separate table/domain | cleanest if strict separation is a rule; requires moving writers/route |
+| **C. ClickHouse** | analytics store | **wrong for the source of truth** |
+
+Why not ClickHouse for authoritative audit:
+
+- audit must be written **in the same transaction** as the state change (pointer/role); ClickHouse is a separate
+  system, so a successful move could be unaudited (or vice versa);
+- TTL is a retention tool, not an immutability guarantee; audit needs 7 years and tamper evidence;
+- a tenant audit query would depend on the analytics pipeline being up;
+- ClickHouse is the right home for **access logs** (`http_access_logs`, 90 days), and a valid **export target**
+  for audit, not the system of record.
+
+**Recommendation:** use Postgres. Choose **A** now for the first slice; choose **B** if strict separation is a
+standing rule, in which case the extraction is one migration + one domain + route alias — not a ClickHouse move.
+
 ## 3. What must be logged
 
 | Event | Actor | Target | Fields |
