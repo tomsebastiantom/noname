@@ -9,9 +9,11 @@ import {
   resolveAuthContextFromVerifiedPayload,
 } from "@noname/auth";
 import type { Context } from "hono";
-import { verifyAgentToken } from "../../shared/agent-token";
+import { resolveAgentUserInfo } from "../../shared/agent-userinfo";
+import { verifyZitadelAgentToken } from "../../shared/agent-jwt";
 import { getOrgId, getUserId } from "../../shared/org";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
+import { resolveZitadelJwk } from "./adapters/zitadel/jwks";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";
 import { listProjectAuthorizations } from "./adapters/zitadel/authorizations";
@@ -67,20 +69,32 @@ export async function requireAuthenticatedActor(
     return c.json({ error: "Authentication required" }, 401);
   }
 
-  const agentSecret = process.env.AGENT_TOKEN_SECRET ?? "";
-  const agentClaims = verifyAgentToken(token, agentSecret);
-  if (agentClaims) {
+  const agentAudiences = [
+    process.env.ZITADEL_CLIENT_ID,
+    process.env.ZITADEL_PROJECT_ID,
+    process.env.ZITADEL_PLATFORM_PROJECT_ID,
+  ]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+
+  const agent = await verifyZitadelAgentToken(token, {
+    issuer: zitadelIssuer(),
+    audience: agentAudiences.length > 0 ? agentAudiences : undefined,
+    resolveKey: resolveZitadelJwk,
+    userInfo: resolveAgentUserInfo,
+  });
+  if (agent) {
     const orgId = getOrgId(c);
-    if (!orgId || agentClaims.orgId !== orgId) {
+    if (!orgId || agent.orgId !== orgId) {
       return c.json({ error: "Forbidden" }, 403);
     }
     return {
       type: "agent",
-      agentId: agentClaims.agentId,
-      agentSlug: agentClaims.agentSlug,
-      onBehalfOf: agentClaims.onBehalfOf,
-      orgId: agentClaims.orgId,
-      permissions: agentClaims.permissions,
+      agentId: agent.agentUserId,
+      agentSlug: agent.agentUserId,
+      onBehalfOf: agent.onBehalfOf,
+      orgId: agent.orgId,
+      permissions: agent.permissions,
       userToken: token,
     };
   }

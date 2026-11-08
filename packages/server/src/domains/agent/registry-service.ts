@@ -1,21 +1,33 @@
+import { readFileSync } from "node:fs";
 import {
   hasPermission,
   intersectAgentPermissions,
   PERMISSIONS,
   type PermissionKey,
 } from "@noname/auth";
-import { NotFoundError, ValidationError } from "../../shared/domain-error";
+import { NotFoundError, ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
+import {
+  exchangeDelegatedToken,
+  serviceAccountToken,
+  type ServiceAccountKey,
+} from "../../shared/zitadel-token";
 import type { AuthorizationPort } from "../auth/authorization-port";
 import type { AgentRegistryStorage, RegisteredAgentRow } from "./adapters/registry-postgres";
-import { mintAgentToken } from "./agent-token";
 import { ORCHESTRATE_TOOL_IDS } from "./mastra/guards";
 
-const TOKEN_TTL_SECONDS = 60 * 60;
+let cachedActorKey: ServiceAccountKey | null = null;
+
+function agentActorKey(): ServiceAccountKey {
+  if (cachedActorKey) return cachedActorKey;
+  const path = process.env.ZITADEL_AGENT_KEY_PATH?.trim() ?? "zitadel_keys/agent-runner-sa.json";
+  const parsed = JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
+  cachedActorKey = parsed;
+  return parsed;
+}
 
 export function createAgentRegistryService(deps: {
   storage: AgentRegistryStorage;
   authorization: AuthorizationPort;
-  tokenSecret: string;
   resolveCreatorPermissions: (userId: string, userToken: string) => Promise<PermissionKey[]>;
 }) {
   async function assertCreatorScope(
@@ -143,19 +155,33 @@ export function createAgentRegistryService(deps: {
       if (permissions.length === 0) {
         throw new ValidationError("permissions", "Agent token would have no delegated permissions");
       }
-      const exp = Math.floor(Date.now() / 1000) + TOKEN_TTL_SECONDS;
-      const token = mintAgentToken(
-        {
-          agentId: agent.id,
-          agentSlug: agent.slug,
-          orgId,
-          onBehalfOf: agent.ownerUserId,
-          permissions,
-          exp,
-        },
-        deps.tokenSecret,
-      );
-      return { token, expiresAt: exp, permissions };
+      const issuer = process.env.ZITADEL_ISSUER?.trim() ?? "http://localhost:8080";
+      const projectId = process.env.ZITADEL_PROJECT_ID?.trim() ?? "";
+      const clientId = process.env.ZITADEL_AGENT_CLIENT_ID?.trim() ?? "";
+      const clientSecret = process.env.ZITADEL_AGENT_CLIENT_SECRET?.trim() ?? "";
+      if (!projectId || !clientId || !clientSecret) {
+        throw new ServiceUnavailableError(
+          "ZITADEL agent exchange is not configured (project/client credentials)",
+        );
+      }
+
+      const actor = await serviceAccountToken({
+        issuer,
+        key: agentActorKey(),
+        scopes: `openid urn:zitadel:iam:org:project:id:${projectId}:aud`,
+      });
+      const exchanged = await exchangeDelegatedToken({
+        issuer,
+        clientId,
+        clientSecret,
+        actorToken: actor.accessToken,
+        subjectToken: acting.userToken,
+        requestedTokenType: "urn:ietf:params:oauth:token-type:jwt",
+        audience: projectId,
+      });
+
+      const exp = Math.floor(Date.now() / 1000) + exchanged.expiresIn;
+      return { token: exchanged.accessToken, expiresAt: exp, permissions };
     },
 
     async grantCollectionEditor(

@@ -32,11 +32,9 @@ export function createAgentDomain(deps: AgentDomainDeps) {
   const registryStorage = createAgentRegistryStorage(deps.db);
   const taskStorage = createPostgresAgentTaskStorage(deps.db);
   const taskService = createAgentService(taskStorage);
-  const tokenSecret = deps.agentTokenSecret ?? process.env.AGENT_TOKEN_SECRET ?? "";
   const registry = createAgentRegistryService({
     storage: registryStorage,
     authorization: deps.authorization,
-    tokenSecret,
     resolveCreatorPermissions: async (_userId, userToken) => {
       const payload = await verifyTokenPayload(userToken);
       if (!payload) return [];
