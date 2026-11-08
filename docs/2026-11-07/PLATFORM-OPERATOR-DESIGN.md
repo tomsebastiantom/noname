@@ -278,6 +278,38 @@ later. Do not add a fourth scheme in between.
 **Audit consequence:** actor types stay distinct (`user` / `agent` / `service`), so the audit row says whether a
 human, an agent, or a service acted — and `onBehalfOf` is recorded for agent actions.
 
+### Crypto, keys and libraries — what we actually use
+
+| Actor | Algorithm | Key | Verification | Standard? |
+|---|---|---|---|---|
+| human | JWT (RS256, issued by ZITADEL) | ZITADEL private key; public JWKS | WebCrypto + JWKS in `@noname/auth` | **yes** |
+| machine (`nsv.`) | HMAC-SHA256 over a base64url JSON payload | `SERVICE_TOKEN_SECRET` (fallback `WORKER_SERVER_SECRET`) | same secret | **no** |
+| agent (`nag.`) | HMAC-SHA256, same envelope | `AGENT_TOKEN_SECRET` | same secret | **no** |
+
+The service/agent tokens are implemented with `node:crypto` (`createHmac`, `timingSafeEqual`). They have
+`serviceId`/`agentId`, `orgId`, `permissions`, `exp` — but **no `aud`, no `jti`, no issuer, no asymmetric key**.
+`jose` is present in the dependency graph (transitively) but is not used for these tokens.
+
+**The real risk is key custody, not the envelope.** Anyone who holds `SERVICE_TOKEN_SECRET` can mint a token with
+any permission, including `releases:platform_write`. There is no per-token revocation and rotation invalidates all
+tokens. For a local first-party slice that is acceptable; for a privileged cross-tenant operator it is the weak
+point.
+
+| Option | What changes | Verdict |
+|---|---|---|
+| **A. harden `nsv.`** | add `jti` + `aud`, separate secret per capability, KMS/secret-manager custody, serviceId allowlist | minimum before production |
+| **B. standard JWT via `jose`** | HS256/RS256 JWT; standard parsing | format only; HS256 still shares the minting secret |
+| **C. ZITADEL service user + client credentials** | IdP issues RS256 token with `aud`, `jti`, revocation; app verifies JWKS | **recommended for production** |
+| **D. SPIFFE / mTLS** | workload identity from infrastructure | strongest in-cluster, not for a laptop CLI |
+
+**Recommendation:** keep **A** for the local slice (short TTL, separate secret, audit mint, add `jti`/`aud` when the
+mint script lands); move to **C** before the platform operator is used for real cross-tenant waves. Do not add a
+new crypto library just to wrap the same shared secret — that changes the format, not the trust model.
+
+**Key custody today:** secrets live in `.env` (`SERVICE_TOKEN_SECRET`, `AGENT_TOKEN_SECRET`), and the mint script
+runs on the operator's machine. In staging/production they must come from the secret manager/KMS, and the platform
+signing secret should be **separate** from the eval service secret so one leak does not grant both.
+
 ## 5. Wave endpoint (once the identity exists)
 
 ```
