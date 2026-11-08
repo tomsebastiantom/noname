@@ -88,7 +88,8 @@ VAULT_AUTH_MODE=token
 | AppRole parsing | per-tenant role/secret map accepted |
 | AppRole login | mocked Vault login uses the tenant’s role and secret |
 | Missing tenant credential | fails closed |
-| Unit tests | **8/8** (`vault-auth.test.ts`) |
+| Unit tests | **10/10** (`vault-auth.test.ts` + `service-account.test.ts`) |
+| Missing secret vs auth failure | **404 is `VaultSecretNotFoundError`; 403/500 are not** (provisioning only creates on 404) |
 
 ## 7. Not yet done
 

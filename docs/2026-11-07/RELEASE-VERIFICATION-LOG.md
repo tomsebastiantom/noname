@@ -322,6 +322,7 @@ write path disabled.
 | Context read | `GET /api/eval/context` with the tenant token → **200** |
 | CLI | `noname eval --tenant yogastore --mode dev` → **60 pass, 0 fail, 9 skip** |
 | Vault | key read from `secret/noname/orgs/<org>/eval/service-account`; no file path |
+| Vault auth | explicit `VAULT_AUTH_MODE`; token mode live; missing mode fails closed; production + token rejected |
 | Typecheck | server, CLI, eval clean |
 | Server tests | **652/652**, 147 files |
 | Removed | `nsv.` signer/verifier/mint script gone; no code references |

@@ -94,6 +94,7 @@ environment selection, not a fallback: the code still reads Vault only. Producti
 | CLI | `noname eval --tenant yogastore --mode dev` → **60 pass, 0 fail, 9 skip** |
 | File reads | none; the CLI/worker loader only calls Vault |
 | Missing Vault / mode | fails closed (`VAULT_AUTH_MODE is required` or `VAULT_ADDR is required`) |
+| Missing secret vs auth error | provisioning only creates a key on **404**; 403/500 propagate |
 
 ## 8. Production policy (not yet applied locally)
 
