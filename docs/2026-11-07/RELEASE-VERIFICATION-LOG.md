@@ -202,11 +202,13 @@ migration gate, and Evidence.
 | Live — rollback ring | `POST /channels/canary/rollback` | 200; catalog URL back to `…/r_e2e_1/…` |
 | DB | `release_channels` / `tenant_release_pointers` | `canary → r_e2e_1, previous r_e2e_2`; pointer `channel=canary` |
 | Evidence | `platform.release.channel_moved` | 3 rows: r1, r1→r2, rollback r2→r1 |
-| Retention | unit test | a channel-referenced release **and** the pointer pin are protected from `prune` |
+| Retention — unit | new retention test | a channel-referenced release **and** the pointer pin are protected from `prune` |
+| Retention — live | `POST /releases/prune {keep:1}` after the fix | **200**, deleted 3 old releases; channel/pointer rows and catalog `…/r_e2e_1/…` survived |
 
 **Retention bug found and fixed.** The first live `prune` returned 500: a channel-set pointer still has a
 `previousReleaseId`, and deleting that release violated a foreign key. Retention now protects both the pin
-(`releaseId`, `previousReleaseId`) and the ring (active + previous); the unit test covers the combination.
+(`releaseId`, `previousReleaseId`) and the ring (active + previous); the unit test covers the combination, and
+the live prune now returns 200 with the ring and pin intact.
 
 **Limits.** No channel UI; a ring move is one write but the catalog re-reads the pointer per request (as D1); no
 percentage traffic split — a request never sees two bundles.
