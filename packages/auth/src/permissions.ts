@@ -175,6 +175,8 @@ export const SERVICE_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> 
     PERMISSIONS.EVAL_TENANT_READ,
     PERMISSIONS.EVAL_RECORD_WRITE,
   ],
+  /** Tenant-scoped eval service account: read-only access to that tenant's definitions/config. */
+  eval_reader: [PERMISSIONS.MACHINES_READ],
 };
 
 export function permissionsForServiceRoles(roles: Iterable<string>): PermissionKey[] {

@@ -5,6 +5,7 @@ import {
   hasPermission,
   PERMISSIONS,
   type PermissionKey,
+  permissionsForServiceRoles,
   resolveAuthContextFromVerifiedPayload,
 } from "@noname/auth";
 import type { Context } from "hono";
@@ -14,6 +15,7 @@ import { verifyServiceToken } from "../../shared/service-token";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";
+import { listProjectAuthorizations } from "./adapters/zitadel/authorizations";
 import { bearerToken, resolveAccessToken } from "./token-source";
 import { verifiedTokenPayload } from "./verified-token";
 
@@ -104,7 +106,7 @@ export async function requireAuthenticatedActor(
 
   const projectId = zitadelProjectIdOrNull() ?? undefined;
   // Permissions come only from the signature-verified payload.
-  const { permissions } = await resolveAuthContextFromVerifiedPayload(
+  let { permissions } = await resolveAuthContextFromVerifiedPayload(
     auth.userToken,
     auth.payload,
     {
@@ -113,6 +115,24 @@ export async function requireAuthenticatedActor(
       allowProjectIdFallback: allowProjectIdFallbackFromEnv(process.env),
     },
   );
+
+  // Service accounts do not carry project roles in the token (ZITADEL behavior). If the token has no role-derived
+  // permissions, resolve its grants for this org/project server-side. This is the same rule the platform guard uses.
+  if (permissions.length === 0 && projectId) {
+    const orgId = getOrgId(c);
+    if (orgId) {
+      try {
+        const rows = await listProjectAuthorizations(orgId, projectId);
+        const roleKeys = (rows.find((row) => row.user?.id === auth.userId)?.roles ?? [])
+          .map((role) => role.key?.trim())
+          .filter((role): role is string => Boolean(role));
+        permissions = permissionsForServiceRoles(roleKeys);
+      } catch {
+        // Leave permissions empty; the route will return 403 rather than assume a role.
+      }
+    }
+  }
+
   return {
     type: "human",
     userId: auth.userId,
