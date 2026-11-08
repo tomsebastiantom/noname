@@ -42,6 +42,37 @@ identities (ZITADEL service accounts), never fake users.
 
 **Conclusion:** there is no self-acting mode. Every agent action is attributable to an owner.
 
+## 2a. Provisioning status and the current blocker (2026-11-07)
+
+Provisioned on the local ZITADEL (not production):
+
+| Piece | Result |
+|---|---|
+| Confidential OIDC app | created with `OIDC_GRANT_TYPE_TOKEN_EXCHANGE` + basic auth; client id/secret kept out of git |
+| Agent machine user | `agent-runner` created in the demo org |
+| Agent service-account key | created (JSON key) and stored in `zitadel_keys/agent-runner-sa.json` (gitignored) |
+| Project role `agent_runner` | created and granted to the machine user |
+| Private-key JWT | **live success**: service-account token issued (`expires_in ≈ 12h`) |
+| Token exchange request | reaches ZITADEL with client auth + actor/subject tokens |
+
+**Blocker:** the exchange returns
+
+```
+403 {"error":"invalid_request","error_description":"Errors.TokenExchange.Impersonation.PolicyDisabled"}
+```
+
+- The app/grant/client-authentication path is correct — the error is the instance **impersonation policy**.
+- Granting the actor an impersonation role through `/admin/v1/members/{userId}` failed:
+  `IAM_ADMIN_IMPERSONATOR` → 404, `IAM_OWNER_IMPERSONATOR` / `ORG_ADMIN_IMPERSONATOR` → “Member is invalid”.
+- `SetSecuritySettings { impersonation: true }` reported “No changes”, and `GetSecuritySettings` does not expose
+  an impersonation field in this ZITADEL version.
+
+**Next action:** enable impersonation on the instance (ZITADEL Console → Security/Impersonation, or the API/version
+that exposes it), grant the agent service account a narrow impersonator role, then re-run the exchange. No code
+change is needed for that step; the client and verifier are ready.
+
+
+
 ## 3. Why migrate (triggers)
 
 Not “custom tokens are always bad”. Migrate when one of these becomes true:

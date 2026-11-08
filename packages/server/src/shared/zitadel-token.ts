@@ -87,6 +87,8 @@ export async function serviceAccountToken(
 export async function exchangeDelegatedToken(
   input: {
     issuer: string;
+    clientId?: string;
+    clientSecret?: string;
     actorToken: string;
     subjectToken: string;
     subjectTokenType?: string;
@@ -107,9 +109,16 @@ export async function exchangeDelegatedToken(
   if (input.scopes) body.set("scope", input.scopes);
   if (input.audience) body.set("audience", input.audience);
 
+  const headers: Record<string, string> = {
+    "content-type": "application/x-www-form-urlencoded",
+  };
+  if (input.clientId && input.clientSecret) {
+    headers.authorization = `Basic ${Buffer.from(`${input.clientId}:${input.clientSecret}`).toString("base64")}`;
+  }
+
   const response = await fetchImpl(`${input.issuer.replace(/\/$/, "")}/oauth/v2/token`, {
     method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
+    headers,
     body,
   });
   if (!response.ok) {

@@ -81,6 +81,8 @@ describe("exchangeDelegatedToken", () => {
     const result = await exchangeDelegatedToken(
       {
         issuer,
+        clientId: "client-1",
+        clientSecret: "secret-1",
         actorToken: "actor-token",
         subjectToken: "user-token",
         scopes: "openid profile",
@@ -90,7 +92,10 @@ describe("exchangeDelegatedToken", () => {
     );
 
     expect(result.accessToken).toBe("delegated-token");
-    const [, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    const [url, init] = (fetchImpl as unknown as ReturnType<typeof vi.fn>).mock.calls[0]!;
+    expect(url).toBe("http://localhost:8080/oauth/v2/token");
+    const headers = (init as RequestInit).headers as Record<string, string>;
+    expect(headers.authorization).toBe(`Basic ${Buffer.from("client-1:secret-1").toString("base64")}`);
     const body = (init as RequestInit).body as URLSearchParams;
     expect(body.get("grant_type")).toBe("urn:ietf:params:oauth:grant-type:token-exchange");
     expect(body.get("actor_token")).toBe("actor-token");
