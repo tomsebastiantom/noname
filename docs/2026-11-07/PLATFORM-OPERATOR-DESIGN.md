@@ -15,7 +15,7 @@ The authorization model is **org-scoped by construction**:
 |---|---|
 | Edge → API | `x-org-id` + HMAC; every request belongs to one org |
 | Human | permissions expanded from ZITADEL roles **for that org**; `admin` holds all permissions in its own org |
-| Machine | `nsv.` token carries `orgId`; guards reject when `claims.orgId !== x-org-id` (`guards.ts`) |
+| Machine (eval service only) | `nsv.` token carries `orgId`; guards reject when `claims.orgId !== x-org-id` (`guards.ts`) |
 | Release API | `denyUnless(RELEASES_WRITE)` — true for **every org admin** |
 
 So a wave endpoint that accepts `{ orgIds: [...] }` and authorizes with `RELEASES_WRITE` would let **any tenant
@@ -29,7 +29,7 @@ D17 is **design only** — no platform permission, guard, env var or wave endpoi
 |---|---|---|
 | Edge → API | `x-org-id` + HMAC (`orgMiddleware`) | every request is bound to one org |
 | Human | ZITADEL roles expanded to permissions for the request org; `admin` = all permissions in **its own** org | a tenant admin cannot be distinguished from a platform admin by permission alone |
-| Machine | `nsv.` token carries `orgId`; guards reject when `claims.orgId !== x-org-id` (`guards.ts`) | a machine token is single-org |
+| Machine (eval service only) | `nsv.` token carries `orgId`; guards reject when `claims.orgId !== x-org-id` (`guards.ts`) | a machine token is single-org |
 | Roles | `PLATFORM_ROLES` are tenant roles; `admin: ALL_PERMISSIONS` | adding a platform permission naively would give it to every tenant admin |
 | Docs | `ACCESS-AND-ROLES.md`, `ROLES-AND-SCOPE-v2.md` define org-scoped roles only; there is no instance-level admin concept in the app | the concept must be introduced, not extended |
 
@@ -90,7 +90,7 @@ ZITADEL-only; the JWT is the runtime source.
    `platform_operator` grants `releases:platform_*`.
 4. A human operator later logs into the same platform org; the same role and guard apply.
 
-There is **no `nsv.` platform token**. `nsv.` remains the eval service credential.
+There is **no second platform credential**.
 
 ### Where audit attaches
 
@@ -102,13 +102,6 @@ There is **no `nsv.` platform token**. `nsv.` remains the eval service credentia
 A dedicated ZITADEL **platform org** with a project role `platform_operator`, assigned to a **service account**
 that authenticates with **private-key JWT** (RFC 7523). The service account receives a short-lived access token
 with `aud`/`jti`; the API verifies it through the existing JWKS path and checks the platform org + permission.
-
-**Rejected (not implemented):**
-
-- **Rejected: a custom `nsv.` platform credential** — a shared minting secret can mint any permission, with no
-  revocation; `nsv.` stays scoped to the eval service.
-- **C. env allowlist** — no rotation, no auditable provisioning.
-- **D. separate control-plane service** — a new deployable/auth surface for a few hundred rows.
 
 **Example.**
 
@@ -144,7 +137,7 @@ granted explicitly, audited as its own class of action, and the tenant path stay
 
 **B, machine-first.** A dedicated platform org with a `platform_operator` role and a **service account**
 authenticated by **private-key JWT** (RFC 7523). It gives an audienced, revocable, IdP-issued token and reuses the
-existing JWKS verification. There is **no second platform credential**: `nsv.` is eval-only and is not extended.
+existing JWKS verification. There is **no second platform credential**.
 
 Guard shape:
 
@@ -171,9 +164,8 @@ authenticated with **private-key JWT**. There is no second platform credential.
 | **human** (console later) | ZITADEL login in the platform org + `platform_operator` role | platform org | `user:<id>` |
 | **never** | ZITADEL `IAM_OWNER` | instance-wide IdP admin | — |
 
-**Why a service account, not `nsv.`:** the token is audienced, revocable, and issued by the IdP; the private key
-stays with the operator and the public key with ZITADEL. The custom `nsv.` token remains scoped to the existing
-eval service and is **not** extended to platform waves.
+**Why a service account:** the token is audienced, revocable, and issued by the IdP; the private key stays with the
+operator and the public key with ZITADEL. A shared-secret token has none of those properties.
 
 **Why not `IAM_OWNER`:** it can manage the whole instance — organizations, users, IdP settings. Release waves need
 one app permission over a named org list. Using the IdP superuser would violate least privilege, exceed what the
@@ -215,11 +207,9 @@ separates ServiceAccounts from user identities: two authenticators, one authoriz
 |---|---|---|---|
 | **human** | ZITADEL OIDC JWT | its org | existing |
 | **platform operator** | ZITADEL **service account**, private-key JWT → access token | platform org + `releases:platform_*` | **chosen** |
-| **eval service** | `nsv.` HMAC token | one org, `machines:read` | existing, **eval only** |
 | **agent** | `nag.` HMAC token | one org, `onBehalfOf`, permissions ∩ creator | existing, converges later |
 
-All resolve to the **same `PERMISSIONS` catalog** and the same guards. `nsv.` is not extended to platform waves and
-there is no second platform credential.
+All resolve to the **same `PERMISSIONS` catalog** and the same guards. There is no second platform credential.
 
 **Agents** stay on `nag.` for now: it carries the delegation (`onBehalfOf`) and an explicit permission ceiling. If
 agents become third-party, move to OAuth 2.0 **client credentials** (RFC 6749 §4.4) or **token exchange**
@@ -234,24 +224,19 @@ human, an agent, or a service acted; agent actions carry `onBehalfOf`.
 |---|---|---|---|
 | human | JWT (RS256, ZITADEL) | ZITADEL private key; public JWKS | WebCrypto + JWKS |
 | **platform operator** | **private-key JWT assertion → ZITADEL access token (RS256, `aud`, `jti`, expiry)** | service-account **private key** in a secret manager; public key at ZITADEL | **JWKS (existing path)** |
-| eval service (`nsv.`) | HMAC-SHA256 | `SERVICE_TOKEN_SECRET` | same secret (eval only) |
 | agent (`nag.`) | HMAC-SHA256 | `AGENT_TOKEN_SECRET` | same secret (agent only) |
 
 The platform operator uses **no custom crypto and no shared signing secret**. The private key stays with the
 operator; the API verifies an IdP-issued token through the same JWKS path as a human token.
 
-`nsv.` and `nag.` remain technical debt with a limited blast radius: `nsv.` is scoped to the eval service,
-`nag.` to agents. Neither is extended to platform waves.
-
 **Key custody:** the service-account private key lives in a secret manager, rotated on a schedule with a two-key
-overlap; the eval and agent secrets remain separate so one leak cannot grant the others.
+overlap; it is separate from every other credential.
 
 ### Migration — what is ported, what is not
 
 | Existing thing | Action |
 |---|---|
 | tenant roles (`admin`, `editor`, …) and assignments | **unchanged**, not ported; ZITADEL remains their source |
-| `nsv.` eval service token | **unchanged**, eval only; no platform use, no migration |
 | `nag.` agent tokens | **unchanged** for now; converge to OAuth2/token exchange later |
 | `admin`/other project roles | **unchanged**; init must stay idempotent and must not delete them |
 | new `platform_operator` role | **net-new**; created in the platform org and assigned only to the service account |
