@@ -35,6 +35,31 @@ bootstrap wires the function into the tenant domain; release imports nothing fro
 
 This is the C1 boundary: the tenant domain does not know what a release is, only how to ask for a bundle URL.
 
+## 2a. Why the pointer is per tenant — and what the tenant actually sees
+
+The pointer is **not tenant content**. It is a control-plane assignment: “this org uses r_17”. It is keyed by
+`org_id` because releases are rolled out tenant-by-tenant; putting it anywhere else would make progressive rollout
+impossible.
+
+Established platforms do exactly this:
+
+| Platform | Unit | Release state per unit | Tenant-visible |
+|---|---|---|---|
+| **Heroku** | app | release `vN` with `By`, `When`, `Change`; rollback creates a new release | `heroku releases` shows the app's own history |
+| **Kubernetes** | workload in a namespace | Deployment revision history; `kubectl rollout undo` | rollout status/history for that workload |
+| **Cloudflare Workers** | Worker | immutable version + deployment pointer | version/deployment for that Worker |
+| **This platform** | tenant org | `tenant_release_pointers` (active + previous) | current release + its audit history |
+
+The consistent split:
+
+- **artifacts** (bundle, image, migrations) are platform-owned, immutable, retained;
+- **assignment** (“which one this app/tenant uses”) is per unit, one row;
+- **history** (“who moved it, when, why”) is the audit stream;
+- the tenant sees **its own** current release and history, never the platform's release inventory.
+
+So the tenant table does not store release information. It stores **which release the tenant is assigned**, the
+same way Heroku stores which release an app is on — platform-owned, app-scoped, and visible to that app's users.
+
 ## 3. Data model
 
 ```sql
