@@ -125,48 +125,42 @@ runner. A shared runner would blur attribution; if used, the agent ID must still
 | `shared/agent-token.ts` | remove after cutover; during migration keep verify behind a flag |
 | `domains/auth/guards.ts` | verify ZITADEL JWT (JWKS), extract `act`, enforce org/aud, build `AgentActor` |
 | `packages/auth/actors.ts` | `AgentActor.onBehalfOf` stays required for delegated; autonomous mode adds an explicit variant |
-| config | `AGENT_AUTH_MODE=nag|dual|zitadel`; ZITADEL client id/private key in secret manager |
+| config | **no `AGENT_AUTH_MODE` flag**: the verifier is replaced in one release; ZITADEL client id/private key in secret manager |
 | audit | `actorType=agent`, `actorId=agentId`, `onBehalfOf=userId`, `act` recorded |
 | scripts | delete `mint-service-token.ts` is eval; delete agent mint helpers when cut over |
 
-## 7. Migration phases
+## 7. Cutover (no fallback)
 
-### Phase 0 — prepare (no behavior change)
+### Phase 0 — prepare (staging only)
 
 - Enable token exchange on a **confidential** ZITADEL application.
-- Create a test service account and narrow impersonation role.
-- Add `AGENT_AUTH_MODE` flag (default `nag`).
-- Add JWT verifier alongside `nag.` (dual-verify, not dual-authorize).
+- Create a service account and narrow impersonation role **per agent**; keys in a secret manager.
+- Implement the JWT verifier and the token-acquisition path; test both in staging.
 
-### Phase 1 — shadow verification (safe)
+### Phase 1 — pre-production verification (no runtime fallback)
 
-For every agent request that presents a `nag.` token, also accept an optional new JWT in a parallel request or a
-shadow header; verify it and **compare**, without using it for authorization:
+- Run the new path against staging with the same agent tasks and compare actor, org, `act`, permissions and audit
+  rows with the `nag.` baseline.
+- Recorded/real tokens may be replayed in tests; production never accepts two token types.
+- Exit criterion: every exercised agent route has a passing new-token test and audit parity is confirmed.
 
-```
-actorId, orgId, onBehalfOf, permissions, exp
-```
+### Phase 2 — single production cutover
 
-Log mismatches; do not write business data from the shadow path. Exit criterion: N days, zero unexplained
-mismatches.
+One release does all of the following:
 
-### Phase 2 — dual accept (canary)
+- the guard accepts **only** JWTs (JWKS, `aud`, org, `act`);
+- agent token acquisition uses token exchange;
+- `nag.` verifier, mint helper, `AGENT_TOKEN_SECRET` and their tests are deleted;
+- `registered_agents.zitadel_agent_user_id` is required for token issuance.
 
-- Guard accepts both token types; authorization still from whichever token authenticated.
-- Enable for one agent (allowlist), then one org.
-- Metrics: `agent_auth_old_total`, `agent_auth_new_total`, `agent_auth_mismatch_total`.
-- Kill switch: `AGENT_AUTH_MODE=nag` immediately.
+There is no dual-accept window and no feature flag. Agents obtain a token before the deploy; any `nag.` token
+presented after it is rejected.
 
-### Phase 3 — cutover
+### Phase 3 — post-cutover verification
 
-- Agents obtain tokens via exchange; `nag.` minting stops.
-- Guard requires JWT for allowlisted agents; old tokens valid until TTL.
-- Verify audit parity and error rates.
-
-### Phase 4 — delete
-
-- Remove `nag.` verifier, mint helper, `AGENT_TOKEN_SECRET`, tests, docs references.
-- No permanent dual path.
+- Confirm `agent_auth_new_total` traffic and audit rows.
+- Recovery is **roll forward** (fix and redeploy) or pausing agent execution; rolling back to `nag.` is not an
+  option because the code no longer exists.
 
 ## 8. How to test that the migration is safe (and that old behavior still works)
 
@@ -175,33 +169,33 @@ mismatches.
 | **Verifier unit** | valid/invalid signature, expiry, wrong org, wrong audience, missing `act`, unknown permissions |
 | **Exchange integration** | user token + agent actor token → token with `sub=user`, `act=agent`, reduced scopes; cannot exceed subject |
 | **Permission intersection** | agent requesting more than the user → denied/reduced; same result as `nag.` |
-| **Dual-verify shadow** | old and new tokens produce the same actor/org/onBehalfOf/permissions for real requests |
+| **Staging shadow** | old and new paths produce the same actor/org/`act`/permissions for the same tasks — in staging, never in production |
 | **Negative** | revoked agent key, expired token, replay, agent from another org, autonomous token on a delegated route |
-| **E2E old** | one real agent task with `nag.` (baseline) — must keep working until cutover |
+| **E2E baseline (staging)** | one real agent task with `nag.` recorded as the comparison baseline |
 | **E2E new** | same task with the exchanged token; compare output and audit rows |
-| **Rollback drill** | flip `AGENT_AUTH_MODE=nag`, confirm old tokens still work and new ones are rejected |
 | **Audit parity** | `actorType`, `actorId`, `onBehalfOf` identical across old/new for the same action |
 
 Cutover criteria:
 
-- shadow mismatches = 0 for an agreed window;
+- staging parity = 0 unexplained mismatches;
 - all exercised agent routes have a new-token test;
-- rollback drill passed;
-- no increase in 401/403 or task failures;
-- audit rows show the agent, not the owner, as actor.
+- audit rows show the agent, not the owner, as actor;
+- no production feature flag or dual verifier exists in the release.
 
-## 9. Rollback
+## 9. No rollback path (deliberate)
 
-- Feature flag `AGENT_AUTH_MODE` (`nag`/`dual`/`zitadel`).
-- Keep `nag.` verifier and mint path until Phase 4.
-- Old tokens remain valid until TTL; key rotation is not needed for rollback.
-- If ZITADEL is unavailable, delegated agents cannot obtain new tokens; existing tokens remain valid until expiry.
-  That is a real availability trade-off vs the current self-contained token.
+- There is no `AGENT_AUTH_MODE`, no dual verifier, and no retained `nag.` code.
+- Recovery is **roll forward**: fix the defect and redeploy; if agents must be stopped, pause the agent queue.
+- Reverting to the previous image would reintroduce `nag.`, which is explicitly not allowed.
+- Consequence: if ZITADEL is unavailable, delegated agents cannot obtain new tokens and must wait; existing
+  short-lived tokens expire. That availability trade-off is accepted in exchange for one production path.
 
 ## 10. Risks and open questions
 
 | Risk / question | Note |
 |---|---|
+| No runtime fallback | ZITADEL outage blocks new agent tokens; accepted to avoid two production auth paths |
+| Cutover gap | agents must obtain a token before the release; no `nag.` compatibility window |
 | Impersonation role is powerful | narrow role, one service account per agent, secret manager, audit |
 | One service account per agent | N accounts/keys; alternative shared runner weakens attribution |
 | User token availability | long-running agents need refresh-token handling or pre-granted delegation |
@@ -225,6 +219,6 @@ Do **not** start this before the machine path is standard:
 - a delegated agent obtains a ZITADEL-issued token; API verifies it via JWKS with `act`;
 - permissions equal the owner-intersected set (no escalation);
 - audit shows agent actor + `onBehalfOf`;
-- `nag.` is deleted, with no dual path left;
-- rollback drill passed before deletion;
+- `nag.` is deleted in the same release, with no dual path and no fallback flag;
+- no production toggle or second verifier exists;
 - no demo user identity is used anywhere.
