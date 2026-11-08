@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "registered_agents_org_zitadel_user" ON "registered_agents" USING btree ("org_id","zitadel_agent_user_id") WHERE "registered_agents"."zitadel_agent_user_id" is not null;

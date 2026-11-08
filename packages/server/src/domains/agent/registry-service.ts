@@ -9,7 +9,7 @@ import { exchangeDelegatedToken, serviceAccountToken } from "../../shared/zitade
 import type { AuthorizationPort } from "../auth/authorization-port";
 import type { AgentRegistryStorage, RegisteredAgentRow } from "./adapters/registry-postgres";
 import { ORCHESTRATE_TOOL_IDS } from "./mastra/guards";
-import { ensureAgentActor } from "./zitadel-provisioning";
+import { ensureAgentActor, deprovisionAgentActor } from "./zitadel-provisioning";
 
 export function createAgentRegistryService(deps: {
   storage: AgentRegistryStorage;
@@ -123,6 +123,7 @@ export function createAgentRegistryService(deps: {
       for (const tuple of documentBindings) {
         await deps.authorization.revoke(tuple);
       }
+      await deprovisionAgentActor(agent);
       await deps.storage.delete(orgId, agentId);
     },
 

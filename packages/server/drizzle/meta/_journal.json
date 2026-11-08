@@ -50,6 +50,13 @@
       "when": 1794105247308,
       "tag": "0006_amusing_shockwave",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794106212081,
+      "tag": "0007_dry_colossus",
+      "breakpoints": true
     }
   ]
 }

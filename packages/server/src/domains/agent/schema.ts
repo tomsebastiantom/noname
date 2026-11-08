@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   index,
   integer,
@@ -76,5 +77,8 @@ export const registeredAgents = pgTable(
   },
   (t) => ({
     uniqueSlug: uniqueIndex("registered_agents_org_slug").on(t.orgId, t.slug),
+    uniqueZitadelIdentity: uniqueIndex("registered_agents_org_zitadel_user")
+      .on(t.orgId, t.zitadelAgentUserId)
+      .where(sql`${t.zitadelAgentUserId} is not null`),
   }),
 );

@@ -77,6 +77,23 @@ export function createAgentRegistryStorage(db: Database) {
       return row ? rowToDto(row) : null;
     },
 
+    async findByZitadelAgentUserId(
+      orgId: string,
+      zitadelAgentUserId: string,
+    ): Promise<RegisteredAgentRow | null> {
+      const [row] = await db
+        .select()
+        .from(registeredAgents)
+        .where(
+          and(
+            eq(registeredAgents.orgId, orgId),
+            eq(registeredAgents.zitadelAgentUserId, zitadelAgentUserId),
+          ),
+        )
+        .limit(1);
+      return row ? rowToDto(row) : null;
+    },
+
     async findBySlug(orgId: string, slug: string): Promise<RegisteredAgentRow | null> {
       const normalized = normalizeSlug(slug);
       const [row] = await db

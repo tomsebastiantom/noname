@@ -11,6 +11,7 @@ import {
 import type { Context } from "hono";
 import { resolveAgentUserInfo } from "../../shared/agent-userinfo";
 import { verifyZitadelAgentToken } from "../../shared/agent-jwt";
+import { resolveAgentIdentity } from "../../shared/agent-registry-resolver";
 import { getOrgId, getUserId } from "../../shared/org";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { resolveZitadelJwk } from "./adapters/zitadel/jwks";
@@ -88,10 +89,18 @@ export async function requireAuthenticatedActor(
     if (!orgId || agent.orgId !== orgId) {
       return c.json({ error: "Forbidden" }, 403);
     }
+
+    // A machine token is only an agent if it maps to a live registered agent, and it may only act for its
+    // owner. This is what stops an orphaned machine key from acting after the agent row is deleted.
+    const registered = await resolveAgentIdentity(orgId, agent.agentUserId);
+    if (!registered || registered.ownerUserId !== agent.onBehalfOf) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
     return {
       type: "agent",
-      agentId: agent.agentUserId,
-      agentSlug: agent.agentUserId,
+      agentId: registered.id,
+      agentSlug: registered.slug,
       onBehalfOf: agent.onBehalfOf,
       orgId: agent.orgId,
       permissions: agent.permissions,

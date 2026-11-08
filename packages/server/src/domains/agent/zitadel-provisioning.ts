@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ServiceUnavailableError } from "../../shared/domain-error";
@@ -102,4 +102,31 @@ export async function ensureAgentActor(
 
   await setZitadelAgentUserId(orgId, agent.id, userId).catch(() => undefined);
   return actorKey;
+}
+
+/**
+ * Remove the agent's ZITADEL machine user and private key. Called before the registry row is deleted so a
+ * failed deprovision aborts the delete instead of leaving an orphaned credential that can still exchange.
+ */
+export async function deprovisionAgentActor(agent: {
+  id: string;
+  zitadelAgentUserId: string | null;
+}): Promise<void> {
+  const keyPath = join(AGENT_KEY_DIR, `${agent.id}.json`);
+
+  if (agent.zitadelAgentUserId) {
+    const token = await managementToken();
+    const issuer = process.env.ZITADEL_ISSUER?.trim() ?? "http://localhost:8080";
+    const response = await fetch(
+      `${issuer}/management/v1/users/${agent.zitadelAgentUserId}`,
+      { method: "DELETE", headers: { authorization: `Bearer ${token}` } },
+    );
+    if (!response.ok && response.status !== 404) {
+      throw new ServiceUnavailableError(
+        `ZITADEL agent deprovisioning failed: HTTP ${response.status}`,
+      );
+    }
+  }
+
+  if (existsSync(keyPath)) unlinkSync(keyPath);
 }
