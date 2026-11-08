@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-07/RELEASE-CONTROL-SUMMARY.md](2026-11-07/RELEASE-CONTROL-SUMMARY.md)** — **One-page essence.** What the release control plane is, what is wrong today, where release data lives, the architecture invariants, what to fix before code, and the minimum order.
 - **[2026-11-07/RELEASE-D3-CHANNELS.md](2026-11-07/RELEASE-D3-CHANNELS.md)** — **Implemented.** Tenant channels: `release_channels` + `pointer.channel`; moving a ring is one row, catalog resolves channel → release; promote/rollback reuse the ready + migration gate; Evidence + retention protection.
 - **[2026-11-07/RELEASE-D2-DESIGN.md](2026-11-07/RELEASE-D2-DESIGN.md)** — **Implemented.** Definition versions + instance pinning (D2): append-only `machine_definition_versions`, `definition_version` on instances, transitions load the pinned version. Includes migration/backfill, what breaks, rollback and E2E evidence.
 - **[2026-11-07/RELEASE-D14-DESIGN.md](2026-11-07/RELEASE-D14-DESIGN.md)** — **Implemented.** Release record + artifact binding (D14): one release id binds client bundle, server image, worker, migrations and config; immutable, digest-bound.
