@@ -14,6 +14,13 @@ export type VaultConfig = {
   pathPrefix: string;
 };
 
+export class VaultSecretNotFoundError extends Error {
+  constructor(path: string) {
+    super(`Vault secret not found: ${path}`);
+    this.name = "VaultSecretNotFoundError";
+  }
+}
+
 const cache = new Map<string, { accessToken: string; userId: string; expiresAt: number }>();
 
 export function vaultConfigFromEnv(env: NodeJS.ProcessEnv = process.env): VaultConfig | null {
@@ -48,6 +55,9 @@ export async function readTenantEvalKey(
   const response = await fetch(vaultUrl(config, path), {
     headers: { "X-Vault-Token": token },
   });
+  if (response.status === 404) {
+    throw new VaultSecretNotFoundError(path);
+  }
   if (!response.ok) {
     throw new Error(`Vault read failed for ${path} (${response.status})`);
   }

@@ -32,6 +32,7 @@ export {
   createServiceAccountToken,
   readTenantEvalKey,
   type ServiceAccountKey,
+  VaultSecretNotFoundError,
   vaultConfigFromEnv,
   writeTenantEvalKey,
 } from "./service-account";

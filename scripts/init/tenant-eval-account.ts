@@ -12,6 +12,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   type ServiceAccountKey,
+  VaultSecretNotFoundError,
   readTenantEvalKey,
   vaultConfigFromEnv,
   writeTenantEvalKey,
@@ -104,15 +105,16 @@ async function ensureUser(): Promise<string> {
 async function ensureKey(userId: string): Promise<void> {
   const vault = vaultConfigFromEnv();
   if (!vault) {
-    throw new Error("VAULT_ADDR and VAULT_TOKEN are required; tenant eval keys live in Vault");
+    throw new Error("VAULT_AUTH_MODE and VAULT_ADDR are required; tenant eval keys live in Vault");
   }
 
   try {
     await readTenantEvalKey(orgId!, vault);
     console.log(`Key: Vault ${vault.pathPrefix}/orgs/${orgId}/eval/service-account (exists)`);
     return;
-  } catch {
-    // Not found (or unreadable) — create it and write it once.
+  } catch (error) {
+    if (!(error instanceof VaultSecretNotFoundError)) throw error;
+    // The secret does not exist yet; create it and write it once.
   }
 
   const created = await api<{ keyContent: string }>("POST", `/v2/users/${userId}/keys`, {
