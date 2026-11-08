@@ -166,6 +166,50 @@ Why not `RELEASES_WRITE` + org check only: a tenant admin’s token is bound to 
 already fail — but tying the capability to a **distinct permission** keeps the intent explicit and lets the
 platform org hold only platform permissions.
 
+## 4a. Machine vs human identity — why two paths, and why not IAM_OWNER
+
+The choice is not “ZITADEL or token”. It is **which identity is acting**:
+
+| Actor | Credential | Why | Audit actor |
+|---|---|---|---|
+| **automation** (CLI, CI, wave job) | `nsv.` service token with `releases:platform_*`, 15 min | temporary, scoped, no human login, rotatable | `service:release-operator` |
+| **human** (console later) | ZITADEL login in the platform org + `platform_operator` role | unique person, MFA, joiner/mover/leaver, non-repudiation | `user:<id>` |
+| **never** | ZITADEL `IAM_OWNER` | instance-wide IdP admin, far beyond release waves | — |
+
+**Why not a ZITADEL role for the machine now.** The service token already carries an explicit permission set and
+an org; adding an IdP role would create a second source of truth and a second provisioning path for an identity
+that never logs in. Short-lived tokens are the standard automation credential.
+
+**Why not `IAM_OWNER`.** It can manage the whole instance — organizations, users, IdP settings. Release waves need
+one app permission over a named org list. Using the IdP superuser would violate least privilege, exceed what the
+app can scope or audit, and make an app bug an instance compromise.
+
+### How serious platforms split it
+
+| Platform | Automation | Human |
+|---|---|---|
+| **AWS** | IAM **roles** with temporary credentials, assumable by services ([IAM roles](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles.html)) | IAM Identity Center / federated users |
+| **Kubernetes** | **ServiceAccounts** for workloads ([docs](https://kubernetes.io/docs/concepts/security/service-accounts/)) | user identities / OIDC, bound via RBAC |
+| **GitHub** | **GitHub Apps** with installation tokens ([docs](https://docs.github.com/en/apps/overview)) | user accounts, audit log records the actor |
+| **Cloudflare** | **API tokens** scoped to permissions | members with account/zone roles |
+| **ZITADEL** | service users | human users; `IAM_OWNER` vs `ORG_OWNER` |
+
+### SOC 2 mapping
+
+| Criterion | How this design satisfies it |
+|---|---|
+| **CC6.1** least privilege | separate platform permission, excluded from tenant roles; no IdP superuser |
+| **CC6.2** provisioning | token issuance/revocation audited; ZITADEL role assignment for humans |
+| **CC6.3** role changes | audit of grants/revokes; token lifecycle events |
+| **CC7.2** monitoring | distinct `actorType` (`service` vs `user`), requestId/traceId |
+| **CC7.3/7.4** investigation | per-org audit rows + platform stream; export |
+| **Non-repudiation** | human actions use the human identity; automation actions are labelled as service, never a borrowed user token |
+
+### The rule
+
+Use **A** when a system or operator pipeline runs the wave. Use **B** when a person clicks promote in a console.
+Never share a human token for automation, and never use an IdP superuser for an application action.
+
 ## 5. Wave endpoint (once the identity exists)
 
 ```
