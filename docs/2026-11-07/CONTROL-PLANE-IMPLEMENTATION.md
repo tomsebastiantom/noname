@@ -126,6 +126,40 @@ legacy duplication this slice removes. It is not the target model.
 own a table; it owns the pointer row that selects its release, and the catalog projection that reads it. A platform
 operator creates/moves releases across orgs; a tenant admin can only see and move its own.
 
+### Who changed a business fact
+
+The kernel separates **what happened** from **who caused it**:
+
+| Primitive | Question | Example |
+|---|---|---|
+| `evidence_records` | what happened? | `commerce.order.created`, `commerce.payment.receipt` |
+| `evidence_activities` | who/what caused it? | `actorType: provider`, `actorId: stripe`, `outputRecordIds: [receipt]` |
+| `evidence_audit_events` | who exercised authority? | `platform.release.tenant_promoted` |
+| domain table | what is true now? | `orders.state = paid` |
+
+A machine or provider change is therefore **a record plus an activity**:
+
+```ts
+const receipt = await evidence.appendRecord({ type: "commerce.payment.receipt", … });
+await evidence.appendActivity({
+  type: "commerce.payment.captured",
+  actorType: "provider",          // user | service | provider | system
+  actorId: "stripe",
+  outputRecordIds: [receipt.id],
+  causationId: webhookEventId,
+});
+```
+
+That is how “which machine changed the fact” is answered: the activity names the agent and links the records it
+produced. Commerce already does this (`verticals/src/commerce/order-projection.ts`).
+
+A release promotion is **not** a business fact, so it gets **only** an audit event — no record, no activity.
+
+**Atomicity:** record + activity (and audit, where applicable) should be written in the same transaction as the
+domain state change, or through an outbox. Phase A may write after the state change with a visible failure; the
+outbox is the follow-up.
+
+
 **Records vs audit in the same kernel.** The Evidence domain was designed with both (`EvidenceRecord` for facts,
 `EvidenceAudit` for access — see `AUDITABLE-RECORDS-GENERIC-PATTERNS.md`). Using its audit table does not turn
 release state into Evidence; it records that an actor touched a release. If you later decide the kernel must hold
