@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "../../shared/domain-error";
-import type { EvidenceRecordInput, EvidenceService } from "../evidence/ports";
+import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
 import { createEnvironmentService } from "./environment-service";
 import type {
   EnvironmentStore,
@@ -59,9 +59,9 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
     },
   } as unknown as ReleaseService;
 
-  const recorded: EvidenceRecordInput[] = [];
+  const recorded: EvidenceAuditInput[] = [];
   const evidence = {
-    async appendRecord(input: EvidenceRecordInput) {
+    async audit(input: EvidenceAuditInput) {
       recorded.push(input);
       return { ...input, id: `ev-${recorded.length}`, recordedAt: new Date() };
     },
@@ -85,9 +85,10 @@ describe("environment selector", () => {
     });
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({
-      type: "platform.release.switched",
-      subjectId: "r_1",
-      data: { environment: "production", from: null, to: "r_1", rollback: false },
+      action: "platform.release.environment_switched",
+      subjectType: "platform.environment",
+      subjectId: "production",
+      metadata: { environment: "production", from: null, to: "r_1", rollback: false },
     });
   });
 

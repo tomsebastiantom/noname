@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "../../shared/domain-error";
-import type { EvidenceRecordInput, EvidenceService } from "../evidence/ports";
+import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
 import { createReleasePointerService } from "./pointer-service";
 import type {
   ChannelStore,
@@ -77,9 +77,9 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
     },
   } as unknown as ReleaseService;
 
-  const recorded: EvidenceRecordInput[] = [];
+  const recorded: EvidenceAuditInput[] = [];
   const evidence = {
-    async appendRecord(input: EvidenceRecordInput) {
+    async audit(input: EvidenceAuditInput) {
       recorded.push(input);
       return { ...input, id: `ev-${recorded.length}`, recordedAt: new Date() };
     },
@@ -100,9 +100,11 @@ describe("tenant release pointer", () => {
     expect(row).toMatchObject({ releaseId: "r_1", previousReleaseId: null, updatedBy: "tom" });
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({
-      type: "platform.release.tenant_promoted",
+      action: "platform.release.tenant_promoted",
       subjectId: "org-1",
-      data: { from: null, to: "r_1", rollback: false },
+      actorType: "user",
+      actorId: "tom",
+      metadata: { from: null, to: "r_1", releaseId: "r_1", rollback: false },
     });
   });
 
@@ -182,4 +184,3 @@ describe("tenant release pointer", () => {
     expect(await pointer.clientBundle("org-1")).toBeNull();
   });
 });
-

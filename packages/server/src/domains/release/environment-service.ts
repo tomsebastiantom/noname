@@ -1,5 +1,6 @@
 import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
+import { auditActorType } from "./audit-actor";
 import { assertMigrationsPromotable } from "./migration-policy";
 import type {
   EnvironmentService,
@@ -108,19 +109,22 @@ async function recordSwitch(
   },
 ): Promise<void> {
   if (!evidence) return;
-  await evidence.appendRecord({
+  await evidence.audit({
     orgId: input.orgId,
-    type: "platform.release.switched",
-    subjectType: "platform.release",
-    subjectId: input.to,
-    source: "release.selector",
-    correlationId: `${input.orgId}:${input.environment}:${input.to}`,
-    data: {
+    action: "platform.release.environment_switched",
+    actorType: auditActorType(input.actor),
+    actorId: input.actor,
+    subjectType: "platform.environment",
+    subjectId: input.environment,
+    reason: input.rollback ? "rollback" : undefined,
+    metadata: {
       environment: input.environment,
       from: input.from,
       to: input.to,
-      actor: input.actor,
+      releaseId: input.to,
       rollback: input.rollback,
     },
+    correlationId: `${input.orgId}:${input.environment}:${input.to}`,
+    idempotencyKey: `environment_switched:${input.orgId}:${input.environment}:${input.from ?? "none"}:${input.to}`,
   });
 }

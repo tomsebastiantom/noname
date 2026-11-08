@@ -24,10 +24,7 @@ function release(id: string, createdAt: Date): ReleaseDTO {
 }
 
 function fixtures(
-  options: {
-    pointer?: TenantReleasePointerDTO;
-    channels?: ReleaseChannelDTO[];
-  } = {},
+  options: { pointer?: TenantReleasePointerDTO; channels?: ReleaseChannelDTO[] } = {},
 ) {
   const rows = new Map<string, ReleaseDTO>();
   const store: ReleaseStore = {
@@ -179,5 +176,3 @@ describe("release retention", () => {
     expect(await retention.prune("org-1", 3)).toEqual({ deleted: [] });
   });
 });
-
-

@@ -21,8 +21,8 @@ import type {
 import { createReleaseRetention } from "./retention";
 import { createReleaseService } from "./service";
 
-export { createEnvironmentService } from "./environment-service";
 export { createChannelService } from "./channel-service";
+export { createEnvironmentService } from "./environment-service";
 export { createReleasePointerService } from "./pointer-service";
 export type {
   ChannelService,

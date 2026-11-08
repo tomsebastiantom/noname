@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "../../shared/domain-error";
-import type { EvidenceRecordInput, EvidenceService } from "../evidence/ports";
+import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
 import { createChannelService } from "./channel-service";
 import type {
   ChannelStore,
@@ -57,9 +57,9 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
     },
   } as unknown as ReleaseService;
 
-  const recorded: EvidenceRecordInput[] = [];
+  const recorded: EvidenceAuditInput[] = [];
   const evidence = {
-    async appendRecord(input: EvidenceRecordInput) {
+    async audit(input: EvidenceAuditInput) {
       recorded.push(input);
       return { ...input, id: `ev-${recorded.length}`, recordedAt: new Date() };
     },
@@ -80,9 +80,10 @@ describe("release channels", () => {
     expect(row).toMatchObject({ channel: "canary", releaseId: "r_1", previousReleaseId: null });
     expect(recorded).toHaveLength(1);
     expect(recorded[0]).toMatchObject({
-      type: "platform.release.channel_moved",
+      action: "platform.release.channel_moved",
+      subjectType: "platform.release_channel",
       subjectId: "canary",
-      data: { channel: "canary", to: "r_1", rollback: false },
+      metadata: { channel: "canary", to: "r_1", rollback: false },
     });
   });
 
@@ -120,7 +121,7 @@ describe("release channels", () => {
     const row = await channels.rollback("org-1", "canary", "tom");
 
     expect(row).toMatchObject({ releaseId: "r_1", previousReleaseId: "r_2" });
-    expect(recorded.at(-1)?.data).toMatchObject({ rollback: true, from: "r_2", to: "r_1" });
+    expect(recorded.at(-1)?.metadata).toMatchObject({ rollback: true, from: "r_2", to: "r_1" });
   });
 
   it("refuses rollback without a previous release", async () => {
@@ -128,8 +129,6 @@ describe("release channels", () => {
     const channels = createChannelService(store, releases);
     await channels.activate("org-1", "canary", "r_1", "tom");
 
-    await expect(channels.rollback("org-1", "canary", "tom")).rejects.toBeInstanceOf(
-      ConflictError,
-    );
+    await expect(channels.rollback("org-1", "canary", "tom")).rejects.toBeInstanceOf(ConflictError);
   });
 });

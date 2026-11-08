@@ -1,5 +1,6 @@
 import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
+import { auditActorType } from "./audit-actor";
 import { assertMigrationsPromotable } from "./migration-policy";
 import type {
   ChannelStore,
@@ -141,13 +142,7 @@ export function createReleasePointerService(
       const current = await store.get(orgId);
       if (!current) throw new ConflictError(`Tenant ${orgId} has no release pointer`, { orgId });
 
-      return store.set(
-        orgId,
-        current.releaseId,
-        current.previousReleaseId,
-        actor,
-        null,
-      );
+      return store.set(orgId, current.releaseId, current.previousReleaseId, actor, null);
     },
   };
 }
@@ -157,19 +152,25 @@ async function recordPointer(
   input: { orgId: string; from: string | null; to: string; actor: string; rollback: boolean },
 ): Promise<void> {
   if (!evidence) return;
-  await evidence.appendRecord({
+  const action = input.rollback
+    ? "platform.release.tenant_rolled_back"
+    : "platform.release.tenant_promoted";
+
+  await evidence.audit({
     orgId: input.orgId,
-    type: "platform.release.tenant_promoted",
+    action,
+    actorType: auditActorType(input.actor),
+    actorId: input.actor,
     subjectType: "tenant.storefront",
     subjectId: input.orgId,
-    source: "release.pointer",
-    correlationId: `${input.orgId}:${input.to}`,
-    data: {
-      tenant: input.orgId,
+    reason: input.rollback ? "rollback" : undefined,
+    metadata: {
       from: input.from,
       to: input.to,
-      actor: input.actor,
+      releaseId: input.to,
       rollback: input.rollback,
     },
+    correlationId: `${input.orgId}:${input.to}`,
+    idempotencyKey: `${action}:${input.orgId}:${input.from ?? "none"}:${input.to}`,
   });
 }

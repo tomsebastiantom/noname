@@ -1,12 +1,8 @@
 import { ConflictError, NotFoundError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
+import { auditActorType } from "./audit-actor";
 import { assertMigrationsPromotable } from "./migration-policy";
-import type {
-  ChannelService,
-  ChannelStore,
-  ReleaseChannelDTO,
-  ReleaseService,
-} from "./ports";
+import type { ChannelService, ChannelStore, ReleaseChannelDTO, ReleaseService } from "./ports";
 
 /**
  * D3 — tenant rings.
@@ -43,13 +39,7 @@ export function createChannelService(
 
       assertMigrationsPromotable(release);
 
-      const updated = await store.set(
-        orgId,
-        channel,
-        releaseId,
-        current?.releaseId ?? null,
-        actor,
-      );
+      const updated = await store.set(orgId, channel, releaseId, current?.releaseId ?? null, actor);
       await recordChannel(evidence, {
         orgId,
         channel,
@@ -101,19 +91,22 @@ async function recordChannel(
   },
 ): Promise<void> {
   if (!evidence) return;
-  await evidence.appendRecord({
+  await evidence.audit({
     orgId: input.orgId,
-    type: "platform.release.channel_moved",
+    action: "platform.release.channel_moved",
+    actorType: auditActorType(input.actor),
+    actorId: input.actor,
     subjectType: "platform.release_channel",
     subjectId: input.channel,
-    source: "release.channel",
-    correlationId: `${input.orgId}:${input.channel}:${input.to}`,
-    data: {
+    reason: input.rollback ? "rollback" : undefined,
+    metadata: {
       channel: input.channel,
       from: input.from,
       to: input.to,
-      actor: input.actor,
+      releaseId: input.to,
       rollback: input.rollback,
     },
+    correlationId: `${input.orgId}:${input.channel}:${input.to}`,
+    idempotencyKey: `channel_moved:${input.orgId}:${input.channel}:${input.from ?? "none"}:${input.to}`,
   });
 }
