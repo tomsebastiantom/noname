@@ -11,7 +11,6 @@ import {
 import type { Context } from "hono";
 import { verifyAgentToken } from "../../shared/agent-token";
 import { getOrgId, getUserId } from "../../shared/org";
-import { verifyServiceToken } from "../../shared/service-token";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { zitadelProjectIdOrNull } from "./adapters/zitadel/project-id";
 import type { AuthSubject } from "./authorization-port";
@@ -82,21 +81,6 @@ export async function requireAuthenticatedActor(
       onBehalfOf: agentClaims.onBehalfOf,
       orgId: agentClaims.orgId,
       permissions: agentClaims.permissions,
-      userToken: token,
-    };
-  }
-
-  const serviceClaims = verifyServiceToken(token);
-  if (serviceClaims) {
-    const orgId = getOrgId(c);
-    if (!orgId || serviceClaims.orgId !== orgId) {
-      return c.json({ error: "Forbidden" }, 403);
-    }
-    return {
-      type: "machine",
-      serviceId: serviceClaims.serviceId,
-      orgId: serviceClaims.orgId,
-      permissions: serviceClaims.permissions,
       userToken: token,
     };
   }

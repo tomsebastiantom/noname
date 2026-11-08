@@ -1,6 +1,5 @@
 import { createHmac, randomUUID } from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { PERMISSIONS } from "@noname/auth";
 import {
   type AssertionConfig,
   type CheckCache,
@@ -8,15 +7,16 @@ import {
   computeChecksVersion,
   createBrowserObserver,
   createHttpClient,
+  createServiceAccountToken,
   type EvalResult,
   evalBaseKey,
   evalRunKey,
   evaluate,
   isCacheableRun,
   loadRouteHashes,
+  tenantEvalKeyPath,
 } from "@noname/eval";
 import { recordEvalReuse } from "../../shared/metrics";
-import { signServiceToken } from "../../shared/service-token";
 import type { EvidenceService } from "../evidence/ports";
 import { recordGateDecision } from "./gate";
 import { createEvalResultStore } from "./results";
@@ -65,23 +65,29 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
   const secret = process.env.WORKER_SERVER_SECRET ?? "";
   if (!secret) throw new Error("WORKER_SERVER_SECRET is required to run eval jobs");
 
-  const user = "eval-worker";
-  const hmac = createHmac("sha256", secret).update(`${job.orgId}:${user}:service`).digest("base64");
-  const token = signServiceToken({
-    serviceId: "eval-worker",
-    orgId: job.orgId,
-    permissions: [PERMISSIONS.MACHINES_READ],
-    exp: Math.floor(Date.now() / 1000) + 600,
+  const issuer = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
+  const projectId = process.env.ZITADEL_PROJECT_ID?.trim();
+  if (!projectId) throw new Error("ZITADEL_PROJECT_ID is required to run eval jobs");
+
+  const keysDir =
+    process.env.EVAL_TENANT_KEYS_DIR ??
+    fileURLToPath(new URL("../../../../../zitadel_keys/tenants", import.meta.url));
+  const { accessToken, userId } = await createServiceAccountToken({
+    keyPath: tenantEvalKeyPath(job.orgId, keysDir),
+    issuer,
+    projectId,
   });
+
+  const hmac = createHmac("sha256", secret).update(`${job.orgId}:${userId}:service`).digest("base64");
 
   const client = createHttpClient({
     apiBase: deps.apiBase ?? process.env.EVAL_API_BASE ?? "http://127.0.0.1:3000",
     headers: {
       "x-org-id": job.orgId,
-      "x-user-id": user,
+      "x-user-id": userId,
       "x-role": "service",
       "x-auth-hmac": hmac,
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${accessToken}`,
     },
   });
 

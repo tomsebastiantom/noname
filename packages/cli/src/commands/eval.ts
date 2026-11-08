@@ -10,11 +10,13 @@ import {
   computeChecksVersion,
   createBrowserObserver,
   createHttpClient,
+  createServiceAccountToken,
   evalBaseKey,
   evalRunKey,
   evaluate,
   isCacheableRun,
   loadRouteHashes,
+  tenantEvalKeyPath,
 } from "@noname/eval";
 
 /**
@@ -74,18 +76,29 @@ function parseArgs(argv: string[]): Options {
 }
 
 /** Same HMAC shape the server middleware expects. */
-function hmacHeaders(): Record<string, string> {
-  const orgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
+function hmacHeaders(orgId: string, userId: string): Record<string, string> {
   const secret = process.env.WORKER_SERVER_SECRET?.trim() ?? "";
-  // The edge HMAC is transport attestation, not a human login: identify the eval worker, never an admin person.
-  const userId = "eval-worker";
-  const headers: Record<string, string> = { "x-org-id": orgId };
   if (!orgId) {
-    throw new Error("ZITADEL_DEMO_ORG_ID is missing — run `pnpm init:zitadel` or set it in .env");
+    throw new Error("tenant org is missing — run `pnpm init:tenant-eval --org <org>` first");
   }
+  const headers: Record<string, string> = { "x-org-id": orgId };
   if (!secret) return headers;
   const hmac = createHmac("sha256", secret).update(`${orgId}:${userId}:service`).digest("base64");
   return { ...headers, "x-user-id": userId, "x-role": "service", "x-auth-hmac": hmac };
+}
+
+async function resolveTenantOrg(apiBase: string, tenant: string): Promise<string> {
+  const lookupOrg = process.env.ZITADEL_DEMO_ORG_ID?.trim();
+  const response = await fetch(`${apiBase}/api/tenants/resolve/${encodeURIComponent(tenant)}`, {
+    headers: lookupOrg ? hmacHeaders(lookupOrg, "eval-worker") : {},
+  });
+  if (!response.ok) {
+    throw new Error(`could not resolve tenant "${tenant}" (${response.status})`);
+  }
+  const body = (await response.json()) as { data?: { orgId?: string } };
+  const orgId = body.data?.orgId?.trim();
+  if (!orgId) throw new Error(`tenant "${tenant}" has no org id`);
+  return orgId;
 }
 
 /**
@@ -96,22 +109,6 @@ function hmacHeaders(): Record<string, string> {
  * Debt: this makes the CLI depend on a server module. When an agent/machine credential exists, this
  * should switch to a service-account assertion and drop the import.
  */
-/**
- * Some routes (`/api/machines/definitions`) require a real permission (`MACHINES_DEFINE`), which is
- * resolved from a verified JWT — an HMAC role string is deliberately not enough. The CLI is a *built*
- * package (`rootDir: src`, bin `dist/index.js`), so it must not import server sources to mint one.
- *
- * Instead: accept a token. Without it, the definition checks report `skip` with the reason, never
- * `pass` — silence is not success.
- */
-function readToken(argv: string[]): string | null {
-  const prefixed = argv.find((arg) => arg.startsWith("--token="));
-  if (prefixed) return prefixed.slice("--token=".length);
-  const index = argv.indexOf("--token");
-  const next = index >= 0 ? argv[index + 1] : undefined;
-  const value = next && !next.startsWith("--") ? next : process.env.NONAME_EVAL_TOKEN;
-  return value?.trim() ? value.trim() : null;
-}
 function format(results: CheckResult[]): string {
   const width = Math.max(...results.map((r) => r.id.length), 12);
   return results
@@ -137,7 +134,22 @@ export async function evalCommand(argv: string[]): Promise<number> {
     console.error("--sample is a sweep policy: a gate must verify every route, not a sample");
     return 2;
   }
-  const token = readToken(argv);
+  let orgId: string;
+  let authHeaders: Record<string, string>;
+  try {
+    orgId = await resolveTenantOrg(options.apiBase, options.tenant);
+    const projectId = process.env.ZITADEL_PROJECT_ID?.trim();
+    if (!projectId) throw new Error("ZITADEL_PROJECT_ID is missing (run pnpm init:zitadel)");
+    const { accessToken, userId } = await createServiceAccountToken({
+      keyPath: tenantEvalKeyPath(orgId, process.env.EVAL_TENANT_KEYS_DIR ?? join(ROOT, "zitadel_keys/tenants")),
+      issuer: process.env.ZITADEL_ISSUER ?? "http://localhost:8080",
+      projectId,
+    });
+    authHeaders = { ...hmacHeaders(orgId, userId), Authorization: `Bearer ${accessToken}` };
+  } catch (cause) {
+    console.error(cause instanceof Error ? cause.message : String(cause));
+    return 2;
+  }
 
   let config: AssertionConfig | undefined;
   if (options.configPath) {
@@ -153,16 +165,12 @@ export async function evalCommand(argv: string[]): Promise<number> {
 
   const client = createHttpClient({
     apiBase: options.apiBase,
-    headers: token ? { ...hmacHeaders(), Authorization: `Bearer ${token}` } : hmacHeaders(),
+    headers: authHeaders,
   });
   const sampleDay = new Date().toISOString().slice(0, 10);
 
   // Cache policy: the gate never reuses; everything else reuses only a clean pass whose inputs are unchanged.
   const noCache = options.noCache || options.mode === "gate";
-  const authHeaders = {
-    ...hmacHeaders(),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
   let cacheKey: string | undefined;
   let cacheBaseKey: string | undefined;
   let checkCache: CheckCache | undefined;
@@ -172,7 +180,6 @@ export async function evalCommand(argv: string[]): Promise<number> {
   if (!noCache && options.releaseId) {
     routeHashes = (await loadRouteHashes(client, options.tenant)) ?? undefined;
     if (routeHashes) {
-      const orgId = process.env.ZITADEL_DEMO_ORG_ID?.trim() ?? "";
       const checksVersion = computeChecksVersion(config);
       const keyInputs = {
         orgId,
@@ -248,7 +255,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
         tenantSlug: options.tenant,
         machinesDir: options.machinesDir,
         maxRoutes: Number.isFinite(options.maxRoutes) ? options.maxRoutes : 20,
-        canReadDefinitions: Boolean(token),
+        canReadDefinitions: true,
         includeDrafts: options.drafts,
         browser,
         sampleLimit: options.sampleLimit > 0 ? options.sampleLimit : undefined,
@@ -294,8 +301,7 @@ export async function evalCommand(argv: string[]): Promise<number> {
       const response = await fetch(`${options.apiBase.replace(/\/$/, "")}/api/eval/record`, {
         method: "POST",
         headers: {
-          ...hmacHeaders(),
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          ...authHeaders,
           "content-type": "application/json",
         },
         body: JSON.stringify({ tenantSlug: options.tenant, result }),
