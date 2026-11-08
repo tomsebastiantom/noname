@@ -46,6 +46,8 @@ export type TokenResponse = {
   accessToken: string;
   expiresIn: number;
   tokenType: string;
+  /** Present when the exchange requests `openid`; carries the subject's ID-token claims. */
+  idToken?: string;
 };
 
 function parseTokenResponse(body: unknown): TokenResponse | null {
@@ -56,6 +58,7 @@ function parseTokenResponse(body: unknown): TokenResponse | null {
     accessToken: record.access_token,
     expiresIn: typeof record.expires_in === "number" ? record.expires_in : 0,
     tokenType: typeof record.token_type === "string" ? record.token_type : "Bearer",
+    idToken: typeof record.id_token === "string" ? record.id_token : undefined,
   };
 }
 
@@ -76,7 +79,9 @@ export async function serviceAccountToken(
     body,
   });
   if (!response.ok) {
-    throw new Error(`ZITADEL service-account token failed: HTTP ${response.status}`);
+    throw new Error(
+      `ZITADEL service-account token failed: HTTP ${response.status} ${(await response.text()).slice(0, 300)}`,
+    );
   }
   const parsed = parseTokenResponse(await response.json());
   if (!parsed) throw new Error("ZITADEL service-account token returned no access_token");
@@ -126,7 +131,9 @@ export async function exchangeDelegatedToken(
     body,
   });
   if (!response.ok) {
-    throw new Error(`ZITADEL token exchange failed: HTTP ${response.status}`);
+    throw new Error(
+      `ZITADEL token exchange failed: HTTP ${response.status} ${(await response.text()).slice(0, 300)}`,
+    );
   }
   const parsed = parseTokenResponse(await response.json());
   if (!parsed) throw new Error("ZITADEL token exchange returned no access_token");

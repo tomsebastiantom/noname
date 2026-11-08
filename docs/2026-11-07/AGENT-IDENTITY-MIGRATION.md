@@ -71,12 +71,20 @@ So the private-key JWT, client authentication, impersonation permission and RFC 
 
 **Remaining blocker:** the exchanged JWT has **no `urn:zitadel:iam:org:project:roles` and no org claim**, so the
 verifier correctly returns `null` (it refuses a token with no permissions/org). The subject's project roles are
-not being asserted into the exchanged token yet. Next step: request the roles scope in a way that survives the
-exchange (or read roles from the returned ID token) and confirm the claim appears; then the verifier and guard can
-be wired.
+not being asserted into the exchanged token yet.
 
-**Next action:** resolve the roles/org claim (scope on subject vs actor, or ID token claims), verify with the live
-exchange, then wire the guard and replace minting.
+Diagnosis from the live probe:
+
+- the **actor** service-account token carries only `iss/sub/aud/exp/iat/nbf/client_id/jti` — no roles, even when
+  the token request includes `urn:zitadel:iam:org:project:roles`;
+- adding `urn:zitadel:iam:org:id:<org>` to the exchange scope is rejected:
+  `invalid_scope: not found in subject or actor token`;
+- an `id_token` is returned by the exchange, but its payload also needs inspecting for role/org claims;
+- therefore the role/org data must come from a **subject access token** (a user token that carries the project
+  role scope), not from `user_id` alone.
+
+**Next action:** obtain a real user access token (OIDC login for a demo user) and exchange it as the
+`subject_token` with the project-role scope; confirm the exchanged JWT contains roles + org, then wire the guard.
 
 
 
