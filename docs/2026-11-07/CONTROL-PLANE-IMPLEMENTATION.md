@@ -83,6 +83,30 @@ write (visible failure, reconciliation possible), but the correct end state is *
 a promotion that cannot be audited should not be considered complete. That is recorded as a phase-A limitation,
 with the outbox as the follow-up when the write path opens.
 
+### What does **not** go into Evidence
+
+Your reading is correct: Evidence/records are for **business facts**, not for release state. The design keeps
+that boundary:
+
+| Data | Where it lives | Why |
+|---|---|---|
+| release row, artifacts, digests, state | **release tables** (`releases`, `release_artifacts`) | release domain owns state |
+| tenant pointer, previous pointer | **release tables** (`tenant_release_pointers`) | state, not history |
+| environment active/previous | **release tables** (`release_environments`) | selector state |
+| build logs, bundle bytes | **not stored here** (R2 / build system) | not a record |
+| **who promoted / rolled back / switched** | **`evidence_audit_events`** | access action, tenant-scoped |
+| eval gate decision | `evidence_records` (already) | business/decision fact |
+| order, payment, receipt | `evidence_records` (already) | business facts |
+
+The audit row contains only **references** — `releaseId`, `from`, `to`, `waveId` — never release artifacts,
+digests, or configuration. The release tables remain the single source of truth for what a release *is*.
+
+**Records vs audit in the same kernel.** The Evidence domain was designed with both (`EvidenceRecord` for facts,
+`EvidenceAudit` for access — see `AUDITABLE-RECORDS-GENERIC-PATTERNS.md`). Using its audit table does not turn
+release state into Evidence; it records that an actor touched a release. If you later decide the kernel must hold
+**only** business facts, moving audit to a separate store is a separate architecture decision — not required for
+this slice, and it would not change the release-domain boundary.
+
 ### Why this is the first step
 
 The current code writes `platform.release.tenant_promoted` as a **record** with `data.actor`. That is business
