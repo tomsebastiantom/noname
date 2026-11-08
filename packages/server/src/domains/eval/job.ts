@@ -14,7 +14,7 @@ import {
   evaluate,
   isCacheableRun,
   loadRouteHashes,
-  tenantEvalKeyPath,
+  readTenantEvalKey,
 } from "@noname/eval";
 import { recordEvalReuse } from "../../shared/metrics";
 import type { EvidenceService } from "../evidence/ports";
@@ -69,11 +69,9 @@ async function evaluateForJob(job: EvalJobData, deps: EvalJobDeps): Promise<Eval
   const projectId = process.env.ZITADEL_PROJECT_ID?.trim();
   if (!projectId) throw new Error("ZITADEL_PROJECT_ID is required to run eval jobs");
 
-  const keysDir =
-    process.env.EVAL_TENANT_KEYS_DIR ??
-    fileURLToPath(new URL("../../../../../zitadel_keys/tenants", import.meta.url));
+  const key = await readTenantEvalKey(job.orgId);
   const { accessToken, userId } = await createServiceAccountToken({
-    keyPath: tenantEvalKeyPath(job.orgId, keysDir),
+    key,
     issuer,
     projectId,
   });

@@ -1,6 +1,4 @@
 import { createSign } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 
 export type ServiceAccountKey = {
   type?: string;
@@ -9,46 +7,101 @@ export type ServiceAccountKey = {
   key: string;
 };
 
-export type ServiceAccountTokenOptions = {
-  keyPath: string;
-  issuer: string;
-  projectId: string;
-  /** Token lifetime in seconds; ZITADEL caps it by the project/app setting. */
-  ttlSeconds?: number;
+export type VaultConfig = {
+  addr: string;
+  token: string;
+  mount: string;
+  pathPrefix: string;
 };
 
 const cache = new Map<string, { accessToken: string; userId: string; expiresAt: number }>();
 
-/** `zitadel_keys/tenants/<org>/eval-runner-sa.json` unless a different directory is configured. */
-export function tenantEvalKeyPath(orgId: string, directory?: string): string {
-  return join(directory ?? process.env.EVAL_TENANT_KEYS_DIR ?? "zitadel_keys/tenants", orgId, "eval-runner-sa.json");
+export function vaultConfigFromEnv(env: NodeJS.ProcessEnv = process.env): VaultConfig | null {
+  const addr = env.VAULT_ADDR?.trim();
+  const token = env.VAULT_TOKEN?.trim();
+  if (!addr || !token) return null;
+  return {
+    addr,
+    token,
+    mount: env.VAULT_MOUNT?.trim() || "secret",
+    pathPrefix: env.VAULT_PATH_PREFIX?.trim() || "noname",
+  };
 }
 
-export function loadServiceAccountKey(keyPath: string): ServiceAccountKey {
-  return JSON.parse(readFileSync(keyPath, "utf8")) as ServiceAccountKey;
+function tenantEvalPath(config: VaultConfig, orgId: string): string {
+  return `${config.pathPrefix}/orgs/${orgId}/eval/service-account`;
+}
+
+function vaultUrl(config: VaultConfig, logicalPath: string): string {
+  return `${config.addr.replace(/\/$/, "")}/v1/${config.mount}/data/${logicalPath}`;
+}
+
+/** Read the tenant's eval service-account key from Vault. No filesystem fallback. */
+export async function readTenantEvalKey(
+  orgId: string,
+  config: VaultConfig | null = vaultConfigFromEnv(),
+): Promise<ServiceAccountKey> {
+  if (!config) {
+    throw new Error("VAULT_ADDR and VAULT_TOKEN are required to load a tenant eval key");
+  }
+  const path = tenantEvalPath(config, orgId);
+  const response = await fetch(vaultUrl(config, path), {
+    headers: { "X-Vault-Token": config.token },
+  });
+  if (!response.ok) {
+    throw new Error(`Vault read failed for ${path} (${response.status})`);
+  }
+  const body = (await response.json()) as { data?: { data?: Record<string, string> } };
+  const serialized = body.data?.data?.key;
+  if (!serialized) throw new Error(`Vault secret ${path} has no key`);
+  return JSON.parse(serialized) as ServiceAccountKey;
+}
+
+/** Write the tenant's eval service-account key to Vault. Used by provisioning only. */
+export async function writeTenantEvalKey(
+  orgId: string,
+  key: ServiceAccountKey,
+  config: VaultConfig | null = vaultConfigFromEnv(),
+): Promise<void> {
+  if (!config) {
+    throw new Error("VAULT_ADDR and VAULT_TOKEN are required to store a tenant eval key");
+  }
+  const path = tenantEvalPath(config, orgId);
+  const response = await fetch(vaultUrl(config, path), {
+    method: "POST",
+    headers: { "X-Vault-Token": config.token, "Content-Type": "application/json" },
+    body: JSON.stringify({ data: { key: JSON.stringify(key) } }),
+  });
+  if (!response.ok) {
+    throw new Error(`Vault write failed for ${path} (${response.status})`);
+  }
 }
 
 /**
- * Exchange a ZITADEL service-account key for a short-lived access token (RFC 7523 private-key JWT).
- * No shared secret and no `nsv.` token.
+ * Exchange a service-account key for a short-lived ZITADEL access token (RFC 7523 private-key JWT).
+ * The key comes from Vault; no shared secret and no `nsv.` token.
  */
-export async function createServiceAccountToken(
-  options: ServiceAccountTokenOptions,
-): Promise<{ accessToken: string; userId: string }> {
+export async function createServiceAccountToken(options: {
+  key: ServiceAccountKey;
+  issuer: string;
+  projectId: string;
+  ttlSeconds?: number;
+}): Promise<{ accessToken: string; userId: string }> {
   const ttl = options.ttlSeconds ?? 600;
-  const cacheKey = `${options.keyPath}:${options.projectId}`;
+  const cacheKey = `${options.key.keyId}:${options.projectId}`;
   const cached = cache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now() + 30_000) {
     return { accessToken: cached.accessToken, userId: cached.userId };
   }
 
-  const key = loadServiceAccountKey(options.keyPath);
   const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: "RS256", kid: key.keyId })).toString("base64url");
+  const header = Buffer.from(JSON.stringify({ alg: "RS256", kid: options.key.keyId })).toString(
+    "base64url",
+  );
   const payload = Buffer.from(
     JSON.stringify({
-      iss: key.userId,
-      sub: key.userId,
+      iss: options.key.userId,
+      sub: options.key.userId,
       aud: options.issuer,
       iat: now,
       exp: now + ttl,
@@ -56,7 +109,7 @@ export async function createServiceAccountToken(
   ).toString("base64url");
   const signer = createSign("RSA-SHA256");
   signer.update(`${header}.${payload}`);
-  const assertion = `${header}.${payload}.${signer.sign(key.key, "base64url")}`;
+  const assertion = `${header}.${payload}.${signer.sign(options.key.key, "base64url")}`;
 
   const response = await fetch(`${options.issuer}/oauth/v2/token`, {
     method: "POST",
@@ -76,8 +129,8 @@ export async function createServiceAccountToken(
 
   cache.set(cacheKey, {
     accessToken: body.access_token,
-    userId: key.userId,
+    userId: options.key.userId,
     expiresAt: (now + ttl) * 1000,
   });
-  return { accessToken: body.access_token, userId: key.userId };
+  return { accessToken: body.access_token, userId: options.key.userId };
 }

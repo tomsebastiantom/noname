@@ -28,7 +28,13 @@ export { createHttpClient } from "./observers/http";
 export { loadManifestObservation } from "./observers/manifest";
 export { CHECK_REGISTRY } from "./registry";
 export { computeRouteHashes, computeRouteHashesFromTree, loadRouteHashes } from "./route-hashes";
-export { createServiceAccountToken, loadServiceAccountKey, tenantEvalKeyPath } from "./service-account";
+export {
+  createServiceAccountToken,
+  readTenantEvalKey,
+  type ServiceAccountKey,
+  vaultConfigFromEnv,
+  writeTenantEvalKey,
+} from "./service-account";
 export { deterministicSample } from "./sampling";
 export * from "./types";
 

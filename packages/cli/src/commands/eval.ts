@@ -16,7 +16,7 @@ import {
   evaluate,
   isCacheableRun,
   loadRouteHashes,
-  tenantEvalKeyPath,
+  readTenantEvalKey,
 } from "@noname/eval";
 
 /**
@@ -140,8 +140,9 @@ export async function evalCommand(argv: string[]): Promise<number> {
     orgId = await resolveTenantOrg(options.apiBase, options.tenant);
     const projectId = process.env.ZITADEL_PROJECT_ID?.trim();
     if (!projectId) throw new Error("ZITADEL_PROJECT_ID is missing (run pnpm init:zitadel)");
+    const key = await readTenantEvalKey(orgId);
     const { accessToken, userId } = await createServiceAccountToken({
-      keyPath: tenantEvalKeyPath(orgId, process.env.EVAL_TENANT_KEYS_DIR ?? join(ROOT, "zitadel_keys/tenants")),
+      key,
       issuer: process.env.ZITADEL_ISSUER ?? "http://localhost:8080",
       projectId,
     });

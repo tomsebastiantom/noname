@@ -7,9 +7,15 @@
  * Run: pnpm init:tenant-eval --org <orgId> [--project <projectId>]
  */
 import "dotenv/config";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  type ServiceAccountKey,
+  readTenantEvalKey,
+  vaultConfigFromEnv,
+  writeTenantEvalKey,
+} from "@noname/eval";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const ISSUER = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
@@ -95,22 +101,28 @@ async function ensureUser(): Promise<string> {
   return created.userId;
 }
 
-async function ensureKey(userId: string): Promise<string> {
-  const relative = `zitadel_keys/tenants/${orgId}/eval-runner-sa.json`;
-  const path = join(ROOT, relative);
-  if (existsSync(path)) {
-    console.log(`Key: ${relative} (exists)`);
-    return relative;
+async function ensureKey(userId: string): Promise<void> {
+  const vault = vaultConfigFromEnv();
+  if (!vault) {
+    throw new Error("VAULT_ADDR and VAULT_TOKEN are required; tenant eval keys live in Vault");
   }
+
+  try {
+    await readTenantEvalKey(orgId!, vault);
+    console.log(`Key: Vault ${vault.pathPrefix}/orgs/${orgId}/eval/service-account (exists)`);
+    return;
+  } catch {
+    // Not found (or unreadable) — create it and write it once.
+  }
+
   const created = await api<{ keyContent: string }>("POST", `/v2/users/${userId}/keys`, {
     type: "KEY_TYPE_JSON",
     expirationDate: KEY_EXPIRY,
   });
   const decoded = Buffer.from(created.keyContent, "base64").toString("utf8");
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(JSON.parse(decoded), null, 2)}\n`, { mode: 0o600 });
-  console.log(`Key: ${relative} (created)`);
-  return relative;
+  const key = JSON.parse(decoded) as ServiceAccountKey;
+  await writeTenantEvalKey(orgId!, key, vault);
+  console.log(`Key: Vault ${vault.pathPrefix}/orgs/${orgId}/eval/service-account (created)`);
 }
 
 async function ensureGrant(userId: string): Promise<void> {
@@ -132,12 +144,12 @@ async function ensureGrant(userId: string): Promise<void> {
 async function main(): Promise<void> {
   await ensureRole();
   const userId = await ensureUser();
-  const keyPath = await ensureKey(userId);
+  await ensureKey(userId);
   await ensureGrant(userId);
   console.log("\nTenant eval identity ready.");
   console.log(`  org=${orgId}`);
   console.log(`  project=${projectId}`);
-  console.log(`  key=${keyPath}`);
+  console.log(`  key=Vault ${process.env.VAULT_PATH_PREFIX ?? "noname"}/orgs/${orgId}/eval/service-account`);
 }
 
 main().catch((error: Error) => {
