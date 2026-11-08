@@ -84,8 +84,19 @@ Diagnosis from the live probe:
 - therefore the role/org data must come from a **real user access token** (OIDC login with the project-role
   scope), used as the exchange `subject_token`.
 
-**Next action:** obtain a real user access token (OIDC login for a demo user) and exchange it as the
-`subject_token` with the project-role scope; confirm the exchanged JWT contains roles + org, then wire the guard.
+**Next action:** obtain a real user access token (OIDC login with the project-role scope) and exchange it as the
+`subject_token`; confirm the exchanged JWT contains roles + org, then wire the guard.
+
+**Login attempt (2026-11-07).** An automated OIDC authorization-code + PKCE login was attempted with Playwright
+against the dev SPA client. ZITADEL redirected the authorize request to
+`/ui/v2/login/login?authRequest=…`, whose body is a JSON `404 {"code":5,"message":"Not Found"}` — the login UI path
+is wrong for this instance (features show `loginV2.required=true`). The user token could not be captured that way.
+Options for the next attempt:
+
+1. use the ZITADEL **Session API** (`POST /v2/sessions` with the demo user's password) and complete the auth
+   request through the supported login-v2 flow;
+2. correct the login-v2 base path/instance configuration so `/ui/v2/login` renders;
+3. capture a token from the running client app after a real login and use it as the test subject token.
 
 
 
