@@ -79,6 +79,26 @@ describe("verifyZitadelAgentToken", () => {
     ).toBeNull();
   });
 
+  it("falls back to userinfo when the token carries no role claim", async () => {
+    const tokenWithoutRoles = token(
+      payload({
+        "urn:zitadel:iam:org:project:roles": undefined,
+        "urn:zitadel:iam:org:id": undefined,
+      }),
+    );
+    const userInfo = async () => ({
+      "urn:zitadel:iam:org:project:roles": { editor: { "org-1": "org" } },
+    });
+
+    const verified = await verifyZitadelAgentToken(tokenWithoutRoles, {
+      ...options,
+      userInfo,
+    });
+
+    expect(verified).toMatchObject({ orgId: "org-1", onBehalfOf: "user-alice" });
+    expect(verified?.permissions).toContain("layout:draft_write");
+  });
+
   it("rejects a token with no known role (no permissions)", async () => {
     expect(
       await verifyZitadelAgentToken(

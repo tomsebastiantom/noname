@@ -69,34 +69,41 @@ aud = [ 397185680666525707 ]    (project)
 
 So the private-key JWT, client authentication, impersonation permission and RFC 8693 exchange are all working.
 
-**Remaining blocker:** the exchanged JWT has **no `urn:zitadel:iam:org:project:roles` and no org claim**, so the
-verifier correctly returns `null` (it refuses a token with no permissions/org). The subject's project roles are
-not being asserted into the exchanged token yet.
+**User token acquisition (resolved).** The login UI path is broken on this instance
+(`/ui/v2/login/login` → JSON 404), so the user token was obtained through the supported **Session API** flow:
 
-Diagnosis from the live probe:
+1. `POST /oauth/v2/authorize` (PKCE) → `authRequest` id;
+2. `POST /v2/sessions` with the demo editor login/password → `sessionId` + `sessionToken`;
+3. `POST /v2/oidc/auth_requests/{id}` with the session and the `IAM_LOGIN_CLIENT` PAT → callback code;
+4. `POST /oauth/v2/token` with the code + PKCE verifier → user access token.
 
-- the **actor** service-account token carries only `iss/sub/aud/exp/iat/nbf/client_id/jti` — no `scope` and no
-  roles, even when the token request includes `urn:zitadel:iam:org:project:roles`; machine tokens do not assert
-  project roles the way human tokens do;
-- adding `urn:zitadel:iam:org:id:<org>` to the exchange scope is rejected:
-  `invalid_scope: not found in subject or actor token`;
-- an `id_token` is returned by the exchange, but its payload also carries no roles/org;
-- therefore the role/org data must come from a **real user access token** (OIDC login with the project-role
-  scope), used as the exchange `subject_token`.
+The SPA application also needed **role assertion** enabled (`accessTokenRoleAssertion`,
+`idTokenRoleAssertion`) — without it the user token carried no project roles at all.
 
-**Next action:** obtain a real user access token (OIDC login with the project-role scope) and exchange it as the
-`subject_token`; confirm the exchanged JWT contains roles + org, then wire the guard.
+**The exchanged JWT itself still has no role claim**, but the OIDC **userinfo** endpoint for that same token does:
 
-**Login attempt (2026-11-07).** An automated OIDC authorization-code + PKCE login was attempted with Playwright
-against the dev SPA client. ZITADEL redirected the authorize request to
-`/ui/v2/login/login?authRequest=…`, whose body is a JSON `404 {"code":5,"message":"Not Found"}` — the login UI path
-is wrong for this instance (features show `loginV2.required=true`). The user token could not be captured that way.
-Options for the next attempt:
+```
+userinfo roles: {"editor":{"396614483469991947":"zitadel.localhost"}}
+```
 
-1. use the ZITADEL **Session API** (`POST /v2/sessions` with the demo user's password) and complete the auth
-   request through the supported login-v2 flow;
-2. correct the login-v2 base path/instance configuration so `/ui/v2/login` renders;
-3. capture a token from the running client app after a real login and use it as the test subject token.
+The verifier therefore falls back to userinfo when the JWT carries no roles, and the full delegated verification
+now succeeds live:
+
+```
+{
+  agentUserId: "398638652919382029",   (agent machine user = act.sub)
+  onBehalfOf: "397185959570964491",    (editor user = sub)
+  orgId: "396614483469991947",
+  permissions: ["storefront:view","content:draft_write","layout:draft_write","page:draft_write"],
+  exp: 1794147896
+}
+```
+
+That is the complete identity chain: private-key JWT → actor token → token exchange → JWKS-verified delegated JWT
+→ roles from userinfo → the existing permission catalogue.
+
+**Next action:** wire this verifier into the guard, add `zitadel_agent_user_id`, replace minting, delete `nag.` in
+the same cutover.
 
 
 

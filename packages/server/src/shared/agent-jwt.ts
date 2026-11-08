@@ -27,6 +27,11 @@ export type VerifyAgentTokenOptions = {
   audience?: string | string[];
   resolveKey: JwkResolver;
   expectedOrgId?: string;
+  /**
+   * Optional userinfo resolver. Exchanged access tokens do not always carry the project-role claim, while the
+   * OIDC userinfo response for the same token does. The guard passes a cached resolver.
+   */
+  userInfo?: (token: string) => Promise<Record<string, unknown> | null>;
 };
 
 export async function verifyZitadelAgentToken(
@@ -48,15 +53,35 @@ export async function verifyZitadelAgentToken(
   const onBehalfOf = payload.sub;
   if (typeof onBehalfOf !== "string" || onBehalfOf.trim() === "") return null;
 
-  const orgId = orgIdFromTokenPayload(payload);
-  if (!orgId) return null;
-  if (options.expectedOrgId && options.expectedOrgId !== orgId) return null;
+  const rolesClaim = "urn:zitadel:iam:org:project:roles";
+  let roles = payload[rolesClaim];
+  const hasRoles =
+    roles && typeof roles === "object" && !Array.isArray(roles) && Object.keys(roles).length > 0;
+  if (!hasRoles && options.userInfo) {
+    const info = await options.userInfo(token);
+    if (info) roles = info[rolesClaim] ?? roles;
+  }
 
-  const roles = payload["urn:zitadel:iam:org:project:roles"];
   const roleKeys =
     roles && typeof roles === "object" && !Array.isArray(roles) ? Object.keys(roles) : [];
   const permissions = expandPermissionsFromKeys(roleKeys);
   if (permissions.length === 0) return null;
+
+  // Some ZITADEL tokens carry the project-role claim without the standalone org claim. The role map is keyed
+  // by org id (`{ role: { orgId: domain } }`), so it remains a trustworthy org source.
+  let orgId = orgIdFromTokenPayload(payload);
+  if (!orgId && roles && typeof roles === "object" && !Array.isArray(roles)) {
+    for (const value of Object.values(roles)) {
+      if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+      const first = Object.keys(value)[0];
+      if (first) {
+        orgId = first;
+        break;
+      }
+    }
+  }
+  if (!orgId) return null;
+  if (options.expectedOrgId && options.expectedOrgId !== orgId) return null;
 
   const exp = payload.exp;
   if (typeof exp !== "number" || exp * 1000 <= Date.now()) return null;
