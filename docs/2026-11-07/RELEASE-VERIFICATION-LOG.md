@@ -326,9 +326,9 @@ write path disabled.
 | Server tests | **652/652**, 147 files |
 | Removed | `nsv.` signer/verifier/mint script gone; no code references |
 
-**Limit recorded.** Tenant keys are Vault-only; local runs use the Vault dev root token, so per-tenant Vault policy
-scoping and AppRole/Kubernetes auth remain deployment work. Browser checks skipped because no CDP endpoint was
-supplied.
+**Limit recorded.** Tenant keys are Vault-only; local runs use the Vault dev root token (`VAULT_AUTH_MODE=token`),
+which is refused when `NODE_ENV=production`. Per-tenant Vault policies/AppRoles and Kubernetes auth are deployment
+work; see [`VAULT-AUTH.md`](./VAULT-AUTH.md). Browser checks skipped because no CDP endpoint was supplied.
 
 ## Next blocks
 

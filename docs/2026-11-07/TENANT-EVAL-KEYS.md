@@ -56,7 +56,8 @@ eval job for org X
 4. otherwise creates a ZITADEL key and writes it to Vault;
 5. grants `eval_reader`.
 
-Provisioning itself **requires** `VAULT_ADDR` + `VAULT_TOKEN`; it will not write a local key.
+Provisioning itself **requires** a valid Vault auth mode (`VAULT_AUTH_MODE`; `token` locally, AppRole/Kubernetes in
+production) and will not write a local key.
 
 ## 5. Runtime
 
@@ -75,12 +76,14 @@ Vault is already in the compose stack:
 ```
 VAULT_ADDR=http://localhost:8200
 VAULT_TOKEN=dev-root-token
+VAULT_AUTH_MODE=token
 VAULT_MOUNT=secret
 VAULT_PATH_PREFIX=noname
 ```
 
 The repository `.env` may point at a cluster address; for local runs override `VAULT_ADDR` to localhost. That is an
-environment selection, not a fallback: the code still reads Vault only.
+environment selection, not a fallback: the code still reads Vault only. Production modes are in
+[`VAULT-AUTH.md`](./VAULT-AUTH.md).
 
 ## 7. Verification (2026-11-07)
 
@@ -90,7 +93,7 @@ environment selection, not a fallback: the code still reads Vault only.
 | Provisioning rerun | `Key: Vault … (exists)` — no duplicate key |
 | CLI | `noname eval --tenant yogastore --mode dev` → **60 pass, 0 fail, 9 skip** |
 | File reads | none; the CLI/worker loader only calls Vault |
-| Missing Vault | fails closed (`VAULT_ADDR and VAULT_TOKEN are required…`) |
+| Missing Vault / mode | fails closed (`VAULT_AUTH_MODE is required` or `VAULT_ADDR is required`) |
 
 ## 8. Production policy (not yet applied locally)
 
