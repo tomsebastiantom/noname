@@ -76,6 +76,29 @@ Why not ClickHouse for authoritative audit:
 **Recommendation:** use Postgres. Choose **A** now for the first slice; choose **B** if strict separation is a
 standing rule, in which case the extraction is one migration + one domain + route alias — not a ClickHouse move.
 
+### What the original design actually decided
+
+The earlier design is explicit, and it is **not** “business facts only”:
+
+- the abstraction was renamed from “generic business record” to a **“provenance and evidence kernel”** that answers
+  *what happened, to which subject, who or what caused it, which records were used/produced*;
+- **`EvidenceAudit` is defined as “a security/compliance action about the records system”** with
+  `actorId`, `subjectType/Id`, `reason`, `occurredAt`, `correlationId`;
+- candidate consumers explicitly included **“architecture decisions and deployments”** and
+  **“deployments and incidents”**.
+
+Source: [`AUDITABLE-RECORDS-GENERIC-PATTERNS.md`](../2026-09-12/AUDITABLE-RECORDS-GENERIC-PATTERNS.md) and
+[`AUDITABLE-RECORDS-DESIGN-START.md`](../2026-09-12/AUDITABLE-RECORDS-DESIGN-START.md).
+
+The nuance: that document is marked *“research starting point — not yet an implementation decision”*, while the
+schema was implemented (`2af6d8a feat(server): add evidence provenance domain`). So the **storage decision was
+made** (tables exist, including audit), but the **usage decision was never completed** — commerce writes
+records + activities, release writes records, and **nothing writes audit**.
+
+**Conclusion:** using `evidence_audit_events` for release access is consistent with the original design. If the
+rule is now “business facts only”, that is a **new decision to narrow the kernel**, not a correction of a
+violation — and it means extracting an `audit` domain, not moving audit to ClickHouse.
+
 ## 3. What must be logged
 
 | Event | Actor | Target | Fields |
