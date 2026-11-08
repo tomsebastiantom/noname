@@ -210,6 +210,44 @@ app can scope or audit, and make an app bug an instance compromise.
 Use **A** when a system or operator pipeline runs the wave. Use **B** when a person clicks promote in a console.
 Never share a human token for automation, and never use an IdP superuser for an application action.
 
+### Is the service token a parallel permission system?
+
+**No to parallel *authorization*; yes to a second *authenticator*.** The distinction matters:
+
+| Layer | What it answers | Source |
+|---|---|---|
+| **Authentication** | who is calling? | human: ZITADEL OIDC · machine: `nsv.` token |
+| **Authorization** | may this actor do X? | **the same `PERMISSIONS` catalog and the same guards** for both |
+
+The token does not define a second permission vocabulary. `actorHasPermission` checks the same keys
+(`releases:platform_write`, `machines:read`, …) for a machine actor and a human actor. ZITADEL remains the source
+of human roles; the token is the source of machine permissions.
+
+That said, a custom HMAC token is a **second authenticator with custom crypto**, and that has real costs:
+
+| Risk | Mitigation now | Proper end state |
+|---|---|---|
+| no standard audience/introspection | org binding + permission allowlist | OIDC client credentials with `aud` |
+| no `jti` / per-token revocation | short TTL; rotate the signing secret | `jti` + revocation list or IdP revocation |
+| shared HMAC secret | `SERVICE_TOKEN_SECRET`, operator-only | asymmetric keys / IdP-issued tokens |
+| custom code to maintain | small surface, tested | standards-based validation |
+
+**Options for the future**
+
+| Option | How | Trade-off |
+|---|---|---|
+| **A. keep `nsv.`** | current | smallest; custom crypto |
+| **B. ZITADEL service user + OIDC client credentials** | machine gets a real IdP identity, token carries scopes/roles | standard; adds IdP dependency and service-user provisioning |
+| **C. SPIFFE / mTLS** | workload identity from infrastructure | strongest for clusters; not for a laptop CLI |
+| **D. cloud IAM** | if deployed on a cloud with workload identity | excellent there; not portable |
+
+**Recommendation:** keep **A** for the first slice; record **B** as the convergence target when the platform
+operator becomes an external integration or when enterprise SSO is required. Do **not** build a second permission
+vocabulary in the meantime — that would be the actual parallel system.
+
+This mirrors how AWS separates IAM roles (workload) from IAM Identity Center users (people), and Kubernetes
+separates ServiceAccounts from user identities: two authenticators, one authorization model.
+
 ## 5. Wave endpoint (once the identity exists)
 
 ```
