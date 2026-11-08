@@ -133,8 +133,13 @@ old nag token → 401
 
 Database: `e2e-agent-1794105295471 → zitadel_agent_user_id 398642247689568269`; key file created for that agent.
 
-**Remaining:** old/new audit parity for a **mutating** agent action was not captured before `nag.` deletion; the E2E
-request was a read. The old path is gone, so parity can only reference historical `nag.` audit rows.
+**Mutating action.** The delegated token also created a layout (`POST /api/documents/layout` → **201**), so the agent
+path is not read-only.
+
+**Audit parity — not achieved.** The layout creation produced **no row** in `evidence_audit_events` (the table has
+only 3 historical release-audit rows), i.e. document mutations use a different audit path (or none). With `nag.`
+already deleted, old/new parity cannot be measured; the closest available evidence is the historical release-audit
+rows. This is the remaining objective gap, separate from agent authentication itself.
 
 
 
