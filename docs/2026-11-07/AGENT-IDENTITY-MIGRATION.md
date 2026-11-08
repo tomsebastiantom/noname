@@ -136,6 +136,25 @@ Database: `e2e-agent-1794105295471 → zitadel_agent_user_id 398642247689568269`
 **Mutating action.** The delegated token also created a layout (`POST /api/documents/layout` → **201**), so the agent
 path is not read-only.
 
+**Security hardening (2026-11-07).** The guard now requires the machine identity to map to a **live registered
+agent** and to act only for that agent's owner:
+
+- `act.sub` → `registered_agents.zitadel_agent_user_id`; no row → **403**;
+- `sub` must equal `registered_agents.owner_user_id`; mismatch → **403**;
+- audit `actor_id` is the **registered agent UUID**, not the machine-user id;
+- unique partial index `registered_agents_org_zitadel_user` on `(org_id, zitadel_agent_user_id)`;
+- deleting an agent deprovisions its ZITADEL machine user and removes its key file **before** the row is deleted.
+
+Live E2E:
+
+```
+mint 200 → mutation 201 → delete agent 200
+same token after delete → POST /api/documents/layout → 403
+document_ops → agent | <registered-agent-UUID> | editor
+```
+
+Agent/auth tests: **117/117**.
+
 **Audit attribution — verified, parity not measurable.** The layout create wrote a row to `document_ops`:
 
 ```
