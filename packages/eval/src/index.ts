@@ -35,6 +35,12 @@ export {
   vaultConfigFromEnv,
   writeTenantEvalKey,
 } from "./service-account";
+export {
+  clearVaultTokenCache,
+  getVaultToken,
+  type VaultAuthConfig,
+  vaultAuthFromEnv,
+} from "./vault-auth";
 export { deterministicSample } from "./sampling";
 export * from "./types";
 

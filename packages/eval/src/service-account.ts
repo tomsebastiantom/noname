@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { type VaultAuthConfig, getVaultToken, vaultAuthFromEnv } from "./vault-auth";
 
 export type ServiceAccountKey = {
   type?: string;
@@ -9,7 +10,6 @@ export type ServiceAccountKey = {
 
 export type VaultConfig = {
   addr: string;
-  token: string;
   mount: string;
   pathPrefix: string;
 };
@@ -18,11 +18,9 @@ const cache = new Map<string, { accessToken: string; userId: string; expiresAt: 
 
 export function vaultConfigFromEnv(env: NodeJS.ProcessEnv = process.env): VaultConfig | null {
   const addr = env.VAULT_ADDR?.trim();
-  const token = env.VAULT_TOKEN?.trim();
-  if (!addr || !token) return null;
+  if (!addr) return null;
   return {
     addr,
-    token,
     mount: env.VAULT_MOUNT?.trim() || "secret",
     pathPrefix: env.VAULT_PATH_PREFIX?.trim() || "noname",
   };
@@ -40,13 +38,15 @@ function vaultUrl(config: VaultConfig, logicalPath: string): string {
 export async function readTenantEvalKey(
   orgId: string,
   config: VaultConfig | null = vaultConfigFromEnv(),
+  auth: VaultAuthConfig = vaultAuthFromEnv(),
 ): Promise<ServiceAccountKey> {
   if (!config) {
-    throw new Error("VAULT_ADDR and VAULT_TOKEN are required to load a tenant eval key");
+    throw new Error("VAULT_ADDR is required to load a tenant eval key");
   }
   const path = tenantEvalPath(config, orgId);
+  const token = await getVaultToken(orgId, auth);
   const response = await fetch(vaultUrl(config, path), {
-    headers: { "X-Vault-Token": config.token },
+    headers: { "X-Vault-Token": token },
   });
   if (!response.ok) {
     throw new Error(`Vault read failed for ${path} (${response.status})`);
@@ -62,14 +62,16 @@ export async function writeTenantEvalKey(
   orgId: string,
   key: ServiceAccountKey,
   config: VaultConfig | null = vaultConfigFromEnv(),
+  auth: VaultAuthConfig = vaultAuthFromEnv(),
 ): Promise<void> {
   if (!config) {
-    throw new Error("VAULT_ADDR and VAULT_TOKEN are required to store a tenant eval key");
+    throw new Error("VAULT_ADDR is required to store a tenant eval key");
   }
   const path = tenantEvalPath(config, orgId);
+  const token = await getVaultToken(orgId, auth);
   const response = await fetch(vaultUrl(config, path), {
     method: "POST",
-    headers: { "X-Vault-Token": config.token, "Content-Type": "application/json" },
+    headers: { "X-Vault-Token": token, "Content-Type": "application/json" },
     body: JSON.stringify({ data: { key: JSON.stringify(key) } }),
   });
   if (!response.ok) {
