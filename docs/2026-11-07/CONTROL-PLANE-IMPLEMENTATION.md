@@ -101,6 +101,31 @@ that boundary:
 The audit row contains only **references** — `releaseId`, `from`, `to`, `waveId` — never release artifacts,
 digests, or configuration. The release tables remain the single source of truth for what a release *is*.
 
+**Today vs after step ①.**
+
+```
+TODAY (the thing being removed):
+  evidence_records
+    type = platform.release.tenant_promoted
+    data = { from, to, actor, releaseId }        ← release info stored as a business fact
+
+AFTER:
+  tenant_release_pointers
+    org_id → release_id, previous_release_id     ← the state (release tables)
+
+  evidence_audit_events
+    action = platform.release.tenant_promoted
+    subject = tenant.storefront / org
+    metadata = { from, to, releaseId, requestId } ← reference only, no release payload
+```
+
+So the objection is correct for **today’s code**: it writes a record with release fields. That record is the
+legacy duplication this slice removes. It is not the target model.
+
+**Who owns what.** Release tables are platform-owned and org-scoped (`org_id` on every row). The tenant does not
+own a table; it owns the pointer row that selects its release, and the catalog projection that reads it. A platform
+operator creates/moves releases across orgs; a tenant admin can only see and move its own.
+
 **Records vs audit in the same kernel.** The Evidence domain was designed with both (`EvidenceRecord` for facts,
 `EvidenceAudit` for access — see `AUDITABLE-RECORDS-GENERIC-PATTERNS.md`). Using its audit table does not turn
 release state into Evidence; it records that an actor touched a release. If you later decide the kernel must hold
