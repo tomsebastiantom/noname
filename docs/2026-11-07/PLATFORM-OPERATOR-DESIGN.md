@@ -56,6 +56,61 @@ makes the boundary explicit at the permission layer, not just at the org check.
 5. Auditable per move (the pointer service already writes one Evidence row per org promotion).
 6. Rotatable credentials, short TTL, no shared tenant secret.
 
+## 2a. Role lifecycle — where roles are created, assigned, and used
+
+“Roles” exist at three layers. Confusing them is why this feels circular.
+
+| Layer | Where it lives | Created by | Example |
+|---|---|---|---|
+| **Role definition** | ZITADEL project roles (`roleKey`) | `scripts/init/zitadel-oidc.ts` → `AddProjectRole` (idempotent) | `admin`, `editor`, `customer` |
+| **Role meaning** | code map `ROLE_PERMISSIONS` in `packages/auth/src/permissions.ts` | developers, deployed | `admin` → all tenant permissions |
+| **Role assignment** | ZITADEL authorization (user + org + roleKeys) | ZITADEL console/API, admin action | user A gets `admin` in org Y |
+| **Effective role at request time** | JWT claim `urn:zitadel:iam:org:project:<projectId>:roles` | ZITADEL on login | `{ admin: { orgY: "Yoga" } }` |
+| **Permission check** | `rolesFromTokenPayload` → `expandPermissionsFromKeys` → `denyUnless` | server, per request | `releases:write` present |
+
+**Postgres never stores user→role.** That is a decided rule (`TEAM-ROLES-ZITADEL.md`): role assignment is
+ZITADEL-only; the JWT is the runtime source.
+
+### Example — a tenant admin today
+
+1. `init:zitadel` created the project roles (`admin`, …) once.
+2. An admin assigned `admin` to `tom@yoga` in org *Yoga*.
+3. Tom logs in through ZITADEL; the JWT carries `admin` for project `noname-dev`.
+4. The API expands `admin` to tenant permissions, including `releases:write`.
+5. `POST /api/releases/:id/promote` passes `denyUnless(RELEASES_WRITE)` — for **Yoga only**, because the token and
+   edge org are Yoga.
+
+### Example — the platform operator (D17 option A)
+
+There is **no new role and no login**. The operator runs a script that holds the signing secret:
+
+```
+mint nsv. token { serviceId: "release-operator", orgId: PLATFORM_ORG_ID,
+                  permissions: ["releases:platform_write"], exp: +15m }
+```
+
+- no ZITADEL project role is created;
+- no user is assigned anything;
+- the token is the credential, and its `orgId` must equal `PLATFORM_ORG_ID`;
+- the guard checks **permission + org**, not the ZITADEL role claim.
+
+That is why option A is small: it reuses the existing machine-token path, not the human role path.
+
+### If option B is chosen later (human platform operator)
+
+1. Create a ZITADEL project role `platform_operator` (init script).
+2. Assign it to the operator in the **platform org**.
+3. Add it to the code role map with `releases:platform_*` permissions.
+4. Operator logs in as a platform-org user; JWT carries the role; the same guard checks org + permission.
+
+The extra work is steps 1–3 plus the login/console; the guard does not change.
+
+### Where audit attaches
+
+- Role **creation/assignment** happens in ZITADEL — the app mirrors ZITADEL’s admin audit (audit phase E).
+- Token **minting/revocation** is an app action — audit phase B.
+- A **promotion** is an app action — audit phase A.
+
 ## 3. Options
 
 | Option | How it works | Pros | Cons |
