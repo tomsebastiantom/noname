@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import {
   hasPermission,
   intersectAgentPermissions,
@@ -7,26 +5,11 @@ import {
   type PermissionKey,
 } from "@noname/auth";
 import { NotFoundError, ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
-import {
-  exchangeDelegatedToken,
-  serviceAccountToken,
-  type ServiceAccountKey,
-} from "../../shared/zitadel-token";
+import { exchangeDelegatedToken, serviceAccountToken } from "../../shared/zitadel-token";
 import type { AuthorizationPort } from "../auth/authorization-port";
 import type { AgentRegistryStorage, RegisteredAgentRow } from "./adapters/registry-postgres";
 import { ORCHESTRATE_TOOL_IDS } from "./mastra/guards";
-
-let cachedActorKey: ServiceAccountKey | null = null;
-
-function agentActorKey(): ServiceAccountKey {
-  if (cachedActorKey) return cachedActorKey;
-  const path =
-    process.env.ZITADEL_AGENT_KEY_PATH?.trim() ??
-    fileURLToPath(new URL("../../../../../zitadel_keys/agent-runner-sa.json", import.meta.url));
-  const parsed = JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
-  cachedActorKey = parsed;
-  return parsed;
-}
+import { ensureAgentActor } from "./zitadel-provisioning";
 
 export function createAgentRegistryService(deps: {
   storage: AgentRegistryStorage;
@@ -168,9 +151,14 @@ export function createAgentRegistryService(deps: {
         );
       }
 
+      const actorKey = await ensureAgentActor(
+        orgId,
+        agent,
+        deps.storage.setZitadelAgentUserId,
+      );
       const actor = await serviceAccountToken({
         issuer,
-        key: agentActorKey(),
+        key: actorKey,
         scopes: `openid urn:zitadel:iam:org:project:id:${projectId}:aud`,
       });
       const exchanged = await exchangeDelegatedToken({

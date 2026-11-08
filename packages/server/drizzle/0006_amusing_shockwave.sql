@@ -1,0 +1,1 @@
+ALTER TABLE "registered_agents" ADD COLUMN "zitadel_agent_user_id" text;

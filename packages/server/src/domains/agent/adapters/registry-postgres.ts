@@ -9,6 +9,7 @@ export interface RegisteredAgentRow {
   slug: string;
   label: string;
   ownerUserId: string;
+  zitadelAgentUserId: string | null;
   allowedTools: string[];
   createdAt: Date;
 }
@@ -27,6 +28,7 @@ function rowToDto(row: typeof registeredAgents.$inferSelect): RegisteredAgentRow
     slug: row.slug,
     label: row.label,
     ownerUserId: row.ownerUserId,
+    zitadelAgentUserId: row.zitadelAgentUserId ?? null,
     allowedTools: Array.isArray(tools)
       ? tools.filter((entry): entry is string => typeof entry === "string")
       : [],
@@ -83,6 +85,17 @@ export function createAgentRegistryStorage(db: Database) {
         .where(and(eq(registeredAgents.orgId, orgId), eq(registeredAgents.slug, normalized)))
         .limit(1);
       return row ? rowToDto(row) : null;
+    },
+
+    async setZitadelAgentUserId(
+      orgId: string,
+      id: string,
+      zitadelAgentUserId: string,
+    ): Promise<void> {
+      await db
+        .update(registeredAgents)
+        .set({ zitadelAgentUserId })
+        .where(and(eq(registeredAgents.orgId, orgId), eq(registeredAgents.id, id)));
     },
 
     async delete(orgId: string, id: string): Promise<void> {

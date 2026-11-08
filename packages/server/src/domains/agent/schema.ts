@@ -69,6 +69,8 @@ export const registeredAgents = pgTable(
     slug: text("slug").notNull(),
     label: text("label").notNull(),
     ownerUserId: text("owner_user_id").notNull(),
+    /** ZITADEL machine-user id backing this agent (one service account per agent). */
+    zitadelAgentUserId: text("zitadel_agent_user_id"),
     allowedTools: jsonb("allowed_tools").notNull().default([]),
     created_at: timestamp("created_at").notNull().defaultNow(),
   },
