@@ -179,10 +179,42 @@ set at promotion, and bound release growth.
 are not deleted by prune; promotion waves and the release admin UI are deferred — waves need a platform-operator
 identity (cross-org escalation risk), and the app has no release admin surface yet.
 
+## 2026-11-07 — D3: tenant channels
+
+**Scope.** A channel is a tenant ring owned by the release context. Moving a ring is one row; the tenant pointer
+stores a channel; the catalog resolves channel → release. Promote/rollback reuse the ready check, the D16
+migration gate, and Evidence.
+
+**Code.** `release/schema.ts` (`release_channels`, `tenant_release_pointers.channel`), `ports.ts`,
+`adapters/postgres.ts` (`ChannelStore`, channel-aware pointer), `channel-service.ts`, `pointer-service.ts`
+(resolve/assign/clear), `retention.ts` (protect ring + pin), `api.ts` (5 routes), `index.ts`, migration `0005`,
+`channel-service.test.ts`, retention/pointer test updates.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Types | `pnpm --filter @noname/server typecheck` | clean |
+| Release tests | `pnpm vitest run packages/server/src/domains/release` | **50/50** (channel service 5, retention 4) |
+| Migration | `db:migrate` | `release_channels` + `tenant_release_pointers.channel` applied |
+| Live — ring to r1 | `POST /channels/canary/activate` | 200; tenant assigned via `POST /pointer/channel`; catalog URL `…/releases/r_e2e_1/remoteEntry.js` |
+| Live — move ring to r2 | same channel route | 200; catalog URL `…/r_e2e_2/…` **without touching the pointer** |
+| Live — rollback ring | `POST /channels/canary/rollback` | 200; catalog URL back to `…/r_e2e_1/…` |
+| DB | `release_channels` / `tenant_release_pointers` | `canary → r_e2e_1, previous r_e2e_2`; pointer `channel=canary` |
+| Evidence | `platform.release.channel_moved` | 3 rows: r1, r1→r2, rollback r2→r1 |
+| Retention | unit test | a channel-referenced release **and** the pointer pin are protected from `prune` |
+
+**Retention bug found and fixed.** The first live `prune` returned 500: a channel-set pointer still has a
+`previousReleaseId`, and deleting that release violated a foreign key. Retention now protects both the pin
+(`releaseId`, `previousReleaseId`) and the ring (active + previous); the unit test covers the combination.
+
+**Limits.** No channel UI; a ring move is one write but the catalog re-reads the pointer per request (as D1); no
+percentage traffic split — a request never sees two bundles.
+
 ## Next blocks
 
 1. **D17 platform operator** — design ready in [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md); choose A, then implement the guard + dry-run wave endpoint.
-2. **Release admin UI** — tenant list, pointer history, promote/rollback buttons.
+2. **Release admin UI** — tenant list, pointer history, channel assignment, promote/rollback buttons.
 3. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
 4. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.
 

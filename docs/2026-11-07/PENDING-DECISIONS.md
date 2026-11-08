@@ -20,7 +20,7 @@
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D17** | Who may promote across tenants (waves) | platform service token / platform org role / env allowlist / separate control plane | **Platform service token now, platform org role later** | High — waves are unsafe without it |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** — **implemented 2026-11-07** | High — definition updates no longer hit in-flight carts |
-| **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
+| **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **B — release-domain channel table, implemented 2026-11-07** | Done |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **A — implemented (role map + mandatory audience; no cache yet)** | E8 closed |
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
@@ -200,8 +200,10 @@ tenant-level release.
 **Recommendation: A now, B when channels are actually needed.** Choosing D before a release pipeline exists
 repeats the mistake the critical review identified; choosing C conflicts with D1.
 
-**Decision:** ☑ **A** — deferred 2026-11-07. Placement settled in advance: when channels are built, they are a
-release-domain table (option B), not a tenant column. Build only after D1 + D2 are in use.
+**Decision:** ☑ **B** — implemented 2026-11-07. `release_channels` + nullable `tenant_release_pointers.channel`;
+the catalog resolves channel → release, so moving a ring is one row; tenant assignment `POST/DELETE
+/pointer/channel`; channel move/rollback reuse the ready + migration gate and write Evidence; retention protects
+ring releases and the pin. See [`RELEASE-D3-CHANNELS.md`](./RELEASE-D3-CHANNELS.md).
 
 ---
 
