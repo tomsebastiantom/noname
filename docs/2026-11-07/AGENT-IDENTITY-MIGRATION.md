@@ -105,6 +105,12 @@ That is the complete identity chain: private-key JWT → actor token → token e
 **Next action:** wire this verifier into the guard, add `zitadel_agent_user_id`, replace minting, delete `nag.` in
 the same cutover.
 
+**Cutover implemented (2026-11-07).** The guard now verifies ZITADEL agent JWTs (JWKS + `act`, userinfo fallback)
+instead of `nag.`; the registry `mintToken` performs private-key JWT + RFC 8693 exchange with the user token as
+subject. The `nag.` verifier, mint helper, module and tests are deleted. Unit suites pass **64/64** agent/auth and
+**9/9** verifier. Live agent-task E2E is the remaining step (needs the API restarted with the agent client id/secret
+and key path).
+
 
 
 ## 3. Why migrate (triggers)
