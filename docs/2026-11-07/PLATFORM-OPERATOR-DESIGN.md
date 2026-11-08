@@ -248,6 +248,36 @@ vocabulary in the meantime — that would be the actual parallel system.
 This mirrors how AWS separates IAM roles (workload) from IAM Identity Center users (people), and Kubernetes
 separates ServiceAccounts from user identities: two authenticators, one authorization model.
 
+### Agents, services and humans — three authenticators, one authorization
+
+The platform already has three actor types, and only one of them uses ZITADEL:
+
+| Actor | Credential | Where it is minted | Identity/limits |
+|---|---|---|---|
+| **human** | ZITADEL OIDC JWT | ZITADEL login | roles for the org; tenant admin scoped to its org |
+| **agent** | `nag.` HMAC token | server (`AGENT_TOKEN_SECRET`) | `agentId`, `agentSlug`, `orgId`, `onBehalfOf`, permissions ∩ creator |
+| **machine** | `nsv.` HMAC token | server (`SERVICE_TOKEN_SECRET`) | `serviceId`, `orgId`, explicit permissions |
+
+All three resolve to the **same `PERMISSIONS` catalog** and the same guards; they differ only in how the caller is
+authenticated and what the token is allowed to carry.
+
+**Why agents are not ZITADEL users today:** an agent is first-party automation acting **on behalf of** a creator.
+The `nag.` token carries `onBehalfOf` and permissions intersected with the creator's (`intersectAgentPermissions`),
+so delegation is explicit and the permission ceiling cannot be raised by the agent. A ZITADEL identity per agent
+would add provisioning and login machinery for an entity that never logs in.
+
+**When to change:** if agents become **third-party** or need cross-org delegation, move to standard OAuth 2.0:
+
+- **client credentials** (RFC 6749 §4.4) for a service/agent acting as itself;
+- **token exchange** (RFC 8693) for “agent acts on behalf of user”, which is exactly the current `onBehalfOf`
+  semantics but with a standard token and audience.
+
+That is the same convergence path as the platform token: `nag.`/`nsv.` now, standards-based workload identity
+later. Do not add a fourth scheme in between.
+
+**Audit consequence:** actor types stay distinct (`user` / `agent` / `service`), so the audit row says whether a
+human, an agent, or a service acted — and `onBehalfOf` is recorded for agent actions.
+
 ## 5. Wave endpoint (once the identity exists)
 
 ```
