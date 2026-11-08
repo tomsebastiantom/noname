@@ -182,6 +182,59 @@ Rules:
 5. One Evidence row per org promotion (pointer service already does this); the wave itself records a summary.
 6. The wave never accepts `orgIds: ["*"]` — an explicit list only; “all tenants” is a separate, reviewed action.
 
+## 5a. Wave eligibility — what a rollout actually selects
+
+A wave does **not** mean “any tenant”. It is an explicit list, filtered by eligibility, with a per-org result.
+
+### Inputs
+
+- `orgIds: string[]` — explicit, capped (e.g. 100);
+- or, later, a **filter over the tenant catalog** (plan, region, created-before) that is materialised into an
+  explicit list **before** review. No wildcard ever reaches the promote loop.
+
+### Per-org criteria
+
+| # | Criterion | If it fails |
+|---|---|---|
+| 1 | org exists as a tenant (`tenant_settings` document) | `skipped: unknown_tenant` |
+| 2 | org is **not** `PLATFORM_ORG_ID` | request rejected (400) |
+| 3 | tenant is active (not suspended/offboarding) | `skipped: inactive` — **status does not exist yet** |
+| 4 | release state is `ready` | whole request 409 (release-level) |
+| 5 | migration set is promotable (D16) | whole request 409 |
+| 6 | pointer is not already at the target release | `skipped: already_on_release` (idempotent) |
+| 7 | no policy exclusion (maintenance, legal hold, enterprise opt-out) | `skipped: excluded` — **not modelled yet** |
+| 8 | optional: gate verdict for **this tenant + release** is `pass` (or acknowledged unverified) | `skipped: no_verdict` — **no per-tenant verdict lookup yet** |
+
+### Result
+
+```json
+{
+  "releaseId": "r_17",
+  "dryRun": true,
+  "results": [
+    { "orgId": "yoga", "status": "eligible" },
+    { "orgId": "cafe", "status": "skipped", "reason": "no_verdict" },
+    { "orgId": "corp", "status": "skipped", "reason": "inactive" }
+  ]
+}
+```
+
+A real wave returns `promoted | failed | skipped` per org, and **continues** after a per-org failure. One Evidence
+row per promoted org; one summary row for the wave.
+
+### What is missing to run this correctly
+
+| Missing piece | Why it matters |
+|---|---|
+| **Tenant catalog / list** | today `tenant_settings` is fetched by org; there is no list-all with status |
+| **Tenant lifecycle status** | active/suspended/offboarding is not modelled, so criterion 3 cannot be checked |
+| **Per-tenant gate verdict** | eval runs exist per tenant, but there is no lookup “verdict for release r_17 + org X” |
+| **Exclusion/opt-out metadata** | enterprise contracts, legal hold, maintenance windows |
+| **Platform-org marker** | `PLATFORM_ORG_ID` env is enough for v1, but not a catalog concept |
+
+**Conclusion:** the wave endpoint can be built with criteria 1, 2, 4, 5, 6 now; criteria 3, 7, 8 need the
+tenant catalog/status and a verdict lookup first. “All tenants” is a materialised, reviewed list — never `"*"`.
+
 ## 6. Implementation plan
 
 | Step | Change | Test |
