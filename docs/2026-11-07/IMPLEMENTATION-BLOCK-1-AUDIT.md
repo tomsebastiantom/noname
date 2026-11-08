@@ -1,7 +1,7 @@
 # Implementation block — fix release audit, then the operator boundary
 
-> **Status:** **Parts 1–2 (release audit fix, request-id + AUDIT_READ) and step 3 of the sequence (platform
-> accounts) are implemented and verified 2026-11-07**; guard/eval migration pending.
+> **Status:** **steps 1–4 of the sequence implemented and verified 2026-11-07** — release audit fix,
+> request-id + AUDIT_READ, platform accounts/guard/dry-run, and eval on per-tenant service accounts.
 > **Why this block:** the release control plane is built, but release moves still write **business records** with
 > `data.actor`. That is the earlier mistake. It is fixed **before** anything else is tested or the platform
 > operator is introduced.

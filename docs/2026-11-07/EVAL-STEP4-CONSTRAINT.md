@@ -1,7 +1,7 @@
 # Eval step 4 — why a single platform account cannot replace `nsv.` directly
 
-> **Status:** **option A chosen and tenant provisioning implemented 2026-11-07**; CLI/worker switch and `nsv.`
-> deletion pending.
+> **Status:** **implemented 2026-11-07** — per-tenant eval accounts; CLI/worker on service-account tokens; `nsv.`
+> and the mint script deleted.
 > **Scope:** migrating eval from `nsv.` to the `eval-runner` service account, then deleting `nsv.` and the mint
 > script.
 > **Related:** [`EVAL-IDENTITY-RETIREMENT.md`](./EVAL-IDENTITY-RETIREMENT.md) · [`PLATFORM-ACCOUNTS-PROVISIONING.md`](./PLATFORM-ACCOUNTS-PROVISIONING.md)
@@ -84,22 +84,15 @@ worse than `nsv.`.
 
 ## 8. Progress — tenant account and context (2026-11-07)
 
-**Option A implemented for provisioning and the read path:**
+**Per-tenant accounts implemented (provisioning, CLI and worker):**
 
-- `scripts/init/tenant-eval-account.ts` (`pnpm init:tenant-eval --org <org> --project <project>`):
-  creates project role `eval_reader`, service account `eval-runner-<org>`, key under
-  `zitadel_keys/tenants/<org>/eval-runner-sa.json`, and the grant.
-- `SERVICE_ROLE_PERMISSIONS.eval_reader → machines:read`; `requireAuthenticatedActor` resolves grants
-  server-side when a token has no role-derived permissions (service accounts).
-- Live: token exchanged for the demo tenant; `GET /api/eval/context` with `x-org-id=<tenant>` → **200**
-  (`capabilities`, `extensions`, `roles`).
+- `scripts/init/tenant-eval-account.ts` (`pnpm init:tenant-eval --org <org> --project <project>`): creates project role `eval_reader`, service account `eval-runner-<org>`, key under `zitadel_keys/tenants/<org>/eval-runner-sa.json`, and the grant.
+- `SERVICE_ROLE_PERMISSIONS.eval_reader` maps to `machines:read`; `requireAuthenticatedActor` resolves grants server-side when a token has no role-derived permissions (service accounts).
+- `packages/eval/src/service-account.ts` exchanges the key for a short-lived access token; CLI and worker both use it.
+- CLI: `--tenant` resolves the org, loads that tenant key, and signs in; `--token` is gone.
+- Worker: uses the job org id to load the tenant key; demo admin headers are gone.
+- Live: context endpoint with the tenant token returned 200; `noname eval --tenant yogastore --mode dev` returned 60 pass, 0 fail, 9 skip (browser tier not configured).
 
-**Still pending:** CLI/worker use the tenant key, remove `--token`, delete `nsv.` and
-`scripts/mint-service-token.ts`, remove the machine-token branch from guards, and audit the actor.
+**Deleted:** `scripts/mint-service-token.ts`, `shared/service-token.ts`, its tests, and the machine-token branch in guards. No `nsv.` code references remain.
 
-
-
-- `eval-runner` exists in the **platform** org (step 2) for the eventual platform eval path, but it is **not** used
-  by the CLI/worker yet.
-- `nsv.` remains the eval credential until option A is provisioned.
-- Steps 1–3 of the sequence are complete.
+**Final state:** per-tenant eval identity; `nsv.` retired; steps 1-4 complete.

@@ -306,6 +306,28 @@ path.
 **Limits.** No tenant-catalog existence check; role lookup is uncached; only platform-owned releases are eligible;
 write path disabled.
 
+## 2026-11-07 — eval identity: `nsv.` retired
+
+**Scope.** Move eval to per-tenant ZITADEL service accounts, switch CLI/worker, delete the custom credential.
+
+**Code.** `scripts/init/tenant-eval-account.ts`, `packages/eval/src/service-account.ts`,
+`domains/auth/guards.ts` grant resolution, CLI `--tenant` flow, worker key exchange; deleted
+`scripts/mint-service-token.ts`, `shared/service-token.ts`, its tests, and the machine-token branch.
+
+### Verification
+
+| Check | Observed |
+|---|---|
+| Tenant account | `eval_reader` role, `eval-runner-<org>` account, key, grant created |
+| Context read | `GET /api/eval/context` with the tenant token → **200** |
+| CLI | `noname eval --tenant yogastore --mode dev` → **60 pass, 0 fail, 9 skip** |
+| Typecheck | server, CLI, eval clean |
+| Server tests | **652/652**, 147 files |
+| Removed | `nsv.` signer/verifier/mint script gone; no code references |
+
+**Limit recorded.** Per-tenant keys live under `zitadel_keys/tenants/<org>/` (gitignored); production secret
+storage (Vault) is the follow-up. Browser checks skipped because no CDP endpoint was supplied.
+
 ## Next blocks
 
 1. **Request-id + `AUDIT_READ`** — middleware, `requestId`/`traceId` in audit metadata, tenant audit route.

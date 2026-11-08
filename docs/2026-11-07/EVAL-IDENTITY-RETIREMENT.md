@@ -1,22 +1,22 @@
 # Retiring `nsv.` — eval moves to the ZITADEL service-account model
 
-> **Status:** proposed migration · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** **implemented 2026-11-07** — per-tenant eval service accounts; `nsv.` and the mint script deleted.
 > **Driver:** one credential model only. The platform operator already uses a ZITADEL service account; the eval
-> service still uses the custom `nsv.` HMAC token. That is the last custom platform credential and it should go.
+> service used the custom `nsv.` HMAC token. That was the last custom platform credential and it is gone.
 > **Related:** [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md) · [`CONTROL-PLANE-IMPLEMENTATION.md`](./CONTROL-PLANE-IMPLEMENTATION.md)
 
 ---
 
-## 1. Where `nsv.` is used today (code-verified)
+## 1. Where `nsv.` was used (removed)
 
-| Consumer | How it gets the token | Scope |
+| Consumer | Then | Now |
 |---|---|---|
-| CLI `noname eval --token` | operator supplies an `nsv.` token minted by `scripts/mint-service-token.ts` | one org, `machines:read` |
-| eval worker (`domains/eval/job.ts`) | mints `nsv.` per job with `machines:read` | one org |
-| `scripts/mint-service-token.ts` | signs with `SERVICE_TOKEN_SECRET` / `WORKER_SERVER_SECRET` | one org |
-| edge headers | CLI/worker also send `x-user-id: admin@zitadel.localhost`, `x-role: admin` | **demo identity** |
+| CLI `noname eval --token` | operator supplied an `nsv.` token | `--tenant` resolves the org and loads that tenant's service-account key |
+| eval worker (`domains/eval/job.ts`) | minted `nsv.` per job | exchanges the tenant key for a short-lived access token |
+| `scripts/mint-service-token.ts` | signed with `SERVICE_TOKEN_SECRET` / `WORKER_SERVER_SECRET` | **deleted** |
+| edge headers | demo admin identity | service-account user id, `x-role: service` |
 
-It is **not** used by the platform operator (D17-B uses a ZITADEL service account).
+`nsv.` and `service-token.ts` are deleted; no code references remain.
 
 ## 2. Why it must be replaced, not documented around
 
