@@ -47,6 +47,10 @@ const TENANT_PERMISSIONS = Object.values(PERMISSIONS).filter((p) => !PLATFORM_ON
 Only a service token (minted by an operator with the signing secret) carries `releases:platform_write`. That
 makes the boundary explicit at the permission layer, not just at the org check.
 
+**The eval service is the last `nsv.` user.** It moves to the same ZITADEL service-account model; the migration and
+the option analysis are in [`EVAL-IDENTITY-RETIREMENT.md`](./EVAL-IDENTITY-RETIREMENT.md). Once that lands, `nsv.`
+has no consumers.
+
 ## 2. Requirements
 
 1. A principal that is explicitly **not** a tenant admin: platform scope only.
