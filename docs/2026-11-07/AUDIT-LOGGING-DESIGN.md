@@ -165,6 +165,9 @@ access logs by timestamp and org, which is not evidence-grade.
 **Required:** a request-id middleware (generate UUID when absent, echo in response, attach to the span), include
 `requestId`/`traceId` in audit `metadata`, and ensure edge/API access logs use the same id. That is phase A.
 
+**Where the access log itself lives** — not Evidence, not audit, not Jaeger: see
+[`ACCESS-LOG-STORAGE.md`](./ACCESS-LOG-STORAGE.md) (ClickHouse now, object-storage archive later).
+
 
 
 | Phase | Change | Test |
