@@ -129,11 +129,47 @@ A role change is not complete until its audit row is written; a failed audit wri
 
 Minimize: actor IDs, not emails; IP only if required (hash it); never secrets, tokens, or full payloads.
 
-## 5. Implementation plan
+### 4.7 Evidence vs audit vs access log — three planes, not one
+
+These are different records with different owners, volume and retention. None is a substitute for another.
+
+| Plane | Question it answers | Written by | Retention | Visible to |
+|---|---|---|---|---|
+| **Decision** | what did the gate decide, and why? | gate | per release policy | tenant + platform |
+| **Evidence** | what is true / what happened to this entity? (order, release, payment) | domains | long, append-only | tenant (own org) |
+| **Audit** | who exercised which authority, on what scope? | privileged commands | **7 years** | tenant (own actions) + platform |
+| **Access log** | which request hit which route, with what result? | edge / HTTP middleware | 30–90 days | operators only |
+
+Consequences:
+
+- Do **not** pour access logs into Evidence: volume and PII make the audit kernel unusable.
+- Do **not** use Evidence as an access log: it records business facts, not every request.
+- A gate **decision** is a decision record (Evidence), not an audit of who called the gate; both may exist with the
+  same correlation id.
+- A tenant sees its **audit** and its Evidence, never raw access logs or another tenant’s stream.
+
+**Joining the planes.** The only reliable join keys are identifiers we generate once and propagate:
+
+```
+requestId      x-request-id (accept upstream, else generate)  → access log + audit metadata + Evidence correlation
+traceId        OpenTelemetry span                             → access log + audit metadata
+actorId        authenticated principal                        → audit + access log
+orgId          edge header                                    → all planes
+correlationId  domain workflow (waveId, runId, orderRef)      → audit + Evidence
+```
+
+**Current gap:** OTel spans exist (`org-tracing.ts`) but there is **no request-id middleware**, audit rows carry no
+`traceId`, and release actions do not write audit events at all. So today an order/release can only be joined to
+access logs by timestamp and org, which is not evidence-grade.
+
+**Required:** a request-id middleware (generate UUID when absent, echo in response, attach to the span), include
+`requestId`/`traceId` in audit `metadata`, and ensure edge/API access logs use the same id. That is phase A.
+
+
 
 | Phase | Change | Test |
 |---|---|---|
-| **A** | release promote/rollback/switch write `evidence_audit_events` with structured actor; `AUDIT_READ` for tenant admins; tenant filter test | tenant sees own move; other org’s audit is absent |
+| **A** | request-id middleware + `traceId`/`requestId` in audit metadata; release promote/rollback/switch write `evidence_audit_events` with structured actor; `AUDIT_READ` for tenant admins; tenant filter test | tenant sees own move; other org’s audit is absent; audit row joins to access log by requestId |
 | **B** | operator token issuance/revocation audit (+ token table/hash); mint script records it | issuing a token produces one audit row; revoke produces one |
 | **C** | `GET /api/platform/audit` with `PLATFORM_AUDIT_READ`, pagination + NDJSON export | tenant admin → 403; platform token → rows across orgs |
 | **D** | integrity hash chain + verification job + retention registration | edit a row by SQL → verification fails |
@@ -151,6 +187,7 @@ Phases A–C are required before D17 waves; D–E are the SOC evidence pack.
 6. A direct `UPDATE` to an evidence row is detected by the integrity check.
 7. A role grant/revoke is visible in the tenant audit (phase E).
 8. `AUDIT_READ` and `PLATFORM_AUDIT_READ` are excluded from tenant role expansion (same rule as D17).
+9. An audit row and its access-log line share a `requestId`; the same row carries the active `traceId`.
 
 ## 7. What this does **not** solve
 
