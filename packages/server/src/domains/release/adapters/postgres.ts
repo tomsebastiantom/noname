@@ -2,21 +2,30 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { StorageError } from "../../../shared/domain-error";
 import type {
+  ChannelStore,
   EnvironmentStore,
   PointerStore,
   ReleaseArtifact,
+  ReleaseChannelDTO,
   ReleaseDTO,
   ReleaseEnvironmentDTO,
   ReleaseState,
   ReleaseStore,
   TenantReleasePointerDTO,
 } from "../ports";
-import { releaseArtifacts, releaseEnvironments, releases, tenantReleasePointers } from "../schema";
+import {
+  releaseArtifacts,
+  releaseChannels,
+  releaseEnvironments,
+  releases,
+  tenantReleasePointers,
+} from "../schema";
 
 type ReleaseRow = typeof releases.$inferSelect;
 type ArtifactRow = typeof releaseArtifacts.$inferSelect;
 type EnvironmentRow = typeof releaseEnvironments.$inferSelect;
 type PointerRow = typeof tenantReleasePointers.$inferSelect;
+type ChannelRow = typeof releaseChannels.$inferSelect;
 
 function mapArtifact(row: ArtifactRow): ReleaseArtifact {
   return {
@@ -58,6 +67,19 @@ function mapEnvironment(row: EnvironmentRow): ReleaseEnvironmentDTO {
 function mapPointer(row: PointerRow): TenantReleasePointerDTO {
   return {
     orgId: row.orgId,
+    releaseId: row.releaseId,
+    previousReleaseId: row.previousReleaseId,
+    channel: row.channel ?? null,
+    updatedBy: row.updatedBy,
+    updatedAt: row.updated_at,
+  };
+}
+
+function mapChannel(row: ChannelRow): ReleaseChannelDTO {
+  return {
+    id: row.id,
+    orgId: row.orgId,
+    channel: row.channel,
     releaseId: row.releaseId,
     previousReleaseId: row.previousReleaseId,
     updatedBy: row.updatedBy,
@@ -206,17 +228,57 @@ export function createPostgresPointerStore(db: Database): PointerStore {
       return row ? mapPointer(row) : null;
     },
 
-    async set(orgId, releaseId, previousReleaseId, updatedBy) {
+    async set(orgId, releaseId, previousReleaseId, updatedBy, channel) {
       const [row] = await db
         .insert(tenantReleasePointers)
-        .values({ orgId, releaseId, previousReleaseId, updatedBy })
+        .values({ orgId, releaseId, previousReleaseId, updatedBy, channel: channel ?? null })
         .onConflictDoUpdate({
           target: tenantReleasePointers.orgId,
-          set: { releaseId, previousReleaseId, updatedBy, updated_at: new Date() },
+          set: {
+            releaseId,
+            previousReleaseId,
+            updatedBy,
+            channel: channel ?? null,
+            updated_at: new Date(),
+          },
         })
         .returning();
       if (!row) throw new StorageError(`Failed to set release pointer for ${orgId}`);
       return mapPointer(row);
+    },
+  };
+}
+
+export function createPostgresChannelStore(db: Database): ChannelStore {
+  return {
+    async get(orgId, channel) {
+      const [row] = await db
+        .select()
+        .from(releaseChannels)
+        .where(and(eq(releaseChannels.orgId, orgId), eq(releaseChannels.channel, channel)));
+      return row ? mapChannel(row) : null;
+    },
+
+    async list(orgId) {
+      const rows = await db
+        .select()
+        .from(releaseChannels)
+        .where(eq(releaseChannels.orgId, orgId))
+        .limit(100);
+      return rows.map(mapChannel);
+    },
+
+    async set(orgId, channel, releaseId, previousReleaseId, updatedBy) {
+      const [row] = await db
+        .insert(releaseChannels)
+        .values({ orgId, channel, releaseId, previousReleaseId, updatedBy })
+        .onConflictDoUpdate({
+          target: [releaseChannels.orgId, releaseChannels.channel],
+          set: { releaseId, previousReleaseId, updatedBy, updated_at: new Date() },
+        })
+        .returning();
+      if (!row) throw new StorageError(`Failed to set release channel ${channel} for ${orgId}`);
+      return mapChannel(row);
     },
   };
 }

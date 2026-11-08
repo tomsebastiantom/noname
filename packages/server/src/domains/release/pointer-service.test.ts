@@ -3,12 +3,25 @@ import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceRecordInput, EvidenceService } from "../evidence/ports";
 import { createReleasePointerService } from "./pointer-service";
 import type {
+  ChannelStore,
   PointerStore,
   ReleaseDTO,
   ReleaseService,
   ReleaseState,
   TenantReleasePointerDTO,
 } from "./ports";
+
+const emptyChannels = {
+  async get() {
+    return null;
+  },
+  async list() {
+    return [];
+  },
+  async set() {
+    throw new Error("not used");
+  },
+} as unknown as ChannelStore;
 
 function release(id: string, state: ReleaseState, withBundle = true): ReleaseDTO {
   const now = new Date();
@@ -47,6 +60,7 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
         orgId,
         releaseId,
         previousReleaseId,
+        channel: null,
         updatedBy,
         updatedAt: new Date(),
       };
@@ -79,7 +93,7 @@ describe("tenant release pointer", () => {
     const { store, releases, evidence, recorded } = fixtures(
       new Map([["r_1", release("r_1", "ready")]]),
     );
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     const row = await pointer.promote("org-1", "r_1", "tom");
 
@@ -96,7 +110,7 @@ describe("tenant release pointer", () => {
     const { store, releases, evidence, recorded } = fixtures(
       new Map([["r_1", release("r_1", "building")]]),
     );
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     await expect(pointer.promote("org-1", "r_1", "tom")).rejects.toBeInstanceOf(ConflictError);
     expect(recorded).toHaveLength(0);
@@ -107,7 +121,7 @@ describe("tenant release pointer", () => {
     const { store, releases, evidence, recorded } = fixtures(
       new Map([["r_1", release("r_1", "ready")]]),
     );
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     await pointer.promote("org-1", "r_1", "tom");
     const again = await pointer.promote("org-1", "r_1", "tom");
@@ -123,7 +137,7 @@ describe("tenant release pointer", () => {
         ["r_2", release("r_2", "ready")],
       ]),
     );
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     await pointer.promote("org-1", "r_1", "tom");
     const second = await pointer.promote("org-1", "r_2", "tom");
@@ -135,7 +149,7 @@ describe("tenant release pointer", () => {
 
   it("refuses rollback with no previous release", async () => {
     const { store, releases, evidence } = fixtures(new Map([["r_1", release("r_1", "ready")]]));
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     await pointer.promote("org-1", "r_1", "tom");
     await expect(pointer.rollback("org-1", "tom")).rejects.toBeInstanceOf(ConflictError);
@@ -143,7 +157,7 @@ describe("tenant release pointer", () => {
 
   it("projects the client bundle URL from the release artifact", async () => {
     const { store, releases, evidence } = fixtures(new Map([["r_1", release("r_1", "ready")]]));
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
     await pointer.promote("org-1", "r_1", "tom");
 
     expect(await pointer.clientBundle("org-1")).toEqual({
@@ -161,10 +175,11 @@ describe("tenant release pointer", () => {
         ["r_2", release("r_2", "ready", false)],
       ]),
     );
-    const pointer = createReleasePointerService(store, releases, evidence);
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
     expect(await pointer.clientBundle("org-1")).toBeNull();
     await pointer.promote("org-1", "r_2", "tom");
     expect(await pointer.clientBundle("org-1")).toBeNull();
   });
 });
+

@@ -1,14 +1,17 @@
 import type { Database } from "../../drizzle";
 import type { EvidenceService } from "../evidence/ports";
 import {
+  createPostgresChannelStore,
   createPostgresEnvironmentStore,
   createPostgresPointerStore,
   createPostgresReleaseStore,
 } from "./adapters/postgres";
 import { createReleaseRoutes } from "./api";
+import { createChannelService } from "./channel-service";
 import { createEnvironmentService } from "./environment-service";
 import { createReleasePointerService } from "./pointer-service";
 import type {
+  ChannelService,
   EnvironmentService,
   ReleasePointerService,
   ReleaseRetention,
@@ -19,8 +22,11 @@ import { createReleaseRetention } from "./retention";
 import { createReleaseService } from "./service";
 
 export { createEnvironmentService } from "./environment-service";
+export { createChannelService } from "./channel-service";
 export { createReleasePointerService } from "./pointer-service";
 export type {
+  ChannelService,
+  ChannelStore,
   ClientBundleRef,
   CreateReleaseInput,
   EnvironmentService,
@@ -29,6 +35,7 @@ export type {
   ReleaseArtifact,
   ReleaseArtifactInput,
   ReleaseArtifactKind,
+  ReleaseChannelDTO,
   ReleaseDTO,
   ReleaseEnvironmentDTO,
   ReleasePointerService,
@@ -48,6 +55,8 @@ export function createReleaseDomain(deps: {
 }) {
   const storage = deps.storage ?? createPostgresReleaseStore(deps.db);
   const service: ReleaseService = createReleaseService(storage);
+  const channelStore = createPostgresChannelStore(deps.db);
+  const channels: ChannelService = createChannelService(channelStore, service, deps.evidence);
   const environments: EnvironmentService = createEnvironmentService(
     createPostgresEnvironmentStore(deps.db),
     service,
@@ -55,6 +64,7 @@ export function createReleaseDomain(deps: {
   );
   const pointer: ReleasePointerService = createReleasePointerService(
     createPostgresPointerStore(deps.db),
+    channelStore,
     service,
     deps.evidence,
   );
@@ -62,13 +72,15 @@ export function createReleaseDomain(deps: {
     storage,
     createPostgresEnvironmentStore(deps.db),
     createPostgresPointerStore(deps.db),
+    channelStore,
   );
   return {
     storage,
     service,
+    channels,
     environments,
     pointer,
     retention,
-    routes: createReleaseRoutes(service, environments, pointer, retention),
+    routes: createReleaseRoutes(service, environments, channels, pointer, retention),
   };
 }

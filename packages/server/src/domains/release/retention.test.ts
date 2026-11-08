@@ -23,7 +23,12 @@ function release(id: string, createdAt: Date): ReleaseDTO {
   };
 }
 
-function fixtures() {
+function fixtures(
+  options: {
+    pointer?: TenantReleasePointerDTO;
+    channels?: ReleaseChannelDTO[];
+  } = {},
+) {
   const rows = new Map<string, ReleaseDTO>();
   const store: ReleaseStore = {
     async create() {
@@ -59,24 +64,70 @@ function fixtures() {
 
   const pointers: PointerStore = {
     async get() {
-      return null;
+      return options.pointer ?? null;
     },
     async set() {
       throw new Error("unused");
     },
   };
 
-  return { rows, store, environments, pointers };
+  const channels: ChannelStore = {
+    async get() {
+      return null;
+    },
+    async list() {
+      return options.channels ?? [];
+    },
+    async set() {
+      throw new Error("unused");
+    },
+  };
+
+  return { rows, store, environments, pointers, channels };
 }
 
 describe("release retention", () => {
-  it("keeps the newest N and deletes the rest", async () => {
-    const { rows, store, environments, pointers } = fixtures();
+  it("protects the pin and the ring even when the tenant is on a channel", async () => {
+    const pointer: TenantReleasePointerDTO = {
+      orgId: "org-1",
+      releaseId: "r_4",
+      previousReleaseId: "r_3",
+      channel: "canary",
+      updatedBy: "tom",
+      updatedAt: new Date(),
+    };
+    const ring: ReleaseChannelDTO = {
+      id: "c-1",
+      orgId: "org-1",
+      channel: "canary",
+      releaseId: "r_1",
+      previousReleaseId: "r_0",
+      updatedBy: "tom",
+      updatedAt: new Date(),
+    };
+    const { rows, store, environments, pointers, channels } = fixtures({
+      pointer,
+      channels: [ring],
+    });
     const now = Date.now();
     for (let index = 0; index < 5; index++) {
       rows.set(`r_${index}`, release(`r_${index}`, new Date(now - index * 1000)));
     }
-    const retention = createReleaseRetention(store, environments, pointers);
+    const retention = createReleaseRetention(store, environments, pointers, channels);
+
+    const result = await retention.prune("org-1", 1);
+
+    expect(result.deleted).toEqual(["r_2"]);
+    expect([...rows.keys()].sort()).toEqual(["r_0", "r_1", "r_3", "r_4"]);
+  });
+
+  it("keeps the newest N and deletes the rest", async () => {
+    const { rows, store, environments, pointers, channels } = fixtures();
+    const now = Date.now();
+    for (let index = 0; index < 5; index++) {
+      rows.set(`r_${index}`, release(`r_${index}`, new Date(now - index * 1000)));
+    }
+    const retention = createReleaseRetention(store, environments, pointers, channels);
 
     const result = await retention.prune("org-1", 2);
 
@@ -86,7 +137,7 @@ describe("release retention", () => {
   });
 
   it("never deletes a release that is pointed at or active/previous", async () => {
-    const { rows, store, environments, pointers } = fixtures();
+    const { rows, store, environments, pointers, channels } = fixtures();
     const now = Date.now();
     for (let index = 0; index < 5; index++) {
       rows.set(`r_${index}`, release(`r_${index}`, new Date(now - index * 1000)));
@@ -112,7 +163,7 @@ describe("release retention", () => {
         updatedAt: new Date(),
       }) satisfies TenantReleasePointerDTO;
 
-    const retention = createReleaseRetention(store, environments, pointers);
+    const retention = createReleaseRetention(store, environments, pointers, channels);
     const result = await retention.prune("org-1", 1);
 
     // r_1 is neither protected nor the newest release, so it is the only one removed.
@@ -121,10 +172,12 @@ describe("release retention", () => {
   });
 
   it("is a no-op when there is nothing to delete", async () => {
-    const { rows, store, environments, pointers } = fixtures();
+    const { rows, store, environments, pointers, channels } = fixtures();
     rows.set("r_0", release("r_0", new Date()));
-    const retention = createReleaseRetention(store, environments, pointers);
+    const retention = createReleaseRetention(store, environments, pointers, channels);
 
     expect(await retention.prune("org-1", 3)).toEqual({ deleted: [] });
   });
 });
+
+

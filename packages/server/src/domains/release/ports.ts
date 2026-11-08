@@ -91,6 +91,8 @@ export type TenantReleasePointerDTO = {
   orgId: string;
   releaseId: string;
   previousReleaseId: string | null;
+  /** D3 ring; when set it wins over releaseId on catalog reads. */
+  channel: string | null;
   updatedBy: string;
   updatedAt: Date;
 };
@@ -109,13 +111,52 @@ export interface PointerStore {
     releaseId: string,
     previousReleaseId: string | null,
     updatedBy: string,
+    channel?: string | null,
   ): Promise<TenantReleasePointerDTO>;
+}
+
+export type ReleaseChannelDTO = {
+  id: string;
+  orgId: string;
+  channel: string;
+  releaseId: string;
+  previousReleaseId: string | null;
+  updatedBy: string;
+  updatedAt: Date;
+};
+
+export interface ChannelStore {
+  get(orgId: string, channel: string): Promise<ReleaseChannelDTO | null>;
+  list(orgId: string): Promise<ReleaseChannelDTO[]>;
+  set(
+    orgId: string,
+    channel: string,
+    releaseId: string,
+    previousReleaseId: string | null,
+    updatedBy: string,
+  ): Promise<ReleaseChannelDTO>;
+}
+
+export interface ChannelService {
+  list(orgId: string): Promise<ReleaseChannelDTO[]>;
+  get(orgId: string, channel: string): Promise<ReleaseChannelDTO>;
+  activate(
+    orgId: string,
+    channel: string,
+    releaseId: string,
+    actor: string,
+  ): Promise<ReleaseChannelDTO>;
+  rollback(orgId: string, channel: string, actor: string): Promise<ReleaseChannelDTO>;
 }
 
 export interface ReleasePointerService {
   get(orgId: string): Promise<TenantReleasePointerDTO | null>;
   promote(orgId: string, releaseId: string, actor: string): Promise<TenantReleasePointerDTO>;
   rollback(orgId: string, actor: string): Promise<TenantReleasePointerDTO>;
+  /** Put the tenant in a channel ring; the channel must exist. */
+  assignChannel(orgId: string, channel: string, actor: string): Promise<TenantReleasePointerDTO>;
+  /** Leave the ring and pin to the pointer's current release. */
+  clearChannel(orgId: string, actor: string): Promise<TenantReleasePointerDTO>;
   /** Null means “no pointer or no client bundle” — the catalog then keeps its stored manifest. */
   clientBundle(orgId: string): Promise<ClientBundleRef | null>;
 }

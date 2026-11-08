@@ -5,6 +5,7 @@ import { getOrgId, getUserId } from "../../shared/org";
 import { created, ok } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
 import type {
+  ChannelService,
   EnvironmentService,
   ReleaseArtifactKind,
   ReleasePointerService,
@@ -40,6 +41,14 @@ const pruneSchema = z.object({
   keep: z.number().int().min(1).max(50).default(3),
 });
 
+const channelActivateSchema = z.object({
+  releaseId: z.string().min(1),
+});
+
+const channelAssignSchema = z.object({
+  channel: z.string().min(1),
+});
+
 /**
  * Release endpoints are thin on purpose: validation lives in the service, the record is immutable, and the
  * only mutations are `building → ready` and the environment selector (D15).
@@ -47,6 +56,7 @@ const pruneSchema = z.object({
 export function createReleaseRoutes(
   service: ReleaseService,
   environments: EnvironmentService,
+  channels: ChannelService,
   pointer: ReleasePointerService,
   retention: ReleaseRetention,
 ) {
@@ -95,6 +105,62 @@ export function createReleaseRoutes(
     const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
     if (denied) return denied;
     return ok(c, await pointer.rollback(getOrgId(c), getUserId(c)?.trim() || "system"));
+  });
+
+  routes.post("/pointer/channel", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    const parsed = channelAssignSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid channel assignment" }, 400);
+    return ok(
+      c,
+      await pointer.assignChannel(
+        getOrgId(c),
+        parsed.data.channel,
+        getUserId(c)?.trim() || "system",
+      ),
+    );
+  });
+
+  routes.delete("/pointer/channel", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    return ok(c, await pointer.clearChannel(getOrgId(c), getUserId(c)?.trim() || "system"));
+  });
+
+  routes.get("/channels", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_READ);
+    if (denied) return denied;
+    return ok(c, await channels.list(getOrgId(c)));
+  });
+
+  routes.post("/channels/:channel/activate", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    const parsed = channelActivateSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid channel activation" }, 400);
+    return ok(
+      c,
+      await channels.activate(
+        getOrgId(c),
+        c.req.param("channel"),
+        parsed.data.releaseId,
+        getUserId(c)?.trim() || "system",
+      ),
+    );
+  });
+
+  routes.post("/channels/:channel/rollback", async (c) => {
+    const denied = await denyUnless(c, PERMISSIONS.RELEASES_WRITE);
+    if (denied) return denied;
+    return ok(
+      c,
+      await channels.rollback(
+        getOrgId(c),
+        c.req.param("channel"),
+        getUserId(c)?.trim() || "system",
+      ),
+    );
   });
 
   routes.get("/environments", async (c) => {

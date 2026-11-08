@@ -2,6 +2,7 @@ import { ConflictError } from "../../shared/domain-error";
 import type { EvidenceService } from "../evidence/ports";
 import { assertMigrationsPromotable } from "./migration-policy";
 import type {
+  ChannelStore,
   ClientBundleRef,
   PointerStore,
   ReleaseDTO,
@@ -14,10 +15,12 @@ import type {
  * D1 C1 — the client-side pointer.
  *
  * The tenant catalog asks this service for a bundle URL; the release domain never imports the tenant domain.
- * Promotion is one row, and rollback swaps active/previous.
+ * Promotion is one row, and rollback swaps active/previous. D3 adds a nullable channel: when set it wins over the
+ * pinned release, so moving a ring is one channel write.
  */
 export function createReleasePointerService(
   store: PointerStore,
+  channels: ChannelStore,
   releases: ReleaseService,
   evidence?: EvidenceService,
 ): ReleasePointerService {
@@ -39,7 +42,7 @@ export function createReleasePointerService(
 
     assertMigrationsPromotable(release);
 
-    const updated = await store.set(orgId, releaseId, current?.releaseId ?? null, actor);
+    const updated = await store.set(orgId, releaseId, current?.releaseId ?? null, actor, null);
     await recordPointer(evidence, {
       orgId,
       from: current?.releaseId ?? null,
@@ -62,7 +65,13 @@ export function createReleasePointerService(
         });
       }
 
-      const updated = await store.set(orgId, current.previousReleaseId, current.releaseId, actor);
+      const updated = await store.set(
+        orgId,
+        current.previousReleaseId,
+        current.releaseId,
+        actor,
+        null,
+      );
       await recordPointer(evidence, {
         orgId,
         from: current.releaseId,
@@ -77,9 +86,18 @@ export function createReleasePointerService(
       const pointer = await store.get(orgId);
       if (!pointer) return null;
 
+      // A channel wins over the pinned release; a pointer with a channel whose row disappeared is not
+      // allowed to fall back silently to a stale pin.
+      let releaseId = pointer.releaseId;
+      if (pointer.channel) {
+        const channel = await channels.get(orgId, pointer.channel);
+        if (!channel) return null;
+        releaseId = channel.releaseId;
+      }
+
       let release: ReleaseDTO;
       try {
-        release = await releases.get(orgId, pointer.releaseId);
+        release = await releases.get(orgId, releaseId);
       } catch {
         return null;
       }
@@ -93,6 +111,43 @@ export function createReleasePointerService(
         hash: artifact.digest,
         version: release.id,
       };
+    },
+
+    async assignChannel(orgId, channelName, actor) {
+      const channel = await channels.get(orgId, channelName);
+      if (!channel) {
+        throw new ConflictError(`Channel ${channelName} does not exist`, { channel: channelName });
+      }
+
+      const current = await store.get(orgId);
+      const updated = await store.set(
+        orgId,
+        channel.releaseId,
+        current?.releaseId ?? null,
+        actor,
+        channelName,
+      );
+      await recordPointer(evidence, {
+        orgId,
+        from: current?.releaseId ?? null,
+        to: channel.releaseId,
+        actor,
+        rollback: false,
+      });
+      return updated;
+    },
+
+    async clearChannel(orgId, actor) {
+      const current = await store.get(orgId);
+      if (!current) throw new ConflictError(`Tenant ${orgId} has no release pointer`, { orgId });
+
+      return store.set(
+        orgId,
+        current.releaseId,
+        current.previousReleaseId,
+        actor,
+        null,
+      );
     },
   };
 }

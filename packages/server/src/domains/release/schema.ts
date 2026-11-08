@@ -76,10 +76,36 @@ export const releaseEnvironments = pgTable(
 );
 
 /**
+ * D3 — tenant channels (rings).
+ *
+ * One row per `(org, channel)`: moving a ring to another release is one write, and every tenant whose pointer
+ * names that channel follows on the next catalog read. A channel is assignment, so it lives in the release
+ * context with the pointer, not on the tenant settings document.
+ */
+export const releaseChannels = pgTable(
+  "release_channels",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    orgId: text("org_id").notNull(),
+    channel: text("channel").notNull(),
+    releaseId: uuid("release_id")
+      .notNull()
+      .references(() => releases.id),
+    previousReleaseId: uuid("previous_release_id").references(() => releases.id),
+    updatedBy: text("updated_by").notNull(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    orgChannel: uniqueIndex("release_channels_org_channel").on(t.orgId, t.channel),
+  }),
+);
+
+/**
  * D1 - which client bundle an org loads.
  *
  * `previousReleaseId` makes rollback a single write. The row is a pointer, not a copy: the bundle itself lives at
- * the release artifact's URL.
+ * the release artifact's URL. `channel` (D3) is nullable and wins over `releaseId` when set, so a ring move does
+ * not need to touch each tenant.
  */
 export const tenantReleasePointers = pgTable("tenant_release_pointers", {
   orgId: text("org_id").primaryKey(),
@@ -87,6 +113,7 @@ export const tenantReleasePointers = pgTable("tenant_release_pointers", {
     .notNull()
     .references(() => releases.id),
   previousReleaseId: uuid("previous_release_id").references(() => releases.id),
+  channel: text("channel"),
   updatedBy: text("updated_by").notNull(),
   updated_at: timestamp("updated_at").notNull().defaultNow(),
 });
