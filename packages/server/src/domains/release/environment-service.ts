@@ -1,4 +1,5 @@
 import { ConflictError } from "../../shared/domain-error";
+import { currentRequestId } from "../../shared/request-context";
 import type { EvidenceService } from "../evidence/ports";
 import { auditActorType } from "./audit-actor";
 import { assertMigrationsPromotable } from "./migration-policy";
@@ -123,6 +124,7 @@ async function recordSwitch(
       to: input.to,
       releaseId: input.to,
       rollback: input.rollback,
+      requestId: currentRequestId(),
     },
     correlationId: `${input.orgId}:${input.environment}:${input.to}`,
     idempotencyKey: `environment_switched:${input.orgId}:${input.environment}:${input.from ?? "none"}:${input.to}`,

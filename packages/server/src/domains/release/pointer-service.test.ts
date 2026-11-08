@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ConflictError } from "../../shared/domain-error";
+import { runWithRequestContext } from "../../shared/request-context";
 import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
 import { createReleasePointerService } from "./pointer-service";
 import type {
@@ -106,6 +107,17 @@ describe("tenant release pointer", () => {
       actorId: "tom",
       metadata: { from: null, to: "r_1", releaseId: "r_1", rollback: false },
     });
+  });
+
+  it("attaches the active request id to the audit row", async () => {
+    const { store, releases, evidence, recorded } = fixtures(
+      new Map([["r_1", release("r_1", "ready")]]),
+    );
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
+
+    await runWithRequestContext("req-test-12345678", () => pointer.promote("org-1", "r_1", "tom"));
+
+    expect(recorded[0]?.metadata).toMatchObject({ requestId: "req-test-12345678" });
   });
 
   it("refuses a release that is not ready", async () => {

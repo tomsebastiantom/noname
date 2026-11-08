@@ -43,6 +43,8 @@ export const PERMISSIONS = {
   MACHINES_DEFINE: "machines:define",
   /** Read machine definitions without being able to change them. Granted to the eval service. */
   MACHINES_READ: "machines:read",
+  /** Read the tenant's own audit stream (who changed what). */
+  AUDIT_READ: "audit:read",
   /** Read release records. Admin-only until a dedicated release role exists. */
   RELEASES_READ: "releases:read",
   /** Create release records and move them to ready. Admin-only until a dedicated release role exists. */

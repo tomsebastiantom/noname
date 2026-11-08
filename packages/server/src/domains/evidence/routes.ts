@@ -4,11 +4,13 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { getOrgId } from "../../shared/org";
 import { error, ok } from "../../shared/respond";
-import { requirePermission } from "../auth/guards";
+import { requireActorPermission, requirePermission } from "../auth/guards";
 import type { EvidenceService } from "./ports";
 
 export type EvidenceRouteOptions = {
   permission?: PermissionKey;
+  /** Permission required for `/audit` specifically (records keep their own mapping). */
+  auditPermission?: PermissionKey;
   recordType?: string;
   subjectType?: string;
   permissionsByRecordType?: Record<string, PermissionKey>;
@@ -104,6 +106,10 @@ export function createEvidenceRoutes(service: EvidenceService, options: Evidence
   routes.get("/audit", async (c) => {
     const orgId = await requireEvidenceAccess(c, options);
     if (orgId instanceof Response) return orgId;
+    if (options.auditPermission) {
+      const denied = await requireActorPermission(c, options.auditPermission);
+      if (denied instanceof Response) return denied;
+    }
     const subjectType = options.subjectType ?? c.req.query("subjectType");
     const specificPermission = subjectType
       ? options.permissionsBySubjectType?.[subjectType]
@@ -133,7 +139,7 @@ async function hasEvidencePermission(
 ): Promise<boolean> {
   const cached = cache.get(permission);
   if (cached !== undefined) return cached;
-  const result = await requirePermission(c, permission);
+  const result = await requireActorPermission(c, permission);
   const allowed = !(result instanceof Response);
   cache.set(permission, allowed);
   return allowed;

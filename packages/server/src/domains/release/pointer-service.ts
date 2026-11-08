@@ -1,4 +1,5 @@
 import { ConflictError } from "../../shared/domain-error";
+import { currentRequestId } from "../../shared/request-context";
 import type { EvidenceService } from "../evidence/ports";
 import { auditActorType } from "./audit-actor";
 import { assertMigrationsPromotable } from "./migration-policy";
@@ -169,6 +170,7 @@ async function recordPointer(
       to: input.to,
       releaseId: input.to,
       rollback: input.rollback,
+      requestId: currentRequestId(),
     },
     correlationId: `${input.orgId}:${input.to}`,
     idempotencyKey: `${action}:${input.orgId}:${input.from ?? "none"}:${input.to}`,

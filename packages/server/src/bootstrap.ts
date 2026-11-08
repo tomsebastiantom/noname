@@ -62,6 +62,7 @@ import {
 import { buildReadiness, type ObservabilityInput } from "./shared/observability";
 import { orgMiddleware } from "./shared/org";
 import { orgTracingMiddleware } from "./shared/org-tracing";
+import { requestIdMiddleware } from "./shared/request-id";
 import { getRedisFanoutStatus } from "./shared/redis-fanout-status";
 import { workersEnabled } from "./shared/worker-runtime";
 
@@ -81,6 +82,7 @@ export async function createApp(): Promise<Hono> {
 
   // Must come before any `app.route(...)` below — Hono matches middleware/handlers in
   // registration order, so middleware registered after a route won't apply to it.
+  app.use("*", requestIdMiddleware);
   app.use("*", orgMiddleware);
   app.use("*", orgTracingMiddleware);
 
@@ -241,6 +243,7 @@ export async function createApp(): Promise<Hono> {
   const evidence = createEvidenceDomain({
     db,
     routeOptions: {
+      auditPermission: PERMISSIONS.AUDIT_READ,
       permissionsByRecordType: {
         "commerce.order.created": PERMISSIONS.COMMERCE_ORDERS_VIEW,
         "commerce.order.cancelled": PERMISSIONS.COMMERCE_ORDERS_VIEW,
@@ -250,6 +253,9 @@ export async function createApp(): Promise<Hono> {
       permissionsBySubjectType: {
         "commerce.order": PERMISSIONS.COMMERCE_ORDERS_VIEW,
         "commerce.payment": PERMISSIONS.COMMERCE_ORDERS_VIEW,
+        "tenant.storefront": PERMISSIONS.AUDIT_READ,
+        "platform.environment": PERMISSIONS.AUDIT_READ,
+        "platform.release_channel": PERMISSIONS.AUDIT_READ,
       },
     },
   });

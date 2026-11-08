@@ -4,14 +4,20 @@ import { describe, expect, it, vi } from "vitest";
 import type { EvidenceService } from "./ports";
 import { createEvidenceRoutes, type EvidenceRouteOptions } from "./routes";
 
-vi.mock("../auth/guards", () => ({
-  requirePermission: vi.fn(async (context: Context, permission: PermissionKey) => {
+vi.mock("../auth/guards", () => {
+  const check = vi.fn(async (context: Context, permission: PermissionKey) => {
     if (context.req.header("x-order-view") === "allowed") {
       return { userId: "user-test", userToken: "token", permissions: [permission] };
     }
     return context.json({ error: "Forbidden" }, 403);
-  }),
-}));
+  });
+
+  return {
+    requirePermission: check,
+    requireActorPermission: check,
+    requireHumanPermission: check,
+  };
+});
 
 function createTestApp(service: EvidenceService, options?: EvidenceRouteOptions) {
   const app = new Hono();
