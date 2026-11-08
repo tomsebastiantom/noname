@@ -36,7 +36,11 @@ declare module "hono" {
  * in `aud`, instead of failing closed on a single-value mismatch.
  */
 function acceptableAudiences(): string[] | undefined {
-  const ids = [process.env.ZITADEL_CLIENT_ID, process.env.ZITADEL_PROJECT_ID]
+  const ids = [
+    process.env.ZITADEL_CLIENT_ID,
+    process.env.ZITADEL_PROJECT_ID,
+    process.env.ZITADEL_PLATFORM_PROJECT_ID,
+  ]
     .map((value) => value?.trim())
     .filter((value): value is string => Boolean(value));
   return ids.length > 0 ? ids : undefined;

@@ -40,6 +40,9 @@ function memoryStore() {
       const release = rows.get(id);
       return release && release.orgId === orgId ? release : null;
     },
+    async findByIdAnyOrg(id) {
+      return rows.get(id) ?? null;
+    },
     async list(orgId) {
       return [...rows.values()].filter((release) => release.orgId === orgId);
     },

@@ -17,6 +17,12 @@ export function createReleaseService(store: ReleaseStore): ReleaseService {
 
     get,
 
+    getAnyOrg: async (id) => {
+      const release = await store.findByIdAnyOrg(id);
+      if (!release) throw new NotFoundError("Release", id);
+      return release;
+    },
+
     list: (orgId) => store.list(orgId),
 
     /**

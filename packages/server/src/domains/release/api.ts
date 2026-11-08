@@ -4,6 +4,8 @@ import { z } from "zod";
 import { getOrgId, getUserId } from "../../shared/org";
 import { created, ok } from "../../shared/respond";
 import { denyUnless } from "../auth/deny-unless";
+import { assertMigrationsPromotable } from "./migration-policy";
+import { requirePlatformOperator } from "./platform-guard";
 import type {
   ChannelService,
   EnvironmentService,
@@ -39,6 +41,11 @@ const activateSchema = z.object({
 
 const pruneSchema = z.object({
   keep: z.number().int().min(1).max(50).default(3),
+});
+
+const rolloutSchema = z.object({
+  orgIds: z.array(z.string().min(1)).min(1).max(100),
+  dryRun: z.boolean().optional().default(true),
 });
 
 const channelActivateSchema = z.object({
@@ -93,6 +100,56 @@ export function createReleaseRoutes(
       return c.json({ error: "Invalid prune request", details: parsed.error.flatten() }, 400);
     }
     return ok(c, await retention.prune(getOrgId(c), parsed.data.keep));
+  });
+
+  /**
+   * Dry-run only in this block. The write path is deliberately not enabled until attribution, the platform
+   * boundary and eligibility checks are verified end to end.
+   */
+  routes.post("/:id/rollout", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    const parsed = rolloutSchema.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      return c.json({ error: "Invalid rollout", details: parsed.error.flatten() }, 400);
+    }
+    if (parsed.data.dryRun === false) {
+      return c.json({ error: "Write path is not enabled yet; use dryRun" }, 400);
+    }
+
+    const platformOrg = process.env.PLATFORM_ORG_ID?.trim();
+    if (!platformOrg) return c.json({ error: "Platform operator is not configured" }, 503);
+
+    const release = await service.getAnyOrg(c.req.param("id"));
+    if (release.orgId !== platformOrg) {
+      return c.json({ error: "A platform release is required for a rollout" }, 409);
+    }
+    if (release.state !== "ready") {
+      return c.json({ error: `Release ${release.id} is ${release.state}` }, 409);
+    }
+    assertMigrationsPromotable(release);
+
+    const orgIds = [...new Set(parsed.data.orgIds)];
+    const results: Array<{ orgId: string; status: "eligible" | "skipped"; reason?: string }> = [];
+    for (const orgId of orgIds) {
+      if (orgId === platformOrg) {
+        results.push({ orgId, status: "skipped", reason: "platform_org" });
+        continue;
+      }
+      const currentPointer = await pointer.get(orgId);
+      if (currentPointer?.releaseId === release.id) {
+        results.push({ orgId, status: "skipped", reason: "already_on_release" });
+        continue;
+      }
+      results.push({ orgId, status: "eligible" });
+    }
+
+    return ok(c, { releaseId: release.id, dryRun: true, results });
   });
 
   routes.get("/pointer", async (c) => {

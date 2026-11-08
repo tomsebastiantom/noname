@@ -45,6 +45,16 @@ export const PERMISSIONS = {
   MACHINES_READ: "machines:read",
   /** Read the tenant's own audit stream (who changed what). */
   AUDIT_READ: "audit:read",
+  /** Platform-only: read releases across tenants. */
+  RELEASES_PLATFORM_READ: "releases:platform_read",
+  /** Platform-only: promote/rollback releases across tenants. */
+  RELEASES_PLATFORM_WRITE: "releases:platform_write",
+  /** Platform-only: read a tenant's eval context. */
+  EVAL_TENANT_READ: "eval:tenant_read",
+  /** Platform-only: write an eval decision for a tenant. */
+  EVAL_RECORD_WRITE: "eval:record_write",
+  /** Platform-only: read the cross-org audit stream. */
+  PLATFORM_AUDIT_READ: "platform:audit_read",
   /** Read release records. Admin-only until a dedicated release role exists. */
   RELEASES_READ: "releases:read",
   /** Create release records and move them to ready. Admin-only until a dedicated release role exists. */
@@ -72,6 +82,22 @@ export type StaffRole = Exclude<PlatformRole, "customer">;
 export const STAFF_ROLES = PLATFORM_ROLES.filter((role): role is StaffRole => role !== "customer");
 
 const ALL_PERMISSIONS: readonly PermissionKey[] = Object.values(PERMISSIONS);
+
+/**
+ * Permissions that only a platform identity may hold. They are excluded from tenant role expansion so
+ * `admin: ALL_PERMISSIONS` cannot grant cross-tenant powers by accident.
+ */
+export const PLATFORM_ONLY_PERMISSIONS: ReadonlySet<PermissionKey> = new Set([
+  PERMISSIONS.RELEASES_PLATFORM_READ,
+  PERMISSIONS.RELEASES_PLATFORM_WRITE,
+  PERMISSIONS.EVAL_TENANT_READ,
+  PERMISSIONS.EVAL_RECORD_WRITE,
+  PERMISSIONS.PLATFORM_AUDIT_READ,
+]);
+
+const TENANT_PERMISSIONS: readonly PermissionKey[] = ALL_PERMISSIONS.filter(
+  (permission) => !PLATFORM_ONLY_PERMISSIONS.has(permission),
+);
 
 const DRAFT_PERMISSIONS: readonly PermissionKey[] = [
   PERMISSIONS.STOREFRONT_VIEW,
@@ -123,7 +149,7 @@ const CUSTOMER_PERMISSIONS: readonly PermissionKey[] = [PERMISSIONS.STOREFRONT_V
 
 /** Platform-wide role → permission bundles. */
 export const ROLE_PERMISSIONS: Record<PlatformRole, readonly PermissionKey[]> = {
-  admin: ALL_PERMISSIONS,
+  admin: TENANT_PERMISSIONS,
   access_manager: ACCESS_MANAGER_PERMISSIONS,
   publisher: PUBLISHER_PERMISSIONS,
   editor: EDITOR_PERMISSIONS,
@@ -136,6 +162,29 @@ export const ROLE_PERMISSIONS: Record<PlatformRole, readonly PermissionKey[]> = 
 
 export function isPlatformRole(value: string): value is PlatformRole {
   return (PLATFORM_ROLES as readonly string[]).includes(value);
+}
+
+/**
+ * Platform service-account roles. These are ZITADEL project roles on the platform project, resolved server-side
+ * (ZITADEL does not put machine-user project roles in the access token).
+ */
+export const SERVICE_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> = {
+  platform_operator: [PERMISSIONS.RELEASES_PLATFORM_READ, PERMISSIONS.RELEASES_PLATFORM_WRITE],
+  eval_operator: [
+    PERMISSIONS.MACHINES_READ,
+    PERMISSIONS.EVAL_TENANT_READ,
+    PERMISSIONS.EVAL_RECORD_WRITE,
+  ],
+};
+
+export function permissionsForServiceRoles(roles: Iterable<string>): PermissionKey[] {
+  const permissions = new Set<PermissionKey>();
+  for (const role of roles) {
+    for (const permission of SERVICE_ROLE_PERMISSIONS[role] ?? []) {
+      permissions.add(permission);
+    }
+  }
+  return [...permissions];
 }
 
 export function isStaffRole(value: string): value is StaffRole {

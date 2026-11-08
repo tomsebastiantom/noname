@@ -5,9 +5,11 @@ import {
   expandPermissions,
   hasPermission,
   PERMISSIONS,
+  PLATFORM_ONLY_PERMISSIONS,
   primaryRoleFromKeys,
   primaryTeamRole,
   ROLE_PERMISSIONS,
+  SERVICE_ROLE_PERMISSIONS,
 } from "./permissions";
 
 describe("permissions", () => {
@@ -95,5 +97,16 @@ describe("permissions", () => {
     const perms = expandPermissions(["editor"]);
     expect(hasPermission(perms, PERMISSIONS.LAYOUT_DRAFT_WRITE)).toBe(true);
     expect(hasPermission(perms, PERMISSIONS.LAYOUT_PUBLISH)).toBe(false);
+  });
+
+  it("tenant admin never receives platform-only permissions", () => {
+    const admin = ROLE_PERMISSIONS.admin;
+    for (const permission of PLATFORM_ONLY_PERMISSIONS) {
+      expect(admin).not.toContain(permission);
+    }
+    expect(SERVICE_ROLE_PERMISSIONS.platform_operator).toContain(
+      PERMISSIONS.RELEASES_PLATFORM_WRITE,
+    );
+    expect(SERVICE_ROLE_PERMISSIONS.eval_operator).toContain(PERMISSIONS.EVAL_TENANT_READ);
   });
 });

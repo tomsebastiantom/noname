@@ -5,7 +5,7 @@ interface AuthorizationRole {
   key?: string;
 }
 
-interface AuthorizationRow {
+export interface AuthorizationRow {
   id?: string;
   user?: { id?: string };
   project?: { id?: string };

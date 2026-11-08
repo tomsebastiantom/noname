@@ -40,6 +40,8 @@ export type CreateReleaseInput = {
 export interface ReleaseStore {
   create(orgId: string, input: CreateReleaseInput, createdBy: string): Promise<ReleaseDTO>;
   findById(orgId: string, id: string): Promise<ReleaseDTO | null>;
+  /** Platform lookup: a release may be owned by the platform org while a tenant points at it. */
+  findByIdAnyOrg(id: string): Promise<ReleaseDTO | null>;
   list(orgId: string): Promise<ReleaseDTO[]>;
   updateState(orgId: string, id: string, state: ReleaseState): Promise<ReleaseDTO>;
   /** Deletes the given releases (artifacts cascade) and returns the ids actually removed. */
@@ -49,6 +51,8 @@ export interface ReleaseStore {
 export interface ReleaseService {
   create(orgId: string, input: CreateReleaseInput, createdBy: string): Promise<ReleaseDTO>;
   get(orgId: string, id: string): Promise<ReleaseDTO>;
+  /** Lookup by id across orgs, for platform operations only. */
+  getAnyOrg(id: string): Promise<ReleaseDTO>;
   list(orgId: string): Promise<ReleaseDTO[]>;
   markReady(orgId: string, id: string): Promise<ReleaseDTO>;
 }

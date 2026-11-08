@@ -127,6 +127,17 @@ export function createPostgresReleaseStore(db: Database): ReleaseStore {
 
     findById,
 
+    async findByIdAnyOrg(id) {
+      const [row] = await db.select().from(releases).where(eq(releases.id, id));
+      if (!row) return null;
+      const artifacts = await db
+        .select()
+        .from(releaseArtifacts)
+        .where(eq(releaseArtifacts.releaseId, id))
+        .orderBy(releaseArtifacts.kind);
+      return mapRelease(row, artifacts);
+    },
+
     async list(orgId) {
       const rows = await db
         .select()
