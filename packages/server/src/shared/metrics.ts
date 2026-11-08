@@ -285,6 +285,51 @@ export function recordEvalResult(result: {
   if ((result.counts.flaky ?? 0) > 0) evalFlakyTotal.inc(result.counts.flaky ?? 0);
 }
 
+// ---------------------------------------------------------------- agent identity
+
+const agentUserInfoCacheTotal = new client.Counter({
+  name: "noname_agent_userinfo_cache_total",
+  help: "Agent userinfo role lookups by cache result (hit, miss, error).",
+  labelNames: ["result"] as const,
+  registers: [registry],
+});
+
+const agentUserInfoDuration = new client.Histogram({
+  name: "noname_agent_userinfo_duration_seconds",
+  help: "Agent userinfo role lookup duration, by cache result.",
+  labelNames: ["result"] as const,
+  buckets: [0.001, 0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1, 2.5],
+  registers: [registry],
+});
+
+const agentTokenRateLimitedTotal = new client.Counter({
+  name: "noname_agent_token_rate_limited_total",
+  help: "Agent token mint requests rejected by the per-agent rate limit.",
+  registers: [registry],
+});
+
+const agentKeyRotationsTotal = new client.Counter({
+  name: "noname_agent_key_rotations_total",
+  help: "ZITADEL service-account keys rotated for registered agents.",
+  registers: [registry],
+});
+
+export function recordAgentUserInfo(
+  result: "hit" | "miss" | "error",
+  seconds: number,
+): void {
+  agentUserInfoCacheTotal.inc({ result });
+  agentUserInfoDuration.observe({ result }, seconds);
+}
+
+export function recordAgentTokenRateLimited(): void {
+  agentTokenRateLimitedTotal.inc();
+}
+
+export function recordAgentKeyRotation(): void {
+  agentKeyRotationsTotal.inc();
+}
+
 // ---------------------------------------------------------------- render
 
 export async function renderMetrics(): Promise<string> {

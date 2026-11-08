@@ -4,12 +4,59 @@ import {
   PERMISSIONS,
   type PermissionKey,
 } from "@noname/auth";
-import { NotFoundError, ServiceUnavailableError, ValidationError } from "../../shared/domain-error";
-import { exchangeDelegatedToken, serviceAccountToken } from "../../shared/zitadel-token";
+import {
+  DomainError,
+  NotFoundError,
+  ServiceUnavailableError,
+  UnauthorizedError,
+  ValidationError,
+} from "../../shared/domain-error";
+import { recordAgentTokenRateLimited } from "../../shared/metrics";
+import { exchangeDelegatedToken, serviceAccountToken, ZitadelTokenError } from "../../shared/zitadel-token";
 import type { AuthorizationPort } from "../auth/authorization-port";
 import type { AgentRegistryStorage, RegisteredAgentRow } from "./adapters/registry-postgres";
 import { ORCHESTRATE_TOOL_IDS } from "./mastra/guards";
 import { ensureAgentActor, deprovisionAgentActor } from "./zitadel-provisioning";
+
+const mintBuckets = new Map<string, { count: number; resetAt: number }>();
+
+/** Fixed-window, per-agent limiter. Process-local by design; a shared limiter is only needed when replicas grow. */
+function assertAgentTokenRateLimit(orgId: string, agentId: string): void {
+  const limit = Number(process.env.AGENT_TOKEN_RATE_LIMIT_PER_MINUTE ?? 30);
+  if (!Number.isFinite(limit) || limit <= 0) return;
+
+  const key = `${orgId}:${agentId}`;
+  const now = Date.now();
+  const bucket = mintBuckets.get(key);
+  if (!bucket || bucket.resetAt <= now) {
+    mintBuckets.set(key, { count: 1, resetAt: now + 60_000 });
+    return;
+  }
+  if (bucket.count >= limit) {
+    recordAgentTokenRateLimited();
+    throw new DomainError("Agent token rate limit exceeded", "RATE_LIMITED", 429, {
+      retryAfterMs: bucket.resetAt - now,
+    });
+  }
+  bucket.count += 1;
+}
+
+function mapExchangeError(error: unknown): never {
+  if (error instanceof ZitadelTokenError) {
+    if (error.status === 400 || error.status === 401) {
+      throw new UnauthorizedError("Agent token exchange rejected", {
+        zitadelError: error.errorCode,
+      });
+    }
+    if (error.status === 403) {
+      throw new DomainError("Agent delegation denied", "FORBIDDEN", 403);
+    }
+    throw new ServiceUnavailableError("Identity provider unavailable", {
+      status: error.status,
+    });
+  }
+  throw error;
+}
 
 export function createAgentRegistryService(deps: {
   storage: AgentRegistryStorage;
@@ -134,6 +181,7 @@ export function createAgentRegistryService(deps: {
       requestedPermissions?: PermissionKey[],
     ): Promise<{ token: string; expiresAt: number; permissions: PermissionKey[] }> {
       const agent = await requireOwnedAgent(orgId, agentId, acting.userId, acting.permissions);
+      assertAgentTokenRateLimit(orgId, agentId);
       const creatorPermissions = await deps.resolveCreatorPermissions(
         acting.userId,
         acting.userToken,
@@ -157,20 +205,26 @@ export function createAgentRegistryService(deps: {
         agent,
         deps.storage.setZitadelAgentUserId,
       );
-      const actor = await serviceAccountToken({
-        issuer,
-        key: actorKey,
-        scopes: `openid urn:zitadel:iam:org:project:id:${projectId}:aud`,
-      });
-      const exchanged = await exchangeDelegatedToken({
-        issuer,
-        clientId,
-        clientSecret,
-        actorToken: actor.accessToken,
-        subjectToken: acting.userToken,
-        requestedTokenType: "urn:ietf:params:oauth:token-type:jwt",
-        audience: projectId,
-      });
+      let actor;
+      let exchanged;
+      try {
+        actor = await serviceAccountToken({
+          issuer,
+          key: actorKey,
+          scopes: `openid urn:zitadel:iam:org:project:id:${projectId}:aud`,
+        });
+        exchanged = await exchangeDelegatedToken({
+          issuer,
+          clientId,
+          clientSecret,
+          actorToken: actor.accessToken,
+          subjectToken: acting.userToken,
+          requestedTokenType: "urn:ietf:params:oauth:token-type:jwt",
+          audience: projectId,
+        });
+      } catch (error) {
+        mapExchangeError(error);
+      }
 
       const exp = Math.floor(Date.now() / 1000) + exchanged.expiresIn;
       return { token: exchanged.accessToken, expiresAt: exp, permissions };

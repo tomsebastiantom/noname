@@ -18,6 +18,38 @@ export type ServiceAccountKey = {
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
+/** Typed IdP failure so callers can map credential errors (401/403) separately from IdP outages (503). */
+export class ZitadelTokenError extends Error {
+  constructor(
+    message: string,
+    public readonly status: number,
+    public readonly errorCode: string | null = null,
+    public readonly description: string | null = null,
+  ) {
+    super(message);
+    this.name = "ZitadelTokenError";
+  }
+}
+
+async function tokenError(prefix: string, response: Response): Promise<ZitadelTokenError> {
+  const text = await response.text();
+  let errorCode: string | null = null;
+  let description: string | null = null;
+  try {
+    const parsed = JSON.parse(text) as { error?: unknown; error_description?: unknown };
+    if (typeof parsed.error === "string") errorCode = parsed.error;
+    if (typeof parsed.error_description === "string") description = parsed.error_description;
+  } catch {
+    // Non-JSON error body; keep the status only.
+  }
+  return new ZitadelTokenError(
+    `${prefix}: HTTP ${response.status}${errorCode ? ` ${errorCode}` : ""}${description ? `: ${description}` : ""}`,
+    response.status,
+    errorCode,
+    description,
+  );
+}
+
 function base64url(value: Buffer | string): string {
   return Buffer.from(value).toString("base64url");
 }
@@ -79,9 +111,7 @@ export async function serviceAccountToken(
     body,
   });
   if (!response.ok) {
-    throw new Error(
-      `ZITADEL service-account token failed: HTTP ${response.status} ${(await response.text()).slice(0, 300)}`,
-    );
+    throw await tokenError("ZITADEL service-account token failed", response);
   }
   const parsed = parseTokenResponse(await response.json());
   if (!parsed) throw new Error("ZITADEL service-account token returned no access_token");
@@ -131,9 +161,7 @@ export async function exchangeDelegatedToken(
     body,
   });
   if (!response.ok) {
-    throw new Error(
-      `ZITADEL token exchange failed: HTTP ${response.status} ${(await response.text()).slice(0, 300)}`,
-    );
+    throw await tokenError("ZITADEL token exchange failed", response);
   }
   const parsed = parseTokenResponse(await response.json());
   if (!parsed) throw new Error("ZITADEL token exchange returned no access_token");

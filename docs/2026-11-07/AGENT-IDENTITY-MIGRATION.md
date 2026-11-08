@@ -153,7 +153,16 @@ same token after delete → POST /api/documents/layout → 403
 document_ops → agent | <registered-agent-UUID> | editor
 ```
 
-Agent/auth tests: **117/117**.
+Agent/auth tests: **122/122**.
+
+**Operational hardening (2026-11-07).**
+
+| Control | Implementation | Live evidence |
+|---|---|---|
+| Key rotation | keys older than `ZITADEL_AGENT_KEY_MAX_AGE_DAYS` (default 30) are replaced on mint: new key written atomically, old ZITADEL key deleted, rotation counted | key id changed `398644625792827405 → 398644626782683149`; `noname_agent_key_rotations_total` |
+| Rate limit | fixed-window per agent, `AGENT_TOKEN_RATE_LIMIT_PER_MINUTE` (default 30) | with limit 5: `200,200,200,429,429,429`; `noname_agent_token_rate_limited_total` |
+| Userinfo metrics | hit/miss/error counter + duration histogram | `miss 2`, `hit 1`, ~22 ms miss / ~0.01 ms hit |
+| Exchange errors | `ZitadelTokenError` with status/code; 400/401 → **401**, 403 → **403**, other → **503** | unit tests |
 
 **Audit attribution — verified, parity not measurable.** The layout create wrote a row to `document_ops`:
 

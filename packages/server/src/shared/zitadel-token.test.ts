@@ -6,6 +6,7 @@ import {
   serviceAccountToken,
   type FetchLike,
   type ServiceAccountKey,
+  ZitadelTokenError,
 } from "./zitadel-token";
 
 const { privateKey, publicKey } = generateKeyPairSync("rsa", { modulusLength: 2048 });
@@ -66,9 +67,11 @@ describe("serviceAccountToken", () => {
     expect(body.get("assertion")).toBeTruthy();
   });
 
-  it("fails closed on a non-2xx response", async () => {
-    const fetchImpl = vi.fn(async () => response({ error: "invalid_grant" }, 400)) as unknown as FetchLike;
-    await expect(serviceAccountToken({ issuer, key }, fetchImpl)).rejects.toThrow(/HTTP 400/);
+  it("fails closed with a typed error on a non-2xx response", async () => {
+    const fetchImpl = vi.fn(async () => response({ error: "invalid_grant", error_description: "bad assertion" }, 400)) as unknown as FetchLike;
+    const error = await serviceAccountToken({ issuer, key }, fetchImpl).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ZitadelTokenError);
+    expect(error).toMatchObject({ status: 400, errorCode: "invalid_grant" });
   });
 });
 
@@ -106,13 +109,13 @@ describe("exchangeDelegatedToken", () => {
     expect(body.get("audience")).toBe("noname-agents");
   });
 
-  it("fails closed when the exchange is rejected", async () => {
+  it("fails closed with a typed error when the exchange is rejected", async () => {
     const fetchImpl = vi.fn(async () => response({ error: "access_denied" }, 403)) as unknown as FetchLike;
-    await expect(
-      exchangeDelegatedToken(
-        { issuer, actorToken: "a", subjectToken: "s" },
-        fetchImpl,
-      ),
-    ).rejects.toThrow(/HTTP 403/);
+    const error = await exchangeDelegatedToken(
+      { issuer, actorToken: "a", subjectToken: "s" },
+      fetchImpl,
+    ).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ZitadelTokenError);
+    expect(error).toMatchObject({ status: 403, errorCode: "access_denied" });
   });
 });
