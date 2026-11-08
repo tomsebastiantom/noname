@@ -1,0 +1,230 @@
+# Agent identity migration — `nag.` → ZITADEL OAuth
+
+> **Status:** design · **Date:** 2026-11-07 (America/Toronto)
+> **Scope:** replace the custom agent token with a standards-based OAuth path, without changing the authorization
+> model. No code in this document is implemented yet.
+> **Verified against current code** (see §2), not against the earlier notes.
+> **Related:** [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md) (machine identity) ·
+> [`EVAL-IDENTITY-RETIREMENT.md`](./EVAL-IDENTITY-RETIREMENT.md) (`nsv.` retirement) · [`PENDING-DECISIONS.md`](./PENDING-DECISIONS.md)
+
+---
+
+## 1. What we are solving
+
+Agents today use `nag.`, a custom HMAC token. It works, but it is a second authenticator with a shared minting
+secret. The goal is **one standards-based agent identity**, while keeping the same `PERMISSIONS` catalog and the
+same guards.
+
+There are two agent modes, and they must not be conflated:
+
+| Mode | Meaning | Token today | Token target |
+|---|---|---|---|
+| **Delegated** | agent acts for its owner | `nag.` with `onBehalfOf = ownerUserId` | OAuth token exchange: `subject = user`, `actor = agent`, `act` claim |
+| **Autonomous** | agent acts for itself | **does not exist** | client credentials / private-key JWT, no `act` |
+
+**Important:** autonomous agents are **new product capability**, not part of this migration. They would be machine
+identities (ZITADEL service accounts), never fake users.
+
+## 2. Current state (verified in code)
+
+| Fact | File |
+|---|---|
+| Agent token is HMAC-SHA256 over base64url JSON, prefix `nag.` | `packages/server/src/shared/agent-token.ts` |
+| Claims: `agentId`, `agentSlug`, `orgId`, **`onBehalfOf`**, `permissions`, `exp` | same, lines 5–12 |
+| Verification **requires** `onBehalfOf` to be a string | same, line 43 |
+| Token mints only from an owned agent + acting user token | `domains/agent/registry-service.ts:131-157` |
+| `onBehalfOf` is always `agent.ownerUserId` | same, line 152 |
+| Permissions are `ownerPermissions ∩ requested` | same, line 142 |
+| TTL is 1 hour | `registry-service.ts:13` |
+| Agent table requires `owner_user_id` | `domains/agent/schema.ts:45` |
+| Guard maps a valid `nag.` token to `AgentActor` and enforces org match | `domains/auth/guards.ts:69-84` |
+| `AgentActor.onBehalfOf` is a required string | `packages/auth/src/actors.ts` |
+
+**Conclusion:** there is no self-acting mode. Every agent action is attributable to an owner.
+
+## 3. Why migrate (triggers)
+
+Not “custom tokens are always bad”. Migrate when one of these becomes true:
+
+1. **Third-party agents** need their own credential (we cannot mint for them).
+2. **Cross-org / enterprise SSO** requires the customer IdP to be authoritative.
+3. **Per-token revocation or audience** is required (no `aud`, no `jti` today).
+4. **Owner permission changes** must be evaluated at token time, not frozen at mint.
+5. **One credential model** for platform, eval and agents is required for compliance.
+
+If none applies, `nag.` remains acceptable; but two custom authenticators plus a third (service accounts) is the
+real architectural problem.
+
+## 4. Target architecture
+
+ZITADEL is the OAuth authorization server. OAuth is the protocol.
+
+### 4.1 Delegated agent (keeps today’s semantics)
+
+```
+1. user logs in (OIDC)                    → user access token
+2. agent service account authenticates    → actor token (client credentials / private-key JWT)
+3. POST /oauth/v2/token
+   grant_type=urn:ietf:params:oauth:grant-type:token-exchange
+   subject_token=<user token>&subject_token_type=access_token
+   actor_token=<agent token>&actor_token_type=access_token
+   scope=<downscoped>
+4. token for the user, with act = agent
+5. API verifies JWT via JWKS, checks org/aud, reads act.sub = agentId, onBehalfOf = user
+```
+
+ZITADEL supports Token Exchange and treats impersonation/delegation through the `actor_token`
+([grant types](https://zitadel.com/docs/apis/openidoauth/grant-types),
+[token exchange](https://docs-zitadel.vercel.app/docs/guides/integrate/token-exchange#actor-token)).
+
+Constraints from ZITADEL:
+
+- only **confidential clients** should be allowed to perform token exchange;
+- the actor must hold an **impersonation permission** (`*_IMPERSONATOR`); impersonating users with administrative
+  memberships needs `ORG_ADMIN_IMPERSONATOR`/`IAM_ADMIN_IMPERSONATOR`;
+- scope and audience are **downscope-only** — the exchange cannot escalate;
+- the exchanged token is short-lived and revocable.
+
+### 4.2 Autonomous agent (future, separate decision)
+
+Client credentials or private-key JWT on a service account; no `subject_token`, no `act`. Permissions come from the
+agent’s own role, not the owner’s. This is a new capability and needs its own product decision.
+
+### 4.3 One authorization model
+
+Both modes resolve to the same `PERMISSIONS` keys and the same guards. Only authentication changes:
+
+| Actor | Authenticator | Authorization |
+|---|---|---|
+| human | ZITADEL OIDC | `PERMISSIONS` from roles |
+| delegated agent | OAuth token exchange (`act`) | `PERMISSIONS` from the exchanged token |
+| autonomous agent | client credentials / private key JWT | `PERMISSIONS` from its service-account role |
+| platform operator | service account + private-key JWT | `PERMISSIONS` from platform role |
+| eval worker | service account (until `nsv.` is removed) | read-only eval permissions |
+
+## 5. Identity mapping
+
+| Today | Target |
+|---|---|
+| `registered_agents.id` | unchanged (domain ID) |
+| `registered_agents.slug` | unchanged |
+| `registered_agents.ownerUserId` | unchanged (the delegated subject) |
+| — | new `zitadel_agent_user_id` (service account / machine user per agent) |
+| `nag.` token | deleted after cutover |
+| `onBehalfOf` claim | `act` claim in the exchanged token |
+
+**One service account per agent** is the clean mapping: the `act.sub` then identifies the agent, not a shared
+runner. A shared runner would blur attribution; if used, the agent ID must still be carried and audited.
+
+## 6. Code changes (when implemented)
+
+| Area | Change |
+|---|---|
+| `domains/agent/schema.ts` | add `zitadel_agent_user_id` (nullable during migration) |
+| `domains/agent/registry-service.ts` | replace `mintToken` with “obtain exchanged token” (no local mint) |
+| `shared/agent-token.ts` | remove after cutover; during migration keep verify behind a flag |
+| `domains/auth/guards.ts` | verify ZITADEL JWT (JWKS), extract `act`, enforce org/aud, build `AgentActor` |
+| `packages/auth/actors.ts` | `AgentActor.onBehalfOf` stays required for delegated; autonomous mode adds an explicit variant |
+| config | `AGENT_AUTH_MODE=nag|dual|zitadel`; ZITADEL client id/private key in secret manager |
+| audit | `actorType=agent`, `actorId=agentId`, `onBehalfOf=userId`, `act` recorded |
+| scripts | delete `mint-service-token.ts` is eval; delete agent mint helpers when cut over |
+
+## 7. Migration phases
+
+### Phase 0 — prepare (no behavior change)
+
+- Enable token exchange on a **confidential** ZITADEL application.
+- Create a test service account and narrow impersonation role.
+- Add `AGENT_AUTH_MODE` flag (default `nag`).
+- Add JWT verifier alongside `nag.` (dual-verify, not dual-authorize).
+
+### Phase 1 — shadow verification (safe)
+
+For every agent request that presents a `nag.` token, also accept an optional new JWT in a parallel request or a
+shadow header; verify it and **compare**, without using it for authorization:
+
+```
+actorId, orgId, onBehalfOf, permissions, exp
+```
+
+Log mismatches; do not write business data from the shadow path. Exit criterion: N days, zero unexplained
+mismatches.
+
+### Phase 2 — dual accept (canary)
+
+- Guard accepts both token types; authorization still from whichever token authenticated.
+- Enable for one agent (allowlist), then one org.
+- Metrics: `agent_auth_old_total`, `agent_auth_new_total`, `agent_auth_mismatch_total`.
+- Kill switch: `AGENT_AUTH_MODE=nag` immediately.
+
+### Phase 3 — cutover
+
+- Agents obtain tokens via exchange; `nag.` minting stops.
+- Guard requires JWT for allowlisted agents; old tokens valid until TTL.
+- Verify audit parity and error rates.
+
+### Phase 4 — delete
+
+- Remove `nag.` verifier, mint helper, `AGENT_TOKEN_SECRET`, tests, docs references.
+- No permanent dual path.
+
+## 8. How to test that the migration is safe (and that old behavior still works)
+
+| Test | What it proves |
+|---|---|
+| **Verifier unit** | valid/invalid signature, expiry, wrong org, wrong audience, missing `act`, unknown permissions |
+| **Exchange integration** | user token + agent actor token → token with `sub=user`, `act=agent`, reduced scopes; cannot exceed subject |
+| **Permission intersection** | agent requesting more than the user → denied/reduced; same result as `nag.` |
+| **Dual-verify shadow** | old and new tokens produce the same actor/org/onBehalfOf/permissions for real requests |
+| **Negative** | revoked agent key, expired token, replay, agent from another org, autonomous token on a delegated route |
+| **E2E old** | one real agent task with `nag.` (baseline) — must keep working until cutover |
+| **E2E new** | same task with the exchanged token; compare output and audit rows |
+| **Rollback drill** | flip `AGENT_AUTH_MODE=nag`, confirm old tokens still work and new ones are rejected |
+| **Audit parity** | `actorType`, `actorId`, `onBehalfOf` identical across old/new for the same action |
+
+Cutover criteria:
+
+- shadow mismatches = 0 for an agreed window;
+- all exercised agent routes have a new-token test;
+- rollback drill passed;
+- no increase in 401/403 or task failures;
+- audit rows show the agent, not the owner, as actor.
+
+## 9. Rollback
+
+- Feature flag `AGENT_AUTH_MODE` (`nag`/`dual`/`zitadel`).
+- Keep `nag.` verifier and mint path until Phase 4.
+- Old tokens remain valid until TTL; key rotation is not needed for rollback.
+- If ZITADEL is unavailable, delegated agents cannot obtain new tokens; existing tokens remain valid until expiry.
+  That is a real availability trade-off vs the current self-contained token.
+
+## 10. Risks and open questions
+
+| Risk / question | Note |
+|---|---|
+| Impersonation role is powerful | narrow role, one service account per agent, secret manager, audit |
+| One service account per agent | N accounts/keys; alternative shared runner weakens attribution |
+| User token availability | long-running agents need refresh-token handling or pre-granted delegation |
+| ZITADEL version support | token exchange must be enabled and tested on our deployment; docs say supported |
+| Exchange latency | one extra IdP call when obtaining a token, not per API call |
+| Autonomous mode | separate product decision; do not smuggle it in by making `onBehalfOf` nullable |
+| Audit continuity | old and new rows must use the same `actorType=agent` shape |
+
+## 11. Order
+
+Do **not** start this before the machine path is standard:
+
+1. request-id + `AUDIT_READ` (attribution);
+2. `release-operator` + `eval-runner` service accounts;
+3. operator guard + dry-run;
+4. eval moves off `nsv.` (and off the demo admin header);
+5. **then** this agent migration.
+
+## 12. Acceptance criteria
+
+- a delegated agent obtains a ZITADEL-issued token; API verifies it via JWKS with `act`;
+- permissions equal the owner-intersected set (no escalation);
+- audit shows agent actor + `onBehalfOf`;
+- `nag.` is deleted, with no dual path left;
+- rollback drill passed before deletion;
+- no demo user identity is used anywhere.

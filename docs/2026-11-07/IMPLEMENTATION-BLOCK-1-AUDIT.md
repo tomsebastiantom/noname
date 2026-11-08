@@ -1,6 +1,7 @@
 # Implementation block — fix release audit, then the operator boundary
 
-> **Status:** **Part 1 (release audit fix) implemented and verified 2026-11-07**; parts 2–4 pending.
+> **Status:** **Parts 1–2 (release audit fix, request-id + AUDIT_READ) implemented and verified 2026-11-07**;
+> parts 3–4 pending.
 > **Why this block:** the release control plane is built, but release moves still write **business records** with
 > `data.actor`. That is the earlier mistake. It is fixed **before** anything else is tested or the platform
 > operator is introduced.
@@ -82,6 +83,22 @@ operator will pass `service` explicitly when its guard lands.
 
 **Limit recorded:** actor type is `user`/`system` until the platform operator passes `service`; that lands with the
 guard. `requestId` in metadata waits for the middleware (part 2).
+
+## 3b. Part 2 evidence — request id + AUDIT_READ (2026-11-07)
+
+| Check | Result |
+|---|---|
+| Unit | **54/54** targeted (request-id 3, pointer 8, release domain rest) |
+| Full suite | **643/643**, 144 files |
+| Typecheck | clean |
+| Live response | promote response carried `x-request-id: req-live-12345678` |
+| Audit metadata | `metadata->>'requestId' = req-live-12345678` on the promotion row |
+| Tenant audit | `GET /api/evidence/audit` with `audit:read` → **200**, 3 rows |
+| Without permission | same route with `machines:read` → **403** |
+| Permission gate | `/audit` uses `auditPermission: AUDIT_READ`; release subjects map to it |
+
+**Note:** `/audit` uses `requireActorPermission`, so an explicit machine token with `audit:read` can read (useful for
+export); a token without it is 403. The tenant admin gets `AUDIT_READ` through `admin`.
 
 ## 4. Then (not in this first commit)
 

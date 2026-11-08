@@ -237,6 +237,29 @@ structured actor and a `releaseId` reference; the release `evidence_records` wri
 **Limit recorded.** Actor type is `user`/`system` until the operator guard passes `service`; `requestId` waits for
 the middleware. Both are the next block.
 
+## 2026-11-07 — request id + tenant audit read
+
+**Scope.** Every request gets an `x-request-id` (upstream id or UUID), services can read it through
+AsyncLocalStorage, release audit rows carry it, and `/api/evidence/audit` requires `AUDIT_READ`.
+
+**Code.** `shared/request-context.ts`, `shared/request-id.ts`, bootstrap middleware order, `AUDIT_READ`,
+`evidence/routes.ts` `auditPermission`, release service metadata.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Unit | `pnpm vitest run …request-id.test.ts …release` | **54/54** |
+| Full suite | `pnpm vitest run packages/server` | **643/643**, 144 files |
+| Typecheck | `pnpm --filter @noname/server typecheck` | clean |
+| Response header | promote with `x-request-id` | echoed `req-live-12345678` |
+| Audit metadata | `evidence_audit_events.metadata->>'requestId'` | `req-live-12345678` |
+| Audit read | `GET /api/evidence/audit` with `audit:read` | **200**, 3 rows |
+| Missing permission | same route with `machines:read` | **403** |
+
+**Limit recorded.** The audit route accepts an explicit machine `audit:read`; tenant admins get it through
+`admin`. Access logs still do not exist, but the join key (`requestId`) is now present.
+
 ## Next blocks
 
 1. **Request-id + `AUDIT_READ`** — middleware, `requestId`/`traceId` in audit metadata, tenant audit route.
