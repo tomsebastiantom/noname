@@ -1,11 +1,11 @@
 # Pending decisions — release mechanism and eval gaps
 
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
-> **Implementation status:** **D14, D15, D16 and D1 C1 implemented 2026-11-07** (see [`RELEASE-D14-DESIGN.md`](./RELEASE-D14-DESIGN.md), [`RELEASE-D15-DESIGN.md`](./RELEASE-D15-DESIGN.md), [`RELEASE-D16-DESIGN.md`](./RELEASE-D16-DESIGN.md), [`RELEASE-D1-DESIGN.md`](./RELEASE-D1-DESIGN.md), [`RELEASE-VERIFICATION-LOG.md`](./RELEASE-VERIFICATION-LOG.md)). **D1 waves/UI remain open** — waves need a platform-operator identity; the UI surface does not exist yet.
+> **Implementation status:** **D1 C1, D2, D4, D7, D8, D14, D15 and D16 are implemented 2026-11-07** (design + evidence linked from each section). **Open:** D3 (deferred), D5 (contract test), D6 (drop recommendation), D9–D13, and **D17 (proposed)** — waves need the platform-operator identity.
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
 > repository actually does today and to how established projects solved the same problem.
-> **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Nothing
-> here is implemented yet except where it says “current state”.
+> **How to use:** read the summary, then each decision. Tick one option per decision (or write your own). Each
+> section states whether it is proposed, chosen, or implemented.
 > **Related:** [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md) · [`EVAL-SERVICE-IMPLEMENTATION-PLAN.md`](./EVAL-SERVICE-IMPLEMENTATION-PLAN.md) · [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-PROGRESSIVE-DELIVERY.md`](../2026-10-24/RFC-PROGRESSIVE-DELIVERY.md)
 
 ---
@@ -19,14 +19,14 @@
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** — **implemented 2026-11-07** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
 | **D17** | Who may promote across tenants (waves) | platform service token / platform org role / env allowlist / separate control plane | **Platform service token now, platform org role later** | High — waves are unsafe without it |
-| **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** | High — definition updates currently hit in-flight carts |
+| **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** — **implemented 2026-11-07** | High — definition updates no longer hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **Defer; then release-domain channel table (B)** | Later — only after D1+D2 are in use |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **A — implemented (role map + mandatory audience; no cache yet)** | E8 closed |
 | **D5** | Checkout verification (`B5`) | contract test / staging provider smoke / check in eval / drop | **Contract test now; provider smoke in staging; never in eval** | Medium — provider half is not ours |
 | **D13** | Who chooses the checkout provider | hardcoded literal / tenant setting / server resolves | **Server resolves** | Medium — removes the last provider-specific string from the storefront |
 | **D6** | Visual rubric (`B7`) | vision model / visual regression service / drop | **Drop for now** | Low |
 | **D7** | Determinism and aggregation (E6) | N runs + median / retry-on-fail / none | **B — implemented (retry-once + attempts)** | Medium |
-| **D8** | Cost policy and change detection (E27) | `specHash@release@checks` + sampling / TTL / always full | **Key + tiered sampling** | Medium |
+| **D8** | Cost policy and change detection (E27) | `specHash@release@checks` + sampling / TTL / always full | **Key + tiered sampling** — **implemented 2026-11-07** (reuse, per-route, sampling, metrics, worker) | Medium |
 | **D9** | Gate behaviour on `unverified` | block / human ack / mark only | **Human ack, block for contract/data** | Medium |
 | **D10** | Eval worker placement | same API process / separate entrypoint / separate image | **Separate entrypoint now** | Medium |
 | **D11** | NetworkPolicy and staging | local Calico / kind+Calico / staging cluster | **Staging cluster** | Later |

@@ -181,7 +181,7 @@ identity (cross-org escalation risk), and the app has no release admin surface y
 
 ## Next blocks
 
-1. **Promotion waves** — requires a platform-admin role/permission first.
+1. **D17 platform operator** — design ready in [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md); choose A, then implement the guard + dry-run wave endpoint.
 2. **Release admin UI** — tenant list, pointer history, promote/rollback buttons.
 3. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
 4. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.

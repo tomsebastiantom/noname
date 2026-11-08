@@ -1,16 +1,16 @@
 # Eval service — implementation plan (RFC vs code)
 
-> **Status:** plan (design only, no implementation started) · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** implemented 2026-11-07 except B7 and E20 (see implementation status below) · **Date:** 2026-11-07 (America/Toronto)
 > **Scope:** [`RFC-EVAL-SERVICE.md`](../2026-10-24/RFC-EVAL-SERVICE.md) — the **measurement layer**: what a check is, how it runs, what it returns.
 > **Not in scope:** gate verdicts, promotion, Evidence-per-decision — those moved to [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md) (see its §12). This plan builds what that gate consumes.
 > **Method:** every claim below was checked against the current code, not against the RFC. Where the RFC and the code disagree, the disagreement is recorded as a gap and a decision, not silently resolved.
 > **Related:** [`RELEASE-VERIFICATION-GAPS.md`](./RELEASE-VERIFICATION-GAPS.md) · [`RFC-CRITICAL-REVIEW.md`](../2026-10-31/RFC-CRITICAL-REVIEW.md) · [`RFC-RELEASE-GATE.md`](./RFC-RELEASE-GATE.md)
 >
 > **Implementation status:** Blocks 1–3, tier 0/1, tier 2, S1, the cart half of E20, envelope/config, the gate
-> sink, the async worker with tier 2, B6, E4, E6 (retry-once), **E8 (tenant-role coverage)** and **E27 v1
-> (content-addressed reuse)** are **done and verified** on 2026-11-07. **E20 checkout→`paid` is blocked by an
-> external dependency** (provider sandbox). Open: B7 rubric; E27 per-route reuse, sampling and reuse metrics.
-> See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
+> sink, the async worker with tier 2, B6, E4, E6 (retry-once), **E8 (tenant-role coverage)** and **E27 (reuse,
+> per-route cache, deterministic sampling, reuse metrics, worker cache)** are **done and verified** on 2026-11-07.
+> **E20 checkout→`paid` is blocked** by an external provider sandbox. **Open: B7 visual rubric** (needs a
+> vision-model decision). See [`VERIFICATION-LOG.md`](./VERIFICATION-LOG.md).
 
 ---
 
