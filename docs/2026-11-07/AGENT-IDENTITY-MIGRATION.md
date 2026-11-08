@@ -55,21 +55,28 @@ Provisioned on the local ZITADEL (not production):
 | Private-key JWT | **live success**: service-account token issued (`expires_in ≈ 12h`) |
 | Token exchange request | reaches ZITADEL with client auth + actor/subject tokens |
 
-**Blocker:** the exchange returns
+**Impersonation policy enabled.** The v1 security policy field is `enableImpersonation`:
+`PUT /admin/v1/policies/security {"enableImpersonation":true}` → 200. The previous attempts used the wrong field
+names (`impersonation`, `impersonationAllowed`, `allowImpersonation`) and consequently reported “No changes”.
+
+**Live exchange now succeeds** (with the actor service account, client auth, and `requested_token_type = jwt`):
 
 ```
-403 {"error":"invalid_request","error_description":"Errors.TokenExchange.Impersonation.PolicyDisabled"}
+sub = 397185959570964491        (the user)
+act = { iss: http://localhost:8080, sub: 398638652919382029 }   (the agent)
+aud = [ 397185680666525707 ]    (project)
 ```
 
-- The app/grant/client-authentication path is correct — the error is the instance **impersonation policy**.
-- Granting the actor an impersonation role through `/admin/v1/members/{userId}` failed:
-  `IAM_ADMIN_IMPERSONATOR` → 404, `IAM_OWNER_IMPERSONATOR` / `ORG_ADMIN_IMPERSONATOR` → “Member is invalid”.
-- `SetSecuritySettings { impersonation: true }` reported “No changes”, and `GetSecuritySettings` does not expose
-  an impersonation field in this ZITADEL version.
+So the private-key JWT, client authentication, impersonation permission and RFC 8693 exchange are all working.
 
-**Next action:** enable impersonation on the instance (ZITADEL Console → Security/Impersonation, or the API/version
-that exposes it), grant the agent service account a narrow impersonator role, then re-run the exchange. No code
-change is needed for that step; the client and verifier are ready.
+**Remaining blocker:** the exchanged JWT has **no `urn:zitadel:iam:org:project:roles` and no org claim**, so the
+verifier correctly returns `null` (it refuses a token with no permissions/org). The subject's project roles are
+not being asserted into the exchanged token yet. Next step: request the roles scope in a way that survives the
+exchange (or read roles from the returned ID token) and confirm the claim appears; then the verifier and guard can
+be wired.
+
+**Next action:** resolve the roles/org claim (scope on subject vs actor, or ID token claims), verify with the live
+exchange, then wire the guard and replace minting.
 
 
 

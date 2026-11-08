@@ -94,6 +94,9 @@ export async function exchangeDelegatedToken(
     subjectTokenType?: string;
     scopes?: string;
     audience?: string;
+    requestedTokenType?:
+      | "urn:ietf:params:oauth:token-type:access_token"
+      | "urn:ietf:params:oauth:token-type:jwt";
   },
   fetchImpl: FetchLike = fetch,
 ): Promise<TokenResponse> {
@@ -104,7 +107,8 @@ export async function exchangeDelegatedToken(
     subject_token: input.subjectToken,
     subject_token_type:
       input.subjectTokenType ?? "urn:ietf:params:oauth:token-type:access_token",
-    requested_token_type: "urn:ietf:params:oauth:token-type:access_token",
+    requested_token_type:
+      input.requestedTokenType ?? "urn:ietf:params:oauth:token-type:access_token",
   });
   if (input.scopes) body.set("scope", input.scopes);
   if (input.audience) body.set("audience", input.audience);
