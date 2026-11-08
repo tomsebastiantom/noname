@@ -235,8 +235,8 @@ access logs by timestamp and org, which is not evidence-grade.
 | Phase | Change | Test |
 |---|---|---|
 | **A** | request-id middleware + `traceId`/`requestId` in audit metadata; release promote/rollback/switch write `evidence_audit_events` with structured actor; `AUDIT_READ` for tenant admins; tenant filter test | tenant sees own move; other org’s audit is absent; audit row joins to access log by requestId |
-| **B** | operator token issuance/revocation audit (+ token table/hash); mint script records it | issuing a token produces one audit row; revoke produces one |
-| **C** | `GET /api/platform/audit` with `PLATFORM_AUDIT_READ`, pagination + NDJSON export | tenant admin → 403; platform token → rows across orgs |
+| **B** | ZITADEL service-account lifecycle (creation, role grant, key rotation, disable) mirrored into the audit stream; app actions audited | account create/grant/disable visible in ZITADEL audit; app actions show the service-account actor |
+| **C** | `GET /api/platform/audit` with `PLATFORM_AUDIT_READ`, pagination + NDJSON export | tenant admin → 403; service-account token → rows across orgs |
 | **D** | integrity hash chain + verification job + retention registration | edit a row by SQL → verification fails |
 | **E** | ZITADEL role-change mirror | grant/revoke appears in tenant audit |
 
@@ -246,7 +246,7 @@ Phases A–C are required before D17 waves; D–E are the SOC evidence pack.
 
 1. A tenant admin sees its own release promotions with **actor, from, to, time, waveId**.
 2. The same admin cannot see another tenant’s audit rows or the platform stream.
-3. A platform token can query across orgs and export NDJSON.
+3. A service-account token can query across orgs and export NDJSON.
 4. Tenant admin gets **403** on the platform audit endpoint.
 5. Issuing/revoking an operator token writes one audit row each.
 6. A direct `UPDATE` to an evidence row is detected by the integrity check.

@@ -40,7 +40,7 @@ request log line by `requestId`.
 - `RELEASES_PLATFORM_READ/WRITE`, excluded from `TENANT_PERMISSIONS` (tenant admin must not inherit);
 - `PLATFORM_ORG_ID` (unset → platform routes 503);
 - `requirePlatformOperator` guard;
-- mint script for the operator token;
+- platform org, `platform_operator` role, service account, private key;
 - `POST /rollout` with **dry-run only** (no writes), explicit org list, cap.
 
 **Why:** defines who may act across tenants and fails closed. No write path until the audit from step 1 exists.
@@ -101,7 +101,7 @@ revoking the token stops everything.
 **Why:** waves are cross-org; the evidence must be queryable and exportable before more than one org is touched.
 Tenant audit alone cannot answer “what did the operator do across tenants”.
 
-**Acceptance:** platform token queries across orgs; tenant admin 403; export file produced.
+**Acceptance:** service-account token queries across orgs; tenant admin 403; export file produced.
 
 ## 8. Access logs (CC7.2 monitoring)
 

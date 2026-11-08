@@ -227,7 +227,7 @@ if (!platformOrgId()) return 503;                         // fail closed
 | every wave/promotion by the service account | **app audit** from step ① |
 | export of ZITADEL events to the platform stream | audit phase C export |
 
-No app-issued token, so no token hash is stored. There is no mint script in path B.
+No app-issued token is used, so no token hash is stored. The credential is issued by ZITADEL.
 
 ### What is audited
 

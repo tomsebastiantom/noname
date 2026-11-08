@@ -105,8 +105,8 @@ with `aud`/`jti`; the API verifies it through the existing JWKS path and checks 
 
 **Rejected (not implemented):**
 
-- **A. custom `nsv.` platform token** — a shared minting secret can mint any permission, no revocation; `nsv.`
-  stays scoped to the existing eval service only.
+- **Rejected: a custom `nsv.` platform credential** — a shared minting secret can mint any permission, with no
+  revocation; `nsv.` stays scoped to the eval service.
 - **C. env allowlist** — no rotation, no auditable provisioning.
 - **D. separate control-plane service** — a new deployable/auth surface for a few hundred rows.
 
@@ -333,7 +333,7 @@ tenant catalog/status and a verdict lookup first. “All tenants” is a materia
 
 **The token is org-bound to the platform org.** That single fact limits it:
 
-| Route class | Behaviour with the platform token |
+| Route class | Behaviour with the service-account token |
 |---|---|
 | normal tenant route (`/api/tenants/:other/...`, documents, orders, roles) | **403** — edge/blog `x-org-id` is the tenant, token org is platform; they must match |
 | platform route (`/api/releases/:id/rollout`, platform audit, tenant catalog) | allowed, because the guard checks **platform permission + platform org** and the body names explicit `orgIds` |
@@ -379,14 +379,14 @@ The tenant admin never has this credential; the operator never borrows a tenant 
 | Step | Change | Test |
 |---|---|---|
 | 1 | `PERMISSIONS.RELEASES_PLATFORM_WRITE = "releases:platform_write"` | permission typecheck |
-| 2 | `PLATFORM_ORG_ID` env (`.env.example`, docs); operator mint script uses it | mint fails without env |
-| 3 | `requirePlatformOperator(c)` in the release domain | tenant admin token → 403; wrong-org machine → 403; unset env → 503 |
+| 2 | `PLATFORM_ORG_ID` env; init creates the platform org, `platform_operator` role, service account, and private key | init idempotent; role exists; no duplicate |
+| 3 | `requirePlatformOperator(c)` in the release domain | tenant admin token → 403; wrong-org token → 403; unset env → 503 |
 | 4 | `POST /api/releases/:id/rollout` with `dryRun`, cap, per-org result | dry-run writes nothing; partial failure continues; non-ready 409 |
-| 5 | `scripts/promote-wave.ts` (or `noname release wave`) using the token | e2e against two orgs |
-| 6 | Evidence: per-org pointer rows + one wave summary | query Evidence |
+| 5 | `scripts/promote-wave.ts` (or `noname release wave`) using the service-account token | e2e against two orgs |
+| 6 | Audit: per-org rows + one wave summary | query audit |
 | 7 | Docs + verification log | — |
 
-**Not in this block:** human login to a platform org (B), a release console, queue-backed waves for >100 orgs.
+**Not in this block:** human console (later), queue-backed waves for >100 orgs.
 
 ## 6a. Rollout plan — no tenant-visible change until phase 2
 
@@ -395,11 +395,11 @@ is independently reversible.
 
 | Phase | Ships | Tenant-visible? | Backout |
 |---|---|---|---|
-| **0. Dormant** | `RELEASES_PLATFORM_*` permission keys, `PLATFORM_ONLY` exclusion from role expansion, `PLATFORM_ORG_ID` env (unset by default), mint script | No — no route uses them | unset env; remove keys |
-| **1. Read-only** | `requirePlatformOperator` guard + `POST /rollout` with `dryRun` forced; returns plan, writes nothing | No — tenant admin gets 403 | unset env → 503; revoke token → 401 |
-| **2. Single-org write** | real write path, explicitly limited to a test org in the request; Evidence per org | Only for the named org | pointer rollback (D1) + revoke token |
-| **3. Operator CLI + batch** | `promote-wave` script, batch cap, partial-failure report | Only listed orgs | revoke token; stop CLI |
-| **4. Human/console (later)** | platform org + role + UI (D17 option B) | No tenant change | disable role |
+| **0. Dormant** | `RELEASES_PLATFORM_*` permission keys, `PLATFORM_ONLY` exclusion, `PLATFORM_ORG_ID`, platform org + role + service account + key | No — no route uses them | unset env; disable service account |
+| **1. Read-only** | `requirePlatformOperator` guard + `POST /rollout` with `dryRun` forced; returns plan, writes nothing | No — tenant admin gets 403 | unset env → 503; disable service account → 401 |
+| **2. Single-org write** | real write path, explicitly limited to a test org; audit per org | Only for the named org | pointer rollback (D1) + disable service account |
+| **3. Operator CLI + batch** | `promote-wave` script, batch cap, partial-failure report | Only listed orgs | disable service account; stop CLI |
+| **4. Human/console (later)** | human login in the platform org with the same role + UI | No tenant change | disable role |
 
 **Safety rules during rollout**
 
@@ -408,7 +408,8 @@ is independently reversible.
 2. Tenant admins must **not** receive `releases:platform_*` through `ALL_PERMISSIONS`; the permission-expansion
    test is part of phase 0/1 acceptance.
 3. Phase 2 promotes exactly one org that the operator names; no wildcard, no “all tenants”.
-4. Revoking the token is the emergency stop; the pointer/selector state is untouched by revocation.
+4. Disabling the service account (or rotating its key) is the emergency stop; the pointer/selector state is
+   untouched.
 5. Every move is audited per org; the wave summary is audited once.
 
 **Audit is a precondition, not a follow-up.** The tenant must be able to see who moved it, from which release, and
@@ -428,19 +429,19 @@ one org.
 
 | Risk | Mitigation |
 |---|---|
-| Platform token leakage | short TTL (≤15 min), separate secret, mint via script not committed, revoke by rotating `SERVICE_TOKEN_SECRET` |
+| Service-account private-key leakage | private key in a secret manager, rotated with overlap, service account disabled on suspicion; no shared signing secret |
 | `PLATFORM_ORG_ID` spoofing | env is deploy-time; token org must equal it; no client-supplied value |
 | Blast radius of a wave | dry-run default in CLI, explicit org list, batch cap, per-org audit |
-| Tenant admin minting a platform token | mint script is an operator tool with the signing secret; same trust boundary as `WORKER_SERVER_SECRET` today |
-| Human path later diverges | B reuses the same guard; only role expansion changes |
+| Tenant admin obtaining the role | `platform_operator` exists only in the platform org; tenant admins cannot be assigned it; no key material in tenant space |
+| Human path later diverges | the human logs into the same platform org; same role and guard |
 
 ## 8. Acceptance
 
 1. A tenant admin token calling the wave endpoint gets **403**.
-2. A machine token with `releases:platform_write` but the wrong org gets **403**.
+2. A service-account token for the wrong org gets **403**.
 3. With `PLATFORM_ORG_ID` unset, the endpoint returns **503** (fail closed).
-4. A valid platform token gets a **dry-run** plan with no pointer writes.
-5. A real wave promotes the listed orgs, reports partial failures, and writes one Evidence row per org.
+4. A valid service-account token gets a **dry-run** plan with no pointer writes.
+5. A real wave promotes the listed orgs, reports partial failures, and writes one audit row per org.
 6. No endpoint accepts an implicit “all orgs”.
 7. `ROLE_PERMISSIONS.admin` does **not** include `releases:platform_write` (permission-expansion test).
 8. Phase 1 (read-only) can be exercised with the write path disabled.

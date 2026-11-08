@@ -637,8 +637,8 @@ authenticated with **private-key JWT** (RFC 7523). The service account gets a sh
 `aud`/`jti`; the API verifies it through the existing JWKS path and checks `PLATFORM_ORG_ID` + permission. The wave
 endpoint takes an explicit org list, supports dry-run, caps batch size, and records one audit row per org.
 
-**Rejected:** A (custom `nsv.` platform token — `nsv.` stays eval-only), C (env allowlist), D (separate control
-plane). There is no second platform credential.
+**Rejected:** env allowlist and a separate control plane. `nsv.` is eval-only and is not a platform option.
+There is no second platform credential.
 
 **Migration:** tenant roles, `nsv.` and `nag.` are unchanged; `platform_operator` is net-new and assigned only to
 the service account; no old platform role is ported and no dual path is kept.

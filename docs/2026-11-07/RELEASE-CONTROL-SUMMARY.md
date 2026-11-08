@@ -48,7 +48,7 @@ The tenant sees its own current release and its own audit, never another tenant�
 
 1. **Org isolation** — `orgId` comes from the edge, never the body.
 2. **Roles live in ZITADEL**; no `user→role` table in Postgres.
-3. **Machine tokens** are org-bound; the platform token’s org must equal `PLATFORM_ORG_ID`.
+3. **Machine identities are org-bound**; the platform operator’s service-account token org must equal `PLATFORM_ORG_ID`.
 4. **Platform permissions are excluded** from tenant role expansion (`admin ≠ ALL_PERMISSIONS`).
 5. **Fail closed** — unset `PLATFORM_ORG_ID` → 503.
 6. **No wildcard** org lists; explicit list, cap, dry-run.
