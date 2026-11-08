@@ -115,9 +115,26 @@ the same cutover.
 | `GET /api/documents/layout` with the delegated JWT | **200** — agent authenticated and authorized through the `PERMISSIONS` catalogue |
 | old `nag.` token on the same route | **401** — the legacy path is gone |
 
-**Remaining objective gaps:** the guard maps the agent to `act.sub`, but `registered_agents.zitadel_agent_user_id`
-and **one service account per agent** are not implemented yet — the current actor is the shared `agent-runner`
-service account. Audit parity for mutating agent actions is also not yet exercised (the E2E request was a read).
+**Per-agent identity implemented (2026-11-07).** `registered_agents.zitadel_agent_user_id` stores the mapping;
+on the first token request the registry provisions a **dedicated ZITADEL machine user** per agent (key under
+`zitadel_keys/agents/<agentId>.json`, `IAM_ADMIN_IMPERSONATOR`), then exchanges the user token with **that**
+service account as actor. The shared `agent-runner` is no longer used by minting.
+
+Live re-run:
+
+```
+register 201 → id 46d42f64… (owner editor)
+mint     200 → delegated JWT
+         sub = 397185959570964491 (editor)
+         act = { sub: 398642247689568269 }   ← per-agent machine user, not the shared runner
+GET /api/documents/layout → 200
+old nag token → 401
+```
+
+Database: `e2e-agent-1794105295471 → zitadel_agent_user_id 398642247689568269`; key file created for that agent.
+
+**Remaining:** old/new audit parity for a **mutating** agent action was not captured before `nag.` deletion; the E2E
+request was a read. The old path is gone, so parity can only reference historical `nag.` audit rows.
 
 
 
