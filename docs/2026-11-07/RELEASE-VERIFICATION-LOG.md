@@ -213,10 +213,35 @@ the live prune now returns 200 with the ring and pin intact.
 **Limits.** No channel UI; a ring move is one write but the catalog re-reads the pointer per request (as D1); no
 percentage traffic split — a request never sees two bundles.
 
+## 2026-11-07 — release moves write audit, not business records
+
+**Scope.** Fix the earlier mistake: pointer, environment and channel moves now write `evidence_audit_events` with a
+structured actor and a `releaseId` reference; the release `evidence_records` write is removed.
+
+**Code.** `audit-actor.ts`, `pointer-service.ts`, `environment-service.ts`, `channel-service.ts`, plus their tests.
+
+### Verification
+
+| Check | Command | Observed |
+|---|---|---|
+| Unit | `pnpm vitest run packages/server/src/domains/release` | **50/50** |
+| Full suite | `pnpm vitest run packages/server` | **639/639**, 143 files |
+| Typecheck | `pnpm --filter @noname/server typecheck` | clean |
+| Promote | live promote of a new release | **200** |
+| Records | `select count(*) from evidence_records where type like 'platform.release.%'` | **16 before, 16 after** (no new record) |
+| Audit | `select count(*) from evidence_audit_events where action like 'platform.release.%'` | **0 before, 1 after** |
+| Row shape | `action, actor_type, actor_id, subject_type, subject_id, metadata->>'from', metadata->>'to'` | `tenant_promoted \| user \| admin@… \| tenant.storefront \| <org> \| <from> \| <to>` |
+| Rollback | `POST /api/releases/pointer/rollback` | `platform.release.tenant_rolled_back` row written |
+| Historical | legacy rows | untouched; no backfill/delete |
+
+**Limit recorded.** Actor type is `user`/`system` until the operator guard passes `service`; `requestId` waits for
+the middleware. Both are the next block.
+
 ## Next blocks
 
-1. **D17 platform operator** — design ready in [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md); **B chosen** (service account, private-key JWT), implement the guard + dry-run wave endpoint.
-2. **Release admin UI** — tenant list, pointer history, channel assignment, promote/rollback buttons.
-3. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
-4. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.
+1. **Request-id + `AUDIT_READ`** — middleware, `requestId`/`traceId` in audit metadata, tenant audit route.
+2. **D17 platform operator** — platform org + `platform_operator` role + service account (private-key JWT); guard + dry-run rollout.
+3. **Release admin UI** — tenant list, pointer history, channel assignment, promote/rollback buttons.
+4. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
+5. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.
 

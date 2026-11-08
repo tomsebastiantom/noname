@@ -1,6 +1,6 @@
 # Implementation block — fix release audit, then the operator boundary
 
-> **Status:** implementation plan · **Date:** 2026-11-07 (America/Toronto)
+> **Status:** **Part 1 (release audit fix) implemented and verified 2026-11-07**; parts 2–4 pending.
 > **Why this block:** the release control plane is built, but release moves still write **business records** with
 > `data.actor`. That is the earlier mistake. It is fixed **before** anything else is tested or the platform
 > operator is introduced.
@@ -67,6 +67,21 @@ operator will pass `service` explicitly when its guard lands.
 | unit — no-op | promoting the same release twice writes no second audit row |
 | integration | `evidence_audit_events` has the row; `evidence_records` has **no** new release row |
 | regression | tenant admin promote still works (own org) |
+
+## 3a. Part 1 evidence (2026-11-07)
+
+| Check | Result |
+|---|---|
+| Unit | **50/50** release-domain tests (7 pointer + 8 environment + 5 channel + 7 release + 15 classifier + 4 migration policy + 4 retention) |
+| Full suite | **639/639**, 143 files |
+| Typecheck | clean |
+| Live promote | `evidence_records` count stayed **16** (no new release record); `evidence_audit_events` count **1** |
+| Audit row | `platform.release.tenant_promoted`, `actor_type=user`, `actor_id=admin@…`, `subject=tenant.storefront`, `from/to` correct |
+| Live rollback | `platform.release.tenant_rolled_back` row written |
+| Historical | 16 legacy records untouched; no backfill, no delete |
+
+**Limit recorded:** actor type is `user`/`system` until the platform operator passes `service`; that lands with the
+guard. `requestId` in metadata waits for the middleware (part 2).
 
 ## 4. Then (not in this first commit)
 
