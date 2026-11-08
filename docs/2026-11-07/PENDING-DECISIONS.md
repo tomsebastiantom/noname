@@ -18,7 +18,7 @@
 | **D14** | What counts as a release | bundle only / bundle + image + migrations + config / whole environment | **Bundle + image + migrations + config** — **implemented 2026-11-07** | **Highest** — defines the unit everything else moves |
 | **D15** | How a server change reaches cohorts | deploy-all after preview / blue-green / per-tenant versions / flags | **Preview + blue-green + flags; no per-tenant servers** — **implemented 2026-11-07** | **Highest** — the missing server half |
 | **D16** | Migrations across a release | expand/contract / breaking + downtime / per-tenant schema | **Expand/contract mandatory** — **implemented 2026-11-07** | High — shared database |
-| **D17** | Who may promote across tenants (waves) | platform service token / platform org role / env allowlist / separate control plane | **Platform service token now, platform org role later** | High — waves are unsafe without it |
+| **D17** | Who may promote across tenants (waves) | platform service token / **platform org + service account (private-key JWT)** / env allowlist / separate control plane | **B — machine service account, private-key JWT; A local fallback only** — **chosen 2026-11-07, implementation pending** | High — waves are unsafe without it |
 | **D2** | Machine-definition versions and pinning | append-only versions / instance snapshot / event sourcing | **Append-only versions + pinned instance** — **implemented 2026-11-07** | High — definition updates no longer hit in-flight carts |
 | **D3** | Channels and canary rollout (V2) | defer / release-domain channel table / tenant column / rules engine | **B — release-domain channel table, implemented 2026-11-07** | Done |
 | **D4** | Tenant roles for `M2.permissions` | live ZITADEL API / projection table / token claims / drop | **A — implemented (role map + mandatory audience; no cache yet)** | E8 closed |
@@ -629,7 +629,8 @@ database is the hard part.
 
 ## D17 — Who may promote across tenants?
 
-**Status:** **proposed** — see [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md).
+**Status:** **chosen 2026-11-07 — B (machine service account, private-key JWT)**; implementation pending. A is a
+local fallback only. See [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md).
 
 **Question.** Promotion waves move many orgs at once. Today every org admin holds `releases:write` for its own
 org, and machine tokens are bound to one org. What identity is allowed to act **across** orgs?
@@ -643,13 +644,14 @@ org, and machine tokens are bound to one org. What identity is allowed to act **
 | **C. Env allowlist** | List operator user IDs in env | No new concepts | No rotation/audit; leaks easily |
 | **D. Separate control plane** | Own service + OIDC | Strong isolation | Heavy for a pointer operation |
 
-**Recommendation: A now, B later.** `requirePlatformOperator` = actor has `releases:platform_write` **and** its
-org is `PLATFORM_ORG_ID`; unset env fails closed (503). The wave endpoint takes an explicit org list, supports
-dry-run, caps batch size, and records one Evidence row per org. **Audit is a precondition:** the tenant-visible
-and platform-wide audit design is in [`AUDIT-LOGGING-DESIGN.md`](./AUDIT-LOGGING-DESIGN.md); phases A–C ship
-before multi-org writes.
+**Recommendation: B now, machine-first.** A dedicated platform org, a `platform_operator` role, and a **service
+account** authenticated with **private-key JWT** (ZITADEL’s recommended method). The service account gets a
+short-lived access token with `aud`/`jti`; the API verifies it through the existing JWKS path. **A** (`nsv.` token)
+is a local fallback only. The wave endpoint takes an explicit org list, supports dry-run, caps batch size, and
+records one Evidence row per org. **Audit is a precondition:** the tenant-visible and platform-wide audit design is
+in [`AUDIT-LOGGING-DESIGN.md`](./AUDIT-LOGGING-DESIGN.md); phases A–C ship before multi-org writes.
 
-**Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
+**Decision:** ☐ A  ☑ **B**  ☐ C  ☐ D  ☐ other: ______________________
 
 ---
 

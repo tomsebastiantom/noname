@@ -178,44 +178,42 @@ before any new privilege exists (C10).
 - the audit row and its access-log line share `requestId` once access logs exist;
 - no schema change (C5).
 
-## 3. Step ② — D17 phase 0/1 (boundary, dry-run only)
+## 3. Step ② — D17 boundary (chosen: B — service account + private-key JWT)
 
-### Where
+**Chosen path (2026-11-07):** a dedicated platform org, a `platform_operator` role, and a ZITADEL **service
+account** authenticated with **private-key JWT** (RFC 7523). The service account gets a short-lived access token
+with `aud`/`jti`; the API verifies it through the existing JWKS path.
 
 | Change | File |
 |---|---|
-| Permission keys `RELEASES_PLATFORM_READ/WRITE` | `packages/auth/src/permissions.ts` |
-| **Exclude** them from tenant role expansion (`TENANT_PERMISSIONS`, admin = tenant only) | same file |
-| `PLATFORM_ORG_ID` config | `.env.example`, docs |
-| Guard `requirePlatformOperator` | `packages/server/src/domains/release/platform-guard.ts` (new) |
-| Operator token mint | `scripts/mint-platform-token.ts` (new), uses `signServiceToken` |
-| Dry-run endpoint | `domains/release/api.ts` → `POST /api/releases/:id/rollout` with `dryRun` forced |
+| platform org, role `platform_operator`, service account, private key | `scripts/init/zitadel-oidc.ts` (or a dedicated init step) |
+| role → platform permissions; excluded from tenant expansion | `packages/auth/src/permissions.ts` |
+| `PLATFORM_ORG_ID` | `.env.example`, docs |
+| guard `requirePlatformOperator` | `domains/release/platform-guard.ts` (new) |
+| operator CLI: sign assertion → token endpoint → call API | `scripts/platform-operator.ts` (new) |
+| dry-run endpoint | `domains/release/api.ts` → `POST /:id/rollout` with `dryRun` forced |
 
-### ZITADEL in phase 0/1 — no changes
+Guard shape (the service account is a JWT actor, not a machine token):
 
-Option A deliberately does **not** touch ZITADEL:
+```ts
+const actor = await requireAuthenticatedActor(c);        // existing JWKS verification
+if (actor instanceof Response) return actor;
+if (!actorHasPermission(actor, PERMISSIONS.RELEASES_PLATFORM_WRITE)) return 403;
+if (getOrgId(c) !== platformOrgId()) return 403;          // edge org = platform org
+if (!platformOrgId()) return 503;                         // fail closed
+```
 
-- no new project role;
-- no role assignment;
-- no login flow for the operator;
-- tenant roles and assignments stay exactly as they are.
+- The service account token carries `platform_operator`; the role map grants the platform permissions.
+- The platform permission is excluded from tenant roles (C6).
+- The CLI never stores a long-lived access token; it signs a short assertion per session.
+- The private key lives in a secret manager, not in `.env`.
 
-The operator token is signed by the server (`nsv.` + `SERVICE_TOKEN_SECRET` / `WORKER_SERVER_SECRET`) with
-`orgId = PLATFORM_ORG_ID`. The guard verifies permission + org; ZITADEL is not consulted.
+### Fallback A — local only (`nsv.` token)
 
-Option B (human platform operator) is the only version that changes ZITADEL:
+The original mint-script path is kept for local development when ZITADEL is unreachable. It is **not** the
+production credential: the signing secret can mint any permission and there is no revocation.
 
-1. `scripts/init/zitadel-oidc.ts` adds a project role `platform_operator`;
-2. it is assigned **in the platform org**;
-3. `ROLE_PERMISSIONS` maps it to `releases:platform_*`;
-4. the operator logs in as a platform-org user.
-
-That is a later phase, after waves exist and a console is worth building.
-
-**Local setup:** `PLATFORM_ORG_ID` must be a dedicated org id that is *not* a storefront tenant. For local e2e a
-synthetic id is enough (the guard compares strings); for staging use a real platform org in ZITADEL.
-
-### Guard shape
+### Guard shape (A fallback)
 
 ```ts
 const actor = await requireAuthenticatedActor(c);        // existing guards
@@ -250,58 +248,53 @@ claims for per-token audit/revocation — additive and backward compatible.
 - dry-run writes no pointer row and no Evidence record;
 - `ROLE_PERMISSIONS.admin` does not contain the platform permission (unit test).
 
-## 4. Step ③ — token issuance/revocation audit
+## 4. Step ③ — credential lifecycle audit (path B)
 
 ### Where
 
-| Change | File |
+| Change | Source |
 |---|---|
-| Audit on mint | `scripts/mint-platform-token.ts` → `evidence.audit({ action: "platform.operator.token_issued", … })` |
-| Audit on revoke | `scripts/revoke-platform-token.ts` (new) or documented secret rotation |
-| Token identity | add optional `jti` to `ServiceTokenClaims` (additive) |
+| service account created, role granted, key added/rotated, account disabled | **ZITADEL admin audit** (the IdP is the source of truth) |
+| every wave/promotion by the service account | **app audit** from step ① |
+| export of ZITADEL events to the platform stream | audit phase C export |
+
+No app-issued token, so no token hash is stored. There is no mint script in path B.
 
 ### What is audited
 
-```ts
-{
-  orgId: platformOrgId,
-  action: "platform.operator.token_issued",
-  actorType: "user",              // the human running the script
-  actorId: operatorId,
-  subjectType: "platform.operator_token",
-  subjectId: tokenHash,           // sha256 of the token, never the token
-  metadata: { serviceId, permissions, exp, requestId? },
-}
-```
-
-- Storing only the hash means the audit log cannot be used to replay the credential.
-- `jti` makes revocation-by-id possible later; v1 revocation is **rotate the signing secret** (all tokens),
-  documented and audited.
-- No new table is required for this step; `evidence_audit_events` already has actor/subject/action/reason.
+- ZITADEL: service account lifecycle + role assignment + key changes.
+- App: `platform.release.tenant_promoted` / `rolled_back` / `environment.switched`, actor =
+  `service:<service-account-id>`.
+- The service account id (not a secret) is the actor; the private key never appears in logs.
 
 ### Acceptance
 
-- mint → exactly one audit row, no secret in it;
-- revoke/rotation → one audit row;
-- the audit row is not tenant-visible (platform stream only), because `orgId = PLATFORM_ORG_ID`.
+- creating the service account / granting the role is visible in the ZITADEL audit;
+- disabling the service account makes the next wave fail with 401/403;
+- app audit rows show the service-account actor and the tenant.
+
+### Fallback A (local only)
+
+If the `nsv.` fallback is used locally, its mint script writes `platform.operator.token_issued` with a **hash** of
+the token (never the token), and rotation writes one revocation row. That path is not used in production.
 
 ## 5. Compliance matrix
 
 | Constraint | Step ① | Step ② | Step ③ |
 |---|---|---|---|
-| C1 org isolation | audit org from edge | guard requires platform org | token audit org = platform org |
-| C2 roles in ZITADEL | no role storage | no ZITADEL role created (A) | no role storage |
-| C3 machine token | — | reuses `nsv.` + org check | same |
+| C1 org isolation | audit org from edge | guard requires platform org | app audit actor = service account |
+| C2 roles in ZITADEL | no role storage | `platform_operator` role in the platform org; no app role table | no role storage |
+| C3 machine identity | — | JWKS-verified service-account JWT; edge org = platform org | same |
 | C4 append-only Evidence | uses `evidence.audit` | no Evidence writes (dry-run) | uses `evidence.audit` |
-| C5 additive schema | none | none | none (optional `jti` is token format, not DB) |
+| C5 additive schema | none | none | none |
 | C6 platform permission exclusion | — | **required** | — |
 | C7 fail closed | — | 503 when env unset | — |
-| C8 logging non-blocking | requestId only | — | script only |
+| C8 logging non-blocking | requestId only | — | — |
 | C9 no wildcard | — | explicit `orgIds` | — |
 | C10 attribution first | **this step** | after ① | after ② |
 
-**No migrations in steps ①–③.** The only auth change is additive permission keys with an explicit exclusion; the
-only token change is an optional claim.
+**No migrations in steps ①–③.** The only auth change is additive permission keys with an explicit exclusion and
+one ZITADEL project role; there is no custom token format change.
 
 ## 6. Explicitly forbidden in these steps
 
@@ -322,7 +315,7 @@ only token change is an optional claim.
 | unit | audit event has actorType/actorId/requestId; tenant query filters org |
 | route | dry-run returns plan and writes nothing (SPY store) |
 | route | audit endpoint: tenant sees own, not other org |
-| script | mint writes one audit row; token hash differs from token |
+| script/init | service account with `platform_operator` gets platform permission; tenant admin does not |
 | regression | existing release promote still works for tenant admin (own org) |
 
 ## 8. Rollout and backout
@@ -346,7 +339,9 @@ logs → UI. Those are capability steps; the **safety minimum** is the three abo
 ## 10. Open questions
 
 1. `AUDIT_READ` for `access_manager` too, or admin only? (Recommendation: admin only in v1.)
-2. Token `jti` now or when per-token revocation is needed? (Recommendation: add it now; it is additive.)
-3. Does the mint script write audit directly through `EvidenceService` (same DB credentials), or does the
-   platform operator call an API? (Recommendation: script writes through the service; it already holds the signing
-   secret, so it is the same trust boundary.)
+2. Platform org: create a dedicated ZITADEL org in `init:zitadel`, or point `PLATFORM_ORG_ID` at an existing one?
+   (Recommendation: dedicated org, created once, never a storefront tenant.)
+3. Key rotation: who owns the service-account private key, and how often is it rotated? (Recommendation: secret
+   manager, 90 days, two-key overlap.)
+4. ZITADEL audit export: use the Event API to mirror service-account/role events into the platform stream, or rely
+   on the IdP console? (Recommendation: mirror via Event API in phase C.)

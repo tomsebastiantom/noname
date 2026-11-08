@@ -149,8 +149,10 @@ granted explicitly, audited as its own class of action, and the tenant path stay
 
 ## 4. Recommendation
 
-**A now, B later.** The machine path unblocks waves without inventing a second auth system; B becomes worthwhile
-when a human console for releases exists.
+**B now, machine-first.** A dedicated platform org with a `platform_operator` role and a **service account**
+authenticated by **private-key JWT** (RFC 7523) is the production path. It gives an audienced, revocable,
+IdP-issued token and reuses the existing JWKS verification. Option A (`nsv.` token) remains a **local fallback
+only** if ZITADEL is unavailable; it is not the production credential.
 
 Guard shape:
 
@@ -241,9 +243,8 @@ That said, a custom HMAC token is a **second authenticator with custom crypto**,
 | **C. SPIFFE / mTLS** | workload identity from infrastructure | strongest for clusters; not for a laptop CLI |
 | **D. cloud IAM** | if deployed on a cloud with workload identity | excellent there; not portable |
 
-**Recommendation:** keep **A** for the first slice; record **B** as the convergence target when the platform
-operator becomes an external integration or when enterprise SSO is required. Do **not** build a second permission
-vocabulary in the meantime — that would be the actual parallel system.
+**Recommendation:** choose **B now** for the machine path (service account + private-key JWT); **A** only as a
+local fallback. Do **not** build a second permission vocabulary — that would be the actual parallel system.
 
 This mirrors how AWS separates IAM roles (workload) from IAM Identity Center users (people), and Kubernetes
 separates ServiceAccounts from user identities: two authenticators, one authorization model.
@@ -302,9 +303,9 @@ point.
 | **C. ZITADEL service user + client credentials** | IdP issues RS256 token with `aud`, `jti`, revocation; app verifies JWKS | **recommended for production** |
 | **D. SPIFFE / mTLS** | workload identity from infrastructure | strongest in-cluster, not for a laptop CLI |
 
-**Recommendation:** keep **A** for the local slice (short TTL, separate secret, audit mint, add `jti`/`aud` when the
-mint script lands); move to **C** before the platform operator is used for real cross-tenant waves. Do not add a
-new crypto library just to wrap the same shared secret — that changes the format, not the trust model.
+**Recommendation:** choose **B** now — service account + private-key JWT (ZITADEL’s recommended method), not
+client credentials. **A** remains only as a local fallback if ZITADEL is unavailable. Do not add a new crypto
+library just to wrap the same shared secret — that changes the format, not the trust model.
 
 **Key custody today:** secrets live in `.env` (`SERVICE_TOKEN_SECRET`, `AGENT_TOKEN_SECRET`), and the mint script
 runs on the operator's machine. In staging/production they must come from the secret manager/KMS, and the platform
@@ -378,6 +379,51 @@ row per promoted org; one summary row for the wave.
 
 **Conclusion:** the wave endpoint can be built with criteria 1, 2, 4, 5, 6 now; criteria 3, 7, 8 need the
 tenant catalog/status and a verdict lookup first. “All tenants” is a materialised, reviewed list — never `"*"`.
+
+## 5b. Access scope — what the operator can and cannot do
+
+**The token is org-bound to the platform org.** That single fact limits it:
+
+| Route class | Behaviour with the platform token |
+|---|---|
+| normal tenant route (`/api/tenants/:other/...`, documents, orders, roles) | **403** — edge/blog `x-org-id` is the tenant, token org is platform; they must match |
+| platform route (`/api/releases/:id/rollout`, platform audit, tenant catalog) | allowed, because the guard checks **platform permission + platform org** and the body names explicit `orgIds` |
+| arbitrary cross-tenant read | **not exposed** — there is no “read any tenant” endpoint for the operator |
+
+So “can access all tenants” means **can perform the release operations it is given, for the orgs it names** — not
+“can browse every tenant’s data”. Anything broader would be a separate, reviewed endpoint.
+
+### Who runs it
+
+| Runner | Credential | Use |
+|---|---|---|
+| **Release manager** (human operator) | service-account private key from a secret manager → short-lived ZITADEL access token | interactive wave: dry-run, review, execute |
+| **CI/CD pipeline** | same service account, separate key/secret, restricted environment | scheduled/automated wave with an approval gate |
+| **Console (later)** | human login in the platform org + `platform_operator` role | product UI |
+
+The tenant admin never has this credential; the operator never borrows a tenant token.
+
+### Workflow
+
+```
+1. build      CI creates the release record (D14)
+2. verify     eval gate runs; verdict attached to the release
+3. select     operator reads the tenant catalog; names orgIds
+4. dry-run    POST /rollout { dryRun: true } → eligible / skipped per org
+5. approve    human or pipeline approval (recorded)
+6. execute    POST /rollout → per-org promote + one audit row per org
+7. observe    platform audit + metrics
+8. rollback   pointer/selector back; audit row
+```
+
+### Enforcement summary
+
+- token org must equal `PLATFORM_ORG_ID`;
+- permission must be `releases:platform_write`;
+- org list is explicit, capped, never `"*"`;
+- release must be `ready` and pass the migration gate;
+- every move audited per tenant;
+- token revocation = disable the service account / rotate the key.
 
 ## 6. Implementation plan
 
