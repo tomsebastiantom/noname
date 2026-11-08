@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import {
   hasPermission,
   intersectAgentPermissions,
@@ -19,7 +20,9 @@ let cachedActorKey: ServiceAccountKey | null = null;
 
 function agentActorKey(): ServiceAccountKey {
   if (cachedActorKey) return cachedActorKey;
-  const path = process.env.ZITADEL_AGENT_KEY_PATH?.trim() ?? "zitadel_keys/agent-runner-sa.json";
+  const path =
+    process.env.ZITADEL_AGENT_KEY_PATH?.trim() ??
+    fileURLToPath(new URL("../../../../../zitadel_keys/agent-runner-sa.json", import.meta.url));
   const parsed = JSON.parse(readFileSync(path, "utf8")) as ServiceAccountKey;
   cachedActorKey = parsed;
   return parsed;

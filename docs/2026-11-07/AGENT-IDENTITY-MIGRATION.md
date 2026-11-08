@@ -105,11 +105,19 @@ That is the complete identity chain: private-key JWT → actor token → token e
 **Next action:** wire this verifier into the guard, add `zitadel_agent_user_id`, replace minting, delete `nag.` in
 the same cutover.
 
-**Cutover implemented (2026-11-07).** The guard now verifies ZITADEL agent JWTs (JWKS + `act`, userinfo fallback)
-instead of `nag.`; the registry `mintToken` performs private-key JWT + RFC 8693 exchange with the user token as
-subject. The `nag.` verifier, mint helper, module and tests are deleted. Unit suites pass **64/64** agent/auth and
-**9/9** verifier. Live agent-task E2E is the remaining step (needs the API restarted with the agent client id/secret
-and key path).
+**Live agent-task E2E (2026-11-07).** With the API restarted and the agent exchange env configured:
+
+| Step | Result |
+|---|---|
+| editor OIDC token (Session API + PKCE) | issued |
+| `POST /api/agents/registry` as editor | **201**, `ownerUserId = editor` |
+| `POST /api/agents/registry/:id/token` | **200**, delegated JWT `.sub = editor`, `.act.sub = agent machine user` |
+| `GET /api/documents/layout` with the delegated JWT | **200** — agent authenticated and authorized through the `PERMISSIONS` catalogue |
+| old `nag.` token on the same route | **401** — the legacy path is gone |
+
+**Remaining objective gaps:** the guard maps the agent to `act.sub`, but `registered_agents.zitadel_agent_user_id`
+and **one service account per agent** are not implemented yet — the current actor is the shared `agent-runner`
+service account. Audit parity for mutating agent actions is also not yet exercised (the E2E request was a read).
 
 
 
