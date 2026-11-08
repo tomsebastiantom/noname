@@ -164,6 +164,11 @@ is independently reversible.
 4. Revoking the token is the emergency stop; the pointer/selector state is untouched by revocation.
 5. Every move is audited per org; the wave summary is audited once.
 
+**Audit is a precondition, not a follow-up.** The tenant must be able to see who moved it, from which release, and
+why; the platform stream must be queryable across orgs and exported for SOC 2. That design is in
+[`AUDIT-LOGGING-DESIGN.md`](./AUDIT-LOGGING-DESIGN.md) — phases A–C ship before writes are enabled for more than
+one org.
+
 **What we will not do**
 
 - reuse ZITADEL `IAM_OWNER` as the app operator (IdP superuser is not an app capability, and it is not in our

@@ -643,7 +643,9 @@ org, and machine tokens are bound to one org. What identity is allowed to act **
 
 **Recommendation: A now, B later.** `requirePlatformOperator` = actor has `releases:platform_write` **and** its
 org is `PLATFORM_ORG_ID`; unset env fails closed (503). The wave endpoint takes an explicit org list, supports
-dry-run, caps batch size, and records one Evidence row per org.
+dry-run, caps batch size, and records one Evidence row per org. **Audit is a precondition:** the tenant-visible
+and platform-wide audit design is in [`AUDIT-LOGGING-DESIGN.md`](./AUDIT-LOGGING-DESIGN.md); phases A–C ship
+before multi-org writes.
 
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ D  ☐ other: ______________________
 
