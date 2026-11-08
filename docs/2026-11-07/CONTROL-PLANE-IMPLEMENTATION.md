@@ -30,7 +30,7 @@
 | Change | File |
 |---|---|
 | `x-request-id` middleware (accept upstream, else UUID; echo; span attribute) | `packages/server/src/shared/request-id.ts` (new), registered in `bootstrap.ts` **before** `orgMiddleware` |
-| Release promote/rollback/switch write **audit** events instead of `data.actor` | `domains/release/pointer-service.ts`, `domains/release/environment-service.ts` |
+| Release promote/rollback/switch write **audit** events instead of `data.actor` | `domains/release/pointer-service.ts`, `domains/release/environment-service.ts`, `domains/release/channel-service.ts` |
 | Tenant audit permission | `packages/auth/src/permissions.ts` (`AUDIT_READ`), route options in `bootstrap.ts` |
 | Audit query already exists | `domains/evidence/routes.ts` → `GET /api/evidence/audit` |
 
@@ -190,6 +190,30 @@ before any new privilege exists (C10).
 | Guard `requirePlatformOperator` | `packages/server/src/domains/release/platform-guard.ts` (new) |
 | Operator token mint | `scripts/mint-platform-token.ts` (new), uses `signServiceToken` |
 | Dry-run endpoint | `domains/release/api.ts` → `POST /api/releases/:id/rollout` with `dryRun` forced |
+
+### ZITADEL in phase 0/1 — no changes
+
+Option A deliberately does **not** touch ZITADEL:
+
+- no new project role;
+- no role assignment;
+- no login flow for the operator;
+- tenant roles and assignments stay exactly as they are.
+
+The operator token is signed by the server (`nsv.` + `SERVICE_TOKEN_SECRET` / `WORKER_SERVER_SECRET`) with
+`orgId = PLATFORM_ORG_ID`. The guard verifies permission + org; ZITADEL is not consulted.
+
+Option B (human platform operator) is the only version that changes ZITADEL:
+
+1. `scripts/init/zitadel-oidc.ts` adds a project role `platform_operator`;
+2. it is assigned **in the platform org**;
+3. `ROLE_PERMISSIONS` maps it to `releases:platform_*`;
+4. the operator logs in as a platform-org user.
+
+That is a later phase, after waves exist and a console is worth building.
+
+**Local setup:** `PLATFORM_ORG_ID` must be a dedicated org id that is *not* a storefront tenant. For local e2e a
+synthetic id is enough (the guard compares strings); for staging use a real platform org in ZITADEL.
 
 ### Guard shape
 
