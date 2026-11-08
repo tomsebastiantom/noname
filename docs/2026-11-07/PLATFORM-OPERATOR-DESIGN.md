@@ -80,56 +80,49 @@ ZITADEL-only; the JWT is the runtime source.
 5. `POST /api/releases/:id/promote` passes `denyUnless(RELEASES_WRITE)` — for **Yoga only**, because the token and
    edge org are Yoga.
 
-### Example — the platform operator (D17 option A)
+### Example — the platform operator (B)
 
-There is **no new role and no login**. The operator runs a script that holds the signing secret:
+1. `init:zitadel` creates the dedicated platform org, the `platform_operator` project role, and a service account;
+   the public key is registered in ZITADEL, the private key goes to the operator’s secret manager.
+2. The operator CLI signs a short JWT assertion with that private key and exchanges it at the ZITADEL token
+   endpoint for an access token (`aud`, `jti`, 15 min).
+3. The API verifies the token through the existing JWKS path, checks `PLATFORM_ORG_ID`, and checks that
+   `platform_operator` grants `releases:platform_*`.
+4. A human operator later logs into the same platform org; the same role and guard apply.
 
-```
-mint nsv. token { serviceId: "release-operator", orgId: PLATFORM_ORG_ID,
-                  permissions: ["releases:platform_write"], exp: +15m }
-```
-
-- no ZITADEL project role is created;
-- no user is assigned anything;
-- the token is the credential, and its `orgId` must equal `PLATFORM_ORG_ID`;
-- the guard checks **permission + org**, not the ZITADEL role claim.
-
-That is why option A is small: it reuses the existing machine-token path, not the human role path.
-
-### If option B is chosen later (human platform operator)
-
-1. Create a ZITADEL project role `platform_operator` (init script).
-2. Assign it to the operator in the **platform org**.
-3. Add it to the code role map with `releases:platform_*` permissions.
-4. Operator logs in as a platform-org user; JWT carries the role; the same guard checks org + permission.
-
-The extra work is steps 1–3 plus the login/console; the guard does not change.
+There is **no `nsv.` platform token**. `nsv.` remains the eval service credential.
 
 ### Where audit attaches
 
-- Role **creation/assignment** happens in ZITADEL — the app mirrors ZITADEL’s admin audit (audit phase E).
-- Token **minting/revocation** is an app action — audit phase B.
-- A **promotion** is an app action — audit phase A.
+- Role/service-account **creation, assignment, key rotation** happens in ZITADEL — mirror its admin audit.
+- A **promotion** is an app action — audit phase A (structured `evidence.audit`).
 
-## 3. Options
+## 3. Chosen: B — platform org + service account (private-key JWT)
 
-| Option | How it works | Pros | Cons |
-|---|---|---|---|
-| **A. Platform service token** | Mint `nsv.` token with `orgId = PLATFORM_ORG_ID` and `releases:platform_write`; operator CLI sends it; guard checks permission **and** org | Smallest; reuses `service-token.ts`, `MachineActor`, existing audit; no ZITADEL project changes; short TTL | No human SSO/UI; token handling is operational |
-| **B. Platform org + role** | A dedicated ZITADEL org with project role `platform_operator`; humans log in there; permission expanded from that role; guard checks org **and** role | Human path, console-ready, ZITADEL-managed | Needs a new project role, init script migration, and the role key must not be grantable in tenant orgs; more moving parts |
-| **C. Env allowlist** | `PLATFORM_OPERATOR_USER_IDS` / emails in env; guard compares | No new concepts | No rotation, no audit trail of who was allowed, easy to leak, not scalable |
-| **D. Separate control-plane service** | Its own OIDC auth and API | Strong isolation | New deployable + auth surface for an operation that is a few hundred rows |
+A dedicated ZITADEL **platform org** with a project role `platform_operator`, assigned to a **service account**
+that authenticates with **private-key JWT** (RFC 7523). The service account receives a short-lived access token
+with `aud`/`jti`; the API verifies it through the existing JWKS path and checks the platform org + permission.
 
-**Example (A).**
+**Rejected (not implemented):**
+
+- **A. custom `nsv.` platform token** — a shared minting secret can mint any permission, no revocation; `nsv.`
+  stays scoped to the existing eval service only.
+- **C. env allowlist** — no rotation, no auditable provisioning.
+- **D. separate control-plane service** — a new deployable/auth surface for a few hundred rows.
+
+**Example.**
 
 ```
-PLATFORM_ORG_ID=4000… (platform org, not a storefront tenant)
-token = nsv.… { serviceId: "release-operator", orgId: PLATFORM_ORG_ID,
-                permissions: ["releases:platform_write"], exp: +15m }
+PLATFORM_ORG_ID=4000… (dedicated platform org, never a storefront tenant)
+service account: release-operator
+role:            platform_operator → releases:platform_read, releases:platform_write
+key:             private key in the secret manager (public key registered in ZITADEL)
+
+operator CLI → signs JWT assertion → ZITADEL token endpoint → access token (15 min, aud)
 
 POST /api/releases/r_17/rollout
   { orgIds: ["org_a", "org_b"], dryRun: true }
-→ guard: machine? permission present? token org == PLATFORM_ORG_ID? → yes
+→ guard: JWKS valid? org == PLATFORM_ORG_ID? role grants permission? → yes
 → dry-run plan: 2 promotable, 0 blocked
 ```
 
@@ -149,18 +142,17 @@ granted explicitly, audited as its own class of action, and the tenant path stay
 
 ## 4. Recommendation
 
-**B now, machine-first.** A dedicated platform org with a `platform_operator` role and a **service account**
-authenticated by **private-key JWT** (RFC 7523) is the production path. It gives an audienced, revocable,
-IdP-issued token and reuses the existing JWKS verification. Option A (`nsv.` token) remains a **local fallback
-only** if ZITADEL is unavailable; it is not the production credential.
+**B, machine-first.** A dedicated platform org with a `platform_operator` role and a **service account**
+authenticated by **private-key JWT** (RFC 7523). It gives an audienced, revocable, IdP-issued token and reuses the
+existing JWKS verification. There is **no second platform credential**: `nsv.` is eval-only and is not extended.
 
 Guard shape:
 
 ```ts
 requirePlatformOperator(c):
-  actor = requireAuthenticatedActor(c)
+  actor = requireAuthenticatedActor(c)          // JWKS-verified service account token
   actor.permissions includes RELEASES_PLATFORM_WRITE
-  AND actor.orgId (machine) / getOrgId(c) (human) === PLATFORM_ORG_ID
+  AND getOrgId(c) === PLATFORM_ORG_ID
   else 403 (or 503 when PLATFORM_ORG_ID is unset — fail closed)
 ```
 
@@ -168,21 +160,22 @@ Why not `RELEASES_WRITE` + org check only: a tenant admin’s token is bound to 
 already fail — but tying the capability to a **distinct permission** keeps the intent explicit and lets the
 platform org hold only platform permissions.
 
-## 4a. Machine vs human identity — why two paths, and why not IAM_OWNER
+## 4a. One authenticator per actor — service account for the operator
 
-The choice is not “ZITADEL or token”. It is **which identity is acting**:
+The platform has exactly one platform-operator credential: a **ZITADEL service account** in the platform org,
+authenticated with **private-key JWT**. There is no second platform credential.
 
-| Actor | Credential | Why | Audit actor |
+| Actor | Credential | Scope | Audit actor |
 |---|---|---|---|
-| **automation** (CLI, CI, wave job) | `nsv.` service token with `releases:platform_*`, 15 min | temporary, scoped, no human login, rotatable | `service:release-operator` |
-| **human** (console later) | ZITADEL login in the platform org + `platform_operator` role | unique person, MFA, joiner/mover/leaver, non-repudiation | `user:<id>` |
-| **never** | ZITADEL `IAM_OWNER` | instance-wide IdP admin, far beyond release waves | — |
+| **automation** (CLI, CI, wave job) | ZITADEL service account, private-key JWT → short-lived access token | platform org + `releases:platform_*` | `service:<service-account-id>` |
+| **human** (console later) | ZITADEL login in the platform org + `platform_operator` role | platform org | `user:<id>` |
+| **never** | ZITADEL `IAM_OWNER` | instance-wide IdP admin | — |
 
-**Why not a ZITADEL role for the machine now.** The service token already carries an explicit permission set and
-an org; adding an IdP role would create a second source of truth and a second provisioning path for an identity
-that never logs in. Short-lived tokens are the standard automation credential.
+**Why a service account, not `nsv.`:** the token is audienced, revocable, and issued by the IdP; the private key
+stays with the operator and the public key with ZITADEL. The custom `nsv.` token remains scoped to the existing
+eval service and is **not** extended to platform waves.
 
-**Why not `IAM_OWNER`.** It can manage the whole instance — organizations, users, IdP settings. Release waves need
+**Why not `IAM_OWNER`:** it can manage the whole instance — organizations, users, IdP settings. Release waves need
 one app permission over a named org list. Using the IdP superuser would violate least privilege, exceed what the
 app can scope or audit, and make an app bug an instance compromise.
 
@@ -207,109 +200,65 @@ app can scope or audit, and make an app bug an instance compromise.
 | **CC7.3/7.4** investigation | per-org audit rows + platform stream; export |
 | **Non-repudiation** | human actions use the human identity; automation actions are labelled as service, never a borrowed user token |
 
-### The rule
+### Authorization is unchanged
 
-Use **A** when a system or operator pipeline runs the wave. Use **B** when a person clicks promote in a console.
-Never share a human token for automation, and never use an IdP superuser for an application action.
-
-### Is the service token a parallel permission system?
-
-**No to parallel *authorization*; yes to a second *authenticator*.** The distinction matters:
-
-| Layer | What it answers | Source |
-|---|---|---|
-| **Authentication** | who is calling? | human: ZITADEL OIDC · machine: `nsv.` token |
-| **Authorization** | may this actor do X? | **the same `PERMISSIONS` catalog and the same guards** for both |
-
-The token does not define a second permission vocabulary. `actorHasPermission` checks the same keys
-(`releases:platform_write`, `machines:read`, …) for a machine actor and a human actor. ZITADEL remains the source
-of human roles; the token is the source of machine permissions.
-
-That said, a custom HMAC token is a **second authenticator with custom crypto**, and that has real costs:
-
-| Risk | Mitigation now | Proper end state |
-|---|---|---|
-| no standard audience/introspection | org binding + permission allowlist | OIDC client credentials with `aud` |
-| no `jti` / per-token revocation | short TTL; rotate the signing secret | `jti` + revocation list or IdP revocation |
-| shared HMAC secret | `SERVICE_TOKEN_SECRET`, operator-only | asymmetric keys / IdP-issued tokens |
-| custom code to maintain | small surface, tested | standards-based validation |
-
-**Options for the future**
-
-| Option | How | Trade-off |
-|---|---|---|
-| **A. keep `nsv.`** | current | smallest; custom crypto |
-| **B. ZITADEL service user + OIDC client credentials** | machine gets a real IdP identity, token carries scopes/roles | standard; adds IdP dependency and service-user provisioning |
-| **C. SPIFFE / mTLS** | workload identity from infrastructure | strongest for clusters; not for a laptop CLI |
-| **D. cloud IAM** | if deployed on a cloud with workload identity | excellent there; not portable |
-
-**Recommendation:** choose **B now** for the machine path (service account + private-key JWT); **A** only as a
-local fallback. Do **not** build a second permission vocabulary — that would be the actual parallel system.
+**Authentication** differs — a service account token for automation, a login token for a human. **Authorization**
+does not: both resolve to the same `PERMISSIONS` catalog and the same guards. There is no second permission
+vocabulary and no second platform credential.
 
 This mirrors how AWS separates IAM roles (workload) from IAM Identity Center users (people), and Kubernetes
 separates ServiceAccounts from user identities: two authenticators, one authorization model.
 
-### Agents, services and humans — three authenticators, one authorization
+### Agents, services and humans — one authorization, scoped authenticators
 
-The platform already has three actor types, and only one of them uses ZITADEL:
-
-| Actor | Credential | Where it is minted | Identity/limits |
+| Actor | Credential | Scope | Status |
 |---|---|---|---|
-| **human** | ZITADEL OIDC JWT | ZITADEL login | roles for the org; tenant admin scoped to its org |
-| **agent** | `nag.` HMAC token | server (`AGENT_TOKEN_SECRET`) | `agentId`, `agentSlug`, `orgId`, `onBehalfOf`, permissions ∩ creator |
-| **machine** | `nsv.` HMAC token | server (`SERVICE_TOKEN_SECRET`) | `serviceId`, `orgId`, explicit permissions |
+| **human** | ZITADEL OIDC JWT | its org | existing |
+| **platform operator** | ZITADEL **service account**, private-key JWT → access token | platform org + `releases:platform_*` | **chosen** |
+| **eval service** | `nsv.` HMAC token | one org, `machines:read` | existing, **eval only** |
+| **agent** | `nag.` HMAC token | one org, `onBehalfOf`, permissions ∩ creator | existing, converges later |
 
-All three resolve to the **same `PERMISSIONS` catalog** and the same guards; they differ only in how the caller is
-authenticated and what the token is allowed to carry.
+All resolve to the **same `PERMISSIONS` catalog** and the same guards. `nsv.` is not extended to platform waves and
+there is no second platform credential.
 
-**Why agents are not ZITADEL users today:** an agent is first-party automation acting **on behalf of** a creator.
-The `nag.` token carries `onBehalfOf` and permissions intersected with the creator's (`intersectAgentPermissions`),
-so delegation is explicit and the permission ceiling cannot be raised by the agent. A ZITADEL identity per agent
-would add provisioning and login machinery for an entity that never logs in.
-
-**When to change:** if agents become **third-party** or need cross-org delegation, move to standard OAuth 2.0:
-
-- **client credentials** (RFC 6749 §4.4) for a service/agent acting as itself;
-- **token exchange** (RFC 8693) for “agent acts on behalf of user”, which is exactly the current `onBehalfOf`
-  semantics but with a standard token and audience.
-
-That is the same convergence path as the platform token: `nag.`/`nsv.` now, standards-based workload identity
-later. Do not add a fourth scheme in between.
+**Agents** stay on `nag.` for now: it carries the delegation (`onBehalfOf`) and an explicit permission ceiling. If
+agents become third-party, move to OAuth 2.0 **client credentials** (RFC 6749 §4.4) or **token exchange**
+(RFC 8693) — the standard form of the same semantics.
 
 **Audit consequence:** actor types stay distinct (`user` / `agent` / `service`), so the audit row says whether a
-human, an agent, or a service acted — and `onBehalfOf` is recorded for agent actions.
+human, an agent, or a service acted; agent actions carry `onBehalfOf`.
 
-### Crypto, keys and libraries — what we actually use
+### Crypto — chosen path
 
-| Actor | Algorithm | Key | Verification | Standard? |
-|---|---|---|---|---|
-| human | JWT (RS256, issued by ZITADEL) | ZITADEL private key; public JWKS | WebCrypto + JWKS in `@noname/auth` | **yes** |
-| machine (`nsv.`) | HMAC-SHA256 over a base64url JSON payload | `SERVICE_TOKEN_SECRET` (fallback `WORKER_SERVER_SECRET`) | same secret | **no** |
-| agent (`nag.`) | HMAC-SHA256, same envelope | `AGENT_TOKEN_SECRET` | same secret | **no** |
+| Actor | Algorithm | Key | Verification |
+|---|---|---|---|
+| human | JWT (RS256, ZITADEL) | ZITADEL private key; public JWKS | WebCrypto + JWKS |
+| **platform operator** | **private-key JWT assertion → ZITADEL access token (RS256, `aud`, `jti`, expiry)** | service-account **private key** in a secret manager; public key at ZITADEL | **JWKS (existing path)** |
+| eval service (`nsv.`) | HMAC-SHA256 | `SERVICE_TOKEN_SECRET` | same secret (eval only) |
+| agent (`nag.`) | HMAC-SHA256 | `AGENT_TOKEN_SECRET` | same secret (agent only) |
 
-The service/agent tokens are implemented with `node:crypto` (`createHmac`, `timingSafeEqual`). They have
-`serviceId`/`agentId`, `orgId`, `permissions`, `exp` — but **no `aud`, no `jti`, no issuer, no asymmetric key**.
-`jose` is present in the dependency graph (transitively) but is not used for these tokens.
+The platform operator uses **no custom crypto and no shared signing secret**. The private key stays with the
+operator; the API verifies an IdP-issued token through the same JWKS path as a human token.
 
-**The real risk is key custody, not the envelope.** Anyone who holds `SERVICE_TOKEN_SECRET` can mint a token with
-any permission, including `releases:platform_write`. There is no per-token revocation and rotation invalidates all
-tokens. For a local first-party slice that is acceptable; for a privileged cross-tenant operator it is the weak
-point.
+`nsv.` and `nag.` remain technical debt with a limited blast radius: `nsv.` is scoped to the eval service,
+`nag.` to agents. Neither is extended to platform waves.
 
-| Option | What changes | Verdict |
-|---|---|---|
-| **A. harden `nsv.`** | add `jti` + `aud`, separate secret per capability, KMS/secret-manager custody, serviceId allowlist | minimum before production |
-| **B. standard JWT via `jose`** | HS256/RS256 JWT; standard parsing | format only; HS256 still shares the minting secret |
-| **C. ZITADEL service user + client credentials** | IdP issues RS256 token with `aud`, `jti`, revocation; app verifies JWKS | **recommended for production** |
-| **D. SPIFFE / mTLS** | workload identity from infrastructure | strongest in-cluster, not for a laptop CLI |
+**Key custody:** the service-account private key lives in a secret manager, rotated on a schedule with a two-key
+overlap; the eval and agent secrets remain separate so one leak cannot grant the others.
 
-**Recommendation:** choose **B** now — service account + private-key JWT (ZITADEL’s recommended method), not
-client credentials. **A** remains only as a local fallback if ZITADEL is unavailable. Do not add a new crypto
-library just to wrap the same shared secret — that changes the format, not the trust model.
+### Migration — what is ported, what is not
 
-**Key custody today:** secrets live in `.env` (`SERVICE_TOKEN_SECRET`, `AGENT_TOKEN_SECRET`), and the mint script
-runs on the operator's machine. In staging/production they must come from the secret manager/KMS, and the platform
-signing secret should be **separate** from the eval service secret so one leak does not grant both.
+| Existing thing | Action |
+|---|---|
+| tenant roles (`admin`, `editor`, …) and assignments | **unchanged**, not ported; ZITADEL remains their source |
+| `nsv.` eval service token | **unchanged**, eval only; no platform use, no migration |
+| `nag.` agent tokens | **unchanged** for now; converge to OAuth2/token exchange later |
+| `admin`/other project roles | **unchanged**; init must stay idempotent and must not delete them |
+| new `platform_operator` role | **net-new**; created in the platform org and assigned only to the service account |
+| old platform token/role, if one exists anywhere | **retire**, do not run both; there is no dual path |
+
+**No two mechanisms for the same action.** Platform release operations have exactly one credential: the service
+account. The role is added, never replacing tenant roles; nothing is backfilled into Postgres.
 
 ## 5. Wave endpoint (once the identity exists)
 

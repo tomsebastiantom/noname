@@ -11,7 +11,7 @@
 
 | Decision | Recommended | Why it blocks work |
 |---|---|---|
-| **D17** platform operator | **A** — service token now, B later | determines guard/token vs ZITADEL role |
+| **D17** platform operator | **B** — platform org + `platform_operator` role + service account, private-key JWT | determines guard/provisioning |
 | **D6 / B7** visual rubric | **Drop** | closes the eval catalogue without a model dependency |
 | **D9** gate `unverified` policy | **B** — human ack, block contract/data | wave eligibility needs a defined verdict |
 | **D5 / E20** checkout | **C** — contract test; provider smoke in staging | removes the last “blocked” ambiguity |

@@ -215,7 +215,7 @@ percentage traffic split — a request never sees two bundles.
 
 ## Next blocks
 
-1. **D17 platform operator** — design ready in [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md); choose A, then implement the guard + dry-run wave endpoint.
+1. **D17 platform operator** — design ready in [`PLATFORM-OPERATOR-DESIGN.md`](./PLATFORM-OPERATOR-DESIGN.md); **B chosen** (service account, private-key JWT), implement the guard + dry-run wave endpoint.
 2. **Release admin UI** — tenant list, pointer history, channel assignment, promote/rollback buttons.
 3. **R2 retention/GC** — object lifecycle for bundles whose release rows were pruned.
 4. Gate wiring: classify the `migration_set` artifact at release creation rather than only at promotion.

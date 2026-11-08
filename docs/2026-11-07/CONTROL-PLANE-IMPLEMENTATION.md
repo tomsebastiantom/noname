@@ -14,7 +14,7 @@
 |---|---|---|
 | C1 | **Org isolation** — edge `x-org-id` + HMAC, every request one org (`shared/org.ts`) | client-supplied org; cross-org reads outside a platform-permission route |
 | C2 | **Roles live in ZITADEL**, JWT is the runtime source (`TEAM-ROLES-ZITADEL.md`) | a Postgres `user→role` table, even as cache |
-| C3 | **Machine tokens** are `nsv.` with `orgId`, permissions and expiry (`service-token.ts`); guards reject org mismatch (`guards.ts`) | a token that is not org-bound, or permission escalation |
+| C3 | **Machine identities are org-bound**: `nsv.`/`nag.` tokens carry an org; the platform operator uses a ZITADEL service-account JWT whose org must equal `PLATFORM_ORG_ID` | a credential that is not org-bound, or permission escalation |
 | C4 | **Evidence is append-only**, written through the service port; no browser write route | writing audit rows as business records, or exposing writes |
 | C5 | **Schema changes are additive** (D16); destructive DDL is blocked | dropping/renaming anything in these steps |
 | C6 | **Tenant roles must not gain platform permissions** (`admin: ALL_PERMISSIONS` trap) | adding `releases:platform_*` to `ALL_PERMISSIONS` |
@@ -208,45 +208,14 @@ if (!platformOrgId()) return 503;                         // fail closed
 - The CLI never stores a long-lived access token; it signs a short assertion per session.
 - The private key lives in a secret manager, not in `.env`.
 
-### Fallback A — local only (`nsv.` token)
-
-The original mint-script path is kept for local development when ZITADEL is unreachable. It is **not** the
-production credential: the signing secret can mint any permission and there is no revocation.
-
-### Guard shape (A fallback)
-
-```ts
-const actor = await requireAuthenticatedActor(c);        // existing guards
-if (actor instanceof Response) return actor;
-if (!actorHasPermission(actor, PERMISSIONS.RELEASES_PLATFORM_WRITE)) return 403;
-if (actor.type !== "machine") return 403;                // phase 1: token only
-if (actor.orgId !== platformOrgId()) return 403;
-if (!platformOrgId()) return 503;                        // fail closed (C7)
-```
-
-- The guard reuses the existing machine-token verification (C3).
-- No new role assignment, no Postgres mapping (C2).
-- The permission is **platform-only**, excluded from `ALL_PERMISSIONS` for tenant roles (C6).
-- Phase 1 route performs **no writes**; it returns an eligibility plan (C10).
-
-### Token
-
-```
-nsv.<payload>.<hmac>
-payload: { serviceId: "release-operator", orgId: PLATFORM_ORG_ID,
-           permissions: ["releases:platform_read","releases:platform_write"], exp }
-```
-
-The mint script prints the token; the secret never leaves the operator environment. Optionally add `jti` to the
-claims for per-token audit/revocation — additive and backward compatible.
-
 ### Acceptance
 
 - tenant admin token → **403** (permission absent **and** org mismatch);
-- platform token wrong org → **403**;
+- service-account token for the wrong org → **403**;
 - `PLATFORM_ORG_ID` unset → **503**;
-- dry-run writes no pointer row and no Evidence record;
-- `ROLE_PERMISSIONS.admin` does not contain the platform permission (unit test).
+- dry-run writes no pointer row and no audit event;
+- `ROLE_PERMISSIONS.admin` does not contain the platform permission (unit test);
+- disabling the service account makes the next call fail (401/403).
 
 ## 4. Step ③ — credential lifecycle audit (path B)
 
@@ -272,11 +241,6 @@ No app-issued token, so no token hash is stored. There is no mint script in path
 - creating the service account / granting the role is visible in the ZITADEL audit;
 - disabling the service account makes the next wave fail with 401/403;
 - app audit rows show the service-account actor and the tenant.
-
-### Fallback A (local only)
-
-If the `nsv.` fallback is used locally, its mint script writes `platform.operator.token_issued` with a **hash** of
-the token (never the token), and rotation writes one revocation row. That path is not used in production.
 
 ## 5. Compliance matrix
 
