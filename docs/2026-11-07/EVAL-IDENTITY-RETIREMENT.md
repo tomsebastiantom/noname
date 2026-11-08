@@ -25,55 +25,49 @@
 - the worker sends a demo admin identity in edge headers;
 - two credential models for the same kind of actor (machine) is a duplicate mechanism.
 
-## 3. Options for eval identity
+## 3. Chosen: per-tenant eval service accounts
 
-| Option | How | Pros | Cons |
-|---|---|---|---|
-| **A. One platform eval service account** | service account in the platform org; role `eval_operator` → `machines:read` + `eval:tenant_read`; `/api/eval/context?tenant=` accepts an explicit target org | one account, standard tokens, no per-tenant provisioning | **cross-tenant read** of definitions; must be read-only + audited |
-| **B. One service account per tenant org** | each org gets an eval service account with `machines:read`; worker selects the key per tenant | least privilege | provisioning/key management scales with tenants; worker holds N keys |
-| **C. Keep `nsv.` as an exception** | no change | smallest | violates the one-credential rule; rejected |
+Eval reads tenant-scoped routes (`/api/eval/context`, definitions, documents), so a single platform account cannot
+replace `nsv.` without a cross-org read bypass or a proxy surface. The chosen model is **one eval service account per
+tenant org**:
 
-**Recommendation: A**, because eval is already a read-only measurement service and the alternative (N accounts and
-N private keys) is operationally heavy for a platform function. The cross-tenant read is bounded by:
+- the account lives in the tenant org and uses the tenant project role `eval_reader`;
+- the token is bound to that org, so every existing org/permission check still applies;
+- the CLI/worker select the key by the tenant org;
+- no platform token can read tenant data.
 
-- a **read-only** permission (`eval:tenant_read`, no writes to tenant data);
-- platform org only (`PLATFORM_ORG_ID`), same guard pattern as the operator;
-- an explicit `tenant` parameter, never “all tenants”;
-- one audit row per context read (who read which tenant), and the existing gate decision audit.
-
-If a tenant contract forbids platform read access, B is the fallback for that tenant.
+This is least privilege and needs no route changes. The provisioning and live verification are in
+[`EVAL-STEP4-CONSTRAINT.md`](./EVAL-STEP4-CONSTRAINT.md).
 
 ## 4. Target shape
 
 ```
-platform org
-  service account: eval-runner
-  role:            eval_operator → machines:read, eval:tenant_read, eval:record_write
-  auth:            private-key JWT → access token (aud, jti, 15 min)
+tenant org (yogastore)
+  service account: eval-runner-<org>
+  role:            eval_reader -> machines:read
+  auth:            private-key JWT -> access token (aud, jti, 15 min)
 
 CLI / worker
-  token = ZITADEL access token (no nsv)
-  GET /api/eval/context?tenant=yogastore
-  POST /api/eval/record { tenantSlug, result }
+  org  = resolve(tenant slug)
+  key  = zitadel_keys/tenants/<org>/eval-runner-sa.json
+  GET  /api/eval/context            (x-org-id = tenant)
+  POST /api/eval/record             (x-org-id = tenant)
 ```
 
-- `x-org-id` is the **platform org**; the target tenant is an explicit query/body field.
-- The API resolves the target tenant, checks `eval:tenant_read` / `eval:record_write`, and audits the read/write.
-- No demo admin identity in headers.
+- `x-org-id` is the **tenant org**, never the platform org.
+- No demo admin identity in headers; the actor is the service account.
+- A platform eval account exists only for future platform-scoped eval; it is not used by the CLI/worker.
 
 ## 5. Implementation plan
 
 | Step | Change |
 |---|---|
-| 1 | add `platform_operator`-style role `eval_operator` to the platform org (init) with `machines:read` + `eval:tenant_read` + `eval:record_write` |
-| 2 | create service account `eval-runner`, private key, client id; store key in secret manager |
-| 3 | `/api/eval/context` and `/api/eval/record` accept target tenant; guard requires platform org + eval permissions |
-| 4 | CLI: replace `--token` with service-account credentials (client id + private key path) and token exchange |
-| 5 | worker: replace `signServiceToken` with the service-account token; remove demo email headers |
-| 6 | delete `scripts/mint-service-token.ts`, remove `nsv.` from `service-token.ts` (or delete the module if unused) |
-| 7 | audit reads/writes; tests; e2e |
-
-**No schema change.** Permissions are additive; the eval tables are untouched.
+| 1 | tenant role `eval_reader`; one `eval-runner-<org>` account per tenant with a key and grant (`pnpm init:tenant-eval`) |
+| 2 | key stored under `zitadel_keys/tenants/<org>` (production: Vault) |
+| 3 | CLI resolves the org from the slug, loads the tenant key, exchanges it for an access token |
+| 4 | worker uses the job org to load the same tenant key |
+| 5 | server resolves `eval_reader` grants when the token has no role claim (ZITADEL behavior) |
+| 6 | delete `nsv.` verifier, `scripts/mint-service-token.ts`, and the machine-token branch |
 
 ## 6. Migration and compatibility
 
