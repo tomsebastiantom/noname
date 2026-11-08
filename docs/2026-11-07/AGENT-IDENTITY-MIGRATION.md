@@ -136,10 +136,21 @@ Database: `e2e-agent-1794105295471 → zitadel_agent_user_id 398642247689568269`
 **Mutating action.** The delegated token also created a layout (`POST /api/documents/layout` → **201**), so the agent
 path is not read-only.
 
-**Audit parity — not achieved.** The layout creation produced **no row** in `evidence_audit_events` (the table has
-only 3 historical release-audit rows), i.e. document mutations use a different audit path (or none). With `nag.`
-already deleted, old/new parity cannot be measured; the closest available evidence is the historical release-audit
-rows. This is the remaining objective gap, separate from agent authentication itself.
+**Audit attribution — verified, parity not measurable.** The layout create wrote a row to `document_ops`:
+
+```
+actor_type = agent
+actor_id   = 398642314748100621   (per-agent ZITADEL machine user)
+on_behalf_of = 397185959570964491 (editor)
+operation  = create
+```
+
+`document_ops` currently has **1 agent row** (the new path) and **109 human rows** — there are **no historical `nag.`
+agent rows** to compare against, so old/new parity cannot be measured. The new attribution shape is correct: the
+machine identity is the actor and the user is `on_behalf_of`.
+
+The earlier “no audit row” observation was checked against `evidence_audit_events`; document mutations record in
+`document_ops` instead.
 
 
 
