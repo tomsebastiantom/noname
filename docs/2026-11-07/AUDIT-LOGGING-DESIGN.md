@@ -101,6 +101,10 @@ violation — and it means extracting an `audit` domain, not moving audit to Cli
 
 ## 3. What must be logged
 
+**Who owns a row:** the audit row belongs to the **tenant whose state was touched**, not to the actor or the tool.
+Platform-global actions use `PLATFORM_ORG_ID`. The full scope matrix (pages, definitions, releases, orders,
+selector) is in [`AUDIT-SCOPE.md`](./AUDIT-SCOPE.md).
+
 | Event | Actor | Target | Fields |
 |---|---|---|---|
 | Platform operator token issued | the human/script that minted it | token id (hash), scope | `actorType`, `actorId`, `exp`, `permissions`, `reason` |
