@@ -109,7 +109,6 @@ beforeEach(() => {
   vi.stubEnv("ZITADEL_ISSUER", ISSUER);
   vi.stubEnv("ZITADEL_CLIENT_ID", CLIENT_ID);
   vi.stubEnv("ZITADEL_PROJECT_ID", PROJECT_ID);
-  vi.stubEnv("AGENT_TOKEN_SECRET", "test-agent-secret");
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {

@@ -19,7 +19,6 @@ export interface AgentDomainDeps {
   db: Database;
   executor: AgentExecutor;
   authorization: AuthorizationPort;
-  agentTokenSecret?: string;
   workerHooks?: AgentWorkerHooks;
   layout?: Pick<LayoutDocumentService, "update" | "get">;
   layoutCollabRooms?: Pick<
