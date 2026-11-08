@@ -260,6 +260,28 @@ AsyncLocalStorage, release audit rows carry it, and `/api/evidence/audit` requir
 **Limit recorded.** The audit route accepts an explicit machine `audit:read`; tenant admins get it through
 `admin`. Access logs still do not exist, but the join key (`requestId`) is now present.
 
+## 2026-11-07 — platform accounts provisioning
+
+**Scope.** Create the platform org, platform project, `platform_operator` / `eval_operator` roles, and the
+`release-operator` / `eval-runner` service accounts with keys and grants. Tenant project/roles untouched.
+
+**Code.** `scripts/init/platform-accounts.ts`, `init:platform-accounts` script, env keys in `.env.example`.
+
+### Verification
+
+| Check | Result |
+|---|---|
+| First run | org, project, 2 roles, 2 accounts, 2 keys, 2 grants created |
+| Second run | all reused/exists — **no duplicates** |
+| Token exchange | both keys → `/oauth/v2/token` **200**, `sub` = service-account id |
+| Grants | `ListUserGrants`: `platform_operator` and `eval_operator` on the platform project |
+| Keys | `zitadel_keys/*.json`, mode 0600, gitignored |
+| Role claim in token | **absent** — ZITADEL does not put machine-user project roles in the access token |
+
+**Consequence recorded.** The step-3 guard must resolve roles **server-side** via `ListUserGrants` (filtered to
+the platform project) and cache briefly; it cannot trust a role claim. See
+[`PLATFORM-ACCOUNTS-PROVISIONING.md`](./PLATFORM-ACCOUNTS-PROVISIONING.md) §4.
+
 ## Next blocks
 
 1. **Request-id + `AUDIT_READ`** — middleware, `requestId`/`traceId` in audit metadata, tenant audit route.
