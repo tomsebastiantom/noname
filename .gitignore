@@ -102,3 +102,4 @@ key.*
 shot-*.png
 browser-check.png
 browser-login.png
+.rancher-port-forwards.json
