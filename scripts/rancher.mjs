@@ -34,6 +34,7 @@ const SERVICES = [
   { name: "vault", local: 18200, remote: 8200, env: "VAULT_ADDR", url: "http://127.0.0.1:18200" },
   { name: "keto", local: 14466, remote: 4466, env: "KETO_READ_URL", url: "http://127.0.0.1:14466" },
   { name: "keto", local: 14467, remote: 4467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:14467" },
+  { name: "s3", local: 19000, remote: 9000, env: "R2_ENDPOINT", url: "http://127.0.0.1:19000" },
   { name: "zitadel", local: 8080, remote: 8080, env: "ZITADEL_ISSUER", url: "http://localhost:8080" },
 ];
 
