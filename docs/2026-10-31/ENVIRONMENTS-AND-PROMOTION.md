@@ -1,5 +1,11 @@
 # Environments and promotion
 
+> **Update 2026-11-11:** on the current machine the local arrangement is **Rancher Desktop for infra + the app on
+> the host**, not k3s-in-WSL, and **only one infra stack runs at a time** — compose and the cluster both bind
+> 5432/6379/8123/8200, so starting both produces two databases. See
+> [`../2026-11-11/LOCAL-RANCHER-ENV.md`](../2026-11-11/LOCAL-RANCHER-ENV.md). The staging/production matrix below
+> is unchanged.
+
 > **Status:** decision · **Date:** 2026-10-31 (America/New_York)
 > **Question:** how do local development, staging and production relate; what runs where; what is exposed where;
 > and how do manifests get promoted without local shortcuts leaking into production?

@@ -1,5 +1,10 @@
 # Local Kubernetes cluster (k3s in WSL) — how to use it
 
+> **Superseded for this machine (2026-11-11):** the local cluster is now **Rancher Desktop**, and the app runs
+> on the host. See [`../2026-11-11/LOCAL-RANCHER-ENV.md`](../2026-11-11/LOCAL-RANCHER-ENV.md). This document is
+> kept because the k3s-in-WSL approach still works elsewhere, and because the WSL-shutdown gotcha it describes is
+> the reason it was replaced.
+
 > **Date:** 2026-10-31 (America/New_York)
 > **Status:** **running.** Verified end-to-end: pod scheduled, ran, logged, cleaned up.
 > **Why k3s here:** podman's WSL machine is **rootless**, and minikube requires a *rootful* machine on WSL — changing that would re-own the volumes holding the running stack. k3s runs in the existing **Ubuntu** WSL distro instead, touching podman not at all.
