@@ -1,0 +1,51 @@
+# Local ingress — HTTP services on Rancher Desktop's Traefik (host ports 80/443).
+#
+# Why: on this machine the host cannot reach Kubernetes NodePorts (Rancher Desktop's WSL backend does not
+# publish them; only 80/443 are forwarded by Rancher's host-switch). Traefik *is* reachable on
+# http://localhost/, so HTTP services can share that one port instead of each owning a `kubectl
+# port-forward` process.
+#
+# Scope is deliberately narrow:
+#   - browser-facing UIs (Jaeger, Nango) use `*.localhost`, which browsers resolve to 127.0.0.1 by spec.
+#   - services the API reaches from Node (Vault, ClickHouse, Keto, Zitadel) stay on port-forwards: Windows
+#     does NOT resolve `*.localhost` for non-browser clients, and the hosts file needs admin rights.
+#   - Postgres/Redis are TCP, so an HTTP ingress cannot carry them at all.
+#
+# Do not copy this into base/: staging and production route through real DNS and TLS.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: jaeger
+  namespace: noname
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: jaeger.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: jaeger
+                port:
+                  name: ui
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nango
+  namespace: noname
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: nango.localhost
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: nango
+                port:
+                  name: server

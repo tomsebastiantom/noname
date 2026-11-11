@@ -14,6 +14,8 @@ resources:
   # Dev credentials. `base/` references these keys by name; the values only exist here. A staging or production
   # overlay must not copy this file — it references an external secret manager instead.
   - secrets.yaml
+  # Browser-facing HTTP services on Traefik (host ports 80/443) instead of one port-forward each.
+  - ingress.yaml
 
 patches:
   # ── storage class ────────────────────────────────────────────────────────────────────────────────

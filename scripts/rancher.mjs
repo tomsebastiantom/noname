@@ -4,7 +4,12 @@
  *
  * Rancher Desktop on Windows does not expose Kubernetes NodePorts on localhost reliably, so this script owns
  * a small set of `kubectl port-forward` processes and rewrites `.env` to those local ports. That is the only
- * host↔cluster bridge; the app still talks to the cluster, not to a second compose stack.
+ * host↔cluster bridge for the services the API reaches from Node.
+ *
+ * Browser-facing HTTP services (Jaeger, Nango) do not need a forward: they are published through Traefik on
+ * host port 80 by `deploy/overlays/local/ingress.yaml`, at http://jaeger.localhost and http://nango.localhost.
+ * Windows cannot resolve `*.localhost` for non-browser clients, which is why the API-facing services below
+ * stay on forwards.
  *
  *   node scripts/rancher.mjs up       apply infra, start forwards, migrate
  *   node scripts/rancher.mjs status   read-only
@@ -29,7 +34,7 @@ const SERVICES = [
   { name: "vault", local: 18200, remote: 8200, env: "VAULT_ADDR", url: "http://127.0.0.1:18200" },
   { name: "keto", local: 14466, remote: 4466, env: "KETO_READ_URL", url: "http://127.0.0.1:14466" },
   { name: "keto", local: 14467, remote: 4467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:14467" },
-  { name: "zitadel", local: 8080, remote: 8080, env: "ZITADEL_ISSUER", url: "http://127.0.0.1:8080" },
+  { name: "zitadel", local: 8080, remote: 8080, env: "ZITADEL_ISSUER", url: "http://localhost:8080" },
 ];
 
 function run(cmd, args, opts = {}) {
