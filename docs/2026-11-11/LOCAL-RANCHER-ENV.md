@@ -34,25 +34,35 @@ kubectl -n noname scale deploy api worker client browser --replicas=0
 
 `pnpm rancher up` does this automatically after applying the overlay.
 
-## 3. Ports
+## 3. Ports — owned by Rancher Desktop, not by a script
+
+Port forwards live in **Rancher Desktop → Port Forwarding**, using the fixed local ports below. Rancher
+persists them and re-creates them on every start.
 
 ```powershell
-pnpm rancher up        # apply infra, start forwards, migrate
-pnpm rancher forward   # forwards only
-pnpm rancher env       # rewrite .env only
-pnpm rancher status
-pnpm rancher down
+pnpm rancher up        # apply infra overlay, scale app deployments to 0, migrate
+pnpm rancher env       # rewrite .env to the fixed local ports
+pnpm rancher status    # cluster + reachability; exits 1 if a forward is missing
 ```
 
-| Service | Host | Cluster |
-|---|---|---|
-| postgres | 127.0.0.1:25432 | svc/postgres:5432 |
-| redis | 127.0.0.1:16379 | svc/dragonfly:6379 |
-| clickhouse | 127.0.0.1:18123 | svc/clickhouse:8123 |
-| vault | 127.0.0.1:18200 | svc/vault:8200 |
-| keto | 127.0.0.1:14466 / 14467 | svc/keto:4466 / 4467 |
-| s3 | 127.0.0.1:19000 | svc/s3:9000 |
-| zitadel | 127.0.0.1:8080 | svc/zitadel:8080 |
+| Service | Port name | Set Local Port to | Cluster |
+|---|---|---|---|
+| postgres | `postgres` | **25432** | svc/postgres:5432 |
+| dragonfly | `redis` | **16379** | svc/dragonfly:6379 |
+| clickhouse | `http` | **18123** | svc/clickhouse:8123 |
+| vault | `http` | **18200** | svc/vault:8200 |
+| keto | `read` | **14466** | svc/keto:4466 |
+| keto | `write` | **14467** | svc/keto:4467 |
+| s3 | `http` | **19000** | svc/s3:9000 |
+| zitadel | `http` | **8080** | svc/zitadel:8080 |
+
+Do **not** forward `keto metrics`, `clickhouse native`, `nango`, `jaeger`, `api`, `client` or `browser`:
+Jaeger and Nango are served by Traefik, ClickHouse is used over HTTP, and the three app deployments run on the
+host at 0 replicas.
+
+> **Why not a script.** `kubectl port-forward` started from a shell dies with that shell — from an agent or a
+> closed terminal the stack then looks broken at random. A scheduled task fixed it but created a second
+> mechanism for the same job. Rancher owns the cluster, so Rancher owns the forwards.
 
 Browser UIs do **not** need a forward — they go through Traefik on host port 80
 (`deploy/overlays/local/ingress.yaml`):
@@ -99,7 +109,8 @@ http://nango.localhost
 ## 5. First-run bring-up
 
 ```powershell
-# 1. cluster + infra (+ migrations, port-forwards, .env)
+# 1. cluster + infra (+ migrations, .env)
+#    one-time: add the 8 Port Forwarding rows in Rancher Desktop (§3)
 pnpm rancher up
 
 # 2. identity — only when the cluster is new or Zitadel was reset
@@ -134,7 +145,7 @@ Prefer the existing entry points over ad-hoc scripts:
 | One package | `pnpm vitest run packages/server/src/domains/<x>` |
 | Typecheck | `pnpm --filter @noname/<pkg> typecheck` |
 | Browser + API smoke | the `noname-test` skill |
-| Cluster health | `pnpm rancher status` (or `node scripts/k8s.mjs status` for the old WSL cluster) |
+| Cluster health | `pnpm rancher status` (exits 1 if a Port Forwarding row is missing) |
 
 The `.tools/*.mjs` browser scripts used while verifying this setup (`inspect-pages`, `verify-login`,
 `probe-editor`, `verify-pages`) are **gitignored diagnostics**, not a test suite. They duplicate what the

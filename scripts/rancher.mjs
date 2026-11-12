@@ -1,41 +1,44 @@
 #!/usr/bin/env node
 /**
- * Rancher Desktop local stack: infra in the cluster, app on the host.
+ * Rancher Desktop local stack helper.
  *
- * Rancher Desktop on Windows does not expose Kubernetes NodePorts on localhost reliably, so this script owns
- * a small set of `kubectl port-forward` processes and rewrites `.env` to those local ports. That is the only
- * host↔cluster bridge for the services the API reaches from Node.
+ * Ports are NOT owned by this script. Rancher Desktop's **Port Forwarding** page owns them
+ * (`noname` services, fixed local ports) and re-creates them on every start. That is deliberate: a
+ * `kubectl port-forward` started from a shell dies with that shell, which made the stack look broken
+ * at random. One mechanism, owned by the app that owns the cluster.
  *
- * Browser-facing HTTP services (Jaeger, Nango) do not need a forward: they are published through Traefik on
- * host port 80 by `deploy/overlays/local/ingress.yaml`, at http://jaeger.localhost and http://nango.localhost.
- * Windows cannot resolve `*.localhost` for non-browser clients, which is why the API-facing services below
- * stay on forwards.
+ *   node scripts/rancher.mjs up       apply infra overlay, scale app deployments to 0, run migrations
+ *   node scripts/rancher.mjs status   cluster + reachability, read-only
+ *   node scripts/rancher.mjs env      rewrite .env to the fixed local ports
  *
- *   node scripts/rancher.mjs up       apply infra, start forwards, migrate
- *   node scripts/rancher.mjs status   read-only
- *   node scripts/rancher.mjs down     stop forwards
- *   node scripts/rancher.mjs forward  only (re)start forwards
- *   node scripts/rancher.mjs env      only rewrite .env
+ * The expected Port Forwarding rows (Rancher Desktop → Port Forwarding):
+ *
+ *   noname/postgres    postgres -> 25432      noname/keto      read  -> 14466
+ *   noname/dragonfly   redis    -> 16379      noname/keto      write -> 14467
+ *   noname/clickhouse  http     -> 18123      noname/s3        http  -> 19000
+ *   noname/vault       http     -> 18200      noname/zitadel   http  -> 8080
+ *
+ * Browser UIs do not need a row: they go through Traefik on host port 80
+ * (deploy/overlays/local/ingress.yaml) at http://jaeger.localhost and http://nango.localhost.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NS = "noname";
-const STATE = join(ROOT, ".rancher-port-forwards.json");
 const ENV = join(ROOT, ".env");
 
 const SERVICES = [
-  { name: "postgres", local: 25432, remote: 5432, env: "DATABASE_URL", url: "postgres://noname:noname_dev@127.0.0.1:25432/app" },
-  { name: "dragonfly", local: 16379, remote: 6379, env: "REDIS_URL", url: "redis://127.0.0.1:16379" },
-  { name: "clickhouse", local: 18123, remote: 8123, env: "CLICKHOUSE_URL", url: "http://127.0.0.1:18123" },
-  { name: "vault", local: 18200, remote: 8200, env: "VAULT_ADDR", url: "http://127.0.0.1:18200" },
-  { name: "keto", local: 14466, remote: 4466, env: "KETO_READ_URL", url: "http://127.0.0.1:14466" },
-  { name: "keto", local: 14467, remote: 4467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:14467" },
-  { name: "s3", local: 19000, remote: 9000, env: "R2_ENDPOINT", url: "http://127.0.0.1:19000" },
-  { name: "zitadel", local: 8080, remote: 8080, env: "ZITADEL_ISSUER", url: "http://localhost:8080" },
+  { local: 25432, env: "DATABASE_URL", url: "postgres://noname:noname_dev@127.0.0.1:25432/app" },
+  { local: 16379, env: "REDIS_URL", url: "redis://127.0.0.1:16379" },
+  { local: 18123, env: "CLICKHOUSE_URL", url: "http://127.0.0.1:18123" },
+  { local: 18200, env: "VAULT_ADDR", url: "http://127.0.0.1:18200" },
+  { local: 14466, env: "KETO_READ_URL", url: "http://127.0.0.1:14466" },
+  { local: 14467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:14467" },
+  { local: 19000, env: null, url: "http://127.0.0.1:19000" },
+  { local: 8080, env: "ZITADEL_ISSUER", url: "http://localhost:8080" },
 ];
 
 function run(cmd, args, opts = {}) {
@@ -55,42 +58,33 @@ function upsertEnv(key, value) {
   writeFileSync(ENV, next);
 }
 
-function killForwards() {
-  if (!existsSync(STATE)) return;
-  const pids = JSON.parse(readFileSync(STATE, "utf8"));
-  for (const pid of pids) {
-    try {
-      process.kill(pid);
-    } catch {
-      // already gone
-    }
-  }
-  writeFileSync(STATE, "[]");
-}
-
-function startForwards() {
-  killForwards();
-  const pids = [];
-  for (const service of SERVICES) {
-    const child = spawn(
-      "kubectl",
-      ["-n", NS, "port-forward", "--address", "127.0.0.1", `svc/${service.name}`, `${service.local}:${service.remote}`],
-      { cwd: ROOT, detached: true, stdio: "ignore", windowsHide: true },
-    );
-    child.unref();
-    pids.push(child.pid);
-  }
-  writeFileSync(STATE, JSON.stringify(pids));
-  for (const service of SERVICES) upsertEnv(service.env, service.url);
-  console.log(`port-forwards: ${SERVICES.map((s) => `${s.local}->${s.name}:${s.remote}`).join(", ")}`);
+function listening(port) {
+  const result = spawnSync(
+    "powershell",
+    [
+      "-NoProfile",
+      "-Command",
+      `(Test-NetConnection 127.0.0.1 -Port ${port} -WarningAction SilentlyContinue -InformationLevel Quiet) -eq $true`,
+    ],
+    { encoding: "utf8" },
+  );
+  return result.stdout?.trim() === "True";
 }
 
 function status() {
   console.log(run("kubectl", ["get", "nodes"]));
-  console.log(run("kubectl", ["-n", NS, "get", "pods"]));
+  console.log(run("kubectl", ["-n", NS, "get", "deploy"]));
+  let missing = 0;
   for (const service of SERVICES) {
-    const ok = spawnSync("powershell", ["-NoProfile", "-Command", `(Test-NetConnection 127.0.0.1 -Port ${service.local} -WarningAction SilentlyContinue -InformationLevel Quiet) -eq $true`]);
-    console.log(`${service.env}=${service.url} reachable=${ok.stdout?.toString().trim()}`);
+    const up = listening(service.local);
+    if (!up) missing += 1;
+    console.log(`${service.local}\t${service.env ?? "s3 (packages/server/.env)"}\t${up ? "reachable" : "DOWN"}`);
+  }
+  if (missing > 0) {
+    console.log(
+      `\n${missing} port(s) down — add them in Rancher Desktop → Port Forwarding (see the header of this file).`,
+    );
+    process.exitCode = 1;
   }
 }
 
@@ -99,12 +93,10 @@ function up() {
   run("kubectl", ["apply", "-k", "deploy/overlays/local"]);
   run("kubectl", ["-n", NS, "scale", "deploy", "api", "worker", "client", "browser", "--replicas=0"]);
   run("kubectl", ["-n", NS, "delete", "job", "migrate", "--ignore-not-found"]);
-  startForwards();
-  console.log("waiting for postgres…");
-  for (let i = 0; i < 30; i++) {
-    const ready = spawnSync("powershell", ["-NoProfile", "-Command", "(Test-NetConnection 127.0.0.1 -Port 25432 -WarningAction SilentlyContinue -InformationLevel Quiet) -eq $true"]);
-    if (ready.stdout?.toString().trim() === "True") break;
-    spawnSync("powershell", ["-NoProfile", "-Command", "Start-Sleep -Seconds 2"]);
+  if (!listening(25432)) {
+    throw new Error(
+      "postgres is not reachable on 127.0.0.1:25432 — add the Port Forwarding rows in Rancher Desktop first",
+    );
   }
   run("pnpm", ["--filter", "@noname/server", "db:migrate"], {
     env: { ...process.env, DATABASE_URL: "postgres://noname:noname_dev@127.0.0.1:25432/app" },
@@ -116,15 +108,11 @@ const command = process.argv[2] ?? "status";
 try {
   if (command === "up") up();
   else if (command === "status") status();
-  else if (command === "down") {
-    killForwards();
-    console.log("port-forwards stopped");
-  } else if (command === "forward") startForwards();
   else if (command === "env") {
-    for (const service of SERVICES) upsertEnv(service.env, service.url);
-    console.log("env rewritten");
+    for (const service of SERVICES) if (service.env) upsertEnv(service.env, service.url);
+    console.log("env rewritten to the fixed local ports");
   } else {
-    console.error(`unknown command ${command} (up | status | down | forward | env)`);
+    console.error(`unknown command ${command} (up | status | env)`);
     process.exit(2);
   }
 } catch (error) {
