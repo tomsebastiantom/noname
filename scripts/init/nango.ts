@@ -2,7 +2,9 @@
  * Provisions self-hosted Nango for local dev — no dashboard clicks:
  * admin signup (API) → email verify (DB) → adopt env secret key →
  * configure signed provider callback → Stripe integration (API, idempotent).
- * Requires: podman compose up (Nango healthy) + postgres reachable.
+ * Requires: Nango reachable at NANGO_HOST (local dev: the Rancher Desktop port-forward to
+ * `noname/nango server`) and the Postgres that holds the Nango database (default: `kubectl exec` into the
+ * cluster; override with NANGO_PSQL_EXEC).
  *
  * Run: pnpm init:nango
  */
@@ -15,7 +17,9 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "../..");
 const NANGO_HOST = process.env.NANGO_HOST ?? "http://localhost:3003";
-const NANGO_WEBHOOK_BASE_URL = process.env.NANGO_WEBHOOK_BASE_URL ?? "http://host.docker.internal:3000";
+// The API runs on the host in local dev, so Nango's provider callback must come back to localhost.
+// `host.docker.internal` only exists inside a container, which is no longer where the API runs.
+const NANGO_WEBHOOK_BASE_URL = process.env.NANGO_WEBHOOK_BASE_URL ?? "http://localhost:3000";
 const NANGO_PROVIDER_WEBHOOK_URL = `${NANGO_WEBHOOK_BASE_URL.replace(/\/$/, "")}/api/integrations/nango/incoming`;
 const ADMIN_NAME = process.env.NANGO_ADMIN_NAME ?? "Noname Admin";
 const ADMIN_EMAIL = process.env.NANGO_ADMIN_EMAIL ?? "admin@noname.localhost";
@@ -25,9 +29,20 @@ function sh(cmd: string): string {
   return execSync(cmd, { encoding: "utf8", cwd: ROOT });
 }
 
+/**
+ * Run one SQL statement against the Nango database.
+ *
+ * The Nango database does not live in compose any more — it is a database inside the cluster's Postgres — so
+ * this shells out to `kubectl exec` by default. `NANGO_PSQL_EXEC` overrides the command prefix for other
+ * deployments (compose pods, a bastion, a plain `psql`).
+ */
+const PSQL_EXEC =
+  process.env.NANGO_PSQL_EXEC?.trim() ||
+  "kubectl -n noname exec deploy/postgres -- psql -U noname";
+
 function psql(db: string, sql: string): string {
   const safe = sql.replace(/"/g, '\\"');
-  return sh(`podman exec noname-postgres-1 psql -U noname -d ${db} -t -c "${safe}"`).trim();
+  return sh(`${PSQL_EXEC} -d ${db} -t -c "${safe}"`).trim();
 }
 
 async function waitForHealth(): Promise<void> {
