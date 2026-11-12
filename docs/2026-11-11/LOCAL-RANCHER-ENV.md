@@ -159,6 +159,7 @@ The `.tools/*.mjs` browser scripts used while verifying this setup (`inspect-pag
 | Infra pods | postgres, redis, clickhouse, vault, keto, s3, zitadel, jaeger, nango — all `Running` |
 | App deployments | `api/client/worker/browser` `0/0` |
 | Migrations | 8/8 on the cluster Postgres |
+| Port forwards | **owned by Rancher Desktop** (pid of the Rancher app, not `kubectl`); all 8 reachable; no task, no script |
 | Identity | org `398655937176469540`, project `399159787020877870` |
 | Seed | `pnpm seed:demo:full` → `completed full/commerce` |
 | Browser | storefront, login, admin, orders, agents, editor, product — all render, no console errors |
