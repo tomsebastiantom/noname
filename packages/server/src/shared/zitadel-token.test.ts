@@ -78,7 +78,11 @@ describe("serviceAccountToken", () => {
 describe("exchangeDelegatedToken", () => {
   it("sends actor, subject, requested token type and audience", async () => {
     const fetchImpl = vi.fn(async () =>
-      response({ access_token: "delegated-token", expires_in: 300 }),
+      response({
+        access_token: "delegated-token",
+        expires_in: 300,
+        issued_token_type: "urn:ietf:params:oauth:token-type:access_token",
+      }),
     ) as unknown as FetchLike;
 
     const result = await exchangeDelegatedToken(
@@ -107,6 +111,23 @@ describe("exchangeDelegatedToken", () => {
       "urn:ietf:params:oauth:token-type:access_token",
     );
     expect(body.get("audience")).toBe("noname-agents");
+  });
+
+  it("rejects a response whose issued_token_type does not match the request", async () => {
+    const fetchImpl = vi.fn(async () =>
+      response({
+        access_token: "delegated-token",
+        expires_in: 300,
+        issued_token_type: "urn:ietf:params:oauth:token-type:id_token",
+      }),
+    ) as unknown as FetchLike;
+
+    const error = await exchangeDelegatedToken(
+      { issuer, actorToken: "a", subjectToken: "s" },
+      fetchImpl,
+    ).catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(ZitadelTokenError);
+    expect(error).toMatchObject({ status: 502, errorCode: "invalid_issued_token_type" });
   });
 
   it("fails closed with a typed error when the exchange is rejected", async () => {

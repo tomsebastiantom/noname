@@ -164,6 +164,27 @@ Agent/auth tests: **122/122**.
 | Userinfo metrics | hit/miss/error counter + duration histogram | `miss 2`, `hit 1`, ~22 ms miss / ~0.01 ms hit |
 | Exchange errors | `ZitadelTokenError` with status/code; 400/401 → **401**, 403 → **403**, other → **503** | unit tests |
 
+**RFC 8693 gap closure (2026-11-11).**
+
+| Gap | Fix | Live/unit evidence |
+|---|---|---|
+| Downscoping not enforced | `agent_token_grants` (PK `jti`) stores the minted permission set; guard intersects the token's role permissions with that row | downscoped token (`content:draft_write` only) → layout mutation **403**; full token → **201** |
+| `act.iss` unchecked | verifier requires `act.iss === issuer` | unit test rejects a foreign `act.iss` |
+| `client_id`/`azp` unchecked | verifier requires the exchange client id (`ZITADEL_AGENT_CLIENT_ID`) | unit test rejects another client |
+| `issued_token_type` ignored | exchange rejects a response whose `issued_token_type` differs from the request (502 `invalid_issued_token_type`) | unit test |
+| 12 h token lifetime | IdP issues 12 h and this ZITADEL version exposes no per-app/OIDC lifetime setting (app config has no field; `/admin/v1/oidc/settings` → 404), so the API enforces an **effective 900 s** lifetime through the grant expiry (`AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS`); JWT cap 12 h | grant rows expire at 900 s |
+| Failed agent token fell through to human path | any verified token carrying `act` that fails agent verification is now **403**, never treated as a human | covered by the E2E orphan/downscope runs |
+
+Supported token-type matrix:
+
+| Subject token | Actor token | Requested | Result |
+|---|---|---|---|
+| user `access_token` | machine `access_token` | `jwt` | **supported** |
+| `user_id` | machine `access_token` | — | rejected (no role scopes) |
+| `id_token` | machine `access_token` | — | rejected by ZITADEL |
+
+Agent/auth/token tests: **135/135**.
+
 **Audit attribution — verified, parity not measurable.** The layout create wrote a row to `document_ops`:
 
 ```

@@ -12,6 +12,7 @@ import type { Context } from "hono";
 import { resolveAgentUserInfo } from "../../shared/agent-userinfo";
 import { verifyZitadelAgentToken } from "../../shared/agent-jwt";
 import { resolveAgentIdentity } from "../../shared/agent-registry-resolver";
+import { resolveAgentGrant } from "../../shared/agent-grant-resolver";
 import { getOrgId, getUserId } from "../../shared/org";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { resolveZitadelJwk } from "./adapters/zitadel/jwks";
@@ -83,6 +84,8 @@ export async function requireAuthenticatedActor(
     audience: agentAudiences.length > 0 ? agentAudiences : undefined,
     resolveKey: resolveZitadelJwk,
     userInfo: resolveAgentUserInfo,
+    clientId: process.env.ZITADEL_AGENT_CLIENT_ID?.trim() || undefined,
+    maxLifetimeSeconds: Number(process.env.AGENT_TOKEN_MAX_LIFETIME_SECONDS ?? 43_200),
   });
   if (agent) {
     const orgId = getOrgId(c);
@@ -97,15 +100,34 @@ export async function requireAuthenticatedActor(
       return c.json({ error: "Forbidden" }, 403);
     }
 
+    // Downscoping: the token may only use the permissions recorded at mint time, and that record must belong
+    // to this agent. Without a grant row the token is not a token this API minted, so it is rejected.
+    const grant = await resolveAgentGrant(orgId, agent.jti);
+    if (!grant || grant.agentId !== registered.id) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const granted = new Set(grant.permissions);
+    const permissions = agent.permissions.filter((permission) => granted.has(permission));
+    if (permissions.length === 0) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
     return {
       type: "agent",
       agentId: registered.id,
       agentSlug: registered.slug,
       onBehalfOf: agent.onBehalfOf,
       orgId: agent.orgId,
-      permissions: agent.permissions,
+      permissions,
       userToken: token,
     };
+  }
+
+  // An `act` claim is an agent token by definition. If agent verification failed, it must not fall through to
+  // the human path, where its `sub` would be accepted as the user.
+  const verifiedPayload = await verifiedTokenPayload(c);
+  if (verifiedPayload?.act) {
+    return c.json({ error: "Forbidden" }, 403);
   }
 
   const auth = await requireAuthenticatedUser(c);

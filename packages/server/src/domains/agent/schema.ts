@@ -62,8 +62,7 @@ export const agentTasks = pgTable(
   }),
 );
 
-export const registeredAgents = pgTable(
-  "registered_agents",
+export const registeredAgents = pgTable(  "registered_agents",
   {
     id: uuid("id").defaultRandom().primaryKey(),
     orgId: text("org_id").notNull(),
@@ -80,5 +79,26 @@ export const registeredAgents = pgTable(
     uniqueZitadelIdentity: uniqueIndex("registered_agents_org_zitadel_user")
       .on(t.orgId, t.zitadelAgentUserId)
       .where(sql`${t.zitadelAgentUserId} is not null`),
+  }),
+);
+
+/**
+ * Downscoping record for an exchanged agent token: the exact permission set the token was minted with.
+ * The guard intersects the token's role-derived permissions with this row, so a token cannot exceed what the
+ * mint request granted. Keyed by the ZITADEL JWT `jti`.
+ */
+export const agentTokenGrants = pgTable(
+  "agent_token_grants",
+  {
+    jti: text("jti").primaryKey(),
+    orgId: text("org_id").notNull(),
+    agentId: uuid("agent_id").notNull(),
+    permissions: jsonb("permissions").notNull().default([]),
+    expiresAt: timestamp("expires_at").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => ({
+    orgIdx: index("agent_token_grants_org").on(t.orgId),
+    expiresIdx: index("agent_token_grants_expires").on(t.expiresAt),
   }),
 );

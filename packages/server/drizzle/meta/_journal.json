@@ -57,6 +57,13 @@
       "when": 1794106212081,
       "tag": "0007_dry_colossus",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1794452295126,
+      "tag": "0008_complex_scream",
+      "breakpoints": true
     }
   ]
 }

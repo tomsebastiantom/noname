@@ -23,20 +23,31 @@ function token(payload: Record<string, unknown>, kid = "test-key"): string {
 }
 
 function payload(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  const now = Math.floor(Date.now() / 1000);
   return {
     iss: issuer,
     aud: audience,
     sub: "user-alice",
-    exp: Math.floor(Date.now() / 1000) + 300,
+    iat: now,
+    exp: now + 300,
+    jti: "token-jti-1",
+    client_id: "agent-exchange-client",
     "urn:zitadel:iam:org:id": "org-1",
     "urn:zitadel:iam:org:project:roles": { editor: { "org-1": "org" } },
-    act: { sub: "agent-user-42" },
+    act: { iss: issuer, sub: "agent-user-42" },
     ...overrides,
   };
 }
 
 const resolveKey = async () => jwk;
-const options = { issuer, audience, resolveKey, expectedOrgId: "org-1" };
+const options = {
+  issuer,
+  audience,
+  resolveKey,
+  expectedOrgId: "org-1",
+  clientId: "agent-exchange-client",
+  maxLifetimeSeconds: 900,
+};
 
 describe("verifyZitadelAgentToken", () => {
   it("returns the agent, the subject and the expanded permissions", async () => {
@@ -56,7 +67,35 @@ describe("verifyZitadelAgentToken", () => {
 
   it("rejects a token whose act.sub is not a string", async () => {
     expect(
-      await verifyZitadelAgentToken(token(payload({ act: { sub: 42 } })), options),
+      await verifyZitadelAgentToken(
+        token(payload({ act: { iss: issuer, sub: 42 } })),
+        options,
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects an act claim issued by a different issuer", async () => {
+    expect(
+      await verifyZitadelAgentToken(
+        token(payload({ act: { iss: "https://evil.example", sub: "agent-user-42" } })),
+        options,
+      ),
+    ).toBeNull();
+  });
+
+  it("rejects a token issued to a different client", async () => {
+    expect(
+      await verifyZitadelAgentToken(token(payload({ client_id: "other-client" })), options),
+    ).toBeNull();
+  });
+
+  it("rejects a token whose lifetime exceeds the limit", async () => {
+    const now = Math.floor(Date.now() / 1000);
+    expect(
+      await verifyZitadelAgentToken(
+        token(payload({ iat: now, exp: now + 3600 })),
+        options,
+      ),
     ).toBeNull();
   });
 

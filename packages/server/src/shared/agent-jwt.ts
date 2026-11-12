@@ -20,6 +20,7 @@ export type VerifiedAgentToken = {
   orgId: string;
   permissions: PermissionKey[];
   exp: number;
+  jti: string;
 };
 
 export type VerifyAgentTokenOptions = {
@@ -27,6 +28,10 @@ export type VerifyAgentTokenOptions = {
   audience?: string | string[];
   resolveKey: JwkResolver;
   expectedOrgId?: string;
+  /** The confidential client that is allowed to perform the exchange (`client_id` claim). */
+  clientId?: string;
+  /** Reject tokens whose lifetime exceeds this many seconds (defence in depth on top of the IdP setting). */
+  maxLifetimeSeconds?: number;
   /**
    * Optional userinfo resolver. Exchanged access tokens do not always carry the project-role claim, while the
    * OIDC userinfo response for the same token does. The guard passes a cached resolver.
@@ -47,8 +52,18 @@ export async function verifyZitadelAgentToken(
 
   const act = payload.act;
   if (!act || typeof act !== "object" || Array.isArray(act)) return null;
-  const agentUserId = (act as Record<string, unknown>).sub;
+  const actRecord = act as Record<string, unknown>;
+  if (actRecord.iss !== options.issuer) return null;
+  const agentUserId = actRecord.sub;
   if (typeof agentUserId !== "string" || agentUserId.trim() === "") return null;
+
+  if (options.clientId) {
+    const clientId = payload.client_id ?? payload.azp;
+    if (clientId !== options.clientId) return null;
+  }
+
+  const jti = payload.jti;
+  if (typeof jti !== "string" || jti.trim() === "") return null;
 
   const onBehalfOf = payload.sub;
   if (typeof onBehalfOf !== "string" || onBehalfOf.trim() === "") return null;
@@ -86,11 +101,17 @@ export async function verifyZitadelAgentToken(
   const exp = payload.exp;
   if (typeof exp !== "number" || exp * 1000 <= Date.now()) return null;
 
+  if (options.maxLifetimeSeconds) {
+    const iat = payload.iat;
+    if (typeof iat !== "number" || exp - iat > options.maxLifetimeSeconds) return null;
+  }
+
   return {
     agentUserId,
     onBehalfOf,
     orgId,
     permissions,
     exp,
+    jti,
   };
 }

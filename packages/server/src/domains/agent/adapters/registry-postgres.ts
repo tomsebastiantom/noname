@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import { NotFoundError, ValidationError } from "../../../shared/domain-error";
-import { registeredAgents } from "../schema";
+import { registeredAgents, agentTokenGrants } from "../schema";
 
 export interface RegisteredAgentRow {
   id: string;
@@ -34,6 +34,13 @@ function rowToDto(row: typeof registeredAgents.$inferSelect): RegisteredAgentRow
       : [],
     createdAt: row.created_at,
   };
+}
+
+export interface AgentTokenGrantRow {
+  jti: string;
+  agentId: string;
+  permissions: string[];
+  expiresAt: Date;
 }
 
 export function createAgentRegistryStorage(db: Database) {
@@ -113,6 +120,42 @@ export function createAgentRegistryStorage(db: Database) {
         .update(registeredAgents)
         .set({ zitadelAgentUserId })
         .where(and(eq(registeredAgents.orgId, orgId), eq(registeredAgents.id, id)));
+    },
+
+    async createTokenGrant(input: {
+      jti: string;
+      orgId: string;
+      agentId: string;
+      permissions: string[];
+      expiresAt: Date;
+    }): Promise<void> {
+      await db
+        .insert(agentTokenGrants)
+        .values(input)
+        .onConflictDoNothing();
+    },
+
+    async findTokenGrant(orgId: string, jti: string): Promise<AgentTokenGrantRow | null> {
+      const [row] = await db
+        .select()
+        .from(agentTokenGrants)
+        .where(and(eq(agentTokenGrants.orgId, orgId), eq(agentTokenGrants.jti, jti)))
+        .limit(1);
+      if (!row || row.expiresAt.getTime() <= Date.now()) return null;
+      return {
+        jti: row.jti,
+        agentId: row.agentId,
+        permissions: Array.isArray(row.permissions)
+          ? row.permissions.filter((entry): entry is string => typeof entry === "string")
+          : [],
+        expiresAt: row.expiresAt,
+      };
+    },
+
+    async deleteTokenGrants(orgId: string, agentId: string): Promise<void> {
+      await db
+        .delete(agentTokenGrants)
+        .where(and(eq(agentTokenGrants.orgId, orgId), eq(agentTokenGrants.agentId, agentId)));
     },
 
     async delete(orgId: string, id: string): Promise<void> {

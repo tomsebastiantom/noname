@@ -80,6 +80,8 @@ export type TokenResponse = {
   tokenType: string;
   /** Present when the exchange requests `openid`; carries the subject's ID-token claims. */
   idToken?: string;
+  /** RFC 8693 response field; validated against the requested token type. */
+  issuedTokenType?: string;
 };
 
 function parseTokenResponse(body: unknown): TokenResponse | null {
@@ -91,6 +93,8 @@ function parseTokenResponse(body: unknown): TokenResponse | null {
     expiresIn: typeof record.expires_in === "number" ? record.expires_in : 0,
     tokenType: typeof record.token_type === "string" ? record.token_type : "Bearer",
     idToken: typeof record.id_token === "string" ? record.id_token : undefined,
+    issuedTokenType:
+      typeof record.issued_token_type === "string" ? record.issued_token_type : undefined,
   };
 }
 
@@ -165,5 +169,13 @@ export async function exchangeDelegatedToken(
   }
   const parsed = parseTokenResponse(await response.json());
   if (!parsed) throw new Error("ZITADEL token exchange returned no access_token");
+  const expected = input.requestedTokenType ?? "urn:ietf:params:oauth:token-type:access_token";
+  if (parsed.issuedTokenType !== expected) {
+    throw new ZitadelTokenError(
+      `ZITADEL token exchange issued ${parsed.issuedTokenType ?? "no type"}, expected ${expected}`,
+      502,
+      "invalid_issued_token_type",
+    );
+  }
   return parsed;
 }

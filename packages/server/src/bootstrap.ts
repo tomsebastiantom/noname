@@ -11,6 +11,7 @@ import { sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
 import { setAgentIdentityResolver } from "./shared/agent-registry-resolver";
+import { setAgentGrantResolver } from "./shared/agent-grant-resolver";
 import { createCompositeAgentExecutor } from "./domains/agent/composite-executor";
 import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
 import { createMastraExecutor } from "./domains/agent/mastra/executor";
@@ -425,6 +426,7 @@ export async function createApp(): Promise<Hono> {
   setAgentIdentityResolver((orgId, zitadelAgentUserId) =>
     agent.storage.findByZitadelAgentUserId(orgId, zitadelAgentUserId),
   );
+  setAgentGrantResolver((orgId, jti) => agent.storage.findTokenGrant(orgId, jti));
 
   const edge = createEdgeDomain({
     layout: docs.service.layout,

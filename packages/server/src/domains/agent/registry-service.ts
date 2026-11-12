@@ -41,6 +41,17 @@ function assertAgentTokenRateLimit(orgId: string, agentId: string): void {
   bucket.count += 1;
 }
 
+function readJti(token: string): string | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1] ?? "", "base64url").toString("utf8"),
+    ) as { jti?: unknown };
+    return typeof payload.jti === "string" && payload.jti.trim() ? payload.jti : null;
+  } catch {
+    return null;
+  }
+}
+
 function mapExchangeError(error: unknown): never {
   if (error instanceof ZitadelTokenError) {
     if (error.status === 400 || error.status === 401) {
@@ -171,6 +182,7 @@ export function createAgentRegistryService(deps: {
         await deps.authorization.revoke(tuple);
       }
       await deprovisionAgentActor(agent);
+      await deps.storage.deleteTokenGrants(orgId, agentId);
       await deps.storage.delete(orgId, agentId);
     },
 
@@ -226,7 +238,26 @@ export function createAgentRegistryService(deps: {
         mapExchangeError(error);
       }
 
-      const exp = Math.floor(Date.now() / 1000) + exchanged.expiresIn;
+      // The IdP may issue a longer JWT (ZITADEL's default is 12h and this version exposes no per-app lifetime).
+      // The grant row is the effective expiry for this API, so agents must re-exchange after this window.
+      const acceptedLifetime = Number(process.env.AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS ?? 900);
+      const now = Math.floor(Date.now() / 1000);
+      const exp =
+        now +
+        (Number.isFinite(acceptedLifetime) && acceptedLifetime > 0
+          ? Math.min(exchanged.expiresIn, acceptedLifetime)
+          : exchanged.expiresIn);
+      const jti = readJti(exchanged.accessToken);
+      if (!jti) {
+        throw new ServiceUnavailableError("Exchanged agent token has no jti");
+      }
+      await deps.storage.createTokenGrant({
+        jti,
+        orgId,
+        agentId,
+        permissions,
+        expiresAt: new Date(exp * 1000),
+      });
       return { token: exchanged.accessToken, expiresAt: exp, permissions };
     },
 
