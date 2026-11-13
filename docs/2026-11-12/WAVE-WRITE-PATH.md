@@ -66,6 +66,15 @@ The grant-project rule was extracted into `grantProjectIdForOrg(orgId, tenantPro
 tested without a token, a JWKS fetch, or a network call — the org→project mapping is the part that was wrong, and it
 is pure.
 
+**The release fixture mirrors the adapter.** `releases.get(orgId, id)` in the test fake now throws `NotFoundError`
+when `release.orgId !== orgId`, exactly like the Postgres `findById` filter; `getAnyOrg` stays unscoped. Without that,
+“a tenant promote refuses a foreign release” would pass for the wrong reason — it would only prove that *some*
+lookup happened.
+
+Verified by mutation: making `promote` always call `getAnyOrg` fails exactly that test (`1 failed | 10 passed`), and
+restoring the conditional brings it back to `11 passed`. The org-scope rule is therefore pinned by the suite, not
+just by the live run.
+
 ## 5. Verification
 
 Unit — `release/api.test.ts` (3 tests): dry-run writes nothing; a real wave promotes every eligible org; one

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ConflictError } from "../../shared/domain-error";
+import { ConflictError, NotFoundError } from "../../shared/domain-error";
 import { runWithRequestContext } from "../../shared/request-context";
 import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
 import { createReleasePointerService } from "./pointer-service";
@@ -70,15 +70,20 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
     },
   };
 
+  /**
+   * Mirrors the Postgres adapter: `get` is org-scoped (`findById` filters by `orgId`), `getAnyOrg` is not.
+   * The fake has to enforce that, otherwise "tenant-scoped promote refuses a foreign release" passes for the wrong
+   * reason — it would only prove that *some* lookup happened.
+   */
   const releases = {
-    async get(_orgId, id) {
+    async get(orgId, id) {
       const found = releasesById.get(id);
-      if (!found) throw new Error(`unknown release ${id}`);
+      if (!found || found.orgId !== orgId) throw new NotFoundError("Release", id);
       return found;
     },
     async getAnyOrg(id) {
       const found = releasesById.get(id);
-      if (!found) throw new Error(`unknown release ${id}`);
+      if (!found) throw new NotFoundError("Release", id);
       return found;
     },
   } as unknown as ReleaseService;
@@ -247,8 +252,9 @@ describe("platform-owned release promotion", () => {
     );
     const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
 
-    // The fake `get` is org-agnostic, so the rule under test is the *call*: without `platformOrgId` the service
-    // must use the tenant-scoped lookup, which the real adapter binds to the org.
-    await expect(pointer.promote("tenant-a", "missing-release", "tom")).rejects.toThrow();
+    // The fixture's `get` is org-scoped, so this only passes if `promote` really used the tenant-scoped lookup:
+    // the release exists, but not for `tenant-a`.
+    await expect(pointer.promote("tenant-a", "r_platform", "tom")).rejects.toBeInstanceOf(NotFoundError);
+    expect(await store.get("tenant-a")).toBeNull();
   });
 });
