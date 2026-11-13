@@ -322,6 +322,17 @@ export function recordAgentUserInfo(
   agentUserInfoDuration.observe({ result }, seconds);
 }
 
+const agentTokenRejectionsTotal = new client.Counter({
+  name: "noname_agent_token_rejections_total",
+  help: "Agent token rejections by reason (unregistered, no_grant, expired, subject_mismatch, agent_mismatch, no_permissions).",
+  labelNames: ["reason"] as const,
+  registers: [registry],
+});
+
+export function recordAgentTokenRejection(reason: string): void {
+  agentTokenRejectionsTotal.inc({ reason });
+}
+
 export function recordAgentTokenRateLimited(): void {
   agentTokenRateLimitedTotal.inc();
 }

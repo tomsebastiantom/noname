@@ -93,6 +93,8 @@ export const agentTokenGrants = pgTable(
     jti: text("jti").primaryKey(),
     orgId: text("org_id").notNull(),
     agentId: uuid("agent_id").notNull(),
+    /** The user the token was minted for (`sub`). Binding to it keeps admin-issued tokens valid. */
+    subjectUserId: text("subject_user_id").notNull(),
     permissions: jsonb("permissions").notNull().default([]),
     expiresAt: timestamp("expires_at").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),

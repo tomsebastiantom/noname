@@ -255,6 +255,7 @@ export function createAgentRegistryService(deps: {
         jti,
         orgId,
         agentId,
+        subjectUserId: acting.userId,
         permissions,
         expiresAt: new Date(exp * 1000),
       });

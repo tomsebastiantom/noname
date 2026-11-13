@@ -185,6 +185,34 @@ Supported token-type matrix:
 
 Agent/auth/token tests: **135/135**.
 
+**Grant binding follow-up (2026-11-12).** The first cut bound the token to `registered_agents.owner_user_id`, which
+rejected a legitimate case: a store admin (`AUTH_MANAGE`) minting a token for someone else's agent. The grant row now
+stores `subject_user_id`, and the guard binds on it instead:
+
+```
+grant.agentId === registered.id && grant.subjectUserId === token.sub
+```
+
+Live verification (k8s stack):
+
+```
+editor mints own agent                 → 200, use → 201
+admin mints editor-owned agent         → 200, sub == admin, use → 201
+grant expires_at moved to the past     → 401 {"code":"AGENT_TOKEN_EXPIRED"}
+grant subject_user_id changed          → 403  (reason subject_mismatch)
+```
+
+Rejections are counted by reason: `noname_agent_token_rejections_total{reason="unregistered|no_grant|expired|subject_mismatch|agent_mismatch|no_permissions|org_mismatch"}`.
+Expiry answers **401 + `AGENT_TOKEN_EXPIRED`** rather than 403, so a long-running caller can tell "re-mint" apart
+from "not allowed".
+
+**Long-running agents.** Server-side agent tasks (`orchestrate`, `generate_*`) are unaffected: the worker uses the
+`authorization` port with the user identity and holds no HTTP agent token. Only an **external** caller holding a
+minted token is affected — its calls start returning 401 after `AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` (default
+900 s). Forward options: raise the lifetime per environment (`AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS=3600`), re-mint
+from a browser session that already holds the user token, or add a refresh/session grant so an unattended agent can
+re-obtain a short-lived token without the user present (not built).
+
 **Audit attribution — verified, parity not measurable.** The layout create wrote a row to `document_ops`:
 
 ```

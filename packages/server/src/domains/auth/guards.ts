@@ -13,6 +13,7 @@ import { resolveAgentUserInfo } from "../../shared/agent-userinfo";
 import { verifyZitadelAgentToken } from "../../shared/agent-jwt";
 import { resolveAgentIdentity } from "../../shared/agent-registry-resolver";
 import { resolveAgentGrant } from "../../shared/agent-grant-resolver";
+import { recordAgentTokenRejection } from "../../shared/metrics";
 import { getOrgId, getUserId } from "../../shared/org";
 import { zitadelIssuer } from "./adapters/zitadel/issuer";
 import { resolveZitadelJwk } from "./adapters/zitadel/jwks";
@@ -90,25 +91,49 @@ export async function requireAuthenticatedActor(
   if (agent) {
     const orgId = getOrgId(c);
     if (!orgId || agent.orgId !== orgId) {
+      recordAgentTokenRejection("org_mismatch");
       return c.json({ error: "Forbidden" }, 403);
     }
 
-    // A machine token is only an agent if it maps to a live registered agent, and it may only act for its
-    // owner. This is what stops an orphaned machine key from acting after the agent row is deleted.
+    // A machine token is only an agent if it maps to a live registered agent. The grant row additionally binds
+    // the token to the agent and to the exact subject it was minted for, so an orphaned machine key (or a token
+    // replayed for a different user) cannot act — while an admin minting for another user's agent still works.
     const registered = await resolveAgentIdentity(orgId, agent.agentUserId);
-    if (!registered || registered.ownerUserId !== agent.onBehalfOf) {
+    if (!registered) {
+      recordAgentTokenRejection("unregistered");
       return c.json({ error: "Forbidden" }, 403);
     }
 
     // Downscoping: the token may only use the permissions recorded at mint time, and that record must belong
-    // to this agent. Without a grant row the token is not a token this API minted, so it is rejected.
+    // to this agent and subject. Without a grant row the token is not a token this API minted.
     const grant = await resolveAgentGrant(orgId, agent.jti);
-    if (!grant || grant.agentId !== registered.id) {
+    if (!grant) {
+      recordAgentTokenRejection("no_grant");
       return c.json({ error: "Forbidden" }, 403);
     }
+    if (grant.agentId !== registered.id) {
+      recordAgentTokenRejection("agent_mismatch");
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (grant.subjectUserId !== agent.onBehalfOf) {
+      recordAgentTokenRejection("subject_mismatch");
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    // Expiry is the API's own lifetime (shorter than the IdP's JWT). Say so explicitly: a 403 here would look
+    // like a permission problem, and a long-running agent needs to know it should re-mint.
+    if (grant.expiresAt.getTime() <= Date.now()) {
+      recordAgentTokenRejection("expired");
+      return c.json(
+        { error: "Agent token expired", code: "AGENT_TOKEN_EXPIRED" },
+        401,
+      );
+    }
+
     const granted = new Set(grant.permissions);
     const permissions = agent.permissions.filter((permission) => granted.has(permission));
     if (permissions.length === 0) {
+      recordAgentTokenRejection("no_permissions");
       return c.json({ error: "Forbidden" }, 403);
     }
 

@@ -30,7 +30,6 @@ describe("createAgentRegistryService", () => {
         listDirectUserPublishers: vi.fn(),
         listRelationTuples: vi.fn(async () => []),
       },
-      tokenSecret: "secret",
       resolveCreatorPermissions: vi.fn(async () => [PERMISSIONS.CONTENT_DRAFT_WRITE]),
     });
 
@@ -82,7 +81,6 @@ describe("createAgentRegistryService", () => {
         listDirectUserPublishers: vi.fn(),
         listRelationTuples: vi.fn(async () => []),
       },
-      tokenSecret: "secret",
       resolveCreatorPermissions: vi.fn(async () => [PERMISSIONS.CONTENT_DRAFT_WRITE]),
     });
 
@@ -137,7 +135,6 @@ describe("createAgentRegistryService", () => {
         listDirectUserPublishers: vi.fn(),
         listRelationTuples: vi.fn(async () => []),
       },
-      tokenSecret: "secret",
       resolveCreatorPermissions: vi.fn(async () => [PERMISSIONS.CONTENT_DRAFT_WRITE]),
     });
 
@@ -161,4 +158,5 @@ describe("createAgentRegistryService", () => {
     });
   });
 });
+
 

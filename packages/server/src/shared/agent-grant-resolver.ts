@@ -6,7 +6,12 @@
 type ResolveGrant = (
   orgId: string,
   jti: string,
-) => Promise<{ agentId: string; permissions: string[] } | null>;
+) => Promise<{
+  agentId: string;
+  subjectUserId: string;
+  permissions: string[];
+  expiresAt: Date;
+} | null>;
 
 let resolver: ResolveGrant | null = null;
 
@@ -17,7 +22,12 @@ export function setAgentGrantResolver(fn: ResolveGrant): void {
 export async function resolveAgentGrant(
   orgId: string,
   jti: string,
-): Promise<{ agentId: string; permissions: string[] } | null> {
+): Promise<{
+  agentId: string;
+  subjectUserId: string;
+  permissions: string[];
+  expiresAt: Date;
+} | null> {
   if (!resolver) return null;
   return resolver(orgId, jti);
 }

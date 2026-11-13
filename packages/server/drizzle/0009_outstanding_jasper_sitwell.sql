@@ -1,0 +1,1 @@
+ALTER TABLE "agent_token_grants" ADD COLUMN "subject_user_id" text NOT NULL;

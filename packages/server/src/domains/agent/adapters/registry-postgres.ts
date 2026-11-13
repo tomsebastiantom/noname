@@ -39,6 +39,7 @@ function rowToDto(row: typeof registeredAgents.$inferSelect): RegisteredAgentRow
 export interface AgentTokenGrantRow {
   jti: string;
   agentId: string;
+  subjectUserId: string;
   permissions: string[];
   expiresAt: Date;
 }
@@ -126,6 +127,7 @@ export function createAgentRegistryStorage(db: Database) {
       jti: string;
       orgId: string;
       agentId: string;
+      subjectUserId: string;
       permissions: string[];
       expiresAt: Date;
     }): Promise<void> {
@@ -141,10 +143,13 @@ export function createAgentRegistryStorage(db: Database) {
         .from(agentTokenGrants)
         .where(and(eq(agentTokenGrants.orgId, orgId), eq(agentTokenGrants.jti, jti)))
         .limit(1);
-      if (!row || row.expiresAt.getTime() <= Date.now()) return null;
+      // Expired rows are returned so the guard can answer "expired" (401, re-mint) instead of "forbidden"
+      // (403, looks like a permission problem).
+      if (!row) return null;
       return {
         jti: row.jti,
         agentId: row.agentId,
+        subjectUserId: row.subjectUserId,
         permissions: Array.isArray(row.permissions)
           ? row.permissions.filter((entry): entry is string => typeof entry === "string")
           : [],
