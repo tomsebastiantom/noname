@@ -1,5 +1,8 @@
 # Identity, Agents & Open Auth — Master Plan
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Status notice (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 > **Date:** 2026-08-03  

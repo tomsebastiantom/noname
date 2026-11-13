@@ -1,5 +1,8 @@
 # Pending decisions — release mechanism and eval gaps
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Status:** decision document · **Date:** 2026-11-07 (America/Toronto)
 > **Implementation status:** **D1 C1, D2, D4, D7, D8, D14, D15 and D16 are implemented 2026-11-07** (design + evidence linked from each section). **Open:** D3 (deferred), D5 (contract test), D6 (drop recommendation), D9–D13, and **D17 (proposed)** — waves need the platform-operator identity.
 > **Purpose:** list every open decision, give several options with trade-offs, and tie each option to what this
@@ -686,3 +689,21 @@ access-token window stays short.
 
 **Stopgap until then:** raise `AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` per environment, or re-mint from a browser
 session that already holds the user token.
+
+---
+
+## D19 - Agent token mint: endpoint kept, UI hidden (decided 2026-11-12)
+
+**Decision:** `POST /api/agents/registry/:id/token` remains for programmatic use; the "Mint token" button was removed
+from the admin UI.
+
+**Reason:** the endpoint hands out a copyable bearer credential for the agent+user pair. Nothing in this repository
+consumes it, so advertising it in the UI only invites copying a credential into scripts and tickets.
+
+**Real risk:** a minted token is valid until `AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` (default 900 s) and can only be
+revoked by deleting the grant row or the agent - there is no per-token revocation at the IdP.
+
+**Re-expose when:** a real external consumer exists (SDK, partner embed, external agent runtime, documented HTTP
+integration). Re-exposure is a UI-only change; the action and labels are still wired.
+
+**Related:** [`AGENT-IDENTITY-MIGRATION.md`](./AGENT-IDENTITY-MIGRATION.md) section 13.

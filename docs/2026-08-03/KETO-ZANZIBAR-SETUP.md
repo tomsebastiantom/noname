@@ -1,5 +1,8 @@
 # Ory Keto + Zanzibar Permissions — Setup & Implementation Plan
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Date:** 2026-08-03  
 > **Status:** **Active — infra added; app integration Phase B**  
 > **Related:** [`IDENTITY-AGENTS-MASTER-PLAN.md`](./IDENTITY-AGENTS-MASTER-PLAN.md) · [`PERMISSIONS-MASTER-PLAN.md`](../2026-07-27/PERMISSIONS-MASTER-PLAN.md) · [`PERMISSIONS-REBAC.md`](../2026-07-25/PERMISSIONS-REBAC.md)

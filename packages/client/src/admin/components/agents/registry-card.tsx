@@ -61,22 +61,12 @@ export function RegistryCard({
       header: "",
       cell: (row) => (
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={pending}
-            onClick={() => {
-              reset();
-              void submit({
-                action: "mintAgentToken",
-                params: { agentId: row.id },
-                successMessage: labels.mintSuccessMessage,
-              });
-            }}
-          >
-            {labels.mintTokenLabel}
-          </Button>
+          {/*
+            "Mint token" is intentionally not exposed in the UI (2026-11-12). The endpoint stays for programmatic
+            use, but it hands out a copyable bearer credential that outlives the browser session and nothing in
+            the product consumes it today. Re-expose only when a real external consumer exists — see
+            docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md §"Mint endpoint".
+          */}
           <Button
             type="button"
             size="sm"

@@ -411,3 +411,28 @@ Do **not** start this before the machine path is standard:
 - `nag.` is deleted in the same release, with no dual path and no fallback flag;
 - no production toggle or second verifier exists;
 - no demo user identity is used anywhere.
+
+---
+
+## 13. Mint endpoint - kept programmatic, hidden from the UI (2026-11-12)
+
+**Decision.** The `POST /api/agents/registry/:id/token` endpoint stays; the "Mint token" button was removed from the
+admin agent registry card. The action handler and labels remain wired, so re-exposing it is one small change.
+
+**Why hide it.** The endpoint returns a copyable bearer credential that acts as the agent for the user, outlives the
+browser session, and is the only credential in the system a human can paste into a script. Nothing in the product
+consumes it: agent tasks run in the worker through the `authorization` port, and the edge worker, CLI and eval use
+HMAC service auth or a user access token. Exposing a credential nobody needs is pure risk - it invites copying into
+chat, tickets or scripts where the 15-minute window is long gone.
+
+**Why keep the endpoint.** It is the standards-compliant delegation path (RFC 8693 exchange) and the natural
+integration point for an SDK, a partner embed or an external agent runtime. Removing it would delete a capability
+that is documented and tested, for no security gain now that nothing advertises it.
+
+**Real risk, stated plainly.** A minted token is a bearer credential: whoever holds the string is the agent until
+`AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` expires and until the grant row is deleted. It can only be revoked by
+deleting the grant row or the agent, not individually at the IdP. That is why the accepted window is short (900 s),
+why the grant is bound to `(agent, subject, permissions)`, and why the UI no longer offers it for copying.
+
+**When to re-expose.** Only when a real consumer exists: an external agent process calling the API over HTTP, a
+partner integration, or a documented SDK flow. Until then the endpoint is available to code, not to the admin UI.

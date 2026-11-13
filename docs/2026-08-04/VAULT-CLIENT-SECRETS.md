@@ -1,5 +1,8 @@
 # Vault — where client secrets live (not ZITADEL, not Nango)
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Status banner (2026-09-14):** This document contains stale claims requiring reconciliation and is not current status. See [`AUTHORITATIVE-ROADMAP-CURRENT.md`](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 > **Date:** 2026-08-04  

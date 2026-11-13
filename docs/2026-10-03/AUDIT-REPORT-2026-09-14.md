@@ -1,5 +1,8 @@
 # Noname Codebase Audit — 2026-09-14 (Session Snapshot)
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Historical snapshot; reconciled 2026-10-03:** This 2026-09-14 checkpoint was interrupted by subagent failures and records only the manual analysis and evidence available at that time. The later completed repository-wide documentation review is recorded in [`../2026-09-14/DOCUMENTATION-AUDIT-INDEX.md`](../2026-09-14/DOCUMENTATION-AUDIT-INDEX.md) and its linked batch reports (225 project Markdown files in the initial manifest). Those final reports supersede this snapshot's provisional statements that assigned files were not verified or might still need auditing. This file is retained as a historical record, not as the current audit index or remaining-work list.
 
 ---

@@ -1,5 +1,8 @@
 # E3e — Agent collab references (how others do it)
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 > **Documentation status (2026-09-14): Design/reference material — not implementation proof.** See the [authoritative current roadmap](../2026-09-14/AUTHORITATIVE-ROADMAP-CURRENT.md).
 
 > **Date:** 2026-08-06  

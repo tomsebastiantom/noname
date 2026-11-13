@@ -1,5 +1,8 @@
 # Audit: editor and identity documents
 
+> **Update (2026-11-12):** `nag.` agent tokens and `AGENT_TOKEN_SECRET` were removed; agents now use ZITADEL token exchange. Statements below about `nag.` are historical — current state: docs/2026-11-07/AGENT-IDENTITY-MIGRATION.md
+
+
 **Audit date:** 2026-09-14  
 **Scope:** Every Markdown file directly under `docs/2026-08-01` and `docs/2026-08-03` (21 documents). No documents outside those assigned paths were audited.  
 **Evidence basis:** Current source, tests, package manifests, compose/configuration, seed code, and recent git history through the current checkout. The 2026-08-06 E3 collab document was used as an evidence reference where the assigned 2026-08-01 docs point to it; it was not audited as an assigned document.
