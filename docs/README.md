@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-12/WAVE-WRITE-PATH.md](2026-11-12/WAVE-WRITE-PATH.md)** — **Implemented.** Roadmap step 6: `dryRun:false` performs real promotions per eligible org, reports partial failure without rolling back, and attributes rows to the service account. Records the platform-release pointer fix.
 - **[2026-11-12/GATE-VERDICT.md](2026-11-12/GATE-VERDICT.md)** — **Implemented.** Roadmap step 5: per-tenant verdict (`pass｜block｜unverified｜missing`) read from `platform.eval.run` decisions; a wave now skips `verdict_blocked`, `verdict_unverified` and `no_verdict` instead of promoting blindly.
 - **[2026-11-12/TENANT-DIRECTORY.md](2026-11-12/TENANT-DIRECTORY.md)** — **Implemented.** Roadmap step 4: `tenant_directory` inventory, platform-only `GET /api/platform/tenants`, and rollout eligibility that fails closed (`unknown_tenant`, `tenant_suspended`, `platform_org`). Also fixes machine-token grant resolution for the platform project.
 - **[2026-11-11/LOCAL-RANCHER-ENV.md](2026-11-11/LOCAL-RANCHER-ENV.md)** — **Start here for this machine.** Rancher Desktop runs the infra, the app runs on the host; port-forwards + Traefik, one-stack-at-a-time rule, the eight gotchas that actually cost time (`packages/server/.env` R2 config, Zitadel issuer/`Instance.NotFound`, stale login PAT, editor lazy chunk), and which existing test entry points to reuse.

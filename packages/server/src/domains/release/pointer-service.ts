@@ -1,4 +1,4 @@
-import { ConflictError } from "../../shared/domain-error";
+import { ConflictError, NotFoundError } from "../../shared/domain-error";
 import { currentRequestId } from "../../shared/request-context";
 import type { EvidenceService } from "../evidence/ports";
 import { auditActorType } from "./audit-actor";
@@ -30,8 +30,18 @@ export function createReleasePointerService(
     orgId: string,
     releaseId: string,
     actor: string,
+    options: { platformOrgId?: string; actorType?: "user" | "system" | "service" } = {},
   ): Promise<TenantReleasePointerDTO> => {
-    const release = await releases.get(orgId, releaseId);
+    // A tenant-scoped promote may only reference that tenant's own release. A platform wave is different: the
+    // release is owned by the **platform** org and every tenant points at the same one, so the lookup has to span
+    // orgs — but only when the caller names the platform org as the owner, never as a general escape hatch.
+    const platformOrgId = options.platformOrgId?.trim();
+    const release = platformOrgId
+      ? await releases.getAnyOrg(releaseId)
+      : await releases.get(orgId, releaseId);
+    if (platformOrgId && release.orgId !== platformOrgId) {
+      throw new NotFoundError("Release", releaseId);
+    }
     if (release.state !== "ready") {
       throw new ConflictError(
         `Release ${releaseId} is ${release.state}; only a ready release can be promoted`,
@@ -51,6 +61,7 @@ export function createReleasePointerService(
       to: releaseId,
       actor,
       rollback: false,
+      ...(options.actorType ? { actorType: options.actorType } : {}),
     });
     return updated;
   };
@@ -150,7 +161,15 @@ export function createReleasePointerService(
 
 async function recordPointer(
   evidence: EvidenceService | undefined,
-  input: { orgId: string; from: string | null; to: string; actor: string; rollback: boolean },
+  input: {
+    orgId: string;
+    from: string | null;
+    to: string;
+    actor: string;
+    rollback: boolean;
+    /** Set by a platform wave so the row is attributed to a service account, not a person. */
+    actorType?: "user" | "system" | "service";
+  },
 ): Promise<void> {
   if (!evidence) return;
   const action = input.rollback
@@ -160,7 +179,7 @@ async function recordPointer(
   await evidence.audit({
     orgId: input.orgId,
     action,
-    actorType: auditActorType(input.actor),
+    actorType: input.actorType ?? auditActorType(input.actor),
     actorId: input.actor,
     subjectType: "tenant.storefront",
     subjectId: input.orgId,

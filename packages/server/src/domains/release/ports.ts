@@ -155,7 +155,16 @@ export interface ChannelService {
 
 export interface ReleasePointerService {
   get(orgId: string): Promise<TenantReleasePointerDTO | null>;
-  promote(orgId: string, releaseId: string, actor: string): Promise<TenantReleasePointerDTO>;
+  /**
+   * `platformOrgId` is set only by a platform wave: the release is then owned by that org and resolved across
+   * orgs. Omit it for a tenant promote, which must reference the tenant's own release.
+   */
+  promote(
+    orgId: string,
+    releaseId: string,
+    actor: string,
+    options?: { platformOrgId?: string; actorType?: "user" | "system" | "service" },
+  ): Promise<TenantReleasePointerDTO>;
   rollback(orgId: string, actor: string): Promise<TenantReleasePointerDTO>;
   /** Put the tenant in a channel ring; the channel must exist. */
   assignChannel(orgId: string, channel: string, actor: string): Promise<TenantReleasePointerDTO>;

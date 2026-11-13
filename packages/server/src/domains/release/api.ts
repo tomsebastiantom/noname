@@ -121,8 +121,11 @@ export function createReleaseRoutes(
   });
 
   /**
-   * Dry-run only in this block. The write path is deliberately not enabled until attribution, the platform
-   * boundary and eligibility checks are verified end to end.
+   * Wave rollout.
+   *
+   * `dryRun` (default) returns the plan and writes nothing. `dryRun: false` promotes every **eligible** org and
+   * reports per-org results; a failure on one org never rolls back the others — partial failure is reported, not
+   * hidden. Attribution comes from the pointer service, which writes one audit row per move.
    */
   routes.post("/:id/rollout", async (c) => {
     const operator = await requirePlatformOperator(c);
@@ -135,9 +138,6 @@ export function createReleaseRoutes(
     const parsed = rolloutSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) {
       return c.json({ error: "Invalid rollout", details: parsed.error.flatten() }, 400);
-    }
-    if (parsed.data.dryRun === false) {
-      return c.json({ error: "Write path is not enabled yet; use dryRun" }, 400);
     }
 
     const platformOrg = process.env.PLATFORM_ORG_ID?.trim();
@@ -152,8 +152,14 @@ export function createReleaseRoutes(
     }
     assertMigrationsPromotable(release);
 
+    const dryRun = parsed.data.dryRun !== false;
     const orgIds = [...new Set(parsed.data.orgIds)];
-    const results: Array<{ orgId: string; status: "eligible" | "skipped"; reason?: string }> = [];
+    const results: Array<{
+      orgId: string;
+      status: "eligible" | "skipped" | "promoted" | "failed";
+      reason?: string;
+      error?: string;
+    }> = [];
     for (const orgId of orgIds) {
       if (orgId === platformOrg) {
         results.push({ orgId, status: "skipped", reason: "platform_org" });
@@ -191,10 +197,30 @@ export function createReleaseRoutes(
           continue;
         }
       }
-      results.push({ orgId, status: "eligible" });
+      results.push({ orgId, status: dryRun ? "eligible" : "promoted" });
+      if (dryRun) continue;
+
+      // Real promotion. `pointer.promote` writes the pointer and one audit row per org; a throw here is that
+      // org's failure only, so the rest of the wave still runs.
+      try {
+        await pointer.promote(orgId, release.id, operator.userId, { platformOrgId: platformOrg, actorType: "service" });
+      } catch (cause) {
+        const last = results.at(-1);
+        if (last) {
+          last.status = "failed";
+          last.error = cause instanceof Error ? cause.message : String(cause);
+        }
+      }
     }
 
-    return ok(c, { releaseId: release.id, dryRun: true, results });
+    const summary = {
+      promoted: results.filter((row) => row.status === "promoted").length,
+      failed: results.filter((row) => row.status === "failed").length,
+      skipped: results.filter((row) => row.status === "skipped").length,
+      eligible: results.filter((row) => row.status === "eligible").length,
+    };
+
+    return ok(c, { releaseId: release.id, dryRun, summary, results });
   });
 
   routes.get("/pointer", async (c) => {
