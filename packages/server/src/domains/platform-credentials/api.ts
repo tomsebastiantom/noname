@@ -22,6 +22,12 @@ const eventSchema = z.object({
   projectId: z.string().min(1).optional(),
   keyId: z.string().min(1).optional(),
   reason: z.string().min(1).optional(),
+  /**
+   * `system` is the only actor a caller may claim, and only to mark a **bootstrap** change: the very first
+   * provisioning run creates the credential that would otherwise attest it. Claiming `user` or `service` is
+   * ignored — those are always taken from the verified caller, so a credential cannot impersonate an operator.
+   */
+  actorType: z.literal("system").optional(),
 });
 
 type RecordEvent = (input: CredentialEventInput) => Promise<{ id: string }>;
@@ -56,11 +62,13 @@ export function createPlatformCredentialRoutes(deps: {
       return c.json({ error: "Invalid credential event", details: parsed.error.flatten() }, 400);
     }
 
+    const { actorType, ...event } = parsed.data;
     const recorded = await deps.record({
-      ...parsed.data,
-      // The credential cannot vouch for itself: the actor is the operator that performed the change.
-      actorType: "service",
-      actorId: operator.userId,
+      ...event,
+      // A credential never vouches for itself: the actor is the operator that performed the change, unless the
+      // caller explicitly marks a bootstrap, which is attributed to `system` and nothing more specific.
+      actorType: actorType === "system" ? "system" : "service",
+      actorId: actorType === "system" ? "system" : operator.userId,
     });
     return ok(c, recorded);
   });

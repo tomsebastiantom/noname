@@ -4,14 +4,16 @@
  * Creates (idempotently):
  *   - a dedicated platform org (unless PLATFORM_ORG_ID is set)
  *   - a platform project with roles `platform_operator` and `eval_operator`
- *   - service accounts `release-operator` and `eval-runner`
+ *   - service accounts `release-operator`, `eval-runner` and `provisioner`
  *   - one JSON private key per service account, written under `zitadel_keys/`
+ *   - one credential-lifecycle audit row per account, through the API (see `emitCredentialEvents`)
  *   - project role grants for each service account
  *
  * Run: pnpm init:platform-accounts
  * Requires: ZITADEL reachable + an admin credential (`ZITADEL_ADMIN_PAT` or the local login PAT).
  */
 import "dotenv/config";
+import { createHmac } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -46,6 +48,19 @@ const ACCOUNTS = [
     roleKey: "eval_operator",
     keyPath: "zitadel_keys/eval-runner-sa.json",
     envKey: "EVAL_RUNNER_KEY_PATH",
+  },
+  {
+    /**
+     * The provisioner is a *separate* identity from the credentials it creates, so the audit row for
+     * "platform_operator granted to release-operator" names a principal, not the account that received the grant.
+     * It holds the same role because it must be allowed to record credential events, nothing more.
+     */
+    userName: "provisioner",
+    name: "Platform provisioner",
+    description: "Provisioning identity (service account)",
+    roleKey: "platform_operator",
+    keyPath: "zitadel_keys/provisioner-sa.json",
+    envKey: "PROVISIONER_KEY_PATH",
   },
 ] as const;
 
@@ -278,17 +293,122 @@ async function ensureGrant(
   }
 }
 
+/**
+ * Record what this run just changed in the platform audit stream.
+ *
+ * Attribution rule: a credential must not vouch for itself. When the provisioner key already existed, the events
+ * are posted with the provisioner's own token, so the actor is a real principal. On the very first run the
+ * provisioner is being created by this same run — there is no prior identity to name — so the events are marked
+ * `actorType: system` and the reason says `bootstrap`.
+ *
+ * Best effort by design: provisioning has already happened, and failing the script afterwards would not undo it.
+ * A miss is not silent — credential reconciliation reports it as `unrecorded`.
+ */
+async function emitCredentialEvents(input: {
+  orgId: string;
+  projectId: string;
+  provisionerWasPresent: boolean;
+}): Promise<void> {
+  const keyPath = process.env.PROVISIONER_KEY_PATH?.trim() ?? "zitadel_keys/provisioner-sa.json";
+  const issuer = process.env.ZITADEL_ISSUER ?? "http://localhost:8080";
+  const apiBase = process.env.API_BASE?.trim() ?? "http://localhost:3000";
+  const bootstrap = !input.provisionerWasPresent;
+
+  try {
+    const key = JSON.parse(readFileSync(join(ROOT, keyPath), "utf8")) as {
+      keyId: string;
+      userId: string;
+      key: string;
+    };
+    const { createSign } = await import("node:crypto");
+    const now = Math.floor(Date.now() / 1000);
+    const header = Buffer.from(JSON.stringify({ alg: "RS256", kid: key.keyId })).toString(
+      "base64url",
+    );
+    const payload = Buffer.from(
+      JSON.stringify({ iss: key.userId, sub: key.userId, aud: issuer, iat: now, exp: now + 600 }),
+    ).toString("base64url");
+    const signer = createSign("RSA-SHA256");
+    signer.update(`${header}.${payload}`);
+    const assertion = `${header}.${payload}.${signer.sign(key.key, "base64url")}`;
+
+    const tokenResponse = await fetch(`${issuer}/oauth/v2/token`, {
+      method: "POST",
+      headers: { "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
+        assertion,
+        scope: `openid profile urn:zitadel:iam:org:project:id:${input.projectId}:aud`,
+      }),
+    });
+    const token = (await tokenResponse.json()) as { access_token?: string };
+    if (!token.access_token) {
+      throw new Error(`token exchange failed (${tokenResponse.status})`);
+    }
+    const accessToken = token.access_token;
+
+    for (const account of ACCOUNTS) {
+      const userId = await ensureServiceAccount(adminPat(), input.orgId, account);
+      for (const action of ["platform.credential.created", "platform.credential.granted"] as const) {
+        // The API requires the edge attestation headers on every request (it refuses traffic that did not come
+        // through the worker). Same shape the eval worker sends: HMAC over `org:user:role`.
+        const secret = process.env.WORKER_SERVER_SECRET?.trim() ?? "";
+        const hmac = createHmac("sha256", secret)
+          .update(`${input.orgId}:${key.userId}:service`)
+          .digest("base64");
+        const response = await fetch(`${apiBase}/api/platform/credentials/events`, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-org-id": input.orgId,
+            "x-user-id": key.userId,
+            "x-role": "service",
+            "x-auth-hmac": hmac,
+            authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            action,
+            accountId: userId,
+            accountName: account.userName,
+            role: account.roleKey,
+            projectId: input.projectId,
+            ...(bootstrap ? { actorType: "system", reason: "bootstrap" } : {}),
+          }),
+        });
+        if (!response.ok) {
+          console.warn(
+            `credential audit: ${action} for ${account.userName} failed (${response.status}) — reconcile will report it`,
+          );
+        }
+      }
+    }
+    console.log(
+      `Credential audit: recorded as ${bootstrap ? "system (bootstrap)" : "provisioner"}.`,
+    );
+  } catch (error) {
+    console.warn(
+      `credential audit: could not record (${error instanceof Error ? error.message : String(error)}) — run reconciliation`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const pat = adminPat();
   const orgId = await ensurePlatformOrg(pat);
   const projectId = await ensurePlatformProject(pat, orgId);
   await ensureRoles(pat, orgId, projectId);
 
+  const provisionerWasPresent = existsSync(
+    join(ROOT, process.env.PROVISIONER_KEY_PATH?.trim() ?? "zitadel_keys/provisioner-sa.json"),
+  );
+
   for (const account of ACCOUNTS) {
     const userId = await ensureServiceAccount(pat, orgId, account);
     await ensureKey(pat, orgId, userId, account);
     await ensureGrant(pat, orgId, userId, projectId, account.roleKey);
   }
+
+  await emitCredentialEvents({ orgId, projectId, provisionerWasPresent });
 
   console.log("\nPlatform identities ready.");
   console.log(`  PLATFORM_ORG_ID=${orgId}`);
