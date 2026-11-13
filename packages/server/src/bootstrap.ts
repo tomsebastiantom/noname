@@ -46,6 +46,7 @@ import { createNotificationsDomain, parseTransitionNotify } from "./domains/noti
 import { createReleaseDomain } from "./domains/release";
 import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
+import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
@@ -526,6 +527,10 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/webhooks", webhooks.routes);
   app.route("/api/evidence", evidence.routes);
   app.route("/api/platform/audit", createPlatformAuditRoutes(evidence.service));
+  app.route(
+    "/api/platform/credentials",
+    createPlatformCredentialsDomain({ evidence: evidence.service }).routes,
+  );
 
   return app;
 }

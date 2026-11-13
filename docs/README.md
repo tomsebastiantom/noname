@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md](2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md)** — **Implemented.** Roadmap step 3 / audit phase B: `platform.credential.*` events with the operator as actor, plus a reconciliation that compares ZITADEL's live platform grants with the recorded stream and reports drift (`unrecorded` / `stale`).
 - **[2026-11-12/DECISIONS-B7-D9-E20.md](2026-11-12/DECISIONS-B7-D9-E20.md)** — **Decided.** Roadmap step 8: B7 dropped (no visual rubric), D9 fail-closed with human ack as a separate block, D5/E20 contract test now + staging smoke later, never in eval.
 - **[2026-11-12/PLATFORM-AUDIT.md](2026-11-12/PLATFORM-AUDIT.md)** — **Implemented.** Roadmap step 7: cross-org `GET /api/platform/audit` with filters and `format=ndjson` export, guarded by platform org + `platform_operator` + `PLATFORM_AUDIT_READ`.
 - **[2026-11-12/WAVE-WRITE-PATH.md](2026-11-12/WAVE-WRITE-PATH.md)** — **Implemented.** Roadmap step 6: `dryRun:false` performs real promotions per eligible org, reports partial failure without rolling back, and attributes rows to the service account. Records the platform-release pointer fix.
