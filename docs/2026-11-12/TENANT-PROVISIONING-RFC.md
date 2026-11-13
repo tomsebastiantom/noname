@@ -125,12 +125,29 @@ holding that open is how you get duplicate tenants on retry.
 | P5 | Compensation on failure | **mark `failed`, keep what succeeded, allow resume** | deleting an IdP org is more dangerous than a stalled record |
 | P6 | Platform console vs CLI | **both over one API**; CLI is a thin client | scripts today are CLI; the UI must not invent a second path |
 
-### P2 needs a caveat
+### P2 — org per tenant, with no exceptions
 
-A ZITADEL org per tenant is the right boundary but it is **not free**: today one shared project holds all tenant roles,
-and the demo tenant lives in the same org as the instance admin. The move needs a per-tenant project role
-(`eval_reader` already follows this shape) and a decision about where human tenant users live. Recommended: **new
-tenants get their own org; the existing demo org is grandfathered** and migrated only if a real isolation need appears.
+A ZITADEL org per tenant is the right boundary, and **the demo tenant is not an exception**. Splitting the three
+classes of org is the invariant this RFC adopts:
+
+| Org | Holds | Must never hold |
+|---|---|---|
+| **instance / admin** | human admins, the backend machine key used by provisioning | tenant data, tenant users |
+| **platform** | `release-operator`, `eval-runner`, `provisioner` | tenant data, tenant users |
+| **tenant** (one per tenant, `yogastore` included) | that tenant's users, its `eval-runner-<org>`, its data | admins from another tenant, platform service accounts |
+
+Two corrections to the earlier draft of this section:
+
+1. **It is a project *grant*, not a per-tenant project role.** One shared project holds the roles; a tenant org needs
+   a **project grant** of it (then role assignment inside the tenant org). Creating a project per tenant would give
+   the appearance of isolation with none of the enforcement.
+2. **The demo org is migrated, not grandfathered.** Its data is reproducible (`pnpm seed:demo:full`), so the correct
+   move is to provision `yogastore` as a real tenant and re-seed — see §8. Keeping it in the admin org preserves the
+   exact conflation this RFC exists to remove: the tenant that holds seeded content would still share an org with the
+   identity that administers the instance.
+
+Consequence: **every tenant, including the demo one, is created by the same operation** — which makes the demo tenant
+the first acceptance test of the provisioning path rather than a special case outside it.
 
 ## 5. UI surface
 
@@ -176,22 +193,47 @@ steps are not done yet”.
 | Phase | Ships | Acceptance (observed) |
 |---|---|---|
 | **1. Record** | `tenant_provisioning` table + `POST /api/platform/tenants` writing a `pending` row and returning 202, `GET …/provisioning` | create returns 202; row visible; re-POST with the same idempotency key returns the same id |
-| **2. Directory step** | step 1 creates the directory row (`provisioning_state=in_progress`) | tenant appears in `GET /api/platform/tenants` with state `in_progress`, and is **not** eligible for a wave |
-| **3. Eval credential step** | step 3 creates `eval-runner-<org>` + key + `eval_reader` grant | key file exists; credential row in the **tenant's** audit stream; `init:tenant-eval` becomes a wrapper |
-| **4. Resume + retry** | `POST …/provisioning/retry` re-runs only failed steps | killing the worker mid-run leaves `failed`; retry completes without duplicate accounts |
+| **2. Directory + org step** | step 1 directory row (`provisioning_state=in_progress`); step 2 ZITADEL org + **project grant** | tenant appears in `GET /api/platform/tenants` as `in_progress` and is **not** wave-eligible; the new org has the project granted |
+| **3. Eval credential step** | step 3 creates `eval-runner-<org>` + key + `eval_reader` assignment **inside the tenant org** | key file exists; credential row in the **tenant's** audit stream; a user in that org can log in and sees only that tenant; `init:tenant-eval` becomes a wrapper |
+| **4. Resume + retry** | `POST …/provisioning/retry` re-runs only failed steps | killing the worker mid-run leaves `failed`; retry completes without duplicate accounts or a second org |
 | **5. Console** | platform tenant list + create + provisioning detail | an operator creates a tenant from the UI and watches steps finish |
 | **6. Offboarding** | `POST …/offboard` → revoke credentials, mark `offboarding` | a wave skips it; credentials disabled in ZITADEL; audit rows for the revocations |
 
 Phases 1–4 are backend; 5 is the console. Do not start 5 before 4 — a UI over a non-resumable operation teaches
 operators to retry blindly.
 
+**Phase 2 also runs the demo cutover** (§8), because `yogastore` must be created by this path. If the cutover cannot
+run, the phase is not done — the “demo is special” exception is exactly what this RFC removes.
+
 ## 8. Data migration
 
-- Existing tenants: backfill `tenant_provisioning` as `ready` with `steps.directory=done` and
-  `steps.eval_account=unknown` (no row is better than a lie).
-- `yogastore` (demo): mark `ready`, and record its eval account retroactively only if we can name the actor — otherwise
-  leave `unknown` and let reconciliation show it.
-- No `documents` rewrite.
+**No grandfathering.** The demo tenant is cut over like any other, because its data is reproducible and because
+leaving it in the admin org would preserve the org conflation this RFC removes.
+
+### 8.1 Demo cutover (`yogastore`)
+
+Why re-provision instead of rewriting `org_id` everywhere: the org id appears in four places that must agree —
+`.env`, the `tenant_settings` documents, every `org_id`-keyed table, and object keys in R2
+(`tenants/<org>/releases/…`). An in-place rewrite is a multi-table transaction plus an object-store rekey, against
+data we can recreate in one command. Rewriting it would be more risk for less certainty.
+
+| Step | Command / action | Must be true afterwards |
+|---|---|---|
+| 1 | provision `yogastore` through the new operation (phase 2) | new org id; directory row `ready`; project grant present |
+| 2 | `pnpm seed:demo:full` against the new org | layouts, product, order evidence exist under the **new** org |
+| 3 | update `.env`: `ZITADEL_DEMO_ORG_ID`; move the eval key to `zitadel_keys/tenants/<newOrg>/` | API boots; `GET /api/tenants/resolve/yogastore` returns the new org |
+| 4 | delete the old org's rows (`documents`, `evidence_*`, `releases`, `tenant_*`) **or** keep them archived under the old id and never serve them | no row is served for the retired org id |
+| 5 | deactivate the old ZITADEL org | its accounts cannot authenticate |
+| 6 | browser + eval check | storefront, admin, editor render; `noname eval --tenant yogastore` passes |
+
+Rollback: keep the old org id and its rows untouched until step 6 passes; reverting `.env` restores the previous
+state exactly, since nothing was rewritten in place.
+
+### 8.2 Other existing tenants
+
+- Backfill `tenant_provisioning` as `ready` with `steps.directory=done` and `steps.eval_account=unknown` — no row is
+  better than a lie.
+- Any tenant whose credentials cannot be attributed retroactively stays `unknown`, and reconciliation reports it.
 
 ## 9. Risks
 
@@ -206,7 +248,8 @@ operators to retry blindly.
 
 ## 10. Open questions
 
-1. **Does a tenant get its own ZITADEL org at creation, or later?** (P2) — affects whether step 2 exists at all.
+1. **Org discovery at login** — how the auth request finds a user's org (domain-based resolution vs explicit `org_id`
+   scope). **Blocking for phase 3**: without it a tenant org exists but nobody can sign into it. <!-- resolved by P2: org per tenant is decided -->
 2. **Who owns the tenant’s first human admin?** Invitation flow vs created admin (ZITADEL creates `ORG_OWNER` by
    default) — this is a product decision about onboarding UX.
 3. **Is seeding part of provisioning or a separate demo step?** Recommendation: a flag on the request (`seed: true`),
