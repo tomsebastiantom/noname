@@ -46,6 +46,7 @@ import { createNotificationsDomain, parseTransitionNotify } from "./domains/noti
 import { createReleaseDomain } from "./domains/release";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
+import { createTenantDirectoryDomain } from "./domains/tenant-directory";
 import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { getBullmqQueue } from "./shared/bullmq-queue";
@@ -439,12 +440,18 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/edge", edge.routes);
 
-  const releaseDomain = createReleaseDomain({ db, evidence: evidence.service });
+  const tenantDirectory = createTenantDirectoryDomain({ db });
+  const releaseDomain = createReleaseDomain({
+    db,
+    evidence: evidence.service,
+    selectability: (orgId) => tenantDirectory.service.selectability(orgId),
+  });
   const tenant = createTenantDomain({
     tenantSettings: docs.service.tenantSettings,
     clientBundle: (orgId) => releaseDomain.pointer.clientBundle(orgId),
   });
   app.route("/api/tenants", tenant.routes);
+  app.route("/api/platform/tenants", tenantDirectory.routes);
 
   const isExtensionInstalled = async (orgId: string, extension: string): Promise<boolean> => {
     try {

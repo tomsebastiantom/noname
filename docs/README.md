@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-12/TENANT-DIRECTORY.md](2026-11-12/TENANT-DIRECTORY.md)** — **Implemented.** Roadmap step 4: `tenant_directory` inventory, platform-only `GET /api/platform/tenants`, and rollout eligibility that fails closed (`unknown_tenant`, `tenant_suspended`, `platform_org`). Also fixes machine-token grant resolution for the platform project.
 - **[2026-11-11/LOCAL-RANCHER-ENV.md](2026-11-11/LOCAL-RANCHER-ENV.md)** — **Start here for this machine.** Rancher Desktop runs the infra, the app runs on the host; port-forwards + Traefik, one-stack-at-a-time rule, the eight gotchas that actually cost time (`packages/server/.env` R2 config, Zitadel issuer/`Instance.NotFound`, stale login PAT, editor lazy chunk), and which existing test entry points to reuse.
 - **[2026-11-11/BROWSER-VERIFICATION.md](2026-11-11/BROWSER-VERIFICATION.md)** — **Verified.** Headless-Chrome evidence that storefront, login, admin (home/orders/agents), product and the visual editor render on the rebuilt stack; screenshots in `evidence/`.
 - **[2026-11-07/RELEASE-CONTROL-SUMMARY.md](2026-11-07/RELEASE-CONTROL-SUMMARY.md)** — **One-page essence.** What the release control plane is, what is wrong today, where release data lives, the architecture invariants, what to fix before code, and the minimum order.

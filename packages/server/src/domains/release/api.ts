@@ -66,6 +66,20 @@ export function createReleaseRoutes(
   channels: ChannelService,
   pointer: ReleasePointerService,
   retention: ReleaseRetention,
+  options: {
+    selectability?: (orgId: string) => Promise<
+      | { selectable: true }
+      | {
+          selectable: false;
+          reason:
+            | "unknown_tenant"
+            | "tenant_suspended"
+            | "tenant_offboarding"
+            | "tenant_excluded"
+            | "platform_org";
+        }
+    >;
+  } = {},
 ) {
   const routes = new Hono();
 
@@ -140,6 +154,15 @@ export function createReleaseRoutes(
       if (orgId === platformOrg) {
         results.push({ orgId, status: "skipped", reason: "platform_org" });
         continue;
+      }
+      // Fail closed: an org the directory does not know, or one it excludes, is never eligible. Without this a
+      // typo'd id (or a suspended tenant) was reported as eligible and would have been written on the real path.
+      if (options.selectability) {
+        const verdict = await options.selectability(orgId);
+        if (!verdict.selectable) {
+          results.push({ orgId, status: "skipped", reason: verdict.reason });
+          continue;
+        }
       }
       const currentPointer = await pointer.get(orgId);
       if (currentPointer?.releaseId === release.id) {

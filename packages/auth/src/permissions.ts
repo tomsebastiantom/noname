@@ -169,7 +169,16 @@ export function isPlatformRole(value: string): value is PlatformRole {
  * (ZITADEL does not put machine-user project roles in the access token).
  */
 export const SERVICE_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> = {
-  platform_operator: [PERMISSIONS.RELEASES_PLATFORM_READ, PERMISSIONS.RELEASES_PLATFORM_WRITE],
+  /**
+   * The platform operator manages releases *in the platform org* (where wave releases live) and may roll them out
+   * across tenants. It therefore needs the ordinary release permissions for its own org plus the platform-only ones.
+   */
+  platform_operator: [
+    PERMISSIONS.RELEASES_READ,
+    PERMISSIONS.RELEASES_WRITE,
+    PERMISSIONS.RELEASES_PLATFORM_READ,
+    PERMISSIONS.RELEASES_PLATFORM_WRITE,
+  ],
   eval_operator: [
     PERMISSIONS.MACHINES_READ,
     PERMISSIONS.EVAL_TENANT_READ,

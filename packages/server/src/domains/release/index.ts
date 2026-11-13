@@ -52,6 +52,8 @@ export function createReleaseDomain(deps: {
   db: Database;
   evidence?: EvidenceService;
   storage?: ReleaseStore;
+  /** Tenant inventory lookup: a wave may only name a tenant the directory knows and does not exclude. */
+  selectability?: (orgId: string) => Promise<import("../tenant-directory/ports").TenantSelectability>;
 }) {
   const storage = deps.storage ?? createPostgresReleaseStore(deps.db);
   const service: ReleaseService = createReleaseService(storage);
@@ -81,6 +83,8 @@ export function createReleaseDomain(deps: {
     environments,
     pointer,
     retention,
-    routes: createReleaseRoutes(service, environments, channels, pointer, retention),
+    routes: createReleaseRoutes(service, environments, channels, pointer, retention, {
+      ...(deps.selectability ? { selectability: deps.selectability } : {}),
+    }),
   };
 }

@@ -172,11 +172,21 @@ export async function requireAuthenticatedActor(
 
   // Service accounts do not carry project roles in the token (ZITADEL behavior). If the token has no role-derived
   // permissions, resolve its grants for this org/project server-side. This is the same rule the platform guard uses.
+  //
+  // The project depends on which org the caller acts for: a platform service account holds its roles on the
+  // *platform* project, not the tenant project. Resolving against the tenant project made every platform machine
+  // token permissionless outside `requirePlatformOperator`, so ordinary platform routes (creating a release in the
+  // platform org) answered 403.
   if (permissions.length === 0 && projectId) {
     const orgId = getOrgId(c);
+    const platformOrg = process.env.PLATFORM_ORG_ID?.trim();
+    const grantProjectId =
+      orgId && platformOrg && orgId === platformOrg
+        ? (process.env.ZITADEL_PLATFORM_PROJECT_ID?.trim() ?? projectId)
+        : projectId;
     if (orgId) {
       try {
-        const rows = await listProjectAuthorizations(orgId, projectId);
+        const rows = await listProjectAuthorizations(orgId, grantProjectId);
         const roleKeys = (rows.find((row) => row.user?.id === auth.userId)?.roles ?? [])
           .map((role) => role.key?.trim())
           .filter((role): role is string => Boolean(role));
