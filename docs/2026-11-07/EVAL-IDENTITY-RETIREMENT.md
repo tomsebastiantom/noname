@@ -1,5 +1,8 @@
 # Retiring `nsv.` — eval moves to the ZITADEL service-account model
 
+> **Update (2026-11-12):** `nag.` was retired. Agents now use ZITADEL token exchange; see [`AGENT-IDENTITY-MIGRATION.md`](./AGENT-IDENTITY-MIGRATION.md). Treat `nag.`/`AGENT_TOKEN_SECRET` references here as the state at the time of writing.
+
+
 > **Status:** **implemented 2026-11-07** — per-tenant eval service accounts; `nsv.` and the mint script deleted.
 > **Driver:** one credential model only. The platform operator already uses a ZITADEL service account; the eval
 > service used the custom `nsv.` HMAC token. That was the last custom platform credential and it is gone.

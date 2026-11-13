@@ -659,3 +659,30 @@ the service account; no old platform role is ported and no dual path is kept.
 
 Nothing above requires choosing all sixteen today. D14–D16 decide what “release” means; D1 and D2 are the first
 two mechanisms that implement it; the rest are policy and operations.
+
+---
+
+## D18 - Agent token refresh grant (deferred, 2026-11-12)
+
+**Status:** deferred by evidence, not by omission. Agent tokens are exchanged (RFC 8693) and the API accepts them
+for `AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` (default 900 s); expiry answers `401 AGENT_TOKEN_EXPIRED` so callers can
+tell "re-mint" from "not allowed".
+
+**Why it is not built yet:** nothing in this repository consumes a minted agent token over HTTP. The admin UI only
+displays it for a human to copy, server-side agent tasks run in the worker through the `authorization` port, and the
+edge worker/CLI/eval use HMAC service auth or a user access token. There is no unattended or external agent runtime.
+
+**Triggers that would make it necessary:**
+
+1. Agent tasks executed by an external process calling the API over HTTP (the old "Phase 2.1 loopback" idea in
+   `AGENT-PHASE-2-MASTRA-SPEC.md`, never implemented).
+2. Third-party or partner agents running unattended.
+3. A CLI/daemon agent that outlives the user's session.
+4. Agent runs measured in hours against the HTTP API rather than inside the worker.
+
+**If built:** `mint` returns a short access token plus a refresh credential bound to `(agent, subject, permissions)`;
+an exchange endpoint rotates it without the user present; revocation on agent delete and on subject change; the
+access-token window stays short.
+
+**Stopgap until then:** raise `AGENT_TOKEN_ACCEPTED_LIFETIME_SECONDS` per environment, or re-mint from a browser
+session that already holds the user token.

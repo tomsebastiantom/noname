@@ -1,5 +1,8 @@
 # Platform operator identity — prerequisite for promotion waves
 
+> **Update (2026-11-12):** `nag.` was retired. Agents now use ZITADEL token exchange; see [`AGENT-IDENTITY-MIGRATION.md`](./AGENT-IDENTITY-MIGRATION.md). Treat `nag.`/`AGENT_TOKEN_SECRET` references here as the state at the time of writing.
+
+
 > **Status:** proposed design / decision input · **Date:** 2026-11-07 (America/Toronto)
 > **Problem:** D1 can move one tenant at a time. A **wave** moves many orgs in one operation, which requires an
 > identity that is allowed to act **across orgs**. Today no such identity exists.

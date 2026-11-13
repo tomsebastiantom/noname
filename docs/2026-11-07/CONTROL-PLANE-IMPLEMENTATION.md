@@ -1,5 +1,8 @@
 # Control-plane implementation — the first three steps, architecture-checked
 
+> **Update (2026-11-12):** `nag.` was retired. Agents now use ZITADEL token exchange; see [`AGENT-IDENTITY-MIGRATION.md`](./AGENT-IDENTITY-MIGRATION.md). Treat `nag.`/`AGENT_TOKEN_SECRET` references here as the state at the time of writing.
+
+
 > **Status:** proposed implementation plan · **Date:** 2026-11-07 (America/Toronto)
 > **Scope:** the minimum before a platform operator may write anything:
 > **① audit/attribution → ② D17 boundary → ③ token audit.**
