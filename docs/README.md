@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-12/DECISIONS-B7-D9-E20.md](2026-11-12/DECISIONS-B7-D9-E20.md)** — **Decided.** Roadmap step 8: B7 dropped (no visual rubric), D9 fail-closed with human ack as a separate block, D5/E20 contract test now + staging smoke later, never in eval.
 - **[2026-11-12/PLATFORM-AUDIT.md](2026-11-12/PLATFORM-AUDIT.md)** — **Implemented.** Roadmap step 7: cross-org `GET /api/platform/audit` with filters and `format=ndjson` export, guarded by platform org + `platform_operator` + `PLATFORM_AUDIT_READ`.
 - **[2026-11-12/WAVE-WRITE-PATH.md](2026-11-12/WAVE-WRITE-PATH.md)** — **Implemented.** Roadmap step 6: `dryRun:false` performs real promotions per eligible org, reports partial failure without rolling back, and attributes rows to the service account. Records the platform-release pointer fix.
 - **[2026-11-12/GATE-VERDICT.md](2026-11-12/GATE-VERDICT.md)** — **Implemented.** Roadmap step 5: per-tenant verdict (`pass｜block｜unverified｜missing`) read from `platform.eval.run` decisions; a wave now skips `verdict_blocked`, `verdict_unverified` and `no_verdict` instead of promoting blindly.

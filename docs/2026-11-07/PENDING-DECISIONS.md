@@ -257,6 +257,9 @@ mandatory `audience`, `M2.roles` error/skip semantics; runner identity is `eval-
 
 ---
 
+**Status:** **chosen 2026-11-12 — contract test now, staging provider smoke later, never in eval.** See
+[`../2026-11-12/DECISIONS-B7-D9-E20.md`](../2026-11-12/DECISIONS-B7-D9-E20.md).
+
 ## D5 — How to verify checkout reaches `paid`
 
 **Question.** `B5` proves add-to-cart. Completing checkout to `paid` crosses into a **payment provider**. What do
@@ -326,6 +329,9 @@ provider-specific string from the storefront. Choose B only if one tenant must r
 **Decision:** ☐ A  ☐ B  ☐ C  ☐ other: ______________________
 
 ---
+
+**Status:** **chosen 2026-11-12 — drop.** Recorded with D9 and D5 in
+[`../2026-11-12/DECISIONS-B7-D9-E20.md`](../2026-11-12/DECISIONS-B7-D9-E20.md); `B7` is out of scope, not pending.
 
 ## D6 — `B7` visual rubric
 
@@ -430,6 +436,10 @@ failures/unverified are never stored; **sampling** is deterministic and rotating
 `reused: true`, `counts.reused: 33`, fresh `correlationId`).
 
 ---
+
+**Status:** **chosen 2026-11-12 — fail closed now, human ack as a separate block.** A wave skips every `unverified`
+tenant; contract/data checks are never ackable. See
+[`../2026-11-12/DECISIONS-B7-D9-E20.md`](../2026-11-12/DECISIONS-B7-D9-E20.md).
 
 ## D9 — What the gate does with `unverified`
 
