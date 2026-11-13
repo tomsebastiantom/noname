@@ -178,6 +178,8 @@ export const SERVICE_ROLE_PERMISSIONS: Record<string, readonly PermissionKey[]> 
     PERMISSIONS.RELEASES_WRITE,
     PERMISSIONS.RELEASES_PLATFORM_READ,
     PERMISSIONS.RELEASES_PLATFORM_WRITE,
+    // Cross-org audit is what makes a wave reviewable; it is platform-only by definition.
+    PERMISSIONS.PLATFORM_AUDIT_READ,
   ],
   eval_operator: [
     PERMISSIONS.MACHINES_READ,

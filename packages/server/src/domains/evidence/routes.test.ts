@@ -41,6 +41,7 @@ function service(): EvidenceService {
     findRecord: vi.fn(async () => null),
     listLinks: vi.fn(async () => []),
     listAudit: vi.fn(async () => []),
+    listAuditAcross: vi.fn(async () => []),
   };
 }
 

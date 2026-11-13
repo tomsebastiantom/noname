@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gte, lt } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import type {
   EvidenceActivity,
@@ -200,6 +200,33 @@ export function createEvidencePostgresService(db: Database): EvidenceService {
         .where(and(...conditions))
         .orderBy(desc(evidenceAuditEvents.recordedAt))
         .limit(MAX_LIMIT);
+      return rows.map(mapAudit);
+    },
+
+    /**
+     * Cross-org audit query — the platform audit surface only.
+     *
+     * Every filter is optional except the cap: with no `orgId` this deliberately spans all tenants, which is
+     * exactly what a tenant-scoped token must never be able to do. The route guards that; this method does not
+     * pretend to.
+     */
+    async listAuditAcross(query) {
+      const conditions = [];
+      if (query.orgId) conditions.push(eq(evidenceAuditEvents.orgId, query.orgId));
+      if (query.action) conditions.push(eq(evidenceAuditEvents.action, query.action));
+      if (query.actorType) conditions.push(eq(evidenceAuditEvents.actorType, query.actorType));
+      if (query.actorId) conditions.push(eq(evidenceAuditEvents.actorId, query.actorId));
+      if (query.subjectType) conditions.push(eq(evidenceAuditEvents.subjectType, query.subjectType));
+      if (query.subjectId) conditions.push(eq(evidenceAuditEvents.subjectId, query.subjectId));
+      if (query.from) conditions.push(gte(evidenceAuditEvents.recordedAt, query.from));
+      if (query.to) conditions.push(lt(evidenceAuditEvents.recordedAt, query.to));
+
+      const rows = await db
+        .select()
+        .from(evidenceAuditEvents)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(evidenceAuditEvents.recordedAt))
+        .limit(Math.min(Math.max(query.limit ?? 200, 1), MAX_LIMIT));
       return rows.map(mapAudit);
     },
   };

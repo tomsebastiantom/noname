@@ -69,6 +69,21 @@ export type EvidenceAuditEvent = EvidenceAuditInput & {
   recordedAt: Date;
 };
 
+export type EvidenceAuditQuery = {
+  /** Omit to query across every org — platform-only, never reachable from a tenant token. */
+  orgId?: string;
+  action?: string;
+  actorType?: EvidenceAuditInput["actorType"];
+  actorId?: string;
+  subjectType?: string;
+  subjectId?: string;
+  /** Inclusive lower bound on `recordedAt`. */
+  from?: Date;
+  /** Exclusive upper bound on `recordedAt`. */
+  to?: Date;
+  limit?: number;
+};
+
 export type EvidenceListQuery = {
   orgId: string;
   type?: string;
@@ -92,4 +107,6 @@ export interface EvidenceService {
   findRecord(orgId: string, recordId: string): Promise<EvidenceRecord | null>;
   listLinks(orgId: string, recordId: string): Promise<EvidenceLink[]>;
   listAudit(orgId: string, subjectType?: string, subjectId?: string): Promise<EvidenceAuditEvent[]>;
+  /** Cross-org audit query. Only the platform audit surface may call this. */
+  listAuditAcross(query: EvidenceAuditQuery): Promise<EvidenceAuditEvent[]>;
 }
