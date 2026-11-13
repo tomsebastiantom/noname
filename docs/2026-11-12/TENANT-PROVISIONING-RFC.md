@@ -194,7 +194,7 @@ steps are not done yet”.
 |---|---|---|
 | **1. Record** | `tenant_provisioning` table + `POST /api/platform/tenants` writing a `pending` row and returning 202, `GET …/provisioning` | create returns 202; row visible; re-POST with the same idempotency key returns the same id |
 | **2. Directory + org step** | step 1 directory row (`provisioning_state=in_progress`); step 2 ZITADEL org + **project grant** | tenant appears in `GET /api/platform/tenants` as `in_progress` and is **not** wave-eligible; the new org has the project granted |
-| **3. Eval credential step** | step 3 creates `eval-runner-<org>` + key + `eval_reader` assignment **inside the tenant org** | key file exists; credential row in the **tenant's** audit stream; a user in that org can log in and sees only that tenant; `init:tenant-eval` becomes a wrapper |
+| **3. Eval credential step** | step 3 creates `eval-runner-<org>` + key + `eval_reader` assignment **inside the tenant org** | key file exists; credential row in the **tenant's** audit stream; a user of tenant A signing in at tenant B's host is **refused**; `init:tenant-eval` becomes a wrapper |
 | **4. Resume + retry** | `POST …/provisioning/retry` re-runs only failed steps | killing the worker mid-run leaves `failed`; retry completes without duplicate accounts or a second org |
 | **5. Console** | platform tenant list + create + provisioning detail | an operator creates a tenant from the UI and watches steps finish |
 | **6. Offboarding** | `POST …/offboard` → revoke credentials, mark `offboarding` | a wave skips it; credentials disabled in ZITADEL; audit rows for the revocations |
@@ -248,8 +248,24 @@ state exactly, since nothing was rewritten in place.
 
 ## 10. Open questions
 
-1. **Org discovery at login** — how the auth request finds a user's org (domain-based resolution vs explicit `org_id`
-   scope). **Blocking for phase 3**: without it a tenant org exists but nobody can sign into it. <!-- resolved by P2: org per tenant is decided -->
+1. ~~Org discovery at login~~ — **resolved, and already implemented.** Verified in code:
+
+   ```
+   POST /api/auth/:orgId/login
+     → resolveRouteOrgId(tenantSettings, param)   ← slug or org id from the URL
+     → oidcScope(orgId) → "urn:zitadel:iam:org:id:{orgId}"
+   ```
+
+   The org comes from the **tenant identity in the route**, not from an environment variable, and the scope is
+   explicit. ZITADEL documents that scope as enforcing membership of that organization
+   ([Scopes](https://zitadel.com/docs/apis/openidoauth/scopes)), so a user of another tenant is refused rather than
+   silently signed into the wrong one.
+
+   Consequence: **domain discovery stays disabled.** It is only the right tool for one shared login page serving many
+   tenants — not our shape, where the tenant is already in the URL. `ZITADEL_DEMO_ORG_ID` remains a **seed/tooling**
+   value; it is not part of the login path.
+
+   Phase-3 acceptance therefore sharpens to: *signing in at tenant A's host with tenant B's user is refused.*
 2. **Who owns the tenant’s first human admin?** Invitation flow vs created admin (ZITADEL creates `ORG_OWNER` by
    default) — this is a product decision about onboarding UX.
 3. **Is seeding part of provisioning or a separate demo step?** Recommendation: a flag on the request (`seed: true`),
