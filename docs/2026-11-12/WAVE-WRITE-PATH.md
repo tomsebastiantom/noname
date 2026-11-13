@@ -55,6 +55,17 @@ cross-org escape hatch: the caller must name the owner.
 **b) Service promotions were attributed to a person.** The audit row used `actorType: "user"` because the pointer
 service only receives an actor string. `promote` now accepts `actorType`, and the wave passes `"service"`.
 
+### Regression tests for both
+
+| Fix | Test |
+|---|---|
+| platform-owned release resolution | `pointer-service.test.ts` → “resolves the release across orgs when the platform org is named”, “refuses a release that belongs to a different org than the one named”, “keeps the tenant-scoped rule when no platform org is named” |
+| platform vs tenant grant project | `auth/guards-grant-project.test.ts` → 5 cases: platform org → platform project; tenant org → tenant project; missing platform project; unset platform org; neither known |
+
+The grant-project rule was extracted into `grantProjectIdForOrg(orgId, tenantProjectId, env)` precisely so it can be
+tested without a token, a JWKS fetch, or a network call — the org→project mapping is the part that was wrong, and it
+is pure.
+
 ## 5. Verification
 
 Unit — `release/api.test.ts` (3 tests): dry-run writes nothing; a real wave promotes every eligible org; one

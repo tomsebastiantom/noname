@@ -64,6 +64,29 @@ export async function requireAuthenticatedUser(
   return { userId, userToken, payload };
 }
 
+/**
+ * Which ZITADEL project holds the roles a machine token should be judged by.
+ *
+ * A tenant service account is granted on the tenant project; a **platform** service account
+ * (`platform_operator`, `eval_operator`) is granted on the platform project. Resolving a platform token against
+ * the tenant project found no roles and silently produced a permissionless actor, which is why ordinary platform
+ * routes answered 403 while `requirePlatformOperator` worked.
+ *
+ * Pure on purpose: the org→project mapping is the part worth testing without a token or a network call.
+ */
+export function grantProjectIdForOrg(
+  orgId: string | undefined,
+  tenantProjectId: string | undefined,
+  env: NodeJS.ProcessEnv = process.env,
+): string | undefined {
+  const platformOrg = env.PLATFORM_ORG_ID?.trim();
+  const platformProject = env.ZITADEL_PLATFORM_PROJECT_ID?.trim();
+  if (orgId && platformOrg && orgId === platformOrg) {
+    return platformProject ?? tenantProjectId;
+  }
+  return tenantProjectId;
+}
+
 export async function requireAuthenticatedActor(
   c: Context,
 ): Promise<(AuthActor & { userToken: string }) | Response> {
@@ -179,12 +202,8 @@ export async function requireAuthenticatedActor(
   // platform org) answered 403.
   if (permissions.length === 0 && projectId) {
     const orgId = getOrgId(c);
-    const platformOrg = process.env.PLATFORM_ORG_ID?.trim();
-    const grantProjectId =
-      orgId && platformOrg && orgId === platformOrg
-        ? (process.env.ZITADEL_PLATFORM_PROJECT_ID?.trim() ?? projectId)
-        : projectId;
-    if (orgId) {
+    const grantProjectId = grantProjectIdForOrg(orgId, projectId);
+    if (orgId && grantProjectId) {
       try {
         const rows = await listProjectAuthorizations(orgId, grantProjectId);
         const roleKeys = (rows.find((row) => row.user?.id === auth.userId)?.roles ?? [])

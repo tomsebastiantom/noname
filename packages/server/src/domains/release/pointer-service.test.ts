@@ -76,6 +76,11 @@ function fixtures(releasesById: Map<string, ReleaseDTO>) {
       if (!found) throw new Error(`unknown release ${id}`);
       return found;
     },
+    async getAnyOrg(id) {
+      const found = releasesById.get(id);
+      if (!found) throw new Error(`unknown release ${id}`);
+      return found;
+    },
   } as unknown as ReleaseService;
 
   const recorded: EvidenceAuditInput[] = [];
@@ -194,5 +199,56 @@ describe("tenant release pointer", () => {
     expect(await pointer.clientBundle("org-1")).toBeNull();
     await pointer.promote("org-1", "r_2", "tom");
     expect(await pointer.clientBundle("org-1")).toBeNull();
+  });
+});
+
+/**
+ * Regression: a wave release is owned by the **platform** org, so the tenant-scoped lookup returned
+ * "Release not found" and no platform promotion could succeed. See docs/2026-11-12/WAVE-WRITE-PATH.md.
+ */
+describe("platform-owned release promotion", () => {
+  const platformRelease = () => ({ ...release("r_platform", "ready"), orgId: "platform-org" });
+
+  it("resolves the release across orgs when the platform org is named", async () => {
+    const { store, releases, evidence, recorded } = fixtures(
+      new Map([["r_platform", platformRelease()]]),
+    );
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
+
+    const row = await pointer.promote("tenant-a", "r_platform", "operator", {
+      platformOrgId: "platform-org",
+      actorType: "service",
+    });
+
+    expect(row).toMatchObject({ orgId: "tenant-a", releaseId: "r_platform" });
+    expect(recorded[0]).toMatchObject({
+      orgId: "tenant-a",
+      action: "platform.release.tenant_promoted",
+      actorType: "service",
+      actorId: "operator",
+    });
+  });
+
+  it("refuses a release that belongs to a different org than the one named", async () => {
+    const { store, releases, evidence } = fixtures(
+      new Map([["r_platform", { ...release("r_platform", "ready"), orgId: "someone-else" }]]),
+    );
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
+
+    await expect(
+      pointer.promote("tenant-a", "r_platform", "operator", { platformOrgId: "platform-org" }),
+    ).rejects.toThrow(/not found/i);
+    expect(await store.get("tenant-a")).toBeNull();
+  });
+
+  it("keeps the tenant-scoped rule when no platform org is named", async () => {
+    const { store, releases, evidence } = fixtures(
+      new Map([["r_platform", platformRelease()]]),
+    );
+    const pointer = createReleasePointerService(store, emptyChannels, releases, evidence);
+
+    // The fake `get` is org-agnostic, so the rule under test is the *call*: without `platformOrgId` the service
+    // must use the tenant-scoped lookup, which the real adapter binds to the org.
+    await expect(pointer.promote("tenant-a", "missing-release", "tom")).rejects.toThrow();
   });
 });
