@@ -10,8 +10,12 @@ export { TENANT_STATUSES, type TenantStatus } from "./schema";
 export function createTenantDirectoryDomain(deps: {
   db: Database;
   store?: TenantDirectoryStore;
+  verdict?: (input: {
+    orgId: string;
+    checksVersion?: string | null;
+  }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>;
 }) {
   const store = deps.store ?? createTenantDirectoryPostgresStore(deps.db);
   const service: TenantDirectoryService = createTenantDirectoryService(store);
-  return { service, routes: createTenantDirectoryRoutes(service) };
+  return { service, routes: createTenantDirectoryRoutes(service, deps.verdict) };
 }

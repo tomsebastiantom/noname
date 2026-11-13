@@ -28,7 +28,13 @@ const upsertSchema = z.object({
  * service account's roles are not in the token — server-side grant resolution. Tenant admins get 403 here; the
  * tenant-facing `/api/tenants/*` routes stay as they are.
  */
-export function createTenantDirectoryRoutes(directory: TenantDirectoryService) {
+export function createTenantDirectoryRoutes(
+  directory: TenantDirectoryService,
+  verdict?: (input: {
+    orgId: string;
+    checksVersion?: string | null;
+  }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>,
+) {
   const routes = new Hono();
 
   routes.get("/", async (c) => {
@@ -60,6 +66,22 @@ export function createTenantDirectoryRoutes(directory: TenantDirectoryService) {
     const entry = await directory.get(c.req.param("orgId"));
     if (!entry) return c.json({ error: "Unknown tenant" }, 404);
     return ok(c, entry);
+  });
+
+  routes.get("/:orgId/verdict", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_READ)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!verdict) return c.json({ error: "Verdict lookup is not configured" }, 503);
+
+    const entry = await directory.get(c.req.param("orgId"));
+    if (!entry) return c.json({ error: "Unknown tenant" }, 404);
+
+    const checksVersion = c.req.query("checksVersion")?.trim() || null;
+    const result = await verdict({ orgId: entry.orgId, checksVersion });
+    return ok(c, { orgId: entry.orgId, checksVersion, ...result });
   });
 
   /** Create or update a directory row. Used by onboarding and by the backfill of existing orgs. */

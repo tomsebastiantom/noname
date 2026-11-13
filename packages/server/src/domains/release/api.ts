@@ -79,6 +79,10 @@ export function createReleaseRoutes(
             | "platform_org";
         }
     >;
+    verdict?: (input: {
+      orgId: string;
+      checksVersion?: string | null;
+    }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>;
   } = {},
 ) {
   const routes = new Hono();
@@ -168,6 +172,24 @@ export function createReleaseRoutes(
       if (currentPointer?.releaseId === release.id) {
         results.push({ orgId, status: "skipped", reason: "already_on_release" });
         continue;
+      }
+      // Verdict before promotion: a tenant whose own gate did not pass is never eligible. `missing` is skipped
+      // too — "we have no decision" is not evidence that the tenant is safe to move.
+      if (options.verdict) {
+        const verdict = await options.verdict({
+          orgId,
+          checksVersion: release.checksVersion ?? null,
+        });
+        if (verdict.status !== "pass") {
+          const reason =
+            verdict.status === "missing"
+              ? "no_verdict"
+              : verdict.status === "block"
+                ? "verdict_blocked"
+                : "verdict_unverified";
+          results.push({ orgId, status: "skipped", reason });
+          continue;
+        }
       }
       results.push({ orgId, status: "eligible" });
     }

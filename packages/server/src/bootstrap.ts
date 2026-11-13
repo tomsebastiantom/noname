@@ -44,6 +44,7 @@ import {
 import { createMachineDomain } from "./domains/machines";
 import { createNotificationsDomain, parseTransitionNotify } from "./domains/notifications";
 import { createReleaseDomain } from "./domains/release";
+import { createGateVerdictService } from "./domains/release/verdict";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
@@ -440,11 +441,16 @@ export async function createApp(): Promise<Hono> {
   });
   app.route("/api/edge", edge.routes);
 
-  const tenantDirectory = createTenantDirectoryDomain({ db });
+  const verdictService = createGateVerdictService(evidence.service);
+  const tenantDirectory = createTenantDirectoryDomain({
+    db,
+    verdict: (input) => verdictService.lookup(input),
+  });
   const releaseDomain = createReleaseDomain({
     db,
     evidence: evidence.service,
     selectability: (orgId) => tenantDirectory.service.selectability(orgId),
+    verdict: (input) => verdictService.lookup(input),
   });
   const tenant = createTenantDomain({
     tenantSettings: docs.service.tenantSettings,
