@@ -207,7 +207,7 @@ Sizes: S < 1 day, M ≈ 2–5 days, L > 1 week. “Acceptance” = the observed 
 | **E2** | Checks do I/O | `readdirSync`/`readFileSync` in [`manifest.ts`](../../packages/eval/src/checks/manifest.ts); HTTP calls in checks; browser launched by check | `Observation` built by observers; checks pure; runner owns I/O. **Manifest path done 2026-11-07**; HTTP/browser I/O still lives in checks. | A check test runs with zero mocks/network; a check cannot import `node:fs` (lint rule) | M |
 | **E3** | No assertion config | levels are hardcoded per result | **DONE 2026-11-07.** `AssertionConfig` (`assertions`, `assertMatrix`) resolved per result: catalogue default → id override → matching route patterns (last wins); `off` removes the result; `--config <file>` loads it. Presets remain a convenience, not a mechanism | A route pattern with `B2.overflow: off` removes only that result | M |
 | **E4** | No modes/sinks | `evaluate()` returns a value only | **DONE 2026-11-07.** `--mode dev|gate|agent`; gate writes one Evidence decision + metrics, dev/agent write nothing; blocking: `agent` exits 0, `dev`/`gate` non-zero on failure; target: `--drafts` includes draft layouts in `dev` only (gate refuses it) | A failing run exits 1 in dev and 0 in agent; `gate --drafts` refuses; `dev --drafts` includes drafts | M |
-| **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07.** `machine` actor + `nsv.` service token; `MACHINES_READ` split from `MACHINES_DEFINE`; token org-scoped with `exp` | Eval reads definitions with a service token; the same token cannot write them | M |
+| **E5** | No service identity | `denyUnless` returns 403 for agents; no machine actor in `AuthActor`; `MACHINES_DEFINE` guards reads | **DONE 2026-11-07; the token form was superseded the same day.** The `machine` actor and the `MACHINES_READ`/`MACHINES_DEFINE` split still stand. The `nsv.` token is gone: eval authenticates with a per-tenant ZITADEL service account (`eval-runner-<org>`, role `eval_reader`, key in Vault, org-scoped at the IdP). See [`EVAL-IDENTITY-RETIREMENT.md`](./EVAL-IDENTITY-RETIREMENT.md) and `packages/eval/src/service-account.ts` | Eval reads definitions with a service token; the same token cannot write them | M |
 | **E6** | No determinism | `data-eval-ready`, reduced motion, fixed widths; no retries/runs | **DONE 2026-11-07 (option B).** Retry-once for deterministic tier‑2 checks, `attempts` recorded, pass-on-retry counted as `flaky`; `B5` excluded (side effects); `retries` config. N-run median intentionally not built (boolean checks) | A retryable check that fails then passes is `pass` with `attempts: 2` and `flaky: 1`; a persistent failure stays failing after retry | M |
 
 ### 5.2 Catalogue — tier 0
@@ -264,7 +264,7 @@ Each phase is shippable and ends with a falsification. No phase starts before th
 ### P1 — Tier 0 complete (E7–E12, E5)
 
 - `M1`, `M2` (with the action registry), `M3`, `M5` against `@noname/catalog`, `M4` via observer.
-- Service actor + `MACHINES_READ` split; CLI `--token` accepts the service token.
+- Service actor + `MACHINES_READ` split; the CLI authenticates with the tenant service-account token (`createServiceAccountToken`), so there is no `--token` flag.
 - **Falsification:** delete a content type (M1 fails), add an unknown block type (M5 fails), point `page_tree` at a missing page (M3 fails), change a cart state (M4 fails).
 
 ### P2 — Tier 1 complete (E13–E15)
@@ -378,7 +378,7 @@ This table is the running record; the evidence for each row is in [`VERIFICATION
 |---|---|---|---|
 | **B1** | E1 — typed `Check`, registry, derived verdict | **Done 2026-11-07** | typecheck clean, 6/6 tests, CLI run `passed: true`, browser smoke |
 | **B2** | E12/E2 — manifest/spec observer, pure `M4`/`M5` | **Done 2026-11-07** | typecheck, 9/9 tests (incl. exploding client), CLI run, browser smoke |
-| **B3** | E5 — machine actor, `MACHINES_READ`, service token | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
+| **B3** | E5 — machine actor, `MACHINES_READ`, service identity (ZITADEL SA, `nsv.` removed) | **Done 2026-11-07** | 8/8 token/guard tests, CLI `7 pass / 0 fail / 2 skip`, POST 403, browser smoke |
 | **B4** | E7–E11, E13–E15 — tier 0/1 catalogue | **Done 2026-11-07** — E8 closed: action audiences + `M2.roles` against ZITADEL role assignments | 103 eval/server tests; live `M2.roles` pass |
 | **B5** | E16–E19, E21 — renderer markers + tier 2 | **Done except B7** — E16–E19; E21's B6 done | 84 tests; live tier 2 pass, 0 contrast advisories |
 | **B6** | E20, E22 — behaviour + `S1` | **In progress** — E22 done; E20 cart done, checkout blocked externally | S1 warn-fail names the API; B5 pass “1 item” |
