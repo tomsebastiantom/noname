@@ -672,6 +672,14 @@ export const adminComponentSchemas = {
     }),
     description: "Jaeger-lite trace list for the admin console",
   },
+  PlatformTenantsAdmin: {
+    // Flat props: the panel takes its copy from the layout document, per `spec-driven-ui`.
+    props: z.object({
+      title: z.string().optional(),
+      description: z.string().nullable().optional(),
+    }),
+    description: "Platform operator console: tenant inventory, provisioning, invite and verdict acknowledgement",
+  },
 };
 
 export {
