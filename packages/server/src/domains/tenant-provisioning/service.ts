@@ -1,6 +1,12 @@
 import type { CreateProvisioningInput, ProvisioningRecord, ProvisioningService, ProvisioningStore } from "./ports";
 import type { ProvisioningSteps } from "./schema";
 
+export type ProvisionerPort = {
+  ensureOrg(name: string): Promise<{ orgId: string }>;
+  ensureProjectGrant(orgId: string, roleKeys: string[]): Promise<void>;
+  ensureEvalAccount(input: { orgId: string; roleKey: string; accountName: string }): Promise<{ userId: string }>;
+};
+
 export type DirectoryPort = {
   /** Ensures the inventory row exists and sets its provisioning state. */
   upsert(input: {
@@ -22,6 +28,7 @@ const now = () => new Date().toISOString();
 export function createTenantProvisioningService(
   store: ProvisioningStore,
   directory: DirectoryPort,
+  provisioner?: ProvisionerPort,
 ): ProvisioningService {
   async function markSteps(record: ProvisioningRecord, steps: ProvisioningSteps) {
     return store.update(record.orgId, { steps });
@@ -73,6 +80,49 @@ export function createTenantProvisioningService(
         finishedAt: new Date(),
       });
       throw cause;
+    }
+
+    // Step: identity (ZITADEL org + project grant) ---------------------------
+    if (provisioner) {
+      try {
+        const org = await provisioner.ensureOrg(slugFromRecord(record));
+        await provisioner.ensureProjectGrant(org.orgId, ["eval_reader"]);
+        record = await markSteps(record, {
+          ...record.steps,
+          identity: { status: "done", at: now() },
+        });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        await store.update(orgId, {
+          state: "failed",
+          lastError: message,
+          steps: { ...record.steps, identity: { status: "failed", error: message, at: now() } },
+          finishedAt: new Date(),
+        });
+        throw cause;
+      }
+
+      // Step: eval account --------------------------------------------------
+      try {
+        await provisioner.ensureEvalAccount({
+          orgId,
+          roleKey: "eval_reader",
+          accountName: `eval-runner-${orgId}`,
+        });
+        record = await markSteps(record, {
+          ...record.steps,
+          eval_account: { status: "done", at: now() },
+        });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        await store.update(orgId, {
+          state: "failed",
+          lastError: message,
+          steps: { ...record.steps, eval_account: { status: "failed", error: message, at: now() } },
+          finishedAt: new Date(),
+        });
+        throw cause;
+      }
     }
 
     // Step: done ------------------------------------------------------------

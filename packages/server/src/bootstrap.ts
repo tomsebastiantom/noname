@@ -48,6 +48,7 @@ import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
 import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
 import { createTenantProvisioningDomain } from "./domains/tenant-provisioning";
+import { createZitadelProvisioner } from "./domains/tenant-provisioning/adapters/zitadel";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
@@ -462,6 +463,7 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/tenants", tenant.routes);
   const tenantProvisioning = createTenantProvisioningDomain({
     db,
+    provisioner: createZitadelProvisioner(),
     directory: {
       upsert: async (input) => {
         await tenantDirectory.service.upsert({
