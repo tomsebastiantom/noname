@@ -106,7 +106,7 @@ export function createZitadelProvisioner(): ProvisionerPort {
 
       // Read it back. A grant with no roles is a bridge with no lanes: the tenant org can see the project but none of
       // its users can ever hold a role. The live run produced exactly that, so the step must not report `done`.
-      const grants = await call<{ result?: Array<{ grantedOrgId?: string; roleKeys?: string[] }> }>(
+      const grants = await call<{ result?: Array<{ grantedOrgId?: string; grantedRoleKeys?: string[] }> }>(
         admin,
         "POST",
         `/management/v1/projects/${admin.projectId}/grants/_search`,
@@ -114,7 +114,7 @@ export function createZitadelProvisioner(): ProvisionerPort {
         {},
       );
       const mine = grants.result?.find((grant) => grant.grantedOrgId === orgId);
-      const present = mine?.roleKeys ?? [];
+      const present = mine?.grantedRoleKeys ?? [];
       const missing = roleKeys.filter((key) => !present.includes(key));
       if (missing.length > 0) {
         throw new Error(
