@@ -53,7 +53,7 @@ export function createReleaseDomain(deps: {
   evidence?: EvidenceService;
   storage?: ReleaseStore;
   /** Tenant inventory lookup: a wave may only name a tenant the directory knows and does not exclude. */
-  selectability?: (orgId: string) => Promise<import("../tenant-directory/ports").TenantSelectability>;
+  selectability?: (orgId: string) => Promise<import("../tenant-registry/ports").TenantSelectability>;
   /** Per-tenant gate verdict: a tenant whose own verification did not pass is never eligible. */
   verdict?: (input: { orgId: string; checksVersion?: string | null }) => Promise<{
     status: "pass" | "block" | "unverified" | "missing";
