@@ -46,13 +46,13 @@ import { createNotificationsDomain, parseTransitionNotify } from "./domains/noti
 import { createReleaseDomain } from "./domains/release";
 import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
-import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
+import { createPlatformAccessDomain } from "./domains/auth/platform-access";
 import { createTenantProvisioningDomain } from "./domains/tenant-registry/provisioning";
 import { enqueueProvisioning, startProvisioningWorker } from "./domains/tenant-registry/provisioning/queue";
 import { tenantProvisioning as tenantProvisioningTable } from "./domains/tenant-registry/provisioning/schema";
 import { tenantDirectory as tenantDirectoryTable } from "./domains/tenant-registry/schema";
 import { createZitadelProvisioner } from "./domains/tenant-registry/provisioning/adapters/zitadel";
-import { CREDENTIAL_ACTIONS } from "./domains/platform-credentials/actions";
+import { CREDENTIAL_ACTIONS } from "./domains/auth/platform-access/actions";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-registry";
@@ -551,7 +551,7 @@ export async function createApp(): Promise<Hono> {
     clientBundle: (orgId) => releaseDomain.pointer.clientBundle(orgId),
   });
   app.route("/api/tenants", tenant.routes);
-  const platformCredentials = createPlatformCredentialsDomain({ evidence: evidence.service });
+  const platformCredentials = createPlatformAccessDomain({ evidence: evidence.service });
   const tenantProvisioning = createTenantProvisioningDomain({
     db,
     // The queue owns the run; the request only records intent and returns 202.

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { EvidenceAuditInput, EvidenceService } from "../evidence/ports";
+import type { EvidenceAuditInput, EvidenceService } from "../../evidence/ports";
 import { CREDENTIAL_ACTIONS } from "./actions";
 import { readRecordedGrants, reconcileGrants, recordCredentialEvent } from "./service";
 

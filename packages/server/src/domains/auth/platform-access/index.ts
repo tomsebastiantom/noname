@@ -1,6 +1,6 @@
-import type { EvidenceService } from "../evidence/ports";
-import { listProjectAuthorizations } from "../auth/adapters/zitadel/authorizations";
-import { createPlatformCredentialRoutes } from "./api";
+import type { EvidenceService } from "../../evidence/ports";
+import { listProjectAuthorizations } from "../adapters/zitadel/authorizations";
+import { createPlatformAccessRoutes } from "./api";
 import { type CredentialEventInput, CREDENTIAL_ACTIONS } from "./actions";
 import {
   type CredentialGrant,
@@ -32,7 +32,7 @@ async function livePlatformGrants(): Promise<CredentialGrant[]> {
   return grants;
 }
 
-export function createPlatformCredentialsDomain(deps: { evidence: EvidenceService }) {
+export function createPlatformAccessDomain(deps: { evidence: EvidenceService }) {
   const record = (input: CredentialEventInput) => recordCredentialEvent(deps.evidence, input);
 
   return {
@@ -42,7 +42,7 @@ export function createPlatformCredentialsDomain(deps: { evidence: EvidenceServic
         liveGrants: await livePlatformGrants(),
         recordedGrants: await readRecordedGrants(deps.evidence),
       }),
-    routes: createPlatformCredentialRoutes({
+    routes: createPlatformAccessRoutes({
       evidence: deps.evidence,
       record,
       liveGrants: livePlatformGrants,

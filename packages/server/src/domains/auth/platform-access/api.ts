@@ -1,9 +1,9 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { z } from "zod";
-import { ok } from "../../shared/respond";
-import type { EvidenceService } from "../evidence/ports";
-import { requirePlatformOperator } from "../release/platform-guard";
+import { ok } from "../../../shared/respond";
+import type { EvidenceService } from "../../evidence/ports";
+import { requirePlatformOperator } from "../../release/platform-guard";
 import {
   CREDENTIAL_ACTIONS,
   CREDENTIAL_SUBJECT_TYPE,
@@ -44,7 +44,7 @@ type RecordEvent = (input: CredentialEventInput) => Promise<{ id: string }>;
  * Reconciliation is the honest part: it does not claim to mirror ZITADEL. It reports drift, so a console change
  * surfaces as `unrecorded` instead of silently widening who can move tenants.
  */
-export function createPlatformCredentialRoutes(deps: {
+export function createPlatformAccessRoutes(deps: {
   evidence: EvidenceService;
   record: RecordEvent;
   /** Live grants in the platform project, read from the IdP. */

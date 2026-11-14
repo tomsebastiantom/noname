@@ -1,4 +1,4 @@
-import type { EvidenceService } from "../evidence/ports";
+import type { EvidenceService } from "../../evidence/ports";
 import {
   CREDENTIAL_ACTION_VALUES,
   CREDENTIAL_ACTIONS,

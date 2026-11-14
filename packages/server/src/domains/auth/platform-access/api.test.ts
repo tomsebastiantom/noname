@@ -2,16 +2,16 @@ import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("../release/platform-guard", () => ({
+vi.mock("../../release/platform-guard", () => ({
   requirePlatformOperator: vi.fn(),
 }));
 
-import { requirePlatformOperator } from "../release/platform-guard";
-import { createPlatformCredentialRoutes } from "./api";
+import { requirePlatformOperator } from "../../release/platform-guard";
+import { createPlatformAccessRoutes } from "./api";
 
 function app() {
   const record = vi.fn(async (input: { actorType: string; actorId: string }) => ({ id: "ev-1" }));
-  const routes = createPlatformCredentialRoutes({
+  const routes = createPlatformAccessRoutes({
     evidence: {} as never,
     record: record as never,
     liveGrants: async () => [],
