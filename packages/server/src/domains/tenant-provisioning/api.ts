@@ -1,7 +1,7 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { z } from "zod";
-import { created, ok } from "../../shared/respond";
+import { ok } from "../../shared/respond";
 import { requirePlatformOperator } from "../release/platform-guard";
 import type { ProvisioningService } from "./ports";
 
@@ -38,11 +38,14 @@ export function createTenantProvisioningRoutes(provisioning: ProvisioningService
       return c.json({ error: "Invalid tenant", details: parsed.error.flatten() }, 400);
     }
 
-    const record = await provisioning.start({
+    const { record, created: isNew } = await provisioning.start({
       ...parsed.data,
       requestedBy: operator.userId,
     });
-    return created(c, { orgId: record.orgId, state: record.state, steps: record.steps });
+    const body = { orgId: record.orgId, state: record.state, steps: record.steps };
+    // 202 for a new request (work is still running), 200 for an idempotent replay.
+    if (!isNew) return ok(c, body);
+    return c.json({ data: body }, 202);
   });
 
   routes.get("/:orgId/provisioning", async (c) => {

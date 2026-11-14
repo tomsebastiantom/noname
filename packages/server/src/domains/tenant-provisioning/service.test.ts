@@ -56,7 +56,9 @@ describe("tenant provisioning", () => {
     const first = await service.start(input);
     const second = await service.start(input);
 
-    expect(second.orgId).toBe(first.orgId);
+    expect(first.created).toBe(true);
+    expect(second.created).toBe(false);
+    expect(second.record.orgId).toBe(first.record.orgId);
     expect(store.rows.size).toBe(1);
   });
 

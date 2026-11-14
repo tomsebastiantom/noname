@@ -29,11 +29,13 @@ export function createTenantProvisioningService(
 
   return {
     async start(input: CreateProvisioningInput) {
+      const existing =
+        (await store.findByIdempotencyKey(input.idempotencyKey)) ?? (await store.get(input.orgId));
       const record = await store.create(input);
       // Fire and forget: the API returns 202 with the record and the caller polls. Steps are recorded, so a crash
       // leaves an explainable `in_progress` row rather than a lie.
       if (record.state === "pending") void run(record.orgId).catch(() => {});
-      return record;
+      return { record, created: !existing };
     },
 
     get: (orgId) => store.get(orgId),

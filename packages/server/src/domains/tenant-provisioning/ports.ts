@@ -40,7 +40,8 @@ export type ProvisioningStore = {
 
 export type ProvisioningService = {
   /** Idempotent: the same key (or an existing tenant) returns the existing record. */
-  start(input: CreateProvisioningInput): Promise<ProvisioningRecord>;
+  /** `created=false` means an existing record was returned (idempotent replay). */
+  start(input: CreateProvisioningInput): Promise<{ record: ProvisioningRecord; created: boolean }>;
   get(orgId: string): Promise<ProvisioningRecord | null>;
   /** Runs the steps for one record. Separated so tests and a retry path can call it directly. */
   run(orgId: string): Promise<ProvisioningRecord>;
