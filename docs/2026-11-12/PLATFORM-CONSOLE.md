@@ -61,33 +61,53 @@ The page is a **layout document**, not a hand-written route:
 
 ## 4. Verification
 
-Live, on the local stack:
+Browser (Playwright + Chromium), signing in as a platform operator at `http://platform.localhost:5173`:
 
 ```
-POST /api/platform/tenants/backfill → { examined: 5, created: 5 }
-GET  /api/tenants/resolve/platform  → 200, platform: true      (no tenant_settings row exists)
-deep link /admin/platform           → 200 text/html (SPA serves it)
+POST /api/auth/platform/login   → 200, token stored, no session clear
+GET  /admin/platform            → page stays put (no login bounce)
+GET  /api/platform/tenants      → 200, four tenants
+GET  …/:orgId/provisioning      → 200, state ready (backfilled)
+GET  …/:orgId/verdict           → 200, block / pass / missing
 ```
 
-Browser (Playwright + Chromium), signed in as a **tenant** editor — the negative case:
+Rendered console, verbatim:
 
 ```
-GET /api/platform/tenants → 403 {"error":"Forbidden"}
-rendered text             → "Platform operator rights are required."
-screenshot                → evidence/platform-console-guard.png
+Tenants — Every tenant the control plane knows about, with its provisioning and verdict state.
+Slug | Status | Provisioning | Verdict | Invite admin
+blocked-demo    active     ready  block
+noverdict-demo  active     ready  pass
+suspended-demo  suspended  ready  missing
+yogastore       active     ready  pass
 ```
 
-So the panel mounts, calls the API, and honours the server's refusal. Getting the panel to mount at all required a
-catalog entry — `defineRegistry` only exposes components declared in `@noname/catalog`, so a React component added to
-`admin/registry.ts` alone is silently skipped. That is the trap this document exists to record.
+Actions exercised from the UI:
 
-Not yet verified: the **positive** case (a platform operator seeing the tenant table), because platform-org humans
-cannot authenticate — see §5.
+| Action | Result |
+|---|---|
+| **Create** (`console-check`) | `POST /api/platform/tenants → 202`, row appears, notice “Provisioning console-check — steps will complete shortly.” Tenant removed afterwards. |
+| **Backfill existing** | notice “Backfill: examined 5, created 0.” — idempotent, proven in the browser |
+| **Acknowledge** (API) | `200 {acknowledged:true}`, evidence row `platform.verdict.acknowledged` for `999000111` |
 
-Tests: `site-id`, `tenant`, `auth` — **76/76**. Typecheck clean for `@noname/server`, `@noname/client`,
-`@noname/catalog`, `@noname/seeding`.
+The negative case still holds: a tenant editor receives `403` and “Platform operator rights are required.”
+
+### Why it needed a fix in the edge
+
+The console's token is issued by the **platform** client, so its `aud` lists the platform client and project rather than
+the tenant client. The edge verified against `env.ZITADEL_CLIENT_ID` alone, treated the token as anonymous, and the API
+answered 401 — which made the app clear the session and bounce back to `/login`. The edge now selects whichever of our
+identifiers the token actually carries (`ZITADEL_CLIENT_ID`, `ZITADEL_PROJECT_ID`, `ZITADEL_PLATFORM_PROJECT_ID`,
+`ZITADEL_PLATFORM_CLIENT_ID`), and still fails closed when none match.
+
+A second, quieter defect: the platform org's copies of `login`, `admin_shell` and `admin_platform` were stale, so the
+page loaded the shell with an empty panel. Refreshing them from the seeded demo org made the console render.
+
+Tests: `site-id`, `tenant`, `auth` — **76/76**; `workers` — **64/64**. Typecheck clean for server, client, catalog,
+seeding and workers.
 
 ## 5. Limits
+
 
 - **Platform-org humans cannot log in yet.** `POST /api/auth/platform/login` answers `401 Errors.User.NotFound`
   because the login adapter resolves the user through the **demo project's** org. The operator exists, holds
