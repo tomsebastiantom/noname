@@ -14,6 +14,8 @@ export function createTenantDirectoryDomain(deps: {
     orgId: string;
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>;
+  rollback?: (input: { orgId: string; actorId: string }) => Promise<unknown>;
+  history?: (input: { orgId: string; limit?: number }) => Promise<unknown[]>;
   acknowledge?: (input: {
     orgId: string;
     releaseId: string;
@@ -24,5 +26,11 @@ export function createTenantDirectoryDomain(deps: {
 }) {
   const store = deps.store ?? createTenantDirectoryPostgresStore(deps.db);
   const service: TenantDirectoryService = createTenantDirectoryService(store);
-  return { service, routes: createTenantDirectoryRoutes(service, deps.verdict, deps.acknowledge) };
+  return { service, routes: createTenantDirectoryRoutes(
+      service,
+      deps.verdict,
+      deps.rollback,
+      deps.history,
+      deps.acknowledge,
+    ) };
 }

@@ -2,6 +2,36 @@ import { COMMS_PROVIDERS } from "@noname/shared";
 import { z } from "zod";
 
 export const adminActionSchemas = {
+  loadPlatformTenants: {
+    description: "Load every tenant with its provisioning and verdict state",
+  },
+  createPlatformTenant: {
+    params: z.object({ slug: z.string().min(1) }),
+    description: "Provision a new tenant from a slug",
+  },
+  backfillPlatformTenants: {
+    description: "Give pre-existing tenants a provisioning record",
+  },
+  invitePlatformTenant: {
+    params: z.object({ orgId: z.string().min(1), email: z.string().email() }),
+    description: "Invite a tenant's first human admin",
+  },
+  ackPlatformTenant: {
+    params: z.object({ orgId: z.string().min(1), reason: z.string().min(3) }),
+    description: "Acknowledge an unverified verdict without promoting it",
+  },
+  promotePlatformTenant: {
+    params: z.object({ orgId: z.string().min(1), releaseId: z.string().min(1) }),
+    description: "Promote one tenant through the wave path",
+  },
+  rollbackPlatformTenant: {
+    params: z.object({ orgId: z.string().min(1) }),
+    description: "Roll a tenant back to its previous release",
+  },
+  loadPlatformTenantHistory: {
+    params: z.object({ orgId: z.string().min(1) }),
+    description: "Load a tenant's release history from its audit stream",
+  },
   loadAuthSettings: {
     description: "Load auth configuration and provider state for admin settings",
   },

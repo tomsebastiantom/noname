@@ -462,6 +462,13 @@ export async function createApp(): Promise<Hono> {
     db,
     verdict: (input) => verdictService.lookup(input),
     acknowledge: (input) => verdictService.acknowledge(input),
+    rollback: (input) => releaseDomain.pointer.rollback(input.orgId, input.actorId),
+    history: async (input) =>
+      evidence.service.listAuditAcross({
+        orgId: input.orgId,
+        actionPrefix: "platform.release.",
+        limit: input.limit ?? 50,
+      }),
   });
   const releaseDomain = createReleaseDomain({
     db,

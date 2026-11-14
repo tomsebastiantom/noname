@@ -1,5 +1,15 @@
 /** json-render $state paths for admin panels (load actions write, components read). */
 export const ADMIN_STATE = {
+  platform: {
+    tenants: "/admin/platform/tenants",
+    rows: "/admin/platform/rows",
+    loading: "/admin/platform/loading",
+    error: "/admin/platform/error",
+    notice: "/admin/platform/notice",
+    promoteResult: "/admin/platform/promoteResult",
+    history: "/admin/platform/history",
+    historyOrgId: "/admin/platform/historyOrgId",
+  },
   team: {
     users: "/admin/team/users",
     loading: "/admin/team/loading",

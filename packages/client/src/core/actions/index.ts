@@ -8,6 +8,7 @@ import { integrationsActions } from "./integrations";
 import { layoutActions } from "./layout";
 import { navigationActions } from "./navigation";
 import { notificationActions } from "./notifications";
+import { platformActions } from "./platform";
 import { replayActions } from "./replay";
 import { routingActions } from "./routing";
 import { scopeActions } from "./scope";
@@ -28,6 +29,7 @@ export const coreActionHandlers = {
   ...replayActions,
   ...analyticsActions,
   ...tracesActions,
+  ...platformActions,
   ...flagActions,
   ...integrationsActions,
   ...notificationActions,

@@ -34,6 +34,8 @@ export function createTenantDirectoryRoutes(
     orgId: string;
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>,
+  rollback?: (input: { orgId: string; actorId: string }) => Promise<unknown>,
+  history?: (input: { orgId: string; limit?: number }) => Promise<unknown[]>,
   acknowledge?: (input: {
     orgId: string;
     releaseId: string;
@@ -87,6 +89,33 @@ export function createTenantDirectoryRoutes(
     if (!acknowledge) return c.json({ error: "Verdict acknowledgement is not configured" }, 503);
     await acknowledge({ ...parsed.data, orgId: c.req.param("orgId"), actorId: operator.userId });
     return ok(c, { acknowledged: true });
+  });
+
+  /**
+   * Roll a tenant back to its previous release.
+   *
+   * `pointer.rollback` already takes an explicit org, so this is a guarded route rather than new logic — the only
+   * thing that was missing was a platform-scoped way to name the tenant.
+   */
+  routes.post("/:orgId/rollback", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!rollback) return c.json({ error: "Rollback is not configured" }, 503);
+    return ok(c, await rollback({ orgId: c.req.param("orgId"), actorId: operator.userId }));
+  });
+
+  /** The tenant's release history, read from its own audit stream. */
+  routes.get("/:orgId/history", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_READ)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!history) return c.json({ error: "History is not configured" }, 503);
+    return ok(c, await history({ orgId: c.req.param("orgId"), limit: 50 }));
   });
 
   routes.get("/:orgId/verdict", async (c) => {

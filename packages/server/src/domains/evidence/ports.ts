@@ -73,6 +73,8 @@ export type EvidenceAuditQuery = {
   /** Omit to query across every org — platform-only, never reachable from a tenant token. */
   orgId?: string;
   action?: string;
+  /** Matches actions starting with this value (e.g. `platform.release.` for a tenant's release history). */
+  actionPrefix?: string;
   actorType?: EvidenceAuditInput["actorType"];
   actorId?: string;
   subjectType?: string;

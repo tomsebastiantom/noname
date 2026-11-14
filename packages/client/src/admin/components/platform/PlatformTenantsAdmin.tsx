@@ -1,204 +1,66 @@
-import { type FormEvent, useCallback, useEffect, useState } from "react";
+import { useActions, useStateValue } from "@json-render/react";
+import { useEffect, useRef, useState } from "react";
+import { ADMIN_STATE } from "../../../core/admin-state";
+import type { ComponentCtx } from "../../../core/components/types";
 
 /**
- * Platform operator console — tenant inventory and provisioning.
+ * Platform operator console — tenant inventory, provisioning and release actions.
  *
- * Loaded as an admin **panel** (the spec's `renderAs: "panel"`), so it obeys the same rule as every other org-facing
- * surface: the page is a layout document, this file is only the data-bound component it renders.
- *
- * Every request goes through the platform API, which owns the authority (`requirePlatformOperator` +
- * `RELEASES_PLATFORM_READ/WRITE`). This screen adds none of its own — if the guard says no, the screen says so.
+ * This is a **catalog component**: it owns layout and interaction only. Data arrives through `$state` written by
+ * action handlers (`core/actions/platform.ts`), and every request is an `execute(...)` call — never a `fetch` here
+ * (spec-driven-ui checklist). Copy that belongs to the product lives in the layout document's props.
  */
-type TenantRow = {
-  orgId: string;
-  slug: string;
-  status: string;
-  plan: string | null;
+type TenantRow = { orgId: string; slug: string; status: string; plan: string | null };
+type RowState = { provisioning: string; verdict: string };
+type HistoryEvent = { action: string; recordedAt: string; metadata?: { to?: string; from?: string } };
+
+export type PlatformTenantsAdminProps = {
+  title?: string;
+  description?: string | null;
 };
 
-type StepState = { status: string; error?: string };
+export function PlatformTenantsAdmin({ props }: Readonly<ComponentCtx<PlatformTenantsAdminProps>>) {
+  const { execute } = useActions();
+  const tenants = useStateValue(ADMIN_STATE.platform.tenants) as TenantRow[] | null;
+  const rows = (useStateValue(ADMIN_STATE.platform.rows) as Record<string, RowState> | null) ?? {};
+  const loading = useStateValue(ADMIN_STATE.platform.loading) as boolean | null;
+  const error = useStateValue(ADMIN_STATE.platform.error) as string | null;
+  const notice = useStateValue(ADMIN_STATE.platform.notice) as string | null;
+  const promoteResult = useStateValue(ADMIN_STATE.platform.promoteResult) as string | null;
+  const history = useStateValue(ADMIN_STATE.platform.history) as HistoryEvent[] | null;
+  const historyOrgId = useStateValue(ADMIN_STATE.platform.historyOrgId) as string | null;
 
-type Verdict = { status: string; reason?: string };
-
-type RowState = {
-  provisioning: string;
-  verdict: Verdict | null;
-};
-
-function authHeaders(json = false): Record<string, string> {
-  const token =
-    typeof sessionStorage === "undefined" ? null : sessionStorage.getItem("noname:access_token");
-  return {
-    ...(json ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, { ...init, headers: { ...authHeaders(true), ...init?.headers } });
-  if (response.status === 401 || response.status === 403) throw new Error("forbidden");
-  const body = (await response.json().catch(() => null)) as
-    | { data?: T; error?: string }
-    | null;
-  if (!response.ok) throw new Error(body?.error ?? `request failed (${response.status})`);
-  return (body?.data ?? null) as T;
-}
-
-export function PlatformTenantsAdmin() {
-  const [rows, setRows] = useState<TenantRow[] | null>(null);
-  const [stateByOrg, setStateByOrg] = useState<Record<string, RowState>>({});
-  const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const [slug, setSlug] = useState("");
-  const [email, setEmail] = useState<Record<string, string>>({});
-  const [notice, setNotice] = useState<string | null>(null);
   const [releaseId, setReleaseId] = useState("");
-  const [promoteResult, setPromoteResult] = useState<Record<string, string>>({});
+  const [emails, setEmails] = useState<Record<string, string>>({});
 
-  const refresh = useCallback(async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      const data = await api<{ tenants?: TenantRow[] }>("/api/platform/tenants");
-      const tenants = data?.tenants ?? [];
-      setRows(tenants);
-
-      const states: Record<string, RowState> = {};
-      await Promise.all(
-        tenants.map(async (tenant) => {
-          const [provisioning, verdict] = await Promise.all([
-            api<{ state: string; steps?: Record<string, StepState> }>(
-              `/api/platform/tenants/${tenant.orgId}/provisioning`,
-            ).catch(() => null),
-            api<Verdict>(`/api/platform/tenants/${tenant.orgId}/verdict`).catch(() => null),
-          ]);
-          states[tenant.orgId] = {
-            // A tenant with no provisioning record predates the feature: that is a state, not a failure.
-            provisioning: provisioning?.state ?? "unknown",
-            verdict,
-          };
-        }),
-      );
-      setStateByOrg(states);
-    } catch (cause) {
-      setError(cause instanceof Error && cause.message === "forbidden" ? "forbidden" : "failed");
-    } finally {
-      setBusy(false);
-    }
+  // Mount load: `execute` changes identity on loading-state updates, so keep it on a ref and run once.
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
+  useEffect(() => {
+    void executeRef.current({ action: "loadPlatformTenants" });
   }, []);
 
-  useEffect(() => {
-    void refresh();
-  }, [refresh]);
-
-  async function onCreate(event: FormEvent) {
-    event.preventDefault();
-    const trimmed = slug.trim().toLowerCase();
-    if (!trimmed) return;
-    setNotice(null);
-    setError(null);
-    try {
-      // The API answers 202: the org is created and the steps run after the response. Not a "done" button.
-      await api("/api/platform/tenants", {
-        method: "POST",
-        body: JSON.stringify({ slug: trimmed, idempotencyKey: `console:${trimmed}:${Date.now()}` }),
-      });
-      setSlug("");
-      setNotice(`Provisioning ${trimmed} — steps will complete shortly.`);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "failed");
-    }
-  }
-
-  async function onBackfill() {
-    setNotice(null);
-    try {
-      const result = await api<{ examined: number; created: number }>(
-        "/api/platform/tenants/backfill",
-        { method: "POST" },
-      );
-      setNotice(`Backfill: examined ${result?.examined ?? 0}, created ${result?.created ?? 0}.`);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "failed");
-    }
-  }
-
-  async function onInvite(orgId: string) {
-    const address = (email[orgId] ?? "").trim();
-    if (!address) return;
-    setNotice(null);
-    try {
-      await api(`/api/platform/tenants/${orgId}/invite`, {
-        method: "POST",
-        body: JSON.stringify({ email: address }),
-      });
-      setNotice(`Invited ${address}.`);
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "failed");
-    }
-  }
-
-  /**
-   * Promote a single tenant through the existing wave endpoint.
-   *
-   * Deliberately the same code path as a batch: eligibility (directory status, provisioning state, verdict) is decided
-   * server-side, so the console cannot promote something a wave would have skipped — it just shows the reason.
-   */
-  async function onPromote(row: TenantRow) {
-    const id = releaseId.trim();
-    if (!id) {
-      setNotice("Enter a release id first.");
-      return;
-    }
-    setNotice(null);
-    try {
-      const result = await api<{ results?: Array<{ orgId: string; status: string; reason?: string }> }>(
-        `/api/releases/${encodeURIComponent(id)}/rollout`,
-        { method: "POST", body: JSON.stringify({ orgIds: [row.orgId], dryRun: false }) },
-      );
-      const outcome = result?.results?.find((item) => item.orgId === row.orgId);
-      setPromoteResult((prev) => ({
-        ...prev,
-        [row.orgId]: outcome ? `${outcome.status}${outcome.reason ? ` (${outcome.reason})` : ""}` : "unknown",
-      }));
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "promotion failed");
-    }
-  }
-
-  async function onAck(row: TenantRow) {
-    const reason = window.prompt("Why is this unverified verdict acceptable for this tenant?");
-    if (!reason) return;
-    try {
-      await api(`/api/platform/tenants/${row.orgId}/verdict/ack`, {
-        method: "POST",
-        body: JSON.stringify({ releaseId: "unassigned", reason }),
-      });
-      setNotice("Acknowledged. The verdict is still unverified — a wave will not promote it.");
-      await refresh();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "failed");
-    }
-  }
-
-  if (error === "forbidden") {
-    return <p className="text-sm text-muted-foreground">Platform operator rights are required.</p>;
-  }
+  const run = (action: string, params?: Record<string, unknown>) =>
+    void executeRef.current({ action, ...(params ? { params } : {}) });
 
   return (
     <section className="space-y-5">
       <header>
-        <h1 className="text-lg font-semibold">Tenants</h1>
-        <p className="text-sm text-muted-foreground">
-          Every tenant the control plane knows about, with its provisioning and verdict state.
-        </p>
+        <h1 className="text-lg font-semibold">{props.title ?? "Tenants"}</h1>
+        {props.description ? (
+          <p className="text-sm text-muted-foreground">{props.description}</p>
+        ) : null}
       </header>
 
-      <form className="flex items-end gap-2" onSubmit={onCreate}>
+      <form
+        className="flex flex-wrap items-end gap-2"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const trimmed = slug.trim().toLowerCase();
+          if (trimmed) run("createPlatformTenant", { slug: trimmed });
+        }}
+      >
         <label className="text-sm">
           <span className="block text-muted-foreground">New tenant slug</span>
           <input
@@ -208,11 +70,8 @@ export function PlatformTenantsAdmin() {
             placeholder="acme"
           />
         </label>
-        <button type="submit" className="rounded border border-border px-3 py-1 text-sm">
-          Create
-        </button>
         <label className="text-sm">
-          <span className="block text-muted-foreground">Release id (promote)</span>
+          <span className="block text-muted-foreground">Release id</span>
           <input
             className="rounded border border-border px-2 py-1"
             value={releaseId}
@@ -220,20 +79,31 @@ export function PlatformTenantsAdmin() {
             placeholder="release uuid"
           />
         </label>
-        <button type="button" className="text-sm underline" onClick={() => void onBackfill()}>
+        <button type="submit" className="rounded border border-border px-3 py-1 text-sm">
+          Create
+        </button>
+        <button
+          type="button"
+          className="text-sm underline"
+          onClick={() => run("backfillPlatformTenants")}
+        >
           Backfill existing
         </button>
-        <button type="button" className="text-sm underline" onClick={() => void refresh()}>
-          {busy ? "Refreshing…" : "Refresh"}
+        <button
+          type="button"
+          className="text-sm underline"
+          onClick={() => run("loadPlatformTenants")}
+        >
+          {loading ? "Refreshing…" : "Refresh"}
         </button>
       </form>
 
       {notice ? <p className="text-sm text-muted-foreground">{notice}</p> : null}
-      {error && error !== "forbidden" ? <p className="text-sm text-destructive">{error}</p> : null}
-      {rows === null ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
-      {rows?.length === 0 ? <p className="text-sm text-muted-foreground">No tenants yet.</p> : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {tenants === null ? <p className="text-sm text-muted-foreground">Loading…</p> : null}
+      {tenants?.length === 0 ? <p className="text-sm text-muted-foreground">No tenants yet.</p> : null}
 
-      {rows && rows.length > 0 ? (
+      {tenants && tenants.length > 0 ? (
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left">
@@ -246,21 +116,24 @@ export function PlatformTenantsAdmin() {
             </tr>
           </thead>
           <tbody>
-            {rows.map((row) => {
-              const state = stateByOrg[row.orgId];
-              const verdict = state?.verdict;
+            {tenants.map((tenant) => {
+              const state = rows[tenant.orgId];
               return (
-                <tr key={row.orgId} className="border-t border-border align-top">
-                  <td className="py-1">{row.slug}</td>
-                  <td className="py-1">{row.status}</td>
+                <tr key={tenant.orgId} className="border-t border-border align-top">
+                  <td className="py-1">{tenant.slug}</td>
+                  <td className="py-1">{tenant.status}</td>
                   <td className="py-1">{state?.provisioning ?? "…"}</td>
                   <td className="py-1">
-                    {verdict ? verdict.status : "…"}
-                    {verdict?.status === "unverified" ? (
+                    {state?.verdict ?? "…"}
+                    {state?.verdict === "unverified" ? (
                       <button
                         type="button"
                         className="ml-2 text-xs underline"
-                        onClick={() => void onAck(row)}
+                        onClick={() => {
+                          const reason = window.prompt("Why is this unverified verdict acceptable?");
+                          if (reason)
+                            run("ackPlatformTenant", { orgId: tenant.orgId, reason });
+                        }}
                       >
                         Acknowledge
                       </button>
@@ -270,28 +143,47 @@ export function PlatformTenantsAdmin() {
                     <button
                       type="button"
                       className="text-xs underline"
-                      onClick={() => void onPromote(row)}
+                      onClick={() =>
+                        run("promotePlatformTenant", { orgId: tenant.orgId, releaseId })
+                      }
                     >
                       Promote
                     </button>
-                    {promoteResult[row.orgId] ? (
-                      <span className="ml-2 text-xs text-muted-foreground">{promoteResult[row.orgId]}</span>
+                    <button
+                      type="button"
+                      className="ml-2 text-xs underline"
+                      onClick={() => run("rollbackPlatformTenant", { orgId: tenant.orgId })}
+                    >
+                      Rollback
+                    </button>
+                    <button
+                      type="button"
+                      className="ml-2 text-xs underline"
+                      onClick={() => run("loadPlatformTenantHistory", { orgId: tenant.orgId })}
+                    >
+                      History
+                    </button>
+                    {promoteResult ? (
+                      <span className="ml-2 text-xs text-muted-foreground">{promoteResult}</span>
                     ) : null}
                   </td>
                   <td className="py-1">
                     <span className="flex gap-1">
                       <input
-                        className="w-48 rounded border border-border px-1 py-0.5 text-xs"
+                        className="w-44 rounded border border-border px-1 py-0.5 text-xs"
                         placeholder="owner@example.com"
-                        value={email[row.orgId] ?? ""}
+                        value={emails[tenant.orgId] ?? ""}
                         onChange={(event) =>
-                          setEmail((prev) => ({ ...prev, [row.orgId]: event.target.value }))
+                          setEmails((prev) => ({ ...prev, [tenant.orgId]: event.target.value }))
                         }
                       />
                       <button
                         type="button"
                         className="text-xs underline"
-                        onClick={() => void onInvite(row.orgId)}
+                        onClick={() => {
+                          const email = (emails[tenant.orgId] ?? "").trim();
+                          if (email) run("invitePlatformTenant", { orgId: tenant.orgId, email });
+                        }}
                       >
                         Invite
                       </button>
@@ -302,6 +194,21 @@ export function PlatformTenantsAdmin() {
             })}
           </tbody>
         </table>
+      ) : null}
+
+      {history && history.length > 0 ? (
+        <section className="space-y-1">
+          <h2 className="text-sm font-semibold">Release history — {historyOrgId}</h2>
+          <ul className="text-xs text-muted-foreground">
+            {history.map((event, index) => (
+              <li key={`${event.recordedAt}-${index}`}>
+                {event.recordedAt} · {event.action}
+                {event.metadata?.to ? ` → ${event.metadata.to}` : ""}
+                {event.metadata?.from ? ` (from ${event.metadata.from})` : ""}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
     </section>
   );

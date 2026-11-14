@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, lt } from "drizzle-orm";
+import { and, desc, eq, gte, like, lt } from "drizzle-orm";
 import type { Database } from "../../../drizzle";
 import type {
   EvidenceActivity,
@@ -214,6 +214,7 @@ export function createEvidencePostgresService(db: Database): EvidenceService {
       const conditions = [];
       if (query.orgId) conditions.push(eq(evidenceAuditEvents.orgId, query.orgId));
       if (query.action) conditions.push(eq(evidenceAuditEvents.action, query.action));
+      if (query.actionPrefix) conditions.push(like(evidenceAuditEvents.action, `${query.actionPrefix}%`));
       if (query.actorType) conditions.push(eq(evidenceAuditEvents.actorType, query.actorType));
       if (query.actorId) conditions.push(eq(evidenceAuditEvents.actorId, query.actorId));
       if (query.subjectType) conditions.push(eq(evidenceAuditEvents.subjectType, query.subjectType));
