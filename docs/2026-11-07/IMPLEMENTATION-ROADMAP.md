@@ -49,7 +49,10 @@ request log line by `requestId`.
 
 ## 3. Audit phase B — token issuance/revocation
 
-**Status (2026-11-14):** ✅ **implemented as credential lifecycle**, not ephemeral token mint/revoke:
+**Status (2026-11-14):** ✅ **credential lifecycle + platform token issuance.** A token minted for the platform org
+records `platform.token.issued` with a **hash** of the token and its lifetime — never the credential. Token *revocation*
+is ZITADEL deactivation and is recorded as `platform.credential.revoked`. Remaining gap: per-session revoke is not
+something we control, so there is no "token revoked" row for a user logout. Earlier note:
 `platform.credential.*` rows with the operator as actor, plus a reconciliation that reports drift between
 ZITADEL's live platform grants and the recorded stream. See
 [`CREDENTIAL-LIFECYCLE-AUDIT.md`](../2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md).
@@ -122,7 +125,8 @@ monitoring/forensics, not attribution. `requestId` from step 1 is already in pla
 
 **Status (2026-11-14):** 🟡 **partially implemented.** The operator console exists
 ([`PLATFORM-CONSOLE.md`](../2026-11-12/PLATFORM-CONSOLE.md)): tenant list with provisioning and verdict state,
-create, backfill, invite, verdict acknowledgement. **Not built:** promote/rollback with confirmation and the
+create, backfill, invite, verdict acknowledgement, and **single-tenant promote** from the Release column (verified:
+`skipped (already_on_release)` rendered in the row). **Not built:** rollback and the
 release history view.
 
 **What:** tenant list, current/previous pointer, release history, promote/rollback with confirmation, audit trail

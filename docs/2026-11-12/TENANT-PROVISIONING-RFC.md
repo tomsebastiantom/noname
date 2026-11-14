@@ -3,7 +3,12 @@
 > **Status:** **implemented** (phases 1–3, invite, console) · **Date:** 2026-11-12
 > **Shipped:** `tenant_provisioning` + 202/status, directory step, ZITADEL org + project grant, eval account,
 > tenant-scoped credential rows, backfill, invite. Console: [`PLATFORM-CONSOLE.md`](./PLATFORM-CONSOLE.md).
-> **Not built:** offboarding, seed/domain steps, self-service signup, hard delete.
+> **Not built:** seed/domain steps, self-service signup, hard delete.
+>
+> **Offboarding (2026-11-14):** shipped after all — `POST /api/platform/tenants/:orgId/offboard` moves the tenant to
+> `offboarding` **first** (so a concurrent wave can no longer select it), then disables its eval account and records
+> `platform.credential.revoked`. Verified live: a wave answers `skipped tenant_offboarding`, the ZITADEL user reaches
+> `USER_STATE_INACTIVE`, and the audit stream holds created + granted + revoked.
 > **Owner:** platform
 > **Related:** [`TENANT-DIRECTORY.md`](./TENANT-DIRECTORY.md) · [`CREDENTIAL-LIFECYCLE-AUDIT.md`](./CREDENTIAL-LIFECYCLE-AUDIT.md) · [`../2026-11-07/AUDIT-SCOPE.md`](../2026-11-07/AUDIT-SCOPE.md) · [`../2026-11-07/IMPLEMENTATION-ROADMAP.md`](../2026-11-07/IMPLEMENTATION-ROADMAP.md)
 
