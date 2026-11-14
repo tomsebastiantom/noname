@@ -8,4 +8,6 @@ export const BULLMQ_QUEUES = {
   EXTENSION_DELIVERY: "{extension-delivery}",
   PROVIDER_EVENTS: "{provider-events}",
   EVAL: "{eval-runs}",
+  /** Scheduled platform work — one repeatable job per definition (see domains/schedules). */
+  SCHEDULES: "{platform-schedules}",
 } as const;

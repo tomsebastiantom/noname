@@ -55,6 +55,8 @@ import { CREDENTIAL_ACTIONS } from "./domains/platform-credentials/actions";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
+import { createSchedulesDomain } from "./domains/schedules";
+import type { ScheduleHandler } from "./domains/schedules/definitions";
 import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/webhooks";
 import { createDatabase } from "./drizzle";
 import { getBullmqQueue } from "./shared/bullmq-queue";
@@ -477,6 +479,44 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/edge", edge.routes);
 
   const verdictService = createGateVerdictService(evidence.service);
+  /**
+   * Purge one tenant: rows, IdP org, and one platform audit row.
+   *
+   * Extracted because two callers need identical behaviour — the operator route and the retention schedule. A copy
+   * per caller is how "the button deleted the org but the timer did not" happens.
+   */
+  async function purgeTenant(orgId: string, actorId: string): Promise<{ purged: boolean }> {
+    const entry = await tenantDirectory.service.get(orgId);
+    if (!entry) return { purged: false };
+    if (entry.status !== "deleted") {
+      throw new ConflictError(
+        `Tenant ${orgId} must be deleted before it can be purged (is ${entry.status})`,
+        { orgId },
+      );
+    }
+
+    // The IdP org goes first: if that fails, the rows still explain what exists rather than leaving an orphan identity.
+    await deleteZitadelOrg(orgId);
+
+    await db.delete(tenantProvisioningTable).where(eq(tenantProvisioningTable.orgId, orgId));
+    await db.delete(tenantDirectoryTable).where(eq(tenantDirectoryTable.orgId, orgId));
+
+    // Written to the **platform** stream: the tenant's own stream is what was just removed.
+    const platformOrgId = process.env.PLATFORM_ORG_ID?.trim();
+    if (platformOrgId) {
+      await evidence.service.audit({
+        orgId: platformOrgId,
+        action: "platform.tenant.purged",
+        actorType: "service",
+        actorId,
+        subjectType: "platform.tenant",
+        subjectId: orgId,
+        metadata: { slug: entry.slug },
+      });
+    }
+    return { purged: true };
+  }
+
   const tenantDirectory = createTenantDirectoryDomain({
     db,
     verdict: (input) => verdictService.lookup(input),
@@ -492,34 +532,7 @@ export async function createApp(): Promise<Hono> {
       await tenantDirectory.service.upsert({ orgId, slug: entry.slug, status: "deleted" });
       return { status: "deleted" };
     },
-    purge: async ({ orgId, actorId }) => {
-      const entry = await tenantDirectory.service.get(orgId);
-      if (!entry) return { purged: false };
-      if (entry.status !== "deleted") {
-        throw new ConflictError(`Tenant ${orgId} must be deleted before it can be purged (is ${entry.status})`, { orgId });
-      }
-
-      // The IdP org goes first: if that fails, the rows still explain what exists rather than leaving an orphan identity.
-      await deleteZitadelOrg(orgId);
-
-      await db.delete(tenantProvisioningTable).where(eq(tenantProvisioningTable.orgId, orgId));
-      await db.delete(tenantDirectoryTable).where(eq(tenantDirectoryTable.orgId, orgId));
-
-      // Written to the **platform** stream: the tenant's own stream is what was just removed.
-      const platformOrgId = process.env.PLATFORM_ORG_ID?.trim();
-      if (platformOrgId) {
-        await evidence.service.audit({
-          orgId: platformOrgId,
-          action: "platform.tenant.purged",
-          actorType: "service",
-          actorId,
-          subjectType: "platform.tenant",
-          subjectId: orgId,
-          metadata: { slug: entry.slug },
-        });
-      }
-      return { purged: true };
-    },
+    purge: async ({ orgId, actorId }) => purgeTenant(orgId, actorId),
     history: async (input) =>
       evidence.service.listAuditAcross({
         orgId: input.orgId,
@@ -594,7 +607,38 @@ export async function createApp(): Promise<Hono> {
     },
   });
   // POST first: creation lives on the same prefix as the inventory, different verbs.
+  /**
+   * Retention sweep: everything soft-deleted longer than RETENTION_DAYS.
+   *
+   * State-based on purpose — it asks "what is overdue?" rather than scheduling one timer per tenant, so a missed tick
+   * or a week of downtime changes nothing. Dry-run reports and touches nothing.
+   */
+  const retentionHandler: ScheduleHandler = async ({ dryRun }) => {
+    const days = Number(process.env.RETENTION_DAYS ?? "30");
+    const cutoff = new Date(Date.now() - days * 86_400_000);
+    const deleted = await tenantDirectory.service.list({ status: "deleted" });
+
+    let items = 0;
+    for (const tenant of deleted) {
+      if (tenant.updatedAt >= cutoff) continue;
+      items += 1;
+      if (dryRun) continue;
+      // Per-tenant so one bad row does not abort the sweep; the purge is idempotent and audited individually.
+      await purgeTenant(tenant.orgId, "schedule:tenant-retention-purge").catch((cause) => {
+        console.error(`[schedules] purge failed for ${tenant.orgId}: ${String(cause)}`);
+      });
+    }
+    return { items, dryRun };
+  };
+
+  const schedules = createSchedulesDomain({
+    db,
+    evidence: evidence.service,
+    handlers: { "tenant-retention-purge": retentionHandler },
+  });
+
   app.route("/api/platform/operators", tenantProvisioning.operatorRoutes);
+  app.route("/api/platform/schedules", schedules.routes);
   app.route("/api/platform/tenants", tenantProvisioning.routes);
   app.route("/api/platform/tenants", tenantDirectory.routes);
 
@@ -668,6 +712,11 @@ export async function createApp(): Promise<Hono> {
     "/api/platform/credentials",
     platformCredentials.routes,
   );
+
+  // Registration is idempotent (one scheduler per definition), so a restart does not double the cadence.
+  await schedules.start().catch((cause) => {
+    console.error(`[schedules] failed to start: ${String(cause)}`);
+  });
 
   return app;
 }

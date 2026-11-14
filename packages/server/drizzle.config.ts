@@ -8,6 +8,7 @@ export default defineConfig({
     "./src/domains/machines/schema.ts",
     "./src/domains/release/schema.ts",
     "./src/domains/tenant-provisioning/schema.ts",
+    "./src/domains/schedules/schema.ts",
     "./src/domains/tenant-directory/schema.ts",
     "./src/domains/context/schema.ts",
     "./src/domains/flags/schema.ts",

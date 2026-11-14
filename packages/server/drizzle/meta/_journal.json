@@ -92,6 +92,13 @@
       "when": 1794679269465,
       "tag": "0012_late_banshee",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1794684257259,
+      "tag": "0013_serious_boom_boom",
+      "breakpoints": true
     }
   ]
 }

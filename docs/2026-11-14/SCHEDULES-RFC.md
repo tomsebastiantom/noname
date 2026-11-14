@@ -155,6 +155,33 @@ Consequences, stated so they are not discovered later:
 - per-tenant quota bounds a single noisy tenant without throttling the platform;
 - if volume ever outgrows one queue, the split is by producer (two queues, same domain), not by feature.
 
+### 4.6 Tenant data lives in one table, never one table per tenant
+
+**Rule: a tenant is a column, not a table.** Verified against the current database: **44 tables** in `public` carry an
+`org_id` column, and there are no tenant schemas (`public`, `drizzle` only). Every tenant-scoped feature — documents,
+evidence, audiences, machines, flags, release pointers — follows it, with indexes that lead with `org_id`:
+
+```
+evidence_records_org_type_recorded_idx    (org_id, type, recorded_at)
+evidence_records_org_subject_idx          (org_id, subject_type, subject_id)
+```
+
+Tenant timers follow the same rule: **one** `scheduled_actions` table (`id, org_id, kind, run_at, payload, status,
+attempts, idempotency_key`), claimed through an index on `(org_id, run_at)` plus a partial index on
+`status = 'pending'`.
+
+Per-tenant tables were rejected because they multiply every cost and buy nothing:
+
+| Cost | With one table per tenant |
+|---|---|
+| migrations | N schema changes per release |
+| due-claim query | `UNION` over hundreds of tables, or N index scans |
+| provisioning | creating a table becomes part of tenant creation |
+| isolation | none gained — same disk, same planner, same pool |
+
+Physical isolation (separate database per tenant) is a data-residency decision for a regulated deployment, not a
+scaling technique, and it is not what this platform does.
+
 ## 5. API
 
 ```
