@@ -17,8 +17,10 @@ supervision after that.
 
 **Caveat that decided the architecture:** this machine is **Windows 10 21H2 (build 19044)**. WSL
 `networkingMode=mirrored` â€” the setting that would share localhost between Windows and WSL â€” requires
-**Windows 11 22H2+**, so it is unavailable. Rancher also does not publish NodePorts to the Windows host; only
-80/443 are forwarded. That is why the app reaches the cluster through port-forwards, not NodePorts.
+**Windows 11 22H2+**, so it is unavailable. Rancher forwards **NodePort** services to the host through its guest
+agent (verified: `30200`, `30432` survive an engine restart), which is why `deploy/overlays/local/nodeports.yaml` is the
+durable way to reach infra. `svc/zitadel` stays ClusterIP — its `EXTERNALPORT` is in every token — so it is re-created
+with `pnpm rancher forwards`.
 
 ## 2. What runs where
 
@@ -159,7 +161,7 @@ The `.tools/*.mjs` browser scripts used while verifying this setup (`inspect-pag
 | Infra pods | postgres, redis, clickhouse, vault, keto, s3, zitadel, jaeger, nango â€” all `Running` |
 | App deployments | `api/client/worker/browser` `0/0` |
 | Migrations | 8/8 on the cluster Postgres |
-| Port forwards | **owned by Rancher Desktop** (pid of the Rancher app, not `kubectl`); all 8 reachable; no task, no script |
+| Infra reachability | **NodePorts** (`30432`, `30379`, `30123`, `30200`, `30466/30467`, `30900`) — Rancher re-creates them from the Service objects, verified across an engine restart. Zitadel is the one exception: `rdctl` forward, re-created by `pnpm rancher forwards` (API-created forwards are **not** restored on restart — tested) |
 | Identity | org `398655937176469540`, project `399159787020877870` |
 | Seed | `pnpm seed:demo:full` â†’ `completed full/commerce` |
 | Browser | storefront, login, admin, orders, agents, editor, product â€” all render, no console errors |
