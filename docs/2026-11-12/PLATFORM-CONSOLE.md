@@ -69,12 +69,31 @@ GET  /api/tenants/resolve/platform  → 200, platform: true      (no tenant_sett
 deep link /admin/platform           → 200 text/html (SPA serves it)
 ```
 
-Tests: `site-id`, `tenant`, `auth` — **76/76**. Typecheck clean for `@noname/server`, `@noname/client`, `@noname/seeding`.
+Browser (Playwright + Chromium), signed in as a **tenant** editor — the negative case:
+
+```
+GET /api/platform/tenants → 403 {"error":"Forbidden"}
+rendered text             → "Platform operator rights are required."
+screenshot                → evidence/platform-console-guard.png
+```
+
+So the panel mounts, calls the API, and honours the server's refusal. Getting the panel to mount at all required a
+catalog entry — `defineRegistry` only exposes components declared in `@noname/catalog`, so a React component added to
+`admin/registry.ts` alone is silently skipped. That is the trap this document exists to record.
+
+Not yet verified: the **positive** case (a platform operator seeing the tenant table), because platform-org humans
+cannot authenticate — see §5.
+
+Tests: `site-id`, `tenant`, `auth` — **76/76**. Typecheck clean for `@noname/server`, `@noname/client`,
+`@noname/catalog`, `@noname/seeding`.
 
 ## 5. Limits
 
-- **No browser automation in this pass.** The panel was verified by its endpoints and by the SPA serving the route;
-  the authenticated rendering was confirmed by hand.
+- **Platform-org humans cannot log in yet.** `POST /api/auth/platform/login` answers `401 Errors.User.NotFound`
+  because the login adapter resolves the user through the **demo project's** org. The operator exists, holds
+  `platform_operator`, and has a password — the OIDC client is simply bound to another project. Fix is architectural:
+  a second login client in the platform project, or an explicit project grant for the platform org.
+
 - **Create/invite from the UI are thin wrappers.** They surface the API's `202` and errors verbatim; there is no
   optimistic state or progress poller yet — refresh shows the steps.
 - **No key rotation or offboarding controls.** Offboarding is still RFC-only.
