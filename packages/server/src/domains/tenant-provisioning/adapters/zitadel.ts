@@ -215,12 +215,31 @@ export function createZitadelProvisioner(): ProvisionerPort {
         userId = created.userId;
       }
 
-      await call(admin, "POST", `/management/v1/users/${userId}/grants`, orgId, {
-        projectId: admin.projectId,
-        roleKeys: [roleKey],
-      }).catch((cause) => {
-        if (!/already exists|409|Conflict/i.test(String(cause))) throw cause;
-      });
+      // ZITADEL projects an org's project grant asynchronously. Granting the role to the account immediately after
+      // creating that grant can answer "Project Grant not found" — a race, not a bad request. Retry briefly, then fail.
+      const grantRole = () =>
+        call(admin, "POST", `/management/v1/users/${userId}/grants`, orgId, {
+          projectId: admin.projectId,
+          roleKeys: [roleKey],
+        });
+      let lastError: unknown;
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        try {
+          await grantRole();
+          lastError = undefined;
+          break;
+        } catch (cause) {
+          lastError = cause;
+          const message = String(cause);
+          if (/already exists|409|Conflict/i.test(message)) {
+            lastError = undefined;
+            break;
+          }
+          if (!/Project Grant not found/i.test(message)) break;
+          await new Promise((resolve) => setTimeout(resolve, 800));
+        }
+      }
+      if (lastError) throw lastError;
 
       return { userId };
     },

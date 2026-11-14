@@ -6,6 +6,7 @@ import { type ProvisioningState, tenantProvisioning } from "../schema";
 function mapRow(row: typeof tenantProvisioning.$inferSelect): ProvisioningRecord {
   return {
     orgId: row.orgId,
+    slug: row.slug,
     idempotencyKey: row.idempotencyKey,
     state: row.state as ProvisioningState,
     steps: row.steps ?? {},
@@ -27,6 +28,7 @@ export function createTenantProvisioningStore(db: Database): ProvisioningStore {
         .insert(tenantProvisioning)
         .values({
           orgId,
+          slug: input.slug,
           idempotencyKey: input.idempotencyKey,
           requestedBy: input.requestedBy,
           steps: { directory: { status: "pending" } },

@@ -26,7 +26,8 @@
     "init:nango": "tsx scripts/init/nango.ts",
     "docs:dev": "pnpm --dir apps/docs --ignore-workspace start",
     "docs:build": "pnpm --dir apps/docs --ignore-workspace build",
-    "docs:serve": "pnpm --dir apps/docs --ignore-workspace serve"
+    "docs:serve": "pnpm --dir apps/docs --ignore-workspace serve",
+    "test:e2e": "pnpm --filter @noname/e2e test"
   },
   "engines": {
     "node": ">=20"

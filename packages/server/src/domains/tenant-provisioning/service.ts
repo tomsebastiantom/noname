@@ -25,6 +25,19 @@ export type DirectoryPort = {
 const now = () => new Date().toISOString();
 
 /**
+ * Drizzle wraps driver failures, and `Error.message` then holds the SQL text — which tells you a query ran, not why it
+ * failed. The Postgres cause is one level down; include it so a provisioning failure is diagnosable from the API.
+ */
+function describeError(cause: unknown): string {
+  if (!(cause instanceof Error)) return String(cause);
+  const nested = (cause as { cause?: unknown }).cause;
+  if (nested instanceof Error && nested.message && !cause.message.includes(nested.message)) {
+    return `${cause.message} | ${nested.message}`;
+  }
+  return cause.message;
+}
+
+/**
  * Phase 1–2 of the provisioning RFC: one operation, recorded step by step.
  *
  * Step order matters. The directory row is written **first**, in `in_progress`, so a half-built tenant is never
@@ -103,7 +116,7 @@ export function createTenantProvisioningService(
         steps = { ...steps, offboard: { status: "done", at: now() } };
         return store.update(orgId, { steps });
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : String(cause);
+        const message = describeError(cause);
         await store.update(orgId, {
           steps: { ...steps, offboard: { status: "failed", error: message, at: now() } },
           lastError: message,
@@ -182,7 +195,7 @@ export function createTenantProvisioningService(
         directory: { status: "done", at: now() },
       });
     } catch (cause) {
-      const message = cause instanceof Error ? cause.message : String(cause);
+      const message = describeError(cause);
       await store.update(orgId, {
         state: "failed",
         lastError: message,
@@ -202,7 +215,7 @@ export function createTenantProvisioningService(
           identity: { status: "done", at: now() },
         });
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : String(cause);
+        const message = describeError(cause);
         await store.update(orgId, {
           state: "failed",
           lastError: message,
@@ -234,7 +247,7 @@ export function createTenantProvisioningService(
           eval_account: { status: "done", at: now() },
         });
       } catch (cause) {
-        const message = cause instanceof Error ? cause.message : String(cause);
+        const message = describeError(cause);
         await store.update(orgId, {
           state: "failed",
           lastError: message,
@@ -260,8 +273,9 @@ export function createTenantProvisioningService(
   }
 }
 
-/** The slug is part of the idempotency key contract: `<slug>:<orgId>`. */
+/** Stored slug wins; the legacy parse exists only for rows written before the column did. */
 function slugFromRecord(record: ProvisioningRecord): string {
+  if (record.slug) return record.slug;
   const [slug] = record.idempotencyKey.split(":");
   return slug || record.orgId;
 }

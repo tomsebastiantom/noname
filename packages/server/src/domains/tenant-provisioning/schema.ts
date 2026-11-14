@@ -27,6 +27,14 @@ export const tenantProvisioning = pgTable(
   "tenant_provisioning",
   {
     orgId: text("org_id").primaryKey(),
+    /**
+     * The tenant's slug, stored explicitly.
+     *
+     * It used to be parsed out of the idempotency key (`<slug>:<orgId>`), which silently produced the wrong slug for
+     * any caller that chose a different key format — the e2e suite used `e2e:<slug>` and every tenant was created as
+     * "e2e". A value that matters must be stored, not inferred from a string another party controls.
+     */
+    slug: text("slug").notNull().default(""),
     idempotencyKey: text("idempotency_key").notNull(),
     state: text("state").notNull().default("pending"),
     steps: jsonb("steps").$type<ProvisioningSteps>().notNull().default({}),

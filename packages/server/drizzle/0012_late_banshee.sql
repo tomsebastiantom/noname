@@ -1,0 +1,1 @@
+ALTER TABLE "tenant_provisioning" ADD COLUMN "slug" text DEFAULT '' NOT NULL;

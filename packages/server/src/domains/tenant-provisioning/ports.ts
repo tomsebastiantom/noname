@@ -2,6 +2,8 @@ import type { ProvisioningState, ProvisioningSteps } from "./schema";
 
 export type ProvisioningRecord = {
   orgId: string;
+  /** The tenant slug as stored when provisioning started. */
+  slug: string;
   idempotencyKey: string;
   state: ProvisioningState;
   steps: ProvisioningSteps;

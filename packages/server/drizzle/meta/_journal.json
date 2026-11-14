@@ -85,6 +85,13 @@
       "when": 1794614501324,
       "tag": "0011_brown_domino",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1794679269465,
+      "tag": "0012_late_banshee",
+      "breakpoints": true
     }
   ]
 }
