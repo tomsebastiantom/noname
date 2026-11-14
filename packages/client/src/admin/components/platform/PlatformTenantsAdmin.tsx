@@ -52,6 +52,8 @@ export function PlatformTenantsAdmin() {
   const [slug, setSlug] = useState("");
   const [email, setEmail] = useState<Record<string, string>>({});
   const [notice, setNotice] = useState<string | null>(null);
+  const [releaseId, setReleaseId] = useState("");
+  const [promoteResult, setPromoteResult] = useState<Record<string, string>>({});
 
   const refresh = useCallback(async () => {
     setBusy(true);
@@ -139,6 +141,35 @@ export function PlatformTenantsAdmin() {
     }
   }
 
+  /**
+   * Promote a single tenant through the existing wave endpoint.
+   *
+   * Deliberately the same code path as a batch: eligibility (directory status, provisioning state, verdict) is decided
+   * server-side, so the console cannot promote something a wave would have skipped — it just shows the reason.
+   */
+  async function onPromote(row: TenantRow) {
+    const id = releaseId.trim();
+    if (!id) {
+      setNotice("Enter a release id first.");
+      return;
+    }
+    setNotice(null);
+    try {
+      const result = await api<{ results?: Array<{ orgId: string; status: string; reason?: string }> }>(
+        `/api/releases/${encodeURIComponent(id)}/rollout`,
+        { method: "POST", body: JSON.stringify({ orgIds: [row.orgId], dryRun: false }) },
+      );
+      const outcome = result?.results?.find((item) => item.orgId === row.orgId);
+      setPromoteResult((prev) => ({
+        ...prev,
+        [row.orgId]: outcome ? `${outcome.status}${outcome.reason ? ` (${outcome.reason})` : ""}` : "unknown",
+      }));
+      await refresh();
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "promotion failed");
+    }
+  }
+
   async function onAck(row: TenantRow) {
     const reason = window.prompt("Why is this unverified verdict acceptable for this tenant?");
     if (!reason) return;
@@ -180,6 +211,15 @@ export function PlatformTenantsAdmin() {
         <button type="submit" className="rounded border border-border px-3 py-1 text-sm">
           Create
         </button>
+        <label className="text-sm">
+          <span className="block text-muted-foreground">Release id (promote)</span>
+          <input
+            className="rounded border border-border px-2 py-1"
+            value={releaseId}
+            onChange={(event) => setReleaseId(event.target.value)}
+            placeholder="release uuid"
+          />
+        </label>
         <button type="button" className="text-sm underline" onClick={() => void onBackfill()}>
           Backfill existing
         </button>
@@ -201,6 +241,7 @@ export function PlatformTenantsAdmin() {
               <th className="py-1">Status</th>
               <th className="py-1">Provisioning</th>
               <th className="py-1">Verdict</th>
+              <th className="py-1">Release</th>
               <th className="py-1">Invite admin</th>
             </tr>
           </thead>
@@ -223,6 +264,18 @@ export function PlatformTenantsAdmin() {
                       >
                         Acknowledge
                       </button>
+                    ) : null}
+                  </td>
+                  <td className="py-1">
+                    <button
+                      type="button"
+                      className="text-xs underline"
+                      onClick={() => void onPromote(row)}
+                    >
+                      Promote
+                    </button>
+                    {promoteResult[row.orgId] ? (
+                      <span className="ml-2 text-xs text-muted-foreground">{promoteResult[row.orgId]}</span>
                     ) : null}
                   </td>
                   <td className="py-1">
