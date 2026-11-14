@@ -47,10 +47,11 @@ import { createReleaseDomain } from "./domains/release";
 import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
 import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
-import { createTenantProvisioningDomain } from "./domains/tenant-provisioning";
-import { tenantProvisioning as tenantProvisioningTable } from "./domains/tenant-provisioning/schema";
+import { createTenantProvisioningDomain } from "./domains/tenant-directory/provisioning";
+import { enqueueProvisioning, startProvisioningWorker } from "./domains/tenant-directory/provisioning/queue";
+import { tenantProvisioning as tenantProvisioningTable } from "./domains/tenant-directory/provisioning/schema";
 import { tenantDirectory as tenantDirectoryTable } from "./domains/tenant-directory/schema";
-import { createZitadelProvisioner } from "./domains/tenant-provisioning/adapters/zitadel";
+import { createZitadelProvisioner } from "./domains/tenant-directory/provisioning/adapters/zitadel";
 import { CREDENTIAL_ACTIONS } from "./domains/platform-credentials/actions";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
@@ -554,6 +555,8 @@ export async function createApp(): Promise<Hono> {
   const platformCredentials = createPlatformCredentialsDomain({ evidence: evidence.service });
   const tenantProvisioning = createTenantProvisioningDomain({
     db,
+    // The queue owns the run; the request only records intent and returns 202.
+    enqueue: enqueueProvisioning,
     provisioner: createZitadelProvisioner(),
     audit: async (input) => {
       const orgId = process.env.PLATFORM_ORG_ID?.trim();
@@ -712,6 +715,9 @@ export async function createApp(): Promise<Hono> {
     "/api/platform/credentials",
     platformCredentials.routes,
   );
+
+  // Provisioning jobs run beside the schedule worker: same gate, separate queue, separate failure domain.
+  startProvisioningWorker(tenantProvisioning.service);
 
   // Registration is idempotent (one scheduler per definition), so a restart does not double the cadence.
   await schedules.start().catch((cause) => {

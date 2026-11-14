@@ -8,6 +8,8 @@ export const BULLMQ_QUEUES = {
   EXTENSION_DELIVERY: "{extension-delivery}",
   PROVIDER_EVENTS: "{provider-events}",
   EVAL: "{eval-runs}",
-  /** Scheduled platform work — one repeatable job per definition (see domains/schedules). */
+  /** Scheduled platform work ï¿½ one repeatable job per definition (see domains/schedules). */
   SCHEDULES: "{platform-schedules}",
+  /** Tenant provisioning steps â€” retried, so a failed step is not a stalled tenant. */
+  PROVISIONING: "{tenant-provisioning}",
 } as const;

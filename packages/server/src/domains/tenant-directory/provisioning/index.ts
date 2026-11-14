@@ -1,4 +1,4 @@
-import type { Database } from "../../drizzle";
+import type { Database } from "../../../drizzle";
 import { createTenantProvisioningStore } from "./adapters/postgres";
 import { createPlatformOperatorRoutes, createTenantProvisioningRoutes } from "./api";
 import type { ProvisioningService } from "./ports";
@@ -17,6 +17,8 @@ export function createTenantProvisioningDomain(deps: {
     actorId: string;
     metadata?: Record<string, unknown>;
   }) => Promise<void>;
+  /** Queue handoff for a provisioning run; omit only in tests. */
+  enqueue?: (orgId: string) => Promise<void>;
   recordCredential?: (input: {
     orgId: string;
     accountId: string;
@@ -30,6 +32,7 @@ export function createTenantProvisioningDomain(deps: {
     store,
     deps.directory,
     deps.provisioner,
+    deps.enqueue,
     deps.recordCredential,
   );
   return {

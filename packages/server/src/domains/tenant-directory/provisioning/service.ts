@@ -48,6 +48,13 @@ export function createTenantProvisioningService(
   store: ProvisioningStore,
   directory: DirectoryPort,
   provisioner?: ProvisionerPort,
+  /**
+   * Hands a provisioning run to the queue.
+   *
+   * Without it the run happens in a detached promise: it dies with the process and a failed step is never retried.
+   * Tests and one-off scripts can omit it; the app always passes it.
+   */
+  enqueue?: (orgId: string) => Promise<void>,
   recordCredential?: (input: {
     orgId: string;
     accountId: string;
@@ -72,9 +79,15 @@ export function createTenantProvisioningService(
       const existing =
         (await store.findByIdempotencyKey(input.idempotencyKey)) ?? (await store.get(resolvedOrgId));
       const record = await store.create(request);
-      // Fire and forget: the API returns 202 with the record and the caller polls. Steps are recorded, so a crash
-      // leaves an explainable `in_progress` row rather than a lie.
-      if (record.state === "pending") void run(record.orgId).catch(() => {});
+      if (record.state === "pending") {
+        if (enqueue) {
+          // The queue owns the run: it survives the request, and a failed step is retried rather than abandoned.
+          await enqueue(record.orgId);
+        } else {
+          // No queue configured (tests, scripts): run inline, still recording every step.
+          void run(record.orgId).catch(() => {});
+        }
+      }
       return { record, created: !existing };
     },
 

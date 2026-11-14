@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import type { Database } from "../../../drizzle";
+import type { Database } from "../../../../drizzle";
 import type { CreateProvisioningInput, ProvisioningRecord, ProvisioningStore } from "../ports";
 import { type ProvisioningState, tenantProvisioning } from "../schema";
 

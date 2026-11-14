@@ -62,6 +62,20 @@ describe("tenant provisioning", () => {
     expect(store.rows.size).toBe(1);
   });
 
+  it("hands the run to the queue when one is configured, without running it inline", async () => {
+    const store = memoryStore();
+    const directory = { upsert: vi.fn(async () => {}) };
+    const enqueue = vi.fn(async () => {});
+    const service = createTenantProvisioningService(store, directory, undefined, enqueue);
+
+    const created = await service.start(input);
+
+    expect(created.created).toBe(true);
+    expect(enqueue).toHaveBeenCalledWith("org-new");
+    // The queue owns execution now: the directory must not have been touched by the request.
+    expect(directory.upsert).not.toHaveBeenCalled();
+  });
+
   it("runs the directory step first, then marks the tenant ready", async () => {
     const store = memoryStore();
     const calls: string[] = [];

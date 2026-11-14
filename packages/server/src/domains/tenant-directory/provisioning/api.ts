@@ -1,8 +1,8 @@
 import { PERMISSIONS } from "@noname/auth";
 import { Hono } from "hono";
 import { z } from "zod";
-import { ok } from "../../shared/respond";
-import { requirePlatformOperator } from "../release/platform-guard";
+import { ok } from "../../../shared/respond";
+import { requirePlatformOperator } from "../../release/platform-guard";
 import type { ProvisioningService } from "./ports";
 
 const createSchema = z.object({
