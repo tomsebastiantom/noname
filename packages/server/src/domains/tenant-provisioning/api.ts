@@ -49,6 +49,16 @@ export function createTenantProvisioningRoutes(provisioning: ProvisioningService
     return c.json({ data: body }, 202);
   });
 
+  /** Give pre-existing tenants a provisioning record; idempotent, so it is safe to run on every deploy. */
+  routes.post("/backfill", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    return ok(c, await provisioning.backfill());
+  });
+
   routes.get("/:orgId/provisioning", async (c) => {
     const operator = await requirePlatformOperator(c);
     if (operator instanceof Response) return operator;

@@ -48,4 +48,6 @@ export type ProvisioningService = {
   run(orgId: string): Promise<ProvisioningRecord>;
   /** Invites the first human admin into an already-provisioned tenant org. */
   invite(orgId: string, email: string): Promise<ProvisioningRecord>;
+  /** Creates a record for every tenant that predates provisioning. */
+  backfill(): Promise<{ examined: number; created: number }>;
 };

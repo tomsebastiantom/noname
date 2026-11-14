@@ -9,6 +9,7 @@ export type ProvisionerPort = {
 };
 
 export type DirectoryPort = {
+  list(): Promise<Array<{ orgId: string; slug: string }>>;
   /** Ensures the inventory row exists and sets its provisioning state. */
   upsert(input: {
     orgId: string;
@@ -60,6 +61,38 @@ export function createTenantProvisioningService(
     },
 
     get: (orgId) => store.get(orgId),
+
+    /**
+     * Give pre-existing tenants a provisioning record so the console has one shape for every tenant.
+     * `eval_account: unknown` is deliberate: those accounts were created by hand or by the deleted script, and
+     * claiming `done` would assert something we never observed.
+     */
+    async backfill() {
+      const tenants = await directory.list();
+      let created = 0;
+      for (const tenant of tenants) {
+        if (await store.get(tenant.orgId)) continue;
+        const key = `backfill:${tenant.orgId}`;
+        const record = await store.create({
+          orgId: tenant.orgId,
+          slug: tenant.slug,
+          idempotencyKey: key,
+          requestedBy: "system",
+        });
+        // Another process may have created the row first; only the owner of the key records the state.
+        if (record.idempotencyKey !== key) continue;
+        await store.update(tenant.orgId, {
+          state: "ready",
+          steps: {
+            directory: { status: "done", at: now() },
+            eval_account: { status: "unknown" },
+          },
+          finishedAt: new Date(),
+        });
+        created += 1;
+      }
+      return { examined: tenants.length, created };
+    },
 
     async invite(orgId, email) {
       if (!provisioner) throw new Error("no provisioner configured; cannot invite a tenant admin");

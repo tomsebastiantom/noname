@@ -487,6 +487,11 @@ export async function createApp(): Promise<Hono> {
       });
     },
     directory: {
+      list: async () =>
+        (await tenantDirectory.service.list({ excludePlatform: false })).map((entry) => ({
+          orgId: entry.orgId,
+          slug: entry.slug,
+        })),
       upsert: async (input) => {
         await tenantDirectory.service.upsert({
           orgId: input.orgId,
