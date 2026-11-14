@@ -12,7 +12,9 @@ const createSchema = z.object({
     .string()
     .min(1)
     .max(63)
-    .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "lowercase, digits and dashes only"),
+    .regex(/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/, "lowercase, digits and dashes only")
+    // `platform` is the operator surface, not a tenant; mapping it to PLATFORM_ORG_ID must stay unambiguous.
+    .refine((value) => value !== "platform", "`platform` is reserved for the operator console"),
   /** Same key twice must not create two tenants. Callers pass something stable, e.g. the request id. */
   idempotencyKey: z.string().min(8).max(200),
   seed: z.boolean().optional(),

@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-12/PLATFORM-CONSOLE.md](2026-11-12/PLATFORM-CONSOLE.md)** - **Implemented.** The operator console at the reserved platform host: tenant table, create, backfill, invite and verdict acknowledgement, each guarded by platform permissions.
 - **[2026-11-11/RESTART-CHECKLIST.md](2026-11-11/RESTART-CHECKLIST.md)** — **Verified.** What to run after a reboot (one command for Zitadel), what Rancher restores on its own (NodePorts), and which port failures mean what.
 - **[2026-11-12/TENANT-PROVISIONING-RFC.md](2026-11-12/TENANT-PROVISIONING-RFC.md)** — **RFC (proposal).** One provisioning operation for a tenant (directory + identity + eval credential + audit), a resumable step record, a two-column lifecycle (`status` × `provisioning_state`), platform-console vs tenant-admin surfaces, and what we take from ZITADEL, Keycloak and Stripe Connect.
 - **[2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md](2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md)** — **Implemented.** Roadmap step 3 / audit phase B: `platform.credential.*` events with the operator as actor, plus a reconciliation that compares ZITADEL's live platform grants with the recorded stream and reports drift (`unrecorded` / `stale`).
