@@ -118,12 +118,12 @@ optional for out-of-band callers — including a provisioning script.
 - **No ZITADEL event feed.** A true mirror (B2) would ingest ZITADEL's audit events so console changes are recorded
   rather than merely detected. `POST /events` is the seam where that would land.
 - **No backfill.** Rows exist from now on; earlier grants have no history.
-- **Revisiting "Grants only".** `init:tenant-eval` is the remaining script that writes to ZITADEL without emitting.
+- **Revisiting "Grants only".** There is no `init:tenant-eval` any more: tenant credentials are created only through the provisioning API, which emits its own audit rows.
 
 ## 6. Next
 
 The natural follow-ups, in value order:
 
-1. wire `init:tenant-eval` the same way (provisioner token + HMAC headers);
+1. (done) tenant eval credentials come from the provisioning API only;
 2. extend reconciliation to accounts and keys, not just grants;
 3. replace reconciliation with ZITADEL event ingestion if console-level coverage becomes a requirement.
