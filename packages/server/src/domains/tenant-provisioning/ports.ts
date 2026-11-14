@@ -14,7 +14,8 @@ export type ProvisioningRecord = {
 };
 
 export type CreateProvisioningInput = {
-  orgId: string;
+  /** Omitted → the ZITADEL org is created from the slug and becomes the tenant id. */
+  orgId?: string;
   slug: string;
   idempotencyKey: string;
   requestedBy: string;

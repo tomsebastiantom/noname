@@ -6,7 +6,8 @@ import { requirePlatformOperator } from "../release/platform-guard";
 import type { ProvisioningService } from "./ports";
 
 const createSchema = z.object({
-  orgId: z.string().min(1),
+  /** Optional: when omitted the org is created from the slug. */
+  orgId: z.string().min(1).optional(),
   slug: z
     .string()
     .min(1)

@@ -36,9 +36,16 @@ export function createTenantProvisioningService(
 
   return {
     async start(input: CreateProvisioningInput) {
+      // A tenant id only exists once the IdP has one: when the caller supplies a slug, the org comes first.
+      let resolvedOrgId = input.orgId?.trim();
+      if (!resolvedOrgId) {
+        if (!provisioner) throw new Error("no provisioner configured; cannot create the tenant org");
+        resolvedOrgId = (await provisioner.ensureOrg(input.slug)).orgId;
+      }
+      const request: CreateProvisioningInput = { ...input, orgId: resolvedOrgId };
       const existing =
-        (await store.findByIdempotencyKey(input.idempotencyKey)) ?? (await store.get(input.orgId));
-      const record = await store.create(input);
+        (await store.findByIdempotencyKey(input.idempotencyKey)) ?? (await store.get(resolvedOrgId));
+      const record = await store.create(request);
       // Fire and forget: the API returns 202 with the record and the caller polls. Steps are recorded, so a crash
       // leaves an explainable `in_progress` row rather than a lie.
       if (record.state === "pending") void run(record.orgId).catch(() => {});

@@ -83,7 +83,7 @@ export function createZitadelProvisioner(): ProvisionerPort {
     async ensureProjectGrant(orgId, roleKeys) {
       const admin = config();
       // A grant may only name roles that exist on the project. The tenant project does not carry the eval role by
-      // default (live run: Errors.Project.Role.NotFound), so ensure them first — idempotently.
+      // default (live run: Errors.Project.Role.NotFound), so ensure them first â€” idempotently.
       for (const roleKey of roleKeys) {
         await call(admin, "POST", `/management/v1/projects/${admin.projectId}/roles`, null, {
           roleKey,
@@ -102,6 +102,24 @@ export function createZitadelProvisioner(): ProvisionerPort {
       } catch (cause) {
         // A grant is a fact, not a counter: re-running provisioning must reuse it rather than fail the tenant.
         if (!/already exists|409|Conflict/i.test(String(cause))) throw cause;
+      }
+
+      // Read it back. A grant with no roles is a bridge with no lanes: the tenant org can see the project but none of
+      // its users can ever hold a role. The live run produced exactly that, so the step must not report `done`.
+      const grants = await call<{ result?: Array<{ grantedOrgId?: string; roleKeys?: string[] }> }>(
+        admin,
+        "POST",
+        `/management/v1/projects/${admin.projectId}/grants/_search`,
+        null,
+        {},
+      );
+      const mine = grants.result?.find((grant) => grant.grantedOrgId === orgId);
+      const present = mine?.roleKeys ?? [];
+      const missing = roleKeys.filter((key) => !present.includes(key));
+      if (missing.length > 0) {
+        throw new Error(
+          `project grant for ${orgId} is active but carries no role: ${missing.join(", ")}`,
+        );
       }
     },
 

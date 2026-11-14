@@ -21,10 +21,12 @@ function mapRow(row: typeof tenantProvisioning.$inferSelect): ProvisioningRecord
 export function createTenantProvisioningStore(db: Database): ProvisioningStore {
   return {
     async create(input: CreateProvisioningInput) {
+      const orgId = input.orgId?.trim();
+      if (!orgId) throw new Error("provisioning row requires a resolved org id");
       const [row] = await db
         .insert(tenantProvisioning)
         .values({
-          orgId: input.orgId,
+          orgId,
           idempotencyKey: input.idempotencyKey,
           requestedBy: input.requestedBy,
           steps: { directory: { status: "pending" } },
@@ -35,8 +37,8 @@ export function createTenantProvisioningStore(db: Database): ProvisioningStore {
 
       // Conflict on either the org id or the idempotency key: return what exists instead of failing.
       const existing =
-        (await this.get(input.orgId)) ?? (await this.findByIdempotencyKey(input.idempotencyKey));
-      if (!existing) throw new Error(`provisioning row for ${input.orgId} vanished during insert`);
+        (await this.get(orgId)) ?? (await this.findByIdempotencyKey(input.idempotencyKey));
+      if (!existing) throw new Error(`provisioning row for ${orgId} vanished during insert`);
       return existing;
     },
 
