@@ -20,7 +20,8 @@ export type AdminRouteId =
   | "audiences"
   | "replay"
   | "traces"
-  | "agents";
+  | "agents"
+  | "platform";
 
 type AccessRule = (session: AuthSessionStatus) => boolean;
 
@@ -40,6 +41,7 @@ export const ADMIN_ROUTE_ACCESS: Record<AdminRouteId, AccessRule> = {
   scope: (s) =>
     sessionHasPermission(s, PERMISSIONS.AUTH_MANAGE) ||
     sessionHasPermission(s, PERMISSIONS.SCOPE_MANAGE),
+  platform: (s) => sessionHasPermission(s, PERMISSIONS.RELEASES_PLATFORM_READ),
   analytics: (s) => sessionHasPermission(s, PERMISSIONS.ANALYTICS_VIEW),
   flags: (s) => sessionHasPermission(s, PERMISSIONS.FLAGS_WRITE),
   audiences: (s) => sessionHasPermission(s, PERMISSIONS.TENANT_MANAGE),

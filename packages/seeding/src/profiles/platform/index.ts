@@ -28,6 +28,7 @@ import {
   adminAccountSecuritySpec,
   adminAgentsSpec,
   adminAnalyticsSpec,
+  adminPlatformSpec,
   adminAudiencesSpec,
   adminContentSpec,
   adminDashboardSpec,
@@ -306,6 +307,10 @@ async function runPlatformSeed() {
     shellRef: "admin_shell",
   });
   await upsertLayout("admin_replay", adminReplaySpec, {
+    renderAs: "panel",
+    shellRef: "admin_shell",
+  });
+  await upsertLayout("admin_platform", adminPlatformSpec, {
     renderAs: "panel",
     shellRef: "admin_shell",
   });

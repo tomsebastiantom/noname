@@ -66,6 +66,12 @@ export const ROUTE_TABLE: readonly PlatformRouteEntry[] = [
     navId: "account_security",
   },
   {
+    path: "/admin/platform",
+    template: "admin_platform",
+    requiresAuth: true,
+    adminRouteId: "platform",
+  },
+  {
     path: "/admin/orders",
     prefix: true,
     template: "admin_orders",

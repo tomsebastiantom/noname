@@ -812,3 +812,19 @@ export const adminPagesTreeSpec = adminPanelSpec(["treeAdmin"], {
     ),
   },
 });
+
+export const adminPlatformSpec = adminPanelSpec(["platformTenants"], {
+  platformTenants: {
+    type: "PlatformTenantsAdmin",
+    props: panelProps({}, "Tenants", "Every tenant the control plane knows about, with its provisioning state.", {
+      loadingLabel: "Loading tenants...",
+      emptyLabel: "No tenants yet.",
+      refreshLabel: "Refresh",
+      forbiddenLabel: "You need platform operator rights to see tenants.",
+      slugColumnHeader: "Slug",
+      statusColumnHeader: "Status",
+      provisioningColumnHeader: "Provisioning",
+      planColumnHeader: "Plan",
+    }),
+  },
+});
