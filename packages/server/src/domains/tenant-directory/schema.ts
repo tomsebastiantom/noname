@@ -31,6 +31,8 @@ export const tenantDirectory = pgTable(
     plan: text("plan"),
     region: text("region"),
     excludedReason: text("excluded_reason"),
+    /** How far tenant creation got. Eligibility requires `ready`; see the provisioning RFC. */
+    provisioningState: text("provisioning_state").notNull().default("ready"),
     /** The platform org is in the directory so it can be recognised, never selected. */
     isPlatform: text("is_platform").notNull().default("false"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),

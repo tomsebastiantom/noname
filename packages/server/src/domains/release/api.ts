@@ -76,6 +76,7 @@ export function createReleaseRoutes(
             | "tenant_suspended"
             | "tenant_offboarding"
             | "tenant_excluded"
+            | "tenant_not_ready"
             | "platform_org";
         }
     >;

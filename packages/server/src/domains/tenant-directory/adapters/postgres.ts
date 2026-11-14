@@ -17,6 +17,7 @@ function mapRow(row: typeof tenantDirectory.$inferSelect): TenantDirectoryEntry 
     plan: row.plan,
     region: row.region,
     excludedReason: row.excludedReason,
+    provisioningState: row.provisioningState as TenantDirectoryEntry["provisioningState"],
     isPlatform: row.isPlatform === "true",
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -57,6 +58,7 @@ export function createTenantDirectoryPostgresStore(db: Database): TenantDirector
           plan: input.plan ?? null,
           region: input.region ?? null,
           excludedReason: input.excludedReason ?? null,
+          provisioningState: input.provisioningState ?? "ready",
           isPlatform: input.isPlatform ? "true" : "false",
         })
         .onConflictDoUpdate({
@@ -69,7 +71,8 @@ export function createTenantDirectoryPostgresStore(db: Database): TenantDirector
             ...(input.excludedReason !== undefined
               ? { excludedReason: input.excludedReason }
               : {}),
-            ...(input.isPlatform !== undefined
+            ...(input.provisioningState ? { provisioningState: input.provisioningState } : {}),
+          ...(input.isPlatform !== undefined
               ? { isPlatform: input.isPlatform ? "true" : "false" }
               : {}),
             updatedAt: new Date(),

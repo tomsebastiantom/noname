@@ -37,6 +37,7 @@ function toEntry(row: Row) {
     plan: row.plan ?? null,
     region: row.region ?? null,
     excludedReason: row.excludedReason ?? null,
+    provisioningState: row.provisioningState ?? "ready",
     isPlatform: row.isPlatform ?? false,
     createdAt: new Date(0),
     updatedAt: new Date(0),

@@ -47,6 +47,7 @@ import { createReleaseDomain } from "./domains/release";
 import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
 import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
+import { createTenantProvisioningDomain } from "./domains/tenant-provisioning";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
@@ -459,6 +460,20 @@ export async function createApp(): Promise<Hono> {
     clientBundle: (orgId) => releaseDomain.pointer.clientBundle(orgId),
   });
   app.route("/api/tenants", tenant.routes);
+  const tenantProvisioning = createTenantProvisioningDomain({
+    db,
+    directory: {
+      upsert: async (input) => {
+        await tenantDirectory.service.upsert({
+          orgId: input.orgId,
+          slug: input.slug,
+          provisioningState: input.provisioningState,
+        });
+      },
+    },
+  });
+  // POST first: creation lives on the same prefix as the inventory, different verbs.
+  app.route("/api/platform/tenants", tenantProvisioning.routes);
   app.route("/api/platform/tenants", tenantDirectory.routes);
 
   const isExtensionInstalled = async (orgId: string, extension: string): Promise<boolean> => {

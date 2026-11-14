@@ -20,6 +20,10 @@ export function createTenantDirectoryService(store: TenantDirectoryStore): Tenan
     async selectability(orgId): Promise<TenantSelectability> {
       const entry = await store.get(orgId);
       if (!entry) return { selectable: false, reason: "unknown_tenant" };
+      // A half-built tenant is not promotable: creation ran, but not to completion.
+      if (entry.provisioningState !== "ready") {
+        return { selectable: false, reason: "tenant_not_ready" };
+      }
       if (entry.isPlatform) return { selectable: false, reason: "platform_org" };
       if (entry.status === "suspended") return { selectable: false, reason: "tenant_suspended" };
       if (entry.status === "offboarding") return { selectable: false, reason: "tenant_offboarding" };
