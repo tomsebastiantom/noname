@@ -22,13 +22,14 @@
  * (deploy/overlays/local/ingress.yaml) at http://jaeger.localhost and http://nango.localhost.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const NS = "noname";
 const ENV = join(ROOT, ".env");
+const RDCTL = process.env.RDCTL_PATH ?? "rdctl";
 
 const SERVICES = [
   { local: 30432, env: "DATABASE_URL", url: "postgres://noname:noname_dev@127.0.0.1:30432/app" },
@@ -58,6 +59,40 @@ function upsertEnv(key, value) {
   writeFileSync(ENV, next);
 }
 
+
+/**
+ * Rancher-managed port forwards, for the services that cannot be a NodePort.
+ *
+ * `svc/zitadel` is ClusterIP and cannot become a NodePort: its EXTERNALPORT is baked into every token's `iss`, so
+ * publishing it on another port would break issuer matching. Rancher exposes an internal API for exactly this
+ * (`POST /v1/port_forwarding`), so the forward is created by the app that owns the cluster instead of by a shell
+ * that dies. Non-admin ports must be > 1024.
+ */
+const RANCHER_FORWARDS = [{ namespace: "noname", service: "zitadel", k8sPort: 8080, hostPort: 8080 }];
+
+function rdctl(args) {
+  const result = spawnSync(RDCTL, args, { cwd: ROOT, encoding: "utf8" });
+  return { ok: result.status === 0, out: (result.stdout ?? "").trim(), err: (result.stderr ?? "").trim() };
+}
+
+function ensureRancherForwards() {
+  for (const forward of RANCHER_FORWARDS) {
+    if (listening(forward.hostPort)) {
+      console.log(`forward ${forward.service}:${forward.k8sPort} -> ${forward.hostPort} (already up)`);
+      continue;
+    }
+    const body = JSON.stringify(forward);
+    const file = join(ROOT, ".rancher-forward.json");
+    writeFileSync(file, body);
+    const result = rdctl(["api", "-X", "POST", "/v1/port_forwarding", "--input", file]);
+    rmSync(file, { force: true });
+    if (!result.ok) {
+      console.warn(`forward ${forward.service} failed: ${result.err || result.out}`);
+      continue;
+    }
+    console.log(`forward ${forward.service}:${forward.k8sPort} -> ${forward.hostPort} (created)`);
+  }
+}
 function listening(port) {
   const result = spawnSync(
     "powershell",
@@ -108,11 +143,12 @@ const command = process.argv[2] ?? "status";
 try {
   if (command === "up") up();
   else if (command === "status") status();
+  else if (command === "forwards") ensureRancherForwards();
   else if (command === "env") {
     for (const service of SERVICES) if (service.env) upsertEnv(service.env, service.url);
     console.log("env rewritten to the fixed local ports");
   } else {
-    console.error(`unknown command ${command} (up | status | env)`);
+    console.error(`unknown command ${command} (up | status | env | forwards)`);
     process.exit(2);
   }
 } catch (error) {
