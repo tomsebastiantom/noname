@@ -1,0 +1,198 @@
+# RFC — Schedules (timers, job status, operator control)
+
+> **Status:** **proposal** · **Date:** 2026-11-14
+> **Owner:** platform
+> **Related:** [`IMPLEMENTATION-ROADMAP.md`](../2026-11-07/IMPLEMENTATION-ROADMAP.md) ·
+> [`TENANT-PROVISIONING-RFC.md`](./TENANT-PROVISIONING-RFC.md) · [`PLATFORM-CONSOLE.md`](./PLATFORM-CONSOLE.md)
+
+---
+
+## 1. Problem
+
+The platform has queues but **no notion of time**. Every job today is triggered by a request; nothing happens because
+an hour or a month passed.
+
+Two things already need it:
+
+- **retention** — tenants soft-deleted (`status=deleted`) must be purged after a window, not "when someone remembers";
+- **provisioning steps** — currently a detached promise: it runs while the request is alive and is lost if the process
+  stops. That is the same gap from the other direction (work that must happen later or again).
+
+And every platform grows more: evidence retention, release GC, key-rotation reminders, digests, dunning.
+
+The question this RFC answers is not "which scheduler library" — it is **what shape does scheduled work take on this
+platform**, so the tenth job costs one file instead of a new subsystem.
+
+## 2. What already exists
+
+| Mechanism | Used for | Gap |
+|---|---|---|
+| **BullMQ queues** (Dragonfly/Redis) | analytics, agent tasks, catalog builds, email, webhooks, extension delivery, provider events, eval | no repeatable schedules registered anywhere |
+| **`transition-relay`** | re-publishes events written in the same transaction as a state change | proves the outbox idea, no timer |
+| **`webhook_outbound_deliveries`** | persisted intent + retries | proves delivery state, no timer |
+| **`worker.ts` + `RUN_WORKERS` gate** | separates job processing from request handling | no schedule registry |
+
+So the infrastructure for *running* work exists and is proven. What is missing is **declaration and observation**:
+"what runs at 03:00?" and "did it run?" have no answer today.
+
+## 3. Decisions
+
+| # | Decision | Rationale |
+|---|---|---|
+| 1 | **Definitions live in code** (`domains/schedules/definitions.ts`) | a schedule is behaviour; behaviour is reviewed in a PR, and cannot drift from its handler |
+| 2 | **A definition without a handler is logged and skipped**, shown as `unavailable` | one misconfigured schedule must not stop tenant traffic; silence would be the dangerous failure |
+| 3 | Operators may change **pause, pattern, dry-run** at runtime | stopping a job for a weekend or moving it to 04:00 should not need a deploy |
+| 4 | **"Run now" refuses while paused** | "paused" means "not now"; forcing is a separate, explicit act |
+| 5 | New schedules default to **dry-run on** | a schedule must not be able to destroy data merely by being deployed |
+| 6 | **One queue** `{platform-schedules}`, `jobId = name` | duplicate registration across replicas collapses to one schedule |
+| 7 | Runs are recorded in `schedule_runs`; API returns the last N | the history is the product: silence and failure must both be visible |
+| 8 | Handlers are **injected**, not imported by this domain | the domain that owns behaviour owns the handler; this one only runs and records |
+| 9 | Console surface is a **section in the existing platform panel** | no new route, template, or page for one table |
+| 10 | **No create-a-schedule API or UI** | definitions are code; an admin-created schedule is unreviewed behaviour |
+
+## 4. Design
+
+```
+code                          database                        queue
+definitions.ts                schedule_state                  {platform-schedules}
+  name                          paused                          repeatable per name
+  description                   pattern (override|null)        job = { name }
+  defaultPattern                dry_run (override|null)
+  dryRunDefault               schedule_runs
+                                (startedAt, finishedAt, status, items, dryRun, error)
+```
+
+Three sources, three jobs:
+
+- **code** answers *what exists and what it does*;
+- **state** answers *what an operator changed* (and clearing an override restores the code default);
+- **runs** answer *what actually happened*.
+
+### 4.1 Execution path
+
+```
+startup        registerSchedules()
+                 → for each available, non-paused definition:
+                     queue.upsertJobScheduler(`schedule:<name>`, { pattern }, { name })
+due            BullMQ promotes the repeatable job
+worker         schedules.execute(name)
+                 → insert schedule_runs(status=running)
+                 → handler({ dryRun })
+                 → update status ok/failed + items + finishedAt
+operator       POST /:name/run → same execute(), refusing when paused
+```
+
+The handler is `(ctx: { dryRun }) => Promise<{ items, dryRun }>` — deliberately tiny. A job that needs more will tell us
+what the abstraction should be; inventing it now would be guessing.
+
+### 4.2 The first definition
+
+```ts
+{
+  name: "tenant-retention-purge",
+  defaultPattern: "0 3 * * *",
+  dryRunDefault: true,
+}
+```
+
+The handler is injected from bootstrap, where the purge already lives, and does what the operator button does:
+
+```
+select tenants where status='deleted' and updated_at < now() - RETENTION_DAYS
+for each: purge (existing path) → one platform.tenant.purged audit row
+```
+
+`dryRun` reports what *would* be purged and touches nothing. Turning it off is an explicit operator action
+(`PUT /:name/dry-run`), recorded in `schedule_state`.
+
+### 4.3 Why a sweep, not a per-tenant timer
+
+The retention job asks **"what is due?"**, not "purge tenant X in 30 days". Consequences:
+
+- a missed tick, a week of downtime, or a lost enqueue changes nothing — the next run finds everything overdue;
+- no outbox is needed: the intent already exists as `status='deleted' + updated_at`;
+- re-running is harmless (the purge refuses unless the tenant is `deleted`).
+
+Per-item timers (remind user X at 09:00, retry webhook in 15 minutes) are a different shape and are **out of scope**
+here. When the first one appears it should reuse the `transition-relay` pattern — a business row plus a delivery
+marker — not a generic outbox table.
+
+## 5. API
+
+```
+GET  /api/platform/schedules                 → { schedules: [{ name, description, pattern, overridden,
+                                                  paused, dryRun, available, lastRun }] }
+GET  /api/platform/schedules/:name/runs      → { runs: [...] }
+POST /api/platform/schedules/:name/run       → executes now (409 when paused)
+POST /api/platform/schedules/:name/pause
+POST /api/platform/schedules/:name/resume
+PUT  /api/platform/schedules/:name/pattern   → { pattern } | { pattern: null } to restore default
+PUT  /api/platform/schedules/:name/dry-run   → { dryRun }
+```
+
+All routes require a platform operator; reads need `PLATFORM_AUDIT_READ`, changes need `RELEASES_PLATFORM_WRITE`.
+
+## 6. Console
+
+A **Schedules** section in the existing platform panel (no new template):
+
+| Column | Source |
+|---|---|
+| Name, description | definition |
+| Pattern, next run | effective pattern + queue scheduler |
+| Paused, dry-run | `schedule_state` |
+| Last run (status, items, duration) | latest `schedule_runs` row |
+| Actions | **Run now**, **Pause/Resume**, edit pattern |
+
+It follows `spec-driven-ui`: a catalog component reading `$state`, actions in `core/actions/`, no `fetch` in the
+component.
+
+## 7. Failure modes, stated
+
+| Failure | What happens | Why that is acceptable |
+|---|---|---|
+| Handler missing | schedule logged, shown `unavailable`, not registered | visible, and the API keeps serving |
+| Handler throws | run row `failed` with the message; BullMQ retries per job policy | failure is recorded, not swallowed |
+| Process dies mid-run | row stays `running`; `failStaleRuns` marks it failed after 6h | history does not claim work is still happening |
+| Two replicas start | `upsertJobScheduler` dedupes on the scheduler key | cadence does not double |
+| Redis wiped | schedules re-register at next start from code + state | no timer definitions live only in Redis |
+| Paused schedule | removed from the queue, not fired-and-refused | no nightly noise in the history |
+
+## 8. Alternatives considered
+
+| Option | Why not (for now) |
+|---|---|
+| **Temporal** | correct tool when jobs become compensable sagas; for sweeps it adds a service, a database and an operator |
+| **pg-boss** | would be a second queue mechanism beside BullMQ; its "atomicity" advantage matters only for per-item intents, which are out of scope |
+| **Kubernetes CronJob** | cluster-level batch, separate lifecycle, needs an image; our workers run beside the API, not in the cluster |
+| **Cloudflare Cron Triggers** | edge worker has no DB access; an HTTP trigger is not a scheduler |
+| **`setInterval` / node-cron in the API** | dies with the process, duplicates per replica, no catch-up |
+
+The deciding argument is not capability but **fewer mechanisms**: one queue system, one place where schedules are
+declared, one history.
+
+## 9. Rollout
+
+1. migration for `schedule_state` + `schedule_runs`;
+2. domain + queue + worker + routes (no behaviour change: no schedule is registered until a definition exists);
+3. `tenant-retention-purge` registered **dry-run on** — it reports, it does not delete;
+4. console section;
+5. operator turns dry-run off deliberately, after seeing a dry run report.
+
+## 10. Acceptance
+
+- `GET /api/platform/schedules` lists the definition with `dryRun: true` and a last-run row after the first tick;
+- a manual `POST /:name/run` creates exactly one `schedule_runs` row and one report line;
+- with `dryRun: true` **no tenant row is removed** and no `platform.tenant.purged` row appears;
+- with `dryRun: false` a soft-deleted tenant past the window is purged and audited;
+- pause removes the scheduler; resume restores it; the console reflects both;
+- a definition with a deliberately removed handler shows `available: false` and is not scheduled.
+
+## 11. Open questions
+
+1. **Catch-up policy** — a sweep is naturally catch-up-safe; do we also want an explicit "run all missed ticks" for
+   future non-sweep jobs? Deferred until such a job exists.
+2. **Per-schedule retry policy** — BullMQ defaults are used for now; a purge that fails on one tenant should continue
+   with the rest rather than retry the whole sweep (the handler already loops per tenant).
+3. **Provisioning on a queue** — the same infrastructure fixes the detached-promise weakness; it is a separate change
+   because it alters request behaviour.
