@@ -90,6 +90,33 @@ Actions exercised from the UI:
 | **Backfill existing** | notice “Backfill: examined 5, created 0.” — idempotent, proven in the browser |
 | **Acknowledge** (API) | `200 {acknowledged:true}`, evidence row `platform.verdict.acknowledged` for `999000111` |
 
+### Invite from the console — verified
+
+Clicking **Invite** on the `yogastore` row with `invited@noname.local`:
+
+```
+POST /api/platform/tenants/398655937176469540/invite → 200
+notice                                               → "Invited invited@noname.local."
+tenant_provisioning.steps.invite                     → { status: "done", at: … }
+```
+
+The user is created in the tenant org and granted `ORG_OWNER`; ZITADEL leaves them `USER_STATE_INITIAL` on purpose.
+
+### Activation — deliberately out of our scope
+
+The invited account becomes usable only after the person follows ZITADEL's activation link and sets a password. That
+flow is **ZITADEL's**, not ours: the console's responsibility ends at "user created, role granted, invite step done".
+
+Two practical notes from trying to drive it locally:
+
+- with no SMTP, the init code appears in the ZITADEL log (`msg="missing translation" … Code:XXXXXX`), so activation is
+  reachable without email;
+- the `/ui/login/password/init` page rejected the codes we pulled from the log (`Code is invalid`), so completing the
+  flow by script needs the link exactly as ZITADEL generates it, not a reconstructed URL. That is a dev-tooling gap,
+  not a defect in the console.
+
+The test account was deleted afterwards.
+
 The negative case still holds: a tenant editor receives `403` and “Platform operator rights are required.”
 
 ### Why it needed a fix in the edge
