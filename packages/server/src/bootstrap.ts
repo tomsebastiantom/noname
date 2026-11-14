@@ -503,6 +503,7 @@ export async function createApp(): Promise<Hono> {
     },
   });
   // POST first: creation lives on the same prefix as the inventory, different verbs.
+  app.route("/api/platform/operators", tenantProvisioning.operatorRoutes);
   app.route("/api/platform/tenants", tenantProvisioning.routes);
   app.route("/api/platform/tenants", tenantDirectory.routes);
 

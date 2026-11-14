@@ -11,6 +11,8 @@ import { createServiceAccountToken } from "@noname/eval";
 export type ProvisionedOrg = { orgId: string };
 
 export type ProvisionerPort = {
+  /** Human platform operator: a person in the platform org holding `platform_operator`. */
+  ensurePlatformOperator(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   /** First human admin of the tenant org (invite-first). Idempotent by email. */
   ensureHumanAdmin(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   /** Creates the tenant's ZITADEL org (idempotent by name). */
@@ -129,6 +131,20 @@ export function createZitadelProvisioner(): ProvisionerPort {
      * First human admin, invite-first: the account is created inside the tenant org (no password) and made
      * ORG_OWNER, so the customer owns their own org instead of borrowing a role on our project. Idempotent by email.
      */
+    async ensurePlatformOperator({ orgId, email }) {
+      const admin = config();
+      const projectId = process.env.ZITADEL_PLATFORM_PROJECT_ID?.trim();
+      if (!projectId) throw new Error("ZITADEL_PLATFORM_PROJECT_ID is required to grant platform_operator");
+      const { userId } = await this.ensureHumanAdmin({ orgId, email });
+      await call(admin, "POST", `/management/v1/users/${userId}/grants`, orgId, {
+        projectId,
+        roleKeys: ["platform_operator"],
+      }).catch((cause) => {
+        if (!/already exists|409|Conflict/i.test(String(cause))) throw cause;
+      });
+      return { userId };
+    },
+
     async ensureHumanAdmin({ orgId, email }) {
       const admin = config();
       const search = await call<{ result?: Array<{ id: string }> }>(

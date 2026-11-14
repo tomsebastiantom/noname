@@ -1,6 +1,6 @@
 import type { Database } from "../../drizzle";
 import { createTenantProvisioningStore } from "./adapters/postgres";
-import { createTenantProvisioningRoutes } from "./api";
+import { createPlatformOperatorRoutes, createTenantProvisioningRoutes } from "./api";
 import type { ProvisioningService } from "./ports";
 import type { DirectoryPort } from "./service";
 import { createTenantProvisioningService } from "./service";
@@ -26,5 +26,17 @@ export function createTenantProvisioningDomain(deps: {
     deps.provisioner,
     deps.recordCredential,
   );
-  return { store, service, routes: createTenantProvisioningRoutes(service) };
+  return {
+    store,
+    service,
+    routes: createTenantProvisioningRoutes(service),
+    operatorRoutes: createPlatformOperatorRoutes({
+      invite: async ({ email }) => {
+        const orgId = process.env.PLATFORM_ORG_ID?.trim();
+        if (!orgId) throw new Error("PLATFORM_ORG_ID is required to create a platform operator");
+        if (!deps.provisioner) throw new Error("no provisioner configured");
+        return deps.provisioner.ensurePlatformOperator({ orgId, email });
+      },
+    }),
+  };
 }

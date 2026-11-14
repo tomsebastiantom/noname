@@ -88,3 +88,29 @@ export function createTenantProvisioningRoutes(provisioning: ProvisioningService
   });
   return routes;
 }
+
+
+/**
+ * Platform **operator** identity — the human who uses the console.
+ *
+ * Until this existed the platform org held three machine accounts and no person, so a console would have been a
+ * locked room: every route behind it requires `platform_operator` on a platform-org member.
+ */
+export function createPlatformOperatorRoutes(deps: {
+  invite: (input: { email: string }) => Promise<{ userId: string }>;
+}) {
+  const routes = new Hono();
+
+  routes.post("/invite", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const parsed = z.object({ email: z.string().email() }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid invite", details: parsed.error.flatten() }, 400);
+    return ok(c, await deps.invite({ email: parsed.data.email }));
+  });
+
+  return routes;
+}

@@ -4,6 +4,7 @@ import type { ProvisioningSteps } from "./schema";
 export type ProvisionerPort = {
   ensureOrg(name: string): Promise<{ orgId: string }>;
   ensureHumanAdmin(input: { orgId: string; email: string }): Promise<{ userId: string }>;
+  ensurePlatformOperator(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   ensureProjectGrant(orgId: string, roleKeys: string[]): Promise<void>;
   ensureEvalAccount(input: { orgId: string; roleKey: string; accountName: string }): Promise<{ userId: string }>;
 };
