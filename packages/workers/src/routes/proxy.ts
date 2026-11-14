@@ -97,6 +97,14 @@ export function createApiProxyRoutes() {
 
       let jwt: Awaited<ReturnType<typeof tryParseJwt>> = null;
 
+      /**
+       * `GET /api/tenants/resolve/:slug` is a **public tenant lookup**: the login page calls it before it has any
+       * credential, and its whole purpose is to discover the org. Running it through the authenticated branch made
+       * the edge try to resolve a JWT that cannot exist yet and fail the request outright (observed: 500, while the
+       * proxy's own failure path returns 502 — so the throw was before the fetch).
+       */
+      const publicLookup = isResolveSlugPath(pathname);
+
       if (editMode) {
         const auth = await resolveJwt(c.req.raw, c.env);
         if (auth instanceof Response) return auth;
@@ -111,6 +119,7 @@ export function createApiProxyRoutes() {
         if (!auth) return c.json({ error: "Unauthorized — invalid optional credential" }, 401);
         jwt = auth;
       } else if (
+        !publicLookup &&
         !isPublic &&
         !streamTicketBypass &&
         !collabTicketBypass &&
