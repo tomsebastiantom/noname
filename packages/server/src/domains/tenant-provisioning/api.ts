@@ -75,6 +75,16 @@ export function createTenantProvisioningRoutes(
     return ok(c, result);
   });
 
+  /** Offboard: leave the promotable set, then revoke the credential. */
+  routes.post("/:orgId/offboard", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    return ok(c, await provisioning.offboard(c.req.param("orgId")));
+  });
+
   routes.get("/:orgId/provisioning", async (c) => {
     const operator = await requirePlatformOperator(c);
     if (operator instanceof Response) return operator;

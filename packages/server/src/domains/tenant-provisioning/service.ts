@@ -5,11 +5,14 @@ export type ProvisionerPort = {
   ensureOrg(name: string): Promise<{ orgId: string }>;
   ensureHumanAdmin(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   ensurePlatformOperator(input: { orgId: string; email: string }): Promise<{ userId: string }>;
+  deactivateEvalAccount(input: { orgId: string; accountName: string }): Promise<{ deactivated: boolean }>;
   ensureProjectGrant(orgId: string, roleKeys: string[]): Promise<void>;
   ensureEvalAccount(input: { orgId: string; roleKey: string; accountName: string }): Promise<{ userId: string }>;
 };
 
 export type DirectoryPort = {
+  /** Moves the tenant out of the promotable set. */
+  setStatus(orgId: string, status: "offboarding"): Promise<void>;
   list(): Promise<Array<{ orgId: string; slug: string }>>;
   /** Ensures the inventory row exists and sets its provisioning state. */
   upsert(input: {
@@ -37,6 +40,7 @@ export function createTenantProvisioningService(
     accountId: string;
     accountName: string;
     roleKey: string;
+    action?: "created" | "revoked";
   }) => Promise<void>,
 ): ProvisioningService {
   async function markSteps(record: ProvisioningRecord, steps: ProvisioningSteps) {
@@ -68,6 +72,46 @@ export function createTenantProvisioningService(
      * `eval_account: unknown` is deliberate: those accounts were created by hand or by the deleted script, and
      * claiming `done` would assert something we never observed.
      */
+    /**
+     * Offboard a tenant: stop it being promotable first, then take its credential away.
+     *
+     * Order matters. Marking the directory first means a wave running concurrently can no longer select the tenant,
+     * so there is no window where the credential is gone but the tenant still looks promotable.
+     */
+    async offboard(orgId) {
+      if (!provisioner) throw new Error("no provisioner configured; cannot revoke tenant credentials");
+      const record = await store.get(orgId);
+      if (!record) throw new Error(`no provisioning row for ${orgId}`);
+
+      await directory.setStatus(orgId, "offboarding");
+
+      let steps: ProvisioningSteps = { ...record.steps, offboard: { status: "pending" } };
+      await store.update(orgId, { steps });
+
+      try {
+        const accountName = `eval-runner-${orgId}`;
+        const result = await provisioner.deactivateEvalAccount({ orgId, accountName });
+        if (result.deactivated && recordCredential) {
+          await recordCredential({
+            orgId,
+            accountId: accountName,
+            accountName,
+            roleKey: "eval_reader",
+            action: "revoked",
+          });
+        }
+        steps = { ...steps, offboard: { status: "done", at: now() } };
+        return store.update(orgId, { steps });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        await store.update(orgId, {
+          steps: { ...steps, offboard: { status: "failed", error: message, at: now() } },
+          lastError: message,
+        });
+        throw cause;
+      }
+    },
+
     async backfill() {
       const tenants = await directory.list();
       let created = 0;

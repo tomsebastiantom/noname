@@ -481,24 +481,22 @@ export async function createApp(): Promise<Hono> {
       });
     },
     recordCredential: async (input) => {
-      await platformCredentials.record({
-        action: CREDENTIAL_ACTIONS.CREATED,
-        orgId: input.orgId,
-        accountId: input.accountId,
-        accountName: input.accountName,
-        role: input.roleKey,
-        actorType: "service",
-        actorId: input.accountId,
-      });
-      await platformCredentials.record({
-        action: CREDENTIAL_ACTIONS.GRANTED,
-        orgId: input.orgId,
-        accountId: input.accountId,
-        accountName: input.accountName,
-        role: input.roleKey,
-        actorType: "service",
-        actorId: input.accountId,
-      });
+      // Offboarding records a revocation; everything else records the creation and the grant that follows it.
+      const actions =
+        input.action === "revoked"
+          ? [CREDENTIAL_ACTIONS.REVOKED]
+          : [CREDENTIAL_ACTIONS.CREATED, CREDENTIAL_ACTIONS.GRANTED];
+      for (const action of actions) {
+        await platformCredentials.record({
+          action,
+          orgId: input.orgId,
+          accountId: input.accountId,
+          accountName: input.accountName,
+          role: input.roleKey,
+          actorType: "service",
+          actorId: input.accountId,
+        });
+      }
     },
     directory: {
       list: async () =>
@@ -506,6 +504,11 @@ export async function createApp(): Promise<Hono> {
           orgId: entry.orgId,
           slug: entry.slug,
         })),
+      setStatus: async (orgId, status) => {
+        const entry = await tenantDirectory.service.get(orgId);
+        if (!entry) throw new Error(`no directory row for ${orgId}`);
+        await tenantDirectory.service.upsert({ orgId, slug: entry.slug, status });
+      },
       upsert: async (input) => {
         await tenantDirectory.service.upsert({
           orgId: input.orgId,

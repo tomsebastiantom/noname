@@ -12,6 +12,7 @@ export type ProvisioningSteps = {
   identity?: ProvisioningStepState;
   eval_account?: ProvisioningStepState;
   invite?: ProvisioningStepState;
+  offboard?: ProvisioningStepState;
   audit?: ProvisioningStepState;
 };
 

@@ -22,6 +22,7 @@ export function createTenantProvisioningDomain(deps: {
     accountId: string;
     accountName: string;
     roleKey: string;
+    action?: "created" | "revoked";
   }) => Promise<void>;
 }) {
   const store = createTenantProvisioningStore(deps.db);

@@ -11,6 +11,8 @@ import { createServiceAccountToken } from "@noname/eval";
 export type ProvisionedOrg = { orgId: string };
 
 export type ProvisionerPort = {
+  /** Disables the tenant's eval account. Idempotent: an already-disabled account is not an error. */
+  deactivateEvalAccount(input: { orgId: string; accountName: string }): Promise<{ deactivated: boolean }>;
   /** Human platform operator: a person in the platform org holding `platform_operator`. */
   ensurePlatformOperator(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   /** First human admin of the tenant org (invite-first). Idempotent by email. */
@@ -174,6 +176,22 @@ export function createZitadelProvisioner(): ProvisionerPort {
         if (!/already exists|409|Conflict|AlreadyExists/i.test(String(cause))) throw cause;
       });
       return { userId };
+    },
+
+    async deactivateEvalAccount({ orgId, accountName }) {
+      const admin = config();
+      const search = await call<{ result?: Array<{ id: string; state?: string }> }>(
+        admin,
+        "POST",
+        "/management/v1/users/_search",
+        orgId,
+        { queries: [{ userNameQuery: { userName: accountName, method: "TEXT_QUERY_METHOD_EQUALS" } }], limit: 1 },
+      );
+      const user = search.result?.[0];
+      if (!user) return { deactivated: false };
+      if (user.state === "USER_STATE_INACTIVE") return { deactivated: false };
+      await call(admin, "POST", `/management/v1/users/${user.id}/_deactivate`, orgId, {});
+      return { deactivated: true };
     },
 
     async ensureEvalAccount({ orgId, roleKey, accountName }) {
