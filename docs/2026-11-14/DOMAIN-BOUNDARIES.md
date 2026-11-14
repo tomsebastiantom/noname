@@ -51,9 +51,27 @@ integrations.** If a feature needs a key, it asks `secrets`; it must never read 
 
 | Item | Why it is on the list |
 |---|---|
-| `domains/edge` | 9 files the **worker** uses (routing/CDN), living in the server package. Belongs beside `packages/workers` the next time we touch it. |
+| ~~`domains/edge`~~ | **Resolved: it stays in the server.** Investigated 2026-11-14 — see below. |
 | `capabilities` | a fourth vocabulary for "callable thing", beside agent tools and extension actions. Fine today; if a fifth appears, consolidate. |
 | `tenant` (data plane) vs `tenant-registry` (control plane) | deliberate split, confusing names; `tenant` serves visitors, `tenant-registry` holds records and creation. |
+
+### `edge` — why it is server code, not worker code
+
+The earlier note said "9 files the worker uses, belongs beside `packages/workers`". That was wrong, and the check was
+cheap:
+
+```
+importers inside packages/server/src     bootstrap.ts (mounts it at /api/edge)
+importers inside packages/workers/src    none — the worker calls it over HTTP:
+                                         GET ${API_ORIGIN}/api/edge/schema/:siteId
+```
+
+So the code **runs in the API** and resolves layout, content, audiences, flags and page tree out of Postgres. The
+worker is a *client* of it, one HTTP hop away, because a Cloudflare Worker has no database driver here.
+
+Moving it into `packages/workers` would put four domain services and a Postgres connection inside the edge runtime.
+The delete test passes (the worker still compiles, since it only knows a URL), but the **arrow test** is the one that
+matters: the dependency is `worker → API over HTTP`, and code follows the data. No change.
 
 ## 4. How to check a new boundary without a meeting
 
