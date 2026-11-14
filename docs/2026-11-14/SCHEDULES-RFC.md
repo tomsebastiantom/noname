@@ -268,7 +268,21 @@ declared, one history.
 4. console section;
 5. operator turns dry-run off deliberately, after seeing a dry run report.
 
-## 10. Acceptance
+## 10. Acceptance (verified 2026-11-14)
+
+Every item below was exercised against the running stack; the retention proof used a real tenant with a backdated
+`updated_at` (waiting 30 days is not a test).
+
+```text
+create tenant ? ready ? offboard (credential revoked) ? soft delete ? backdate 40 days
+POST /schedules/:id/run  (dryRun on)  ? { items: 1, dryRun: true }
+   tenant rows = 1   purge audit rows = 0        ? nothing deleted
+PUT  /schedules/:id/dry-run { dryRun: false }
+POST /schedules/:id/run              ? { items: 1, dryRun: false }
+   tenant rows = 0   purge audit rows = 1        ? purged and provable
+PUT  /schedules/:id/dry-run { dryRun: true }     ? restored
+```
+
 
 - `GET /api/platform/schedules` lists the definition with `dryRun: true` and a last-run row after the first tick;
 - a manual `POST /:name/run` creates exactly one `schedule_runs` row and one report line;
