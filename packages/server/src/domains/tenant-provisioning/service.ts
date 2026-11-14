@@ -29,6 +29,12 @@ export function createTenantProvisioningService(
   store: ProvisioningStore,
   directory: DirectoryPort,
   provisioner?: ProvisionerPort,
+  recordCredential?: (input: {
+    orgId: string;
+    accountId: string;
+    accountName: string;
+    roleKey: string;
+  }) => Promise<void>,
 ): ProvisioningService {
   async function markSteps(record: ProvisioningRecord, steps: ProvisioningSteps) {
     return store.update(record.orgId, { steps });
@@ -111,11 +117,21 @@ export function createTenantProvisioningService(
 
       // Step: eval account --------------------------------------------------
       try {
-        await provisioner.ensureEvalAccount({
+        const account = await provisioner.ensureEvalAccount({
           orgId,
           roleKey: "eval_reader",
           accountName: `eval-runner-${orgId}`,
         });
+        // Record the credential in the **tenant's** audit stream (decision P3): the tenant should be able to see
+        // that an eval credential was created for them, and who created it.
+        if (recordCredential) {
+          await recordCredential({
+            orgId,
+            accountId: account.userId,
+            accountName: `eval-runner-${orgId}`,
+            roleKey: "eval_reader",
+          });
+        }
         record = await markSteps(record, {
           ...record.steps,
           eval_account: { status: "done", at: now() },

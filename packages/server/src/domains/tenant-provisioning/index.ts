@@ -12,8 +12,19 @@ export function createTenantProvisioningDomain(deps: {
   db: Database;
   directory: DirectoryPort;
   provisioner?: import("./service").ProvisionerPort;
+  recordCredential?: (input: {
+    orgId: string;
+    accountId: string;
+    accountName: string;
+    roleKey: string;
+  }) => Promise<void>;
 }) {
   const store = createTenantProvisioningStore(deps.db);
-  const service: ProvisioningService = createTenantProvisioningService(store, deps.directory, deps.provisioner);
+  const service: ProvisioningService = createTenantProvisioningService(
+    store,
+    deps.directory,
+    deps.provisioner,
+    deps.recordCredential,
+  );
   return { store, service, routes: createTenantProvisioningRoutes(service) };
 }

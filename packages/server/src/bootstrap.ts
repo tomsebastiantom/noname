@@ -49,6 +49,7 @@ import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
 import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
 import { createTenantProvisioningDomain } from "./domains/tenant-provisioning";
 import { createZitadelProvisioner } from "./domains/tenant-provisioning/adapters/zitadel";
+import { CREDENTIAL_ACTIONS } from "./domains/platform-credentials/actions";
 import { createSecretsDomain } from "./domains/secrets";
 import { createTenantDomain } from "./domains/tenant";
 import { createTenantDirectoryDomain } from "./domains/tenant-directory";
@@ -461,9 +462,30 @@ export async function createApp(): Promise<Hono> {
     clientBundle: (orgId) => releaseDomain.pointer.clientBundle(orgId),
   });
   app.route("/api/tenants", tenant.routes);
+  const platformCredentials = createPlatformCredentialsDomain({ evidence: evidence.service });
   const tenantProvisioning = createTenantProvisioningDomain({
     db,
     provisioner: createZitadelProvisioner(),
+    recordCredential: async (input) => {
+      await platformCredentials.record({
+        action: CREDENTIAL_ACTIONS.CREATED,
+        orgId: input.orgId,
+        accountId: input.accountId,
+        accountName: input.accountName,
+        role: input.roleKey,
+        actorType: "service",
+        actorId: input.accountId,
+      });
+      await platformCredentials.record({
+        action: CREDENTIAL_ACTIONS.GRANTED,
+        orgId: input.orgId,
+        accountId: input.accountId,
+        accountName: input.accountName,
+        role: input.roleKey,
+        actorType: "service",
+        actorId: input.accountId,
+      });
+    },
     directory: {
       upsert: async (input) => {
         await tenantDirectory.service.upsert({
@@ -546,7 +568,7 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/platform/audit", createPlatformAuditRoutes(evidence.service));
   app.route(
     "/api/platform/credentials",
-    createPlatformCredentialsDomain({ evidence: evidence.service }).routes,
+    platformCredentials.routes,
   );
 
   return app;
