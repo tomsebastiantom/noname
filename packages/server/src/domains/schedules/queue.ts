@@ -1,13 +1,13 @@
 import { closeBullmqQueue, getBullmqQueue } from "../../shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 
-export type ScheduleJobData = { name: string };
+export type ScheduleJobData = { scheduleId: string };
 
 /**
- * One queue for every schedule, not one queue per job.
+ * One queue for every schedule.
  *
- * `jobId` is the schedule name, so a duplicate registration (another replica, a restart) collapses into the same
- * schedule instead of doubling the cadence — which is the failure mode that makes people distrust timers.
+ * The scheduler key is `schedule:<id>`, so two schedules of the same definition — or two API replicas registering the
+ * same schedule — collapse onto the same key instead of multiplying the cadence.
  */
 export function getScheduleQueue() {
   return getBullmqQueue<ScheduleJobData>(BULLMQ_QUEUES.SCHEDULES);

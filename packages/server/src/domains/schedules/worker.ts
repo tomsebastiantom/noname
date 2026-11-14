@@ -3,44 +3,55 @@ import { BULLMQ_QUEUES } from "../../shared/bullmq-queues";
 import { registerBullmqWorker } from "../../shared/bullmq-workers";
 import { getRedisConnection } from "../../shared/redis";
 import { workerConcurrency, workersEnabled } from "../../shared/worker-runtime";
-import { SCHEDULE_DEFINITIONS } from "./definitions";
 import { getScheduleQueue } from "./queue";
 import type { ScheduleService } from "./service";
 
 /**
- * Registers every definition as a repeatable job and drains the queue.
+ * Registers one repeatable job per **schedule** (not per definition), keyed by schedule id.
  *
- * Registration is idempotent by `jobId`: restarting the API ten times leaves one schedule per definition, not ten.
- * A paused schedule is removed from the queue rather than left to fire and refuse — a paused job that wakes up every
- * night only to throw is noise in the history.
+ * Two schedules of the same definition therefore keep independent cadences, and a restart cannot double either:
+ * `upsertJobScheduler` replaces the same key. A paused schedule is removed from the queue rather than left to fire
+ * and refuse, so the history is not padded with refusals.
  */
 export async function registerSchedules(schedules: ScheduleService): Promise<void> {
+  await schedules.ensureDefaults();
+
   const queue = getScheduleQueue();
-  const states = await schedules.list();
+  const { schedules: rows } = await schedules.list();
+  const wanted = new Set<string>();
 
-  for (const state of states) {
-    if (!state.available) continue; // definition without a handler: visible in the console, not scheduled
-
-    if (state.paused) {
-      await queue.removeJobScheduler(`schedule:${state.name}`).catch(() => undefined);
-      continue;
-    }
-
+  for (const row of rows) {
+    if (row.paused || !row.available) continue;
+    wanted.add(row.id);
     await queue.upsertJobScheduler(
-      `schedule:${state.name}`,
-      { pattern: state.pattern },
-      { name: state.name, data: { name: state.name }, opts: { removeOnComplete: 100, removeOnFail: 100 } },
+      `schedule:${row.id}`,
+      { pattern: row.pattern },
+      {
+        name: row.id,
+        data: { scheduleId: row.id },
+        opts: { removeOnComplete: 50, removeOnFail: 50 },
+      },
     );
+  }
+
+  // Remove schedulers whose schedule was deleted, paused, or whose definition lost its handler.
+  const existing = await queue.getJobSchedulers();
+  for (const scheduler of existing) {
+    const key = String(scheduler.key ?? "");
+    const scheduleId = key.replace(/^schedule:/, "");
+    if (scheduleId && !wanted.has(scheduleId)) {
+      await queue.removeJobScheduler(key).catch(() => undefined);
+    }
   }
 }
 
 export function startScheduleWorker(schedules: ScheduleService): Worker | null {
   if (!workersEnabled()) return null;
 
-  const worker = new Worker<{ name: string }>(
+  const worker = new Worker<{ scheduleId: string }>(
     BULLMQ_QUEUES.SCHEDULES,
     async (job) => {
-      await schedules.execute(job.data.name);
+      await schedules.execute(job.data.scheduleId);
     },
     { connection: getRedisConnection(), concurrency: workerConcurrency("SCHEDULE_CONCURRENCY", 2) },
   );
@@ -48,12 +59,3 @@ export function startScheduleWorker(schedules: ScheduleService): Worker | null {
   registerBullmqWorker(worker);
   return worker;
 }
-
-/** Names registered as repeatables — exposed so the console can show what the queue actually holds. */
-export async function scheduledNames(): Promise<string[]> {
-  const queue = getScheduleQueue();
-  const schedulers = await queue.getJobSchedulers();
-  return schedulers.map((scheduler) => String(scheduler.key ?? scheduler.id ?? "")).filter(Boolean);
-}
-
-export { SCHEDULE_DEFINITIONS };

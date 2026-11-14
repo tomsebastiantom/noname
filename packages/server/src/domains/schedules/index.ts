@@ -6,8 +6,9 @@ import { createScheduleService } from "./service";
 import { registerSchedules, startScheduleWorker } from "./worker";
 
 export { SCHEDULE_DEFINITIONS } from "./definitions";
+export type { ScheduleView, ScheduleRun } from "./service";
 export { failStaleRuns } from "./service";
-export { scheduledNames } from "./worker";
+
 
 /**
  * The schedules domain: definitions in code, state in the database, execution on the existing queue.

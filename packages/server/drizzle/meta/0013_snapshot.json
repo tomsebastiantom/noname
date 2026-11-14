@@ -1,5 +1,5 @@
 {
-  "id": "6dcab105-b6db-43a4-bbd5-7ba5d6a7463c",
+  "id": "005e4220-7fff-4353-ac15-a38af82fe4cb",
   "prevId": "e5dbd081-4223-48d5-af32-96a50c0fb07a",
   "version": "7",
   "dialect": "postgresql",
@@ -2472,8 +2472,14 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "name": {
-          "name": "name",
+        "schedule_id": {
+          "name": "schedule_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "definition": {
+          "name": "definition",
           "type": "text",
           "primaryKey": false,
           "notNull": true
@@ -2519,11 +2525,11 @@
         }
       },
       "indexes": {
-        "schedule_runs_name_started_idx": {
-          "name": "schedule_runs_name_started_idx",
+        "schedule_runs_definition_started_idx": {
+          "name": "schedule_runs_definition_started_idx",
           "columns": [
             {
-              "expression": "name",
+              "expression": "definition",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2548,21 +2554,34 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.schedule_state": {
-      "name": "schedule_state",
+    "public.schedules": {
+      "name": "schedules",
       "schema": "",
       "columns": {
-        "name": {
-          "name": "name",
-          "type": "text",
+        "id": {
+          "name": "id",
+          "type": "uuid",
           "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "definition": {
+          "name": "definition",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "pattern": {
           "name": "pattern",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "paused": {
           "name": "paused",
@@ -2575,23 +2594,47 @@
           "name": "dry_run",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "'true'"
         },
-        "updated_at": {
-          "name": "updated_at",
+        "is_default": {
+          "name": "is_default",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'false'"
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "updated_by": {
-          "name": "updated_by",
+        "created_by": {
+          "name": "created_by",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "schedules_definition_idx": {
+          "name": "schedules_definition_idx",
+          "columns": [
+            {
+              "expression": "definition",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
