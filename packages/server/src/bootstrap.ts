@@ -450,6 +450,7 @@ export async function createApp(): Promise<Hono> {
   const tenantDirectory = createTenantDirectoryDomain({
     db,
     verdict: (input) => verdictService.lookup(input),
+    acknowledge: (input) => verdictService.acknowledge(input),
   });
   const releaseDomain = createReleaseDomain({
     db,

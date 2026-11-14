@@ -34,6 +34,13 @@ export function createTenantDirectoryRoutes(
     orgId: string;
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>,
+  acknowledge?: (input: {
+    orgId: string;
+    releaseId: string;
+    reason: string;
+    checksVersion?: string;
+    actorId: string;
+  }) => Promise<{ recorded: true }>,
 ) {
   const routes = new Hono();
 
@@ -66,6 +73,20 @@ export function createTenantDirectoryRoutes(
     const entry = await directory.get(c.req.param("orgId"));
     if (!entry) return c.json({ error: "Unknown tenant" }, 404);
     return ok(c, entry);
+  });
+
+  /** Accept an `unverified` verdict: recorded as evidence, never as a pass. */
+  routes.post("/:orgId/verdict/ack", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    const body = await c.req.json().catch(() => null);
+    const parsed = z
+      .object({ releaseId: z.string().min(1), reason: z.string().min(3), checksVersion: z.string().optional() })
+      .safeParse(body);
+    if (!parsed.success) return c.json({ error: "Invalid acknowledgement", details: parsed.error.flatten() }, 400);
+    if (!acknowledge) return c.json({ error: "Verdict acknowledgement is not configured" }, 503);
+    await acknowledge({ ...parsed.data, orgId: c.req.param("orgId"), actorId: operator.userId });
+    return ok(c, { acknowledged: true });
   });
 
   routes.get("/:orgId/verdict", async (c) => {

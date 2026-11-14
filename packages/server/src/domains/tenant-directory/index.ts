@@ -14,8 +14,15 @@ export function createTenantDirectoryDomain(deps: {
     orgId: string;
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>;
+  acknowledge?: (input: {
+    orgId: string;
+    releaseId: string;
+    reason: string;
+    checksVersion?: string;
+    actorId: string;
+  }) => Promise<{ recorded: true }>;
 }) {
   const store = deps.store ?? createTenantDirectoryPostgresStore(deps.db);
   const service: TenantDirectoryService = createTenantDirectoryService(store);
-  return { service, routes: createTenantDirectoryRoutes(service, deps.verdict) };
+  return { service, routes: createTenantDirectoryRoutes(service, deps.verdict, deps.acknowledge) };
 }

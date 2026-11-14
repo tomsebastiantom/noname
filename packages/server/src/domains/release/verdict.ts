@@ -30,8 +30,25 @@ export type VerdictInput = {
   checksVersion?: string | null;
 };
 
+export type VerdictAck = {
+  orgId: string;
+  releaseId: string;
+  checksVersion?: string;
+  reason: string;
+  actorId: string;
+};
+
 export interface GateVerdictService {
   lookup(input: VerdictInput): Promise<GateVerdict>;
+  /**
+   * Record that an operator saw an `unverified` verdict and accepted the gap.
+   *
+   * This is deliberately **not** a promotion path: the verdict stays `unverified` and a wave still skips the tenant.
+   * The acknowledgement is evidence — who accepted which gap, for which release, against which checks catalogue —
+   * so the decision is attributable afterwards instead of living in a chat log. Turning `unverified` into `pass`
+   * would quietly delete the fail-closed rule from D9.
+   */
+  acknowledge(input: VerdictAck): Promise<{ recorded: true }>;
 }
 
 type EvalRunData = {
@@ -44,6 +61,21 @@ const EVAL_RUN_TYPE = "platform.eval.run";
 
 export function createGateVerdictService(evidence?: EvidenceService): GateVerdictService {
   return {
+    async acknowledge(input) {
+      if (!evidence) throw new Error("evidence service is required to acknowledge a verdict");
+      await evidence.audit({
+        orgId: input.orgId,
+        action: "platform.verdict.acknowledged",
+        actorType: "user",
+        actorId: input.actorId,
+        subjectType: "release",
+        subjectId: input.releaseId,
+        reason: input.reason,
+        metadata: { ...(input.checksVersion ? { checksVersion: input.checksVersion } : {}) },
+      });
+      return { recorded: true };
+    },
+
     async lookup({ orgId, checksVersion }) {
       if (!evidence) return { status: "missing", reason: "no_decision" };
 
