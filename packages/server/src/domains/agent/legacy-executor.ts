@@ -1,4 +1,4 @@
-import type { AIPipeline } from "../ai-pipeline/ports";
+import type { AIPipeline } from "../ai-generation/ports";
 import type { AnalyticsService } from "../analytics/ports";
 import type { AgentExecutor, AgentToolResult } from "./tools";
 

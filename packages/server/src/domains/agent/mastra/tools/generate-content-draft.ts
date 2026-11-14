@@ -1,6 +1,6 @@
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import type { AIPipeline } from "../../../ai-pipeline/ports";
+import type { AIPipeline } from "../../../ai-generation/ports";
 import type { ContentDocumentService } from "../../../documents/ports";
 import type { ArtifactCollector } from "../artifacts";
 import { extractContentData } from "../artifacts";

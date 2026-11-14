@@ -16,7 +16,7 @@ import { createCompositeAgentExecutor } from "./domains/agent/composite-executor
 import { createLegacyAgentExecutor } from "./domains/agent/legacy-executor";
 import { createMastraExecutor } from "./domains/agent/mastra/executor";
 import { parseTaskNotify, taskNotifyVariables } from "./domains/agent/task-notify";
-import { createAIPipelineDomain } from "./domains/ai-pipeline";
+import { createAIPipelineDomain } from "./domains/ai-generation";
 import { createAnalyticsDomain } from "./domains/analytics";
 import { getClickHouseReadiness } from "./domains/analytics/adapters/clickhouse";
 import { createAudienceDomain } from "./domains/audiences";
@@ -419,7 +419,6 @@ export async function createApp(): Promise<Hono> {
   app.route("/api/machines", machines.routes);
 
   const aiPipeline = createAIPipelineDomain({ db, secrets: secrets.service });
-  app.route("/api/ai", aiPipeline.routes);
 
   const agentExecutor = createCompositeAgentExecutor({
     legacy: createLegacyAgentExecutor({

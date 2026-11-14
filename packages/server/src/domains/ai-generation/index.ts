@@ -1,7 +1,6 @@
 import type { Database } from "../../drizzle";
 import type { SecretsService } from "../secrets/ports";
 import { createAIGenerationStorage } from "./adapters/postgres";
-import { createAIPipelineRoutes } from "./api";
 import type { AIPipeline } from "./ports";
 import { createAIPipeline } from "./service";
 
@@ -19,6 +18,5 @@ export function createAIPipelineDomain(deps: AIPipelineDomainDeps = {}) {
       secrets: deps.secrets,
       storage,
     });
-  const routes = createAIPipelineRoutes(service);
-  return { service, routes };
+  return { service };
 }

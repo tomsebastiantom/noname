@@ -1,7 +1,7 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as agentSchema from "./domains/agent/schema";
-import * as aiPipelineSchema from "./domains/ai-pipeline/schema";
+import * as aiPipelineSchema from "./domains/ai-generation/schema";
 import * as audienceSchema from "./domains/audiences/schema";
 import * as capabilitiesSchema from "./domains/capabilities/schema";
 import * as collabSchema from "./domains/collab/schema";

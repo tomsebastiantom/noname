@@ -1,6 +1,6 @@
 import type { OpenAICompatibleConfig } from "@mastra/core/llm";
 import type { ResolvedLlmApiKey, SecretsService } from "../../secrets/ports";
-import { envOpenAiApiKey, openAiCompatibleBaseUrl } from "./llm-env";
+import { envOpenAiApiKey, openAiCompatibleBaseUrl } from "../../ai-generation/llm-env";
 
 export type PlannerCredentialSource = ResolvedLlmApiKey["source"] | "env" | "router";
 

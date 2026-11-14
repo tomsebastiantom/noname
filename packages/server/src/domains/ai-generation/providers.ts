@@ -2,7 +2,7 @@ import {
   envOpenAiApiKey,
   openAiCompatibleBaseUrl,
   openAiCompatibleModelId,
-} from "../agent/mastra/llm-env";
+} from "./llm-env";
 
 export interface LLMRequest {
   prompt: string;

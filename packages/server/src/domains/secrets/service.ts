@@ -1,4 +1,4 @@
-import type { LLMProvider } from "../ai-pipeline/providers";
+import type { LLMProvider } from "../ai-generation/providers";
 import type { TenantSettingsService } from "../documents/ports";
 import type {
   CommsCredentials,

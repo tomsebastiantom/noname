@@ -1,5 +1,5 @@
 import type { CommsProviderName } from "@noname/shared";
-import type { LLMProvider } from "../ai-pipeline/providers";
+import type { LLMProvider } from "../ai-generation/providers";
 
 export type { CommsProviderName } from "@noname/shared";
 export { COMMS_PROVIDERS, isCommsProviderName } from "@noname/shared";

@@ -4,7 +4,7 @@ import type { AIGenerationStorage } from "./adapters/postgres";
 import type { AIPipeline } from "./ports";
 import { createLLMProvider } from "./providers";
 
-const tracer = trace.getTracer("ai-pipeline");
+const tracer = trace.getTracer("ai-generation");
 
 export function createAIPipeline(
   deps: {

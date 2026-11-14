@@ -1,4 +1,4 @@
-import { createLLMProvider, createLLMProviderForApiKey } from "../ai-pipeline/providers";
+import { createLLMProvider, createLLMProviderForApiKey } from "../ai-generation/providers";
 import type { TenantSettingsService } from "../documents/ports";
 import { createEnvFallbackSecretStore } from "./adapters/env-fallback";
 import { createVaultSecretStore, vaultConfigFromEnv } from "./adapters/vault";
