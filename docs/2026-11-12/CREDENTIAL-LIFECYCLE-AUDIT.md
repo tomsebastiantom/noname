@@ -111,14 +111,14 @@ optional for out-of-band callers — including a provisioning script.
 
 ## 5. Limits — stated plainly
 
-- **`init:tenant-eval` does not emit yet.** It still writes only to ZITADEL, so a tenant eval account shows up as
-  `unrecorded` until someone records it. The same pattern applies; it just has not been wired.
+- **Tenant credentials come from the API only.** `init:tenant-eval` was deleted once the provisioning API
+  (`POST /api/platform/tenants`) took over creating `eval-runner-<org>`; the API writes the tenant's audit rows in the
+  same step, so there is no path left that creates a tenant credential without recording it.
 - **Grants only.** The reconciler compares role grants. Account creation, key rotation and deactivation are recorded
   when emitted, but not yet reconciled against the IdP (that needs the machine-user and key lists).
 - **No ZITADEL event feed.** A true mirror (B2) would ingest ZITADEL's audit events so console changes are recorded
   rather than merely detected. `POST /events` is the seam where that would land.
 - **No backfill.** Rows exist from now on; earlier grants have no history.
-- **Revisiting "Grants only".** There is no `init:tenant-eval` any more: tenant credentials are created only through the provisioning API, which emits its own audit rows.
 
 ## 6. Next
 
