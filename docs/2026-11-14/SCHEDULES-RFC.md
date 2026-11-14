@@ -49,6 +49,7 @@ So the infrastructure for *running* work exists and is proven. What is missing i
 | 8 | Handlers are **injected**, not imported by this domain | the domain that owns behaviour owns the handler; this one only runs and records |
 | 9 | Console surface is a **section in the existing platform panel** | no new route, template, or page for one table |
 | 10 | **No create-a-schedule API or UI** | definitions are code; an admin-created schedule is unreviewed behaviour |
+| 11 | **One domain, two producers** — platform (code-defined) and, later, tenant-authored instances | same concept, same runner, same history; splitting by author would duplicate the mechanism |
 
 ## 4. Design
 
@@ -113,9 +114,46 @@ The retention job asks **"what is due?"**, not "purge tenant X in 30 days". Cons
 - no outbox is needed: the intent already exists as `status='deleted' + updated_at`;
 - re-running is harmless (the purge refuses unless the tenant is `deleted`).
 
-Per-item timers (remind user X at 09:00, retry webhook in 15 minutes) are a different shape and are **out of scope**
-here. When the first one appears it should reuse the `transition-relay` pattern — a business row plus a delivery
-marker — not a generic outbox table.
+### 4.4 One domain, two producers
+
+Per-item timers (publish a page at 09:00, remind user X) are **not** a separate subsystem. A domain is split by
+concept, not by who calls it, and the concept is the same: *something must happen at a time, and its result must be
+inspectable*.
+
+What differs is only **where the definition lives**:
+
+| | definition | instance |
+|---|---|---|
+| **platform schedule** | code (`definitions.ts`) | derived — one per definition |
+| **tenant timer** | code (`actionKinds` — the allowed kinds) | a row the tenant created (`org_id`, `kind`, `run_at`, `payload`) |
+
+In both cases **the handler is code**: a tenant chooses *when*, never *what runs*. That is what keeps this one domain
+rather than a plugin system.
+
+So today only the **code-defined producer** is implemented. The tenant-authored producer is the next one in the same
+domain — same queue, same worker, same `schedule_runs`, same console section — and it adds only what is genuinely
+per-instance: quota, tenant permission check, per-item retry, and (when it matters) creating the instance inside the
+same transaction as the business row it depends on.
+
+The one thing that stays separate is the **authoring surface**: platform schedules have no create endpoint (they are
+code), tenant timers will have one, guarded and audited.
+
+### 4.5 Scale — why the two producers do not compete
+
+The two producers have different growth curves, and the runner treats them differently on purpose:
+
+| Producer | Growth | Execution |
+|---|---|---|
+| platform schedules | O(number of platform features) — a handful | one **repeatable** job per name |
+| tenant timers | O(tenants × timers) — potentially large | one **delayed** job per instance, claimed when due |
+
+Consequences, stated so they are not discovered later:
+
+- a tick of a platform sweep never looks at tenant timers, and a tenant's timer never delays retention;
+- tenant timers must be claimed **per instance** (delayed job or `run_at` index + `FOR UPDATE SKIP LOCKED`), never
+  by "select all timers" — that is the query that stops scaling first;
+- per-tenant quota bounds a single noisy tenant without throttling the platform;
+- if volume ever outgrows one queue, the split is by producer (two queues, same domain), not by feature.
 
 ## 5. API
 
@@ -196,3 +234,9 @@ declared, one history.
    with the rest rather than retry the whole sweep (the handler already loops per tenant).
 3. **Provisioning on a queue** — the same infrastructure fixes the detached-promise weakness; it is a separate change
    because it alters request behaviour.
+4. **Tenant-authored producer** — needs an `actionKinds` registry (what tenants may schedule), per-tenant quota,
+   tenant-scoped permission, and per-item retry. It lands in **this** domain when a product feature needs it; the
+   table shape is described in §4.4 so the migration can be additive.
+5. **Scale limit** — platform schedules are O(number of features); tenant timers are O(tenants × timers). The runner
+   must therefore never scan "all timers" per tick: platform schedules are repeatable jobs, tenant timers are delayed
+   jobs claimed per instance. See §4.5.
