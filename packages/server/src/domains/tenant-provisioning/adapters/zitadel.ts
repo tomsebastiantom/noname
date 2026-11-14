@@ -142,15 +142,20 @@ export function createZitadelProvisioner(): ProvisionerPort {
       if (!userId) {
         const created = await call<{ userId: string }>(admin, "POST", "/management/v1/users/human", orgId, {
           userName: email,
-          profile: { firstName: "Tenant", lastName: "Owner", email: { email } },
+          // `email` is a top-level field of AddHumanUserRequest; nesting it under `profile` is rejected with
+          // "value is required" — learned from the live run, not from the docs.
+          email: { email },
+          profile: { firstName: "Tenant", lastName: "Owner" },
         });
         userId = created.userId;
       }
-      await call(admin, "POST", `/management/v1/orgs/${orgId}/members`, orgId, {
-        userIds: [userId],
+      // AddOrgMember takes a single `userId` (not `userIds`) — the plural form is rejected with
+      // "UserId: value length must be between 1 and 200 runes" because the field never binds.
+      await call(admin, "POST", "/management/v1/orgs/me/members", orgId, {
+        userId,
         roles: ["ORG_OWNER"],
       }).catch((cause) => {
-        if (!/already exists|409|Conflict/i.test(String(cause))) throw cause;
+        if (!/already exists|409|Conflict|AlreadyExists/i.test(String(cause))) throw cause;
       });
       return { userId };
     },
