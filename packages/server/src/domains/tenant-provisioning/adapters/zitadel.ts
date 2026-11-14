@@ -82,6 +82,17 @@ export function createZitadelProvisioner(): ProvisionerPort {
 
     async ensureProjectGrant(orgId, roleKeys) {
       const admin = config();
+      // A grant may only name roles that exist on the project. The tenant project does not carry the eval role by
+      // default (live run: Errors.Project.Role.NotFound), so ensure them first — idempotently.
+      for (const roleKey of roleKeys) {
+        await call(admin, "POST", `/management/v1/projects/${admin.projectId}/roles`, null, {
+          roleKey,
+          displayName: roleKey.replace(/_/g, " "),
+          group: "Tenant",
+        }).catch((cause) => {
+          if (!/already exists|409|Conflict|Role\\.AlreadyExists/i.test(String(cause))) throw cause;
+        });
+      }
       try {
         await call(admin, "POST", `/management/v1/projects/${admin.projectId}/grants`, null, {
           projectId: admin.projectId,
