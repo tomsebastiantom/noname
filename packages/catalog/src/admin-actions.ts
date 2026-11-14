@@ -2,6 +2,33 @@ import { COMMS_PROVIDERS } from "@noname/shared";
 import { z } from "zod";
 
 export const adminActionSchemas = {
+  loadSchedules: {
+    description: "Load schedules and the definitions available to create one from",
+  },
+  createSchedule: {
+    params: z.object({ definition: z.string().min(1), pattern: z.string().min(1), label: z.string().optional() }),
+    description: "Create a schedule for an existing definition",
+  },
+  runSchedule: {
+    params: z.object({ id: z.string().uuid() }),
+    description: "Run a schedule now",
+  },
+  pauseSchedule: {
+    params: z.object({ id: z.string().uuid(), paused: z.boolean() }),
+    description: "Pause or resume a schedule",
+  },
+  setSchedulePattern: {
+    params: z.object({ id: z.string().uuid(), pattern: z.string().min(1) }),
+    description: "Change when a schedule runs",
+  },
+  setScheduleDryRun: {
+    params: z.object({ id: z.string().uuid(), dryRun: z.boolean() }),
+    description: "Turn the dry run of a schedule on or off",
+  },
+  deleteSchedule: {
+    params: z.object({ id: z.string().uuid() }),
+    description: "Remove a schedule; its run history is kept",
+  },
   loadPlatformTenants: {
     description: "Load every tenant with its provisioning and verdict state",
   },

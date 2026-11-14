@@ -15,6 +15,7 @@ import { LoginBrandingForm } from "./components/layout/LoginBrandingForm";
 import { PageEntryAdmin } from "./components/pages/PageEntryAdmin";
 import { PageTreeAdmin } from "./components/pages/PageTreeAdmin";
 import { PlatformTenantsAdmin } from "./components/platform/PlatformTenantsAdmin";
+import { SchedulesAdmin } from "./components/schedules/SchedulesAdmin";
 import { SessionReplayAdmin } from "./components/replay/SessionReplayAdmin";
 import { AdminCollapsibleSection } from "./components/shared/AdminCollapsibleSection";
 import { AdminHome } from "./components/shell/AdminHome";
@@ -78,4 +79,5 @@ export const adminComponents = {
   AnalyticsEventsAdmin,
   TracesAdmin,
   PlatformTenantsAdmin,
+  SchedulesAdmin,
 };

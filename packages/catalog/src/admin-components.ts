@@ -672,6 +672,14 @@ export const adminComponentSchemas = {
     }),
     description: "Jaeger-lite trace list for the admin console",
   },
+  SchedulesAdmin: {
+    // Flat props: the panel takes its copy from the layout document (spec-driven-ui).
+    props: z.object({
+      title: z.string().optional(),
+      description: z.string().nullable().optional(),
+    }),
+    description: "Scheduled work: definitions from code, schedules as data, run history and controls",
+  },
   PlatformTenantsAdmin: {
     // Flat props: the panel takes its copy from the layout document, per `spec-driven-ui`.
     props: z.object({

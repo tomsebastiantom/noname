@@ -813,9 +813,13 @@ export const adminPagesTreeSpec = adminPanelSpec(["treeAdmin"], {
   },
 });
 
-export const adminPlatformSpec = adminPanelSpec(["platformTenants"], {
+export const adminPlatformSpec = adminPanelSpec(["platformTenants", "schedules"], {
   platformTenants: {
     type: "PlatformTenantsAdmin",
+    props: {},
+  },
+  schedules: {
+    type: "SchedulesAdmin",
     props: {},
   },
 });
