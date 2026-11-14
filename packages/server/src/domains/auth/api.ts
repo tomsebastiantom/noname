@@ -16,9 +16,10 @@ export function createAuthRoutes(
   service: AuthService,
   tenantSettings?: TenantSettingsService,
   scope?: ScopeService,
+  audit?: AuthRouteDeps["audit"],
 ) {
   const routes = new Hono();
-  const deps: AuthRouteDeps = { service, tenantSettings };
+  const deps: AuthRouteDeps = { service, tenantSettings, audit };
 
   registerAuthConfigRoutes(routes, deps);
   registerAuthOAuthRoutes(routes, deps);

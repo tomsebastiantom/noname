@@ -21,6 +21,13 @@ export function createAuthDomain(deps: {
   content: Pick<ContentDocumentService, "findByType">;
   storage: DocumentStorage;
   notifications?: Pick<NotificationsService, "notify">;
+  audit?: (input: {
+    orgId: string;
+    action: string;
+    actorId: string;
+    subjectId: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<void>;
 }) {
   const service = createAuthService(deps);
   const authorization = createAuthorization();
@@ -34,7 +41,7 @@ export function createAuthDomain(deps: {
       return roleMap.get(userId) ?? null;
     },
   });
-  const routes = createAuthRoutes(service, deps.tenantSettings, scope);
+  const routes = createAuthRoutes(service, deps.tenantSettings, scope, deps.audit);
   const onAuthProviderPublished = createAuthProviderPublishHandler({
     storage: deps.storage,
     tenantSettings: deps.tenantSettings,

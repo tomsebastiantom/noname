@@ -227,6 +227,17 @@ export async function createApp(): Promise<Hono> {
   });
 
   const auth = createAuthDomain({
+    audit: async (input) => {
+      await evidence.service.audit({
+        orgId: input.orgId,
+        action: input.action,
+        actorType: "service",
+        actorId: input.actorId,
+        subjectType: "platform.token",
+        subjectId: input.subjectId,
+        ...(input.metadata ? { metadata: input.metadata } : {}),
+      });
+    },
     db,
     tenantSettings: docs.service.tenantSettings,
     assets: docs.service.assets,
