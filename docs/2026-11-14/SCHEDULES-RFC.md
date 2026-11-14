@@ -48,39 +48,51 @@ So the infrastructure for *running* work exists and is proven. What is missing i
 | 7 | Runs are recorded in `schedule_runs`; API returns the last N | the history is the product: silence and failure must both be visible |
 | 8 | Handlers are **injected**, not imported by this domain | the domain that owns behaviour owns the handler; this one only runs and records |
 | 9 | Console surface is a **section in the existing platform panel** | no new route, template, or page for one table |
-| 10 | **No create-a-schedule API or UI** | definitions are code; an admin-created schedule is unreviewed behaviour |
+| 10 | **Definitions are code; schedules are data.** An operator may create any number of schedules **for an existing definition** (pattern, pause, dry-run), never a new capability | a schedule can only point at behaviour someone wrote and reviewed |
 | 11 | **One domain, two producers** — platform (code-defined) and, later, tenant-authored instances | same concept, same runner, same history; splitting by author would duplicate the mechanism |
 
 ## 4. Design
 
 ```
-code                          database                        queue
-definitions.ts                schedule_state                  {platform-schedules}
-  name                          paused                          repeatable per name
-  description                   pattern (override|null)        job = { name }
-  defaultPattern                dry_run (override|null)
-  dryRunDefault               schedule_runs
-                                (startedAt, finishedAt, status, items, dryRun, error)
+code                          database                          queue
+definitions.ts                schedules                         {platform-schedules}
+  name (capability)             id                                one repeatable job per
+  description                   definition → must exist in code   schedule id
+  handler                       pattern
+  defaultPattern                paused
+  dryRunDefault                 dry_run
+                              schedule_runs
+                                schedule_id, definition, startedAt,
+                                finishedAt, status, items, dryRun, error
 ```
 
-Three sources, three jobs:
+Three nouns, three questions:
 
-- **code** answers *what exists and what it does*;
-- **state** answers *what an operator changed* (and clearing an override restores the code default);
-- **runs** answer *what actually happened*.
+| Noun | Question it answers | Where |
+|---|---|---|
+| **definition** | *what can the platform do?* | code — reviewed, never created at runtime |
+| **schedule** | *when, and how often?* | data — an instance of a definition; many allowed |
+| **run** | *what happened last time?* | data — one row per attempt |
+
+Same split as a Kubernetes `CronJob`: the controller knows what a job is, the object says when, the history says what
+happened. Several `CronJob`s may reference the same workload — here, several schedules may reference the same
+definition (e.g. retention at 03:00 daily, plus a weekly one with a longer window).
 
 ### 4.1 Execution path
 
 ```
 startup        registerSchedules()
-                 → for each available, non-paused definition:
-                     queue.upsertJobScheduler(`schedule:<name>`, { pattern }, { name })
+                 → ensure every definition has at least one schedule (create the default when none exists)
+                 → for each schedule that is not paused and whose definition is available:
+                     queue.upsertJobScheduler(`schedule:<id>`, { pattern }, { name: <id> })
 due            BullMQ promotes the repeatable job
-worker         schedules.execute(name)
+worker         schedules.execute(scheduleId)
                  → insert schedule_runs(status=running)
                  → handler({ dryRun })
                  → update status ok/failed + items + finishedAt
-operator       POST /:name/run → same execute(), refusing when paused
+operator       POST /:id/run → same execute(), refusing when paused
+operator       POST /        → create a schedule: { definition, pattern, label? }
+                              rejects a definition that is not in code
 ```
 
 The handler is `(ctx: { dryRun }) => Promise<{ items, dryRun }>` — deliberately tiny. A job that needs more will tell us
@@ -104,7 +116,7 @@ for each: purge (existing path) → one platform.tenant.purged audit row
 ```
 
 `dryRun` reports what *would* be purged and touches nothing. Turning it off is an explicit operator action
-(`PUT /:name/dry-run`), recorded in `schedule_state`.
+(`PUT /:id/dry-run`), recorded on the schedule row.
 
 ### 4.3 Why a sweep, not a per-tenant timer
 
@@ -185,17 +197,25 @@ scaling technique, and it is not what this platform does.
 ## 5. API
 
 ```
-GET  /api/platform/schedules                 → { schedules: [{ name, description, pattern, overridden,
-                                                  paused, dryRun, available, lastRun }] }
-GET  /api/platform/schedules/:name/runs      → { runs: [...] }
-POST /api/platform/schedules/:name/run       → executes now (409 when paused)
-POST /api/platform/schedules/:name/pause
-POST /api/platform/schedules/:name/resume
-PUT  /api/platform/schedules/:name/pattern   → { pattern } | { pattern: null } to restore default
-PUT  /api/platform/schedules/:name/dry-run   → { dryRun }
+GET    /api/platform/schedules               → { schedules: [{ id, definition, label, description, pattern,
+                                                    paused, dryRun, available, lastRun }],
+                                                  definitions: [{ name, description, defaultPattern }] }
+POST   /api/platform/schedules               → { definition, pattern, label? } → new schedule
+                                                400 when the definition is not in code
+                                                409 when the pattern is not a 5-field cron
+DELETE /api/platform/schedules/:id           → stops future runs; history is kept
+POST   /api/platform/schedules/:id/run       → executes now (409 when paused)
+POST   /api/platform/schedules/:id/pause
+POST   /api/platform/schedules/:id/resume
+PUT    /api/platform/schedules/:id/pattern   → { pattern }
+PUT    /api/platform/schedules/:id/dry-run   → { dryRun }
+GET    /api/platform/schedules/:id/runs      → history for that schedule
 ```
 
 All routes require a platform operator; reads need `PLATFORM_AUDIT_READ`, changes need `RELEASES_PLATFORM_WRITE`.
+
+Deleting a schedule stops future runs and keeps the past: a run that happened does not stop having happened because
+someone tidied the list.
 
 ## 6. Console
 
@@ -203,11 +223,15 @@ A **Schedules** section in the existing platform panel (no new template):
 
 | Column | Source |
 |---|---|
-| Name, description | definition |
-| Pattern, next run | effective pattern + queue scheduler |
-| Paused, dry-run | `schedule_state` |
-| Last run (status, items, duration) | latest `schedule_runs` row |
-| Actions | **Run now**, **Pause/Resume**, edit pattern |
+| Definition + label | `schedules.definition` + definition description |
+| Pattern, next run | schedule pattern + queue scheduler |
+| Paused, dry-run | `schedules` |
+| Last run (status, items, duration) | latest `schedule_runs` row for that schedule |
+| Actions | **Run now**, **Pause/Resume**, edit pattern, **Delete** |
+
+Above the table: **Create schedule** — a definition picker (each option shows the definition's short description) plus
+a cron field. The picker can only offer what exists in code; there is no field for a handler, because a console cannot
+invent behaviour.
 
 It follows `spec-driven-ui`: a catalog component reading `$state`, actions in `core/actions/`, no `fetch` in the
 component.
@@ -238,7 +262,7 @@ declared, one history.
 
 ## 9. Rollout
 
-1. migration for `schedule_state` + `schedule_runs`;
+1. migration for `schedules` + `schedule_runs`;
 2. domain + queue + worker + routes (no behaviour change: no schedule is registered until a definition exists);
 3. `tenant-retention-purge` registered **dry-run on** — it reports, it does not delete;
 4. console section;
