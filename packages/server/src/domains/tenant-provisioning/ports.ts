@@ -46,4 +46,6 @@ export type ProvisioningService = {
   get(orgId: string): Promise<ProvisioningRecord | null>;
   /** Runs the steps for one record. Separated so tests and a retry path can call it directly. */
   run(orgId: string): Promise<ProvisioningRecord>;
+  /** Invites the first human admin into an already-provisioned tenant org. */
+  invite(orgId: string, email: string): Promise<ProvisioningRecord>;
 };

@@ -11,6 +11,7 @@ export type ProvisioningSteps = {
   directory?: ProvisioningStepState;
   identity?: ProvisioningStepState;
   eval_account?: ProvisioningStepState;
+  invite?: ProvisioningStepState;
   audit?: ProvisioningStepState;
 };
 

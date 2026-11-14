@@ -11,6 +11,8 @@ import { createServiceAccountToken } from "@noname/eval";
 export type ProvisionedOrg = { orgId: string };
 
 export type ProvisionerPort = {
+  /** First human admin of the tenant org (invite-first). Idempotent by email. */
+  ensureHumanAdmin(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   /** Creates the tenant's ZITADEL org (idempotent by name). */
   ensureOrg(name: string): Promise<ProvisionedOrg>;
   /** Grants the shared project (with tenant roles) to that org. */
@@ -121,6 +123,36 @@ export function createZitadelProvisioner(): ProvisionerPort {
           `project grant for ${orgId} is active but carries no role: ${missing.join(", ")}`,
         );
       }
+    },
+
+    /**
+     * First human admin, invite-first: the account is created inside the tenant org (no password) and made
+     * ORG_OWNER, so the customer owns their own org instead of borrowing a role on our project. Idempotent by email.
+     */
+    async ensureHumanAdmin({ orgId, email }) {
+      const admin = config();
+      const search = await call<{ result?: Array<{ id: string }> }>(
+        admin,
+        "POST",
+        "/management/v1/users/_search",
+        orgId,
+        { queries: [{ emailQuery: { emailAddress: email, method: "TEXT_QUERY_METHOD_EQUALS" } }], limit: 1 },
+      );
+      let userId = search.result?.[0]?.id;
+      if (!userId) {
+        const created = await call<{ userId: string }>(admin, "POST", "/management/v1/users/human", orgId, {
+          userName: email,
+          profile: { firstName: "Tenant", lastName: "Owner", email: { email } },
+        });
+        userId = created.userId;
+      }
+      await call(admin, "POST", `/management/v1/orgs/${orgId}/members`, orgId, {
+        userIds: [userId],
+        roles: ["ORG_OWNER"],
+      }).catch((cause) => {
+        if (!/already exists|409|Conflict/i.test(String(cause))) throw cause;
+      });
+      return { userId };
     },
 
     async ensureEvalAccount({ orgId, roleKey, accountName }) {

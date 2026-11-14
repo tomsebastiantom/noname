@@ -58,5 +58,23 @@ export function createTenantProvisioningRoutes(provisioning: ProvisioningService
     return ok(c, record);
   });
 
+
+  /**
+   * Invite the tenant's first human admin. Separate from creation on purpose: the org must exist first, and the
+   * customer chooses when their admin arrives. `state=ready` means machine-ready; this step is what makes the tenant
+   * usable by people.
+   */
+  routes.post("/:orgId/invite", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    const parsed = z.object({ email: z.string().email() }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return c.json({ error: "Invalid invite", details: parsed.error.flatten() }, 400);
+
+    const record = await provisioning.invite(c.req.param("orgId"), parsed.data.email);
+    return ok(c, record);
+  });
   return routes;
 }

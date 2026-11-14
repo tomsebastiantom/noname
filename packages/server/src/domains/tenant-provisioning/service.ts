@@ -3,6 +3,7 @@ import type { ProvisioningSteps } from "./schema";
 
 export type ProvisionerPort = {
   ensureOrg(name: string): Promise<{ orgId: string }>;
+  ensureHumanAdmin(input: { orgId: string; email: string }): Promise<{ userId: string }>;
   ensureProjectGrant(orgId: string, roleKeys: string[]): Promise<void>;
   ensureEvalAccount(input: { orgId: string; roleKey: string; accountName: string }): Promise<{ userId: string }>;
 };
@@ -59,6 +60,24 @@ export function createTenantProvisioningService(
     },
 
     get: (orgId) => store.get(orgId),
+
+    async invite(orgId, email) {
+      if (!provisioner) throw new Error("no provisioner configured; cannot invite a tenant admin");
+      const record = await store.get(orgId);
+      if (!record) throw new Error(`no provisioning row for ${orgId}`);
+      const user = await provisioner.ensureHumanAdmin({ orgId, email });
+      if (recordCredential) {
+        await recordCredential({
+          orgId,
+          accountId: user.userId,
+          accountName: email,
+          roleKey: "ORG_OWNER",
+        });
+      }
+      return store.update(orgId, {
+        steps: { ...record.steps, invite: { status: "done", at: now() } },
+      });
+    },
 
     run: (orgId) => run(orgId),
   };
