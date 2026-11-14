@@ -31,13 +31,13 @@ const NS = "noname";
 const ENV = join(ROOT, ".env");
 
 const SERVICES = [
-  { local: 25432, env: "DATABASE_URL", url: "postgres://noname:noname_dev@127.0.0.1:25432/app" },
-  { local: 16379, env: "REDIS_URL", url: "redis://127.0.0.1:16379" },
-  { local: 18123, env: "CLICKHOUSE_URL", url: "http://127.0.0.1:18123" },
-  { local: 18200, env: "VAULT_ADDR", url: "http://127.0.0.1:18200" },
-  { local: 14466, env: "KETO_READ_URL", url: "http://127.0.0.1:14466" },
-  { local: 14467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:14467" },
-  { local: 19000, env: null, url: "http://127.0.0.1:19000" },
+  { local: 30432, env: "DATABASE_URL", url: "postgres://noname:noname_dev@127.0.0.1:30432/app" },
+  { local: 30379, env: "REDIS_URL", url: "redis://127.0.0.1:30379" },
+  { local: 30123, env: "CLICKHOUSE_URL", url: "http://127.0.0.1:30123" },
+  { local: 30200, env: "VAULT_ADDR", url: "http://127.0.0.1:30200" },
+  { local: 30466, env: "KETO_READ_URL", url: "http://127.0.0.1:30466" },
+  { local: 30467, env: "KETO_WRITE_URL", url: "http://127.0.0.1:30467" },
+  { local: 30900, env: null, url: "http://127.0.0.1:30900" },
   { local: 8080, env: "ZITADEL_ISSUER", url: "http://localhost:8080" },
 ];
 
