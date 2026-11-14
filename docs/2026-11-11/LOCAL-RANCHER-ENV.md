@@ -19,7 +19,7 @@ supervision after that.
 `networkingMode=mirrored` — the setting that would share localhost between Windows and WSL — requires
 **Windows 11 22H2+**, so it is unavailable. Rancher forwards **NodePort** services to the host through its guest
 agent (verified: `30200`, `30432` survive an engine restart), which is why `deploy/overlays/local/nodeports.yaml` is the
-durable way to reach infra. `svc/zitadel` stays ClusterIP � its `EXTERNALPORT` is in every token � so it is re-created
+durable way to reach infra. `svc/zitadel` stays ClusterIP — its `EXTERNALPORT` is in every token — so it is re-created
 with `pnpm rancher forwards`.
 
 ## 2. What runs where
@@ -108,6 +108,11 @@ http://nango.localhost
 > 8. **`/admin/agents` is not a route.** The page is `/admin/settings/agents`
 >    (`packages/client/src/platform-routes.ts`); unknown `/admin/*` falls back to `AdminHome`.
 
+## 4a. After a restart — see [RESTART-CHECKLIST.md](./RESTART-CHECKLIST.md)
+
+One command: pnpm rancher forwards (Zitadel only; the other seven services are NodePorts and come back on their own).
+Nothing needs to keep running: the forward belongs to the Rancher Desktop process, not to a terminal.
+
 ## 5. First-run bring-up
 
 ```powershell
@@ -161,7 +166,7 @@ The `.tools/*.mjs` browser scripts used while verifying this setup (`inspect-pag
 | Infra pods | postgres, redis, clickhouse, vault, keto, s3, zitadel, jaeger, nango — all `Running` |
 | App deployments | `api/client/worker/browser` `0/0` |
 | Migrations | 8/8 on the cluster Postgres |
-| Infra reachability | **NodePorts** (`30432`, `30379`, `30123`, `30200`, `30466/30467`, `30900`) � Rancher re-creates them from the Service objects, verified across an engine restart. Zitadel is the one exception: `rdctl` forward, re-created by `pnpm rancher forwards` (API-created forwards are **not** restored on restart � tested) |
+| Infra reachability | **NodePorts** (`30432`, `30379`, `30123`, `30200`, `30466/30467`, `30900`) — Rancher re-creates them from the Service objects, verified across an engine restart. Zitadel is the one exception: `rdctl` forward, re-created by `pnpm rancher forwards` (API-created forwards are **not** restored on restart — tested) |
 | Identity | org `398655937176469540`, project `399159787020877870` |
 | Seed | `pnpm seed:demo:full` → `completed full/commerce` |
 | Browser | storefront, login, admin, orders, agents, editor, product — all render, no console errors |
