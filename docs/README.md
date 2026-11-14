@@ -1,6 +1,7 @@
 # Documentation
 
 ## Current Status (Start Here)
+- **[2026-11-14/DOMAIN-BOUNDARIES.md](2026-11-14/DOMAIN-BOUNDARIES.md)** — **Boundary record.** notifications vs integrations, the three meanings of credentials (secrets / platform-credentials / integrations), watch items, and the delete/arrow/verb tests for judging a new domain.
 - **[2026-11-14/SCHEDULES-RFC.md](2026-11-14/SCHEDULES-RFC.md)** - **RFC (proposal).** Scheduled work: definitions in code, operator state (pause/pattern/dry-run) in the database, execution on the existing BullMQ queue, every run recorded; first job is the tenant retention purge (dry-run by default).
 - **[2026-11-12/PLATFORM-CONSOLE.md](2026-11-12/PLATFORM-CONSOLE.md)** - **Implemented.** The operator console at the reserved platform host: tenant table, create, backfill, invite and verdict acknowledgement, each guarded by platform permissions.
 - **[2026-11-11/RESTART-CHECKLIST.md](2026-11-11/RESTART-CHECKLIST.md)** — **Verified.** What to run after a reboot (one command for Zitadel), what Rancher restores on its own (NodePorts), and which port failures mean what.
