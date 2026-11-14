@@ -1,0 +1,5 @@
+{
+    "issuer":  "http://localhost:8080",
+    "clientId":  "399599961710264429",
+    "redirectUri":  "http://platform.localhost:5173/auth/callback"
+}
