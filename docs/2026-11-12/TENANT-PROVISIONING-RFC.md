@@ -42,6 +42,34 @@ Consequences, all observed in this repository:
 - “delete/offboard a tenant” has no definition at all — status `offboarding` exists, nothing implements it;
 - onboarding requires a human to remember three commands in the right order.
 
+### Lifecycle end — delete, retention, purge
+
+Statuses stay small and closed: `active | suspended | offboarding | deleted`.
+
+| Step | Call | What changes | Reversible |
+|---|---|---|---|
+| offboard | `POST /api/platform/tenants/:orgId/offboard` | status `offboarding`, credential deactivated, audited | yes |
+| delete | `DELETE /api/platform/tenants/:orgId` | status `deleted`, hidden from the console, rows intact | yes |
+| purge | `POST /api/platform/tenants/:orgId/purge` | rows removed, ZITADEL org deleted, `platform.tenant.purged` kept | **no** |
+
+Each step refuses to run out of order (`409` naming the current status), so a purge cannot be reached by accident:
+
+```
+DELETE on a suspended tenant → 409 "must be offboarding before it can be deleted (is suspended)"
+```
+
+**Why three steps and not one.** Erasure and evidence pull in opposite directions: a customer's data must actually go,
+and we must be able to prove it went. Soft delete covers the retention window (recoverable mistakes, and a grace period
+before an irreversible act); purge removes the data; the audit row is written to the **platform** stream, because the
+tenant's own stream is what disappears.
+
+**Filtering is a view, not a policy.** The console hides `deleted` by default with a "Show retired" toggle. A hidden
+row is still a row — if filtering were the policy, the erasure claim would be false.
+
+Verified live: create → ready → offboard → delete → wave answers `skipped tenant_deleted` → purge → tenant absent from
+the directory, one `platform.tenant.purged` row retained. Precedent for the shape: GitLab's 30-day marked-for-deletion,
+GitHub's 90-day restorable delete, Stripe's `deleted: true` objects.
+
 ## 2. Goals
 
 1. **One operation** creates a tenant completely: identity, inventory row, eval credential, audit rows.

@@ -7,7 +7,7 @@ import {
   createCommerceProviderEventMappings,
   registerCommerceActivityTypes,
 } from "@noname/verticals/commerce";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { Hono } from "hono";
 import { createAgentDomain } from "./domains/agent";
 import { setAgentIdentityResolver } from "./shared/agent-registry-resolver";
@@ -48,6 +48,8 @@ import { createGateVerdictService } from "./domains/release/verdict";
 import { createPlatformAuditRoutes } from "./domains/evidence/platform-audit";
 import { createPlatformCredentialsDomain } from "./domains/platform-credentials";
 import { createTenantProvisioningDomain } from "./domains/tenant-provisioning";
+import { tenantProvisioning as tenantProvisioningTable } from "./domains/tenant-provisioning/schema";
+import { tenantDirectory as tenantDirectoryTable } from "./domains/tenant-directory/schema";
 import { createZitadelProvisioner } from "./domains/tenant-provisioning/adapters/zitadel";
 import { CREDENTIAL_ACTIONS } from "./domains/platform-credentials/actions";
 import { createSecretsDomain } from "./domains/secrets";
@@ -57,7 +59,7 @@ import { createWebhooksDomain, registerWebhookOutboundRouter } from "./domains/w
 import { createDatabase } from "./drizzle";
 import { getBullmqQueue } from "./shared/bullmq-queue";
 import { BULLMQ_QUEUES } from "./shared/bullmq-queues";
-import { ServiceUnavailableError } from "./shared/domain-error";
+import { ConflictError, ServiceUnavailableError } from "./shared/domain-error";
 import { handleDomainError } from "./shared/error-handler";
 import { eventBus } from "./shared/event-bus";
 import { isDraining, registerShutdownTask } from "./shared/lifecycle";
@@ -86,6 +88,23 @@ import { workersEnabled } from "./shared/worker-runtime";
  * via `RUN_WORKERS` (see `shared/worker-runtime.ts`) gets the actual goal — HTTP and job-processing
  * scaling independently, on separate DB connection pools — without it.
  */
+/**
+ * Deletes a tenant's ZITADEL org. Only purge calls this: revoking access (deactivate) is enough everywhere else, and
+ * deleting an identity is irreversible.
+ */
+async function deleteZitadelOrg(orgId: string): Promise<void> {
+  const pat = process.env.ZITADEL_ADMIN_PAT?.trim();
+  const issuer = process.env.ZITADEL_ISSUER?.trim() || "http://localhost:8080";
+  if (!pat) throw new Error("ZITADEL_ADMIN_PAT is required to purge a tenant org");
+  const response = await fetch(`${issuer}/v2/organizations/${orgId}`, {
+    method: "DELETE",
+    headers: { authorization: `Bearer ${pat}` },
+  });
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`ZITADEL org delete failed (${response.status})`);
+  }
+}
+
 export async function createApp(): Promise<Hono> {
   const app = new Hono();
 
@@ -463,6 +482,44 @@ export async function createApp(): Promise<Hono> {
     verdict: (input) => verdictService.lookup(input),
     acknowledge: (input) => verdictService.acknowledge(input),
     rollback: (input) => releaseDomain.pointer.rollback(input.orgId, input.actorId),
+    softDelete: async ({ orgId }) => {
+      const entry = await tenantDirectory.service.get(orgId);
+      if (!entry) throw new Error(`no directory row for ${orgId}`);
+      // Offboarding revokes, delete hides. Requiring the earlier step keeps the two from being confused.
+      if (entry.status !== "offboarding") {
+        throw new ConflictError(`Tenant ${orgId} must be offboarding before it can be deleted (is ${entry.status})`, { orgId });
+      }
+      await tenantDirectory.service.upsert({ orgId, slug: entry.slug, status: "deleted" });
+      return { status: "deleted" };
+    },
+    purge: async ({ orgId, actorId }) => {
+      const entry = await tenantDirectory.service.get(orgId);
+      if (!entry) return { purged: false };
+      if (entry.status !== "deleted") {
+        throw new ConflictError(`Tenant ${orgId} must be deleted before it can be purged (is ${entry.status})`, { orgId });
+      }
+
+      // The IdP org goes first: if that fails, the rows still explain what exists rather than leaving an orphan identity.
+      await deleteZitadelOrg(orgId);
+
+      await db.delete(tenantProvisioningTable).where(eq(tenantProvisioningTable.orgId, orgId));
+      await db.delete(tenantDirectoryTable).where(eq(tenantDirectoryTable.orgId, orgId));
+
+      // Written to the **platform** stream: the tenant's own stream is what was just removed.
+      const platformOrgId = process.env.PLATFORM_ORG_ID?.trim();
+      if (platformOrgId) {
+        await evidence.service.audit({
+          orgId: platformOrgId,
+          action: "platform.tenant.purged",
+          actorType: "service",
+          actorId,
+          subjectType: "platform.tenant",
+          subjectId: orgId,
+          metadata: { slug: entry.slug },
+        });
+      }
+      return { purged: true };
+    },
     history: async (input) =>
       evidence.service.listAuditAcross({
         orgId: input.orgId,

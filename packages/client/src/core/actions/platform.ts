@@ -140,6 +140,35 @@ export const platformActions = {
     }
   }) satisfies CatalogActionHandler,
 
+  /** Soft delete: hidden from the console, restorable inside the retention window. */
+  deletePlatformTenant: (async (params, setState) => {
+    const { orgId } = params as { orgId?: string };
+    if (!orgId) return;
+    try {
+      await apiFetchVoid(`/api/platform/tenants/${orgId}`, { method: "DELETE" });
+      setState(STATE.notice, "Tenant marked deleted — hidden from this list, rows retained.");
+      await loadRows(setState);
+    } catch (cause) {
+      setState(STATE.error, cause instanceof Error ? cause.message : "Delete failed");
+    }
+  }) satisfies CatalogActionHandler,
+
+  /** Purge: irreversible. Only offered once the tenant is soft-deleted, and confirmed by the operator. */
+  purgePlatformTenant: (async (params, setState) => {
+    const { orgId } = params as { orgId?: string };
+    if (!orgId) return;
+    if (!window.confirm("Permanently remove this tenant's rows and IdP org? This cannot be undone.")) {
+      return;
+    }
+    try {
+      await apiFetchVoid(`/api/platform/tenants/${orgId}/purge`, { method: "POST" });
+      setState(STATE.notice, "Tenant purged. The audit row stays in the platform stream.");
+      await loadRows(setState);
+    } catch (cause) {
+      setState(STATE.error, cause instanceof Error ? cause.message : "Purge failed");
+    }
+  }) satisfies CatalogActionHandler,
+
   rollbackPlatformTenant: (async (params, setState) => {
     const { orgId } = params as { orgId?: string };
     if (!orgId) return;

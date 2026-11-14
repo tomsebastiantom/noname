@@ -27,6 +27,8 @@ export function createTenantDirectoryService(store: TenantDirectoryStore): Tenan
       if (entry.isPlatform) return { selectable: false, reason: "platform_org" };
       if (entry.status === "suspended") return { selectable: false, reason: "tenant_suspended" };
       if (entry.status === "offboarding") return { selectable: false, reason: "tenant_offboarding" };
+      // A soft-deleted tenant keeps its rows for the retention window but must never receive a release.
+      if (entry.status === "deleted") return { selectable: false, reason: "tenant_deleted" };
       if (entry.excludedReason) return { selectable: false, reason: "tenant_excluded" };
       return { selectable: true };
     },

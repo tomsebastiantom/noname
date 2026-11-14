@@ -45,7 +45,15 @@ export const tenantDirectory = pgTable(
 );
 
 /** Valid lifecycle values; the API validates against this rather than an enum in Postgres. */
-export const TENANT_STATUSES = ["active", "suspended", "offboarding"] as const;
+/**
+ * Lifecycle, smallest closed set that still tells the truth:
+ *   active      — may receive a release
+ *   suspended   — must not, but the data stays
+ *   offboarding — left on purpose; credentials revoked
+ *   deleted     — soft delete: hidden from the console, data still present, restorable inside the retention window
+ * A **purge** removes the rows entirely; that is a separate, irreversible act, not a status.
+ */
+export const TENANT_STATUSES = ["active", "suspended", "offboarding", "deleted"] as const;
 export type TenantStatus = (typeof TENANT_STATUSES)[number];
 
 export const tenantStatusCheck = sql`${tenantDirectory.status} in ('active','suspended','offboarding')`;

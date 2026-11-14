@@ -41,6 +41,7 @@ export type TenantSelectability =
         | "tenant_offboarding"
         | "tenant_excluded"
         | "tenant_not_ready"
+        | "tenant_deleted"
         | "platform_org";
     };
 

@@ -24,6 +24,14 @@ export const adminActionSchemas = {
     params: z.object({ orgId: z.string().min(1), releaseId: z.string().min(1) }),
     description: "Promote one tenant through the wave path",
   },
+  deletePlatformTenant: {
+    params: z.object({ orgId: z.string().min(1) }),
+    description: "Soft-delete a tenant: hidden from the console, rows retained",
+  },
+  purgePlatformTenant: {
+    params: z.object({ orgId: z.string().min(1) }),
+    description: "Permanently remove a soft-deleted tenant's rows and IdP org",
+  },
   rollbackPlatformTenant: {
     params: z.object({ orgId: z.string().min(1) }),
     description: "Roll a tenant back to its previous release",

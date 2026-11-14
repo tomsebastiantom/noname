@@ -31,6 +31,7 @@ export function PlatformTenantsAdmin({ props }: Readonly<ComponentCtx<PlatformTe
   const historyOrgId = useStateValue(ADMIN_STATE.platform.historyOrgId) as string | null;
 
   const [slug, setSlug] = useState("");
+  const [showRetired, setShowRetired] = useState(false);
   const [releaseId, setReleaseId] = useState("");
   const [emails, setEmails] = useState<Record<string, string>>({});
 
@@ -116,7 +117,9 @@ export function PlatformTenantsAdmin({ props }: Readonly<ComponentCtx<PlatformTe
             </tr>
           </thead>
           <tbody>
-            {tenants.map((tenant) => {
+            {tenants
+              .filter((tenant) => showRetired || tenant.status !== "deleted")
+              .map((tenant) => {
               const state = rows[tenant.orgId];
               return (
                 <tr key={tenant.orgId} className="border-t border-border align-top">
@@ -163,6 +166,23 @@ export function PlatformTenantsAdmin({ props }: Readonly<ComponentCtx<PlatformTe
                     >
                       History
                     </button>
+                    {tenant.status === "deleted" ? (
+                      <button
+                        type="button"
+                        className="ml-2 text-xs underline"
+                        onClick={() => run("purgePlatformTenant", { orgId: tenant.orgId })}
+                      >
+                        Purge
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="ml-2 text-xs underline"
+                        onClick={() => run("deletePlatformTenant", { orgId: tenant.orgId })}
+                      >
+                        Delete
+                      </button>
+                    )}
                     {promoteResult ? (
                       <span className="ml-2 text-xs text-muted-foreground">{promoteResult}</span>
                     ) : null}

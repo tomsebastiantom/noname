@@ -9,6 +9,7 @@ export const ADMIN_STATE = {
     promoteResult: "/admin/platform/promoteResult",
     history: "/admin/platform/history",
     historyOrgId: "/admin/platform/historyOrgId",
+    showRetired: "/admin/platform/showRetired",
   },
   team: {
     users: "/admin/team/users",

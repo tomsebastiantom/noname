@@ -35,6 +35,8 @@ export function createTenantDirectoryRoutes(
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>,
   rollback?: (input: { orgId: string; actorId: string }) => Promise<unknown>,
+  softDelete?: (input: { orgId: string; actorId: string }) => Promise<{ status: string }>,
+  purge?: (input: { orgId: string; actorId: string }) => Promise<{ purged: boolean }>,
   history?: (input: { orgId: string; limit?: number }) => Promise<unknown[]>,
   acknowledge?: (input: {
     orgId: string;
@@ -105,6 +107,36 @@ export function createTenantDirectoryRoutes(
     }
     if (!rollback) return c.json({ error: "Rollback is not configured" }, 503);
     return ok(c, await rollback({ orgId: c.req.param("orgId"), actorId: operator.userId }));
+  });
+
+  /**
+   * Soft delete: the tenant leaves the console but its rows stay for the retention window, so a mistaken delete is
+   * recoverable and the erasure can still be proven later. Irreversible removal is `purge`, below.
+   */
+  routes.delete("/:orgId", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!softDelete) return c.json({ error: "Delete is not configured" }, 503);
+    return ok(c, await softDelete({ orgId: c.req.param("orgId"), actorId: operator.userId }));
+  });
+
+  /**
+   * Purge: removes the tenant's inventory and provisioning rows and deletes its IdP org.
+   *
+   * Only allowed once the tenant is `deleted` — offboarding revokes, delete hides, purge removes. The audit row is
+   * written to the **platform** stream because the tenant's own stream is what disappears.
+   */
+  routes.post("/:orgId/purge", async (c) => {
+    const operator = await requirePlatformOperator(c);
+    if (operator instanceof Response) return operator;
+    if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+    if (!purge) return c.json({ error: "Purge is not configured" }, 503);
+    return ok(c, await purge({ orgId: c.req.param("orgId"), actorId: operator.userId }));
   });
 
   /** The tenant's release history, read from its own audit stream. */

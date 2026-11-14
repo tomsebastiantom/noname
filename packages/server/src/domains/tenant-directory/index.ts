@@ -15,6 +15,8 @@ export function createTenantDirectoryDomain(deps: {
     checksVersion?: string | null;
   }) => Promise<{ status: "pass" | "block" | "unverified" | "missing"; reason?: string }>;
   rollback?: (input: { orgId: string; actorId: string }) => Promise<unknown>;
+  softDelete?: (input: { orgId: string; actorId: string }) => Promise<{ status: string }>;
+  purge?: (input: { orgId: string; actorId: string }) => Promise<{ purged: boolean }>;
   history?: (input: { orgId: string; limit?: number }) => Promise<unknown[]>;
   acknowledge?: (input: {
     orgId: string;
@@ -30,6 +32,8 @@ export function createTenantDirectoryDomain(deps: {
       service,
       deps.verdict,
       deps.rollback,
+      deps.softDelete,
+      deps.purge,
       deps.history,
       deps.acknowledge,
     ) };
