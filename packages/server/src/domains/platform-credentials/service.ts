@@ -70,7 +70,8 @@ export async function recordCredentialEvent(
   evidence: EvidenceService,
   input: CredentialEventInput,
 ): Promise<{ id: string }> {
-  const orgId = platformOrgId();
+  // A tenant-scoped credential (eval account) belongs to that tenant; everything else is platform scope.
+  const orgId = input.orgId?.trim() || platformOrgId();
   const event = await evidence.audit({
     orgId,
     action: input.action,

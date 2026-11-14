@@ -26,6 +26,11 @@ export const CREDENTIAL_SUBJECT_TYPE = "platform.service_account";
 
 export type CredentialEventInput = {
   action: CredentialAction;
+  /**
+   * Org the change belongs to. Omitted means the platform org, which is right for platform credentials. A **tenant**
+   * eval account sets this to that tenant so the row lands in the tenant's own audit stream (decision P3).
+   */
+  orgId?: string;
   /** Service-account id in ZITADEL (stable across renames). */
   accountId: string;
   accountName?: string;

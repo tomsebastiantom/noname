@@ -67,6 +67,20 @@ describe("recordCredentialEvent", () => {
     expect(JSON.stringify(row)).not.toMatch(/BEGIN RSA PRIVATE KEY/);
   });
 
+  it("writes a tenant-scoped row for a tenant-owned credential", async () => {
+    const { service, audit } = evidence();
+    await recordCredentialEvent(service, {
+      action: CREDENTIAL_ACTIONS.GRANTED,
+      orgId: "tenant-org",
+      accountId: "eval-runner-tenant",
+      role: "eval_reader",
+      actorType: "service",
+      actorId: "provisioner-1",
+    });
+
+    expect(audit).toHaveBeenCalledWith(expect.objectContaining({ orgId: "tenant-org" }));
+  });
+
   it("fails closed when the platform org is not configured", async () => {
     delete process.env.PLATFORM_ORG_ID;
     const { service } = evidence();

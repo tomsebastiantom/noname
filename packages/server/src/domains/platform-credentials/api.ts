@@ -16,6 +16,8 @@ const eventSchema = z.object({
   action: z.enum(
     Object.values(CREDENTIAL_ACTIONS) as [CredentialAction, ...CredentialAction[]],
   ),
+  /** Tenant scope for a tenant-owned credential; omit for platform scope. */
+  orgId: z.string().min(1).optional(),
   accountId: z.string().min(1),
   accountName: z.string().min(1).optional(),
   role: z.string().min(1).optional(),
