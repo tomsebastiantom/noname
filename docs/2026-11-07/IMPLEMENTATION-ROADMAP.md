@@ -49,6 +49,11 @@ request log line by `requestId`.
 
 ## 3. Audit phase B — token issuance/revocation
 
+**Status (2026-11-14):** ✅ **implemented as credential lifecycle**, not ephemeral token mint/revoke:
+`platform.credential.*` rows with the operator as actor, plus a reconciliation that reports drift between
+ZITADEL's live platform grants and the recorded stream. See
+[`CREDENTIAL-LIFECYCLE-AUDIT.md`](../2026-11-12/CREDENTIAL-LIFECYCLE-AUDIT.md).
+
 **What:** record token mint/revoke (actor, service id, org, permissions, expiry) as audit events; token id is a
 hash, never the secret.
 
@@ -115,6 +120,11 @@ monitoring/forensics, not attribution. `requestId` from step 1 is already in pla
 
 ## 9. Release admin UI
 
+**Status (2026-11-14):** 🟡 **partially implemented.** The operator console exists
+([`PLATFORM-CONSOLE.md`](../2026-11-12/PLATFORM-CONSOLE.md)): tenant list with provisioning and verdict state,
+create, backfill, invite, verdict acknowledgement. **Not built:** promote/rollback with confirmation and the
+release history view.
+
 **What:** tenant list, current/previous pointer, release history, promote/rollback with confirmation, audit trail
 link.
 
@@ -150,7 +160,7 @@ These do not block the release track; they can run in parallel with steps 1–7.
 | R2 bundle retention/GC | prune removes rows, not objects |
 | selector → ingress conformance check | prove the active release matches the deployed stack |
 | migration-set classification at **creation** | catch destructive sets earlier than promotion |
-| tenant catalog backfill | existing orgs need status/plan/region |
+| ~~tenant catalog backfill~~ | done 2026-11-14: `POST /api/platform/tenants/backfill` |
 
 ---
 
