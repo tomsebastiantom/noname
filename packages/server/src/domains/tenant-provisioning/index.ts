@@ -12,6 +12,11 @@ export function createTenantProvisioningDomain(deps: {
   db: Database;
   directory: DirectoryPort;
   provisioner?: import("./service").ProvisionerPort;
+  audit?: (input: {
+    action: string;
+    actorId: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<void>;
   recordCredential?: (input: {
     orgId: string;
     accountId: string;
@@ -29,7 +34,7 @@ export function createTenantProvisioningDomain(deps: {
   return {
     store,
     service,
-    routes: createTenantProvisioningRoutes(service),
+    routes: createTenantProvisioningRoutes(service, deps.audit),
     operatorRoutes: createPlatformOperatorRoutes({
       invite: async ({ email }) => {
         const orgId = process.env.PLATFORM_ORG_ID?.trim();

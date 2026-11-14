@@ -467,6 +467,19 @@ export async function createApp(): Promise<Hono> {
   const tenantProvisioning = createTenantProvisioningDomain({
     db,
     provisioner: createZitadelProvisioner(),
+    audit: async (input) => {
+      const orgId = process.env.PLATFORM_ORG_ID?.trim();
+      if (!orgId) return;
+      await evidence.service.audit({
+        orgId,
+        action: input.action,
+        actorType: "service",
+        actorId: input.actorId,
+        subjectType: "platform.tenant_directory",
+        subjectId: "backfill",
+        ...(input.metadata ? { metadata: input.metadata } : {}),
+      });
+    },
     recordCredential: async (input) => {
       await platformCredentials.record({
         action: CREDENTIAL_ACTIONS.CREATED,

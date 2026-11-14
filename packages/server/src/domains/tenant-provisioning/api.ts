@@ -26,7 +26,14 @@ const createSchema = z.object({
  * `POST` answers **202** with the record, never 201-with-everything-done: identity steps are external and slow, and a
  * request thread holding them open is how duplicate tenants appear on retry. The caller polls `GET …/provisioning`.
  */
-export function createTenantProvisioningRoutes(provisioning: ProvisioningService) {
+export function createTenantProvisioningRoutes(
+  provisioning: ProvisioningService,
+  audit?: (input: {
+    action: string;
+    actorId: string;
+    metadata?: Record<string, unknown>;
+  }) => Promise<void>,
+) {
   const routes = new Hono();
 
   routes.post("/", async (c) => {
@@ -58,7 +65,14 @@ export function createTenantProvisioningRoutes(provisioning: ProvisioningService
     if (!operator.permissions.includes(PERMISSIONS.RELEASES_PLATFORM_WRITE)) {
       return c.json({ error: "Forbidden" }, 403);
     }
-    return ok(c, await provisioning.backfill());
+    const result = await provisioning.backfill();
+    // A maintenance run still changes state, so it gets an actor like everything else.
+    await audit?.({
+      action: "platform.tenants.backfilled",
+      actorId: operator.userId,
+      metadata: { examined: result.examined, created: result.created },
+    });
+    return ok(c, result);
   });
 
   routes.get("/:orgId/provisioning", async (c) => {
